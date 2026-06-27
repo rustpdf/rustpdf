@@ -1,0 +1,14 @@
+# Treat binary assets as binary — never apply line-ending normalization.
+# Byte-exact round-trip tests depend on these files staying untouched.
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.icc  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.db   binary
+*.p12  binary
+*.pfx  binary

@@ -88,10 +88,16 @@ jobs:
           - arch: x86_64
             runner: macos-13
             target: x86_64-apple-darwin
+            deployment: "10.12"
           - arch: arm64
             runner: macos-14
             target: aarch64-apple-darwin
+            deployment: "11.0"
     runs-on: ${{ matrix.runner }}
+    # Pins both the cdylib (cargo) and the wheel platform tag to an older macOS
+    # floor so the artifacts install on machines older than the build runner.
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment }}
     steps:
       - uses: actions/checkout@v4
       - name: require production license pubkey on release
