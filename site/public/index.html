@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>rust-pdf · enterprise PDF for every language</title>
-  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
+  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
   <link rel="canonical" href="https://rustpdf.dev/" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,16 +12,16 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/" />
   <meta property="og:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node, Java and Delphi. Runs on your servers, no per-document fees." />
+  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift. Runs on your servers, no per-document fees." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, eight languages, offline, licensed per feature." />
+  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, nine languages, offline, licensed per feature." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi" />
+  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
+  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -33,7 +33,7 @@
         "url": "https://casefy.io",
         "logo": "https://rustpdf.dev/favicon.svg",
         "sameAs": ["https://casefy.io"],
-        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Java and Delphi."
+        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift."
       },
       {
         "@type": "WebSite",
@@ -50,7 +50,7 @@
         "operatingSystem": "Linux, macOS, Windows",
         "url": "https://rustpdf.dev/",
         "publisher": { "@id": "https://rustpdf.dev/#org" },
-        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Java and Delphi. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
+        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
         "featureList": [
           "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
@@ -111,7 +111,7 @@
     <!-- HERO -->
     <section class="hero">
       <div class="wrap">
-        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Java · Delphi</p>
+        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Java · Delphi · Swift</p>
         <h1>The enterprise PDF library<br />the rest of your stack <span class="grad">doesn't have</span>.</h1>
         <p class="lede">
           Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
@@ -268,7 +268,7 @@
     <!-- LANGUAGES -->
     <section id="languages" class="band">
       <div class="wrap">
-        <h2 class="center">One engine. Eight languages. Identical behavior.</h2>
+        <h2 class="center">One engine. Nine languages. Identical behavior.</h2>
         <p class="center muted narrow">
           The same engine powers every binding, so you get identical results in any
           language. Every feature behaves the same everywhere, with no per-language
@@ -284,6 +284,7 @@
           <div class="lang reveal"><span>Node / TS</span><small>Koffi</small></div>
           <div class="lang reveal"><span>Java</span><small>JNA</small></div>
           <div class="lang reveal"><span>Delphi / FPC</span><small>pure FFI</small></div>
+          <div class="lang reveal"><span>Swift</span><small>SwiftPM</small></div>
         </div>
       </div>
     </section>
@@ -303,6 +304,7 @@
             <button class="tab" data-tab="node">Node</button>
             <button class="tab" data-tab="java">Java</button>
             <button class="tab" data-tab="delphi">Delphi</button>
+            <button class="tab" data-tab="swift">Swift</button>
             <button class="tab" data-tab="activate">Activate</button>
           </div>
 <pre class="tab-pane active" data-pane="rust"><code>let mut doc = pdf::Document::new();
@@ -382,6 +384,14 @@ try
 finally
   Doc.Free;
 end;</code></pre>
+<pre class="tab-pane" data-pane="swift"><code>import RustPdf
+
+let doc = try Document()
+try doc.pdfa(.a2a).tagged().setInfo(DocumentInfo(title: "Report"))
+let f = try doc.addFont(path: "Roboto-Regular.ttf")
+try doc.addPage()
+try doc.showText(font: f, size: 20, x: 72, y: 760, "Title", headingLevel: 1)
+let bytes = try doc.toBytes()      // archival-grade PDF, links on macOS &amp; iOS</code></pre>
 <pre class="tab-pane" data-pane="activate"><code># No rebuild. One environment variable activates every binding:
 export RUSTPDF_LICENSE="010f0000…"   # the token we email you
 
@@ -411,7 +421,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
             <div class="price-head">
               <h3>Pro</h3>
               <p class="price-amount"><span id="price-amount-pro">$1,490</span><span class="per" id="price-interval-pro">/year</span></p>
-              <p class="muted">Per application · renews yearly · offline · all eight languages</p>
+              <p class="muted">Per application · renews yearly · offline · all nine languages</p>
             </div>
             <ul class="price-features">
               <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a)</li>

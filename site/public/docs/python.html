@@ -62,11 +62,12 @@
       <h4>Language</h4>
       <a href="/docs/python.html" class="lang-pill" style="color:var(--brand-2)">● Python</a>
       <a href="/docs/delphi.html" class="lang-pill">Delphi / Free Pascal</a>
+      <a href="/docs/swift.html" class="lang-pill">Swift</a>
+      <a href="/docs/node.html" class="lang-pill">Node / TypeScript</a>
       <a class="soon">C# / .NET (soon)</a>
       <a class="soon">Go (soon)</a>
       <a class="soon">PHP (soon)</a>
       <a class="soon">Ruby (soon)</a>
-      <a class="soon">Node / TS (soon)</a>
       <a class="soon">Java (soon)</a>
 
       <h4>Getting started</h4>
@@ -393,7 +394,7 @@ with EditableDoc.load_file("merged.pdf") as doc:
       </table>
       <div class="code has-label"><span class="lbl">python</span><pre><code>with EditableDoc.load_file("form.pdf") as ed:
     ed.set_info("Title", "Filled form")
-    found = ed.fill_text_field("applicant.name", "Edivan Teixeira")
+    found = ed.fill_text_field("applicant.name", "Jane Doe")
     print("filled:", found, "| title:", ed.get_info("Title"))
     ed.save("filled.pdf")</code></pre></div>
 
@@ -445,8 +446,8 @@ key_der   = open("signing-key.pkcs8.der", "rb").read()   # PKCS#8 private key (D
 cert_der  = open("signing-cert.der", "rb").read()        # X.509 certificate (DER)
 
 signed = rustpdf.sign(pdf_bytes, key_der, cert_der,
-                      reason="Approved", location="São Paulo",
-                      name="Edivan Teixeira", pades=True)
+                      reason="Approved", location="New York",
+                      name="Jane Doe", pades=True)
 open("contract.signed.pdf", "wb").write(signed)
 # Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
@@ -529,7 +530,7 @@ except PdfError as e:
         <tr><td><code>rustpdf.activate_license(token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Delphi / Free Pascal, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Delphi / Free Pascal, Swift, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

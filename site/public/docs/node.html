@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Node.js / TypeScript · rust-pdf docs</title>
+  <meta name="description" content="Complete Node.js & TypeScript reference for rust-pdf: authoring, fonts & text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction. Install with npm install rustpdf." />
+  <link rel="canonical" href="https://rustpdf.dev/docs/node.html" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:title" content="Node.js / TypeScript · rust-pdf docs" />
+  <meta property="og:description" content="Complete Node.js reference: authoring, PDF/A, accessibility, forms, manipulation, encryption and signatures. npm install rustpdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:alt" content="rust-pdf Node.js documentation" />
+  <meta name="twitter:image:alt" content="rust-pdf Node.js documentation" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://rustpdf.dev/docs/" },
+          { "@type": "ListItem", "position": 3, "name": "Node.js", "item": "https://rustpdf.dev/docs/node.html" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "rust-pdf for Node.js & TypeScript",
+        "description": "Complete Node.js reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction.",
+        "url": "https://rustpdf.dev/docs/node.html",
+        "inLanguage": "en",
+        "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/docs/docs.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <div class="docs-shell with-toc">
+    <!-- LEFT NAV -->
+    <aside class="docs-side">
+      <h4>Language</h4>
+      <a href="/docs/python.html" class="lang-pill">Python</a>
+      <a href="/docs/node.html" class="lang-pill" style="color:var(--brand-2)">● Node / TypeScript</a>
+      <a href="/docs/delphi.html" class="lang-pill">Delphi / Free Pascal</a>
+      <a href="/docs/swift.html" class="lang-pill">Swift</a>
+      <a class="soon">C# / .NET (soon)</a>
+      <a class="soon">Go (soon)</a>
+      <a class="soon">PHP (soon)</a>
+      <a class="soon">Ruby (soon)</a>
+      <a class="soon">Java (soon)</a>
+
+      <h4>Getting started</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#typescript">TypeScript</a>
+      <a href="#licensing">Licensing &amp; activation</a>
+      <a href="#coords">Coordinate system</a>
+      <a href="#threading">Threading &amp; concurrency</a>
+
+      <h4>Authoring: Document</h4>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Pages &amp; vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility (PDF/UA)</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">AcroForm fields</a>
+      <a href="#metadata">Metadata</a>
+
+      <h4>Manipulation: EditableDoc</h4>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-optimize">Optimize</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-output">Output &amp; incremental</a>
+
+      <h4>Signatures</h4>
+      <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+
+      <h4>Other</h4>
+      <a href="#extract">Text extraction</a>
+      <a href="#enums">Enums</a>
+      <a href="#errors">Errors</a>
+      <a href="#utils">Utilities</a>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="docs-main">
+      <h1>Node.js / TypeScript</h1>
+      <p class="docs-lead">The <code>rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over <a href="https://koffi.dev" rel="noopener">Koffi</a> (pure FFI, no node-gyp, no native build). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. Ships with TypeScript types.</p>
+
+      <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so call <code>close()</code> when done to free it promptly.</div>
+
+      <!-- INSTALL -->
+      <h2 id="install">Installation</h2>
+      <p>Install from npm. The native library (<code>libpdf_ffi</code>) ships as <b>per-platform optional dependencies</b> (<code>@rustpdf/darwin-arm64</code>, <code>@rustpdf/linux-x64-gnu</code>, <code>@rustpdf/linux-arm64-gnu</code>, <code>@rustpdf/win32-x64-msvc</code>): npm downloads only the one matching your OS/architecture, so there's nothing to compile and no node-gyp.</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>npm install rustpdf</code></pre></div>
+      <p>Requires Node.js 18+. Verify it loaded:</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+console.log(rustpdf.version());   // native library version</code></pre></div>
+      <div class="note">Bundling for a serverless target (AWS Lambda, etc.)? Make sure the matching <code>@rustpdf/&lt;platform&gt;</code> package is included for the deploy architecture: e.g. install on a Linux x64 host, or add it explicitly as an <code>optionalDependency</code>.</div>
+
+      <!-- QUICKSTART -->
+      <h2 id="quickstart">Quick start</h2>
+      <p>A one-page document with a filled rectangle, saved to disk:</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document } = require("rustpdf");
+
+const doc = new Document();              // A4 by default
+doc.addPage();
+doc.setFillRgb(0.86, 0.20, 0.18);
+doc.rect(72, 640, 200, 120);             // x, y, width, height (points)
+doc.fill();
+doc.save("out.pdf");
+doc.close();</code></pre></div>
+      <p>Most methods return the document, so calls chain:</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+const font = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage()
+   .setFillRgb(0.1, 0.1, 0.12)
+   .rect(0, 800, 595, 42).fill()
+   .showText(font, 24, 72, 740, "Olá, açúcar — café");
+const data = doc.toBytes();              // a Node Buffer instead of a file
+doc.close();</code></pre></div>
+
+      <!-- TYPESCRIPT -->
+      <h2 id="typescript">TypeScript</h2>
+      <p>The package ships type declarations (<code>index.d.ts</code>), so no <code>@types</code> are needed. Both <code>require</code> and ES-module <code>import</code> work.</p>
+      <div class="code has-label"><span class="lbl">typescript</span><pre><code>import { Document, PdfaLevel, Align } from "rustpdf";
+
+const doc = new Document();
+doc.pdfa(PdfaLevel.A2a).setInfo({ title: "Report" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage().showText(f, 20, 72, 760, "Title", 1);   // headingLevel 1 = H1
+const bytes: Buffer = doc.toBytes();
+doc.close();</code></pre></div>
+
+      <!-- LICENSING -->
+      <h2 id="licensing">Licensing &amp; activation</h2>
+      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls throw <code>PdfError</code> and produce no output.</p>
+      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
+# or point at a file:
+export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
+      <p>Or activate explicitly in code:</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+rustpdf.activateLicense(token);   // throws PdfError if forged / expired / malformed</code></pre></div>
+      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
+
+      <!-- COORDS -->
+      <h2 id="coords">Coordinate system</h2>
+      <ul>
+        <li>Units are <b>points</b> (1 pt = 1/72 inch). A4 is <code>595 × 842</code>, US&nbsp;Letter <code>612 × 792</code>.</li>
+        <li>The origin <code>(0, 0)</code> is the <b>bottom-left</b> corner; <code>y</code> grows upward.</li>
+        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
+        <li>Drawing/text always targets the <b>most recently added page</b>.</li>
+      </ul>
+
+      <!-- THREADING -->
+      <h2 id="threading">Threading &amp; concurrency</h2>
+      <p>Every native call is <b>synchronous</b> (it blocks the event loop for its duration) and the core is <b>Send but not Sync</b>: a single handle must never be touched by two threads at once.</p>
+      <ul>
+        <li><b>Documents are independent.</b> Each <code>Document</code>/<code>EditableDoc</code> shares no state, so they're safe to build across <a href="https://nodejs.org/api/worker_threads.html" rel="noopener"><code>worker_threads</code></a>, one handle per worker.</li>
+        <li><b>Don't share a live handle</b> between workers; give each its own.</li>
+        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure in one worker never clobbers another's, and <code>PdfError</code> surfaces on the calling side.</li>
+        <li><b>License is process-global.</b> <code>activateLicense</code> (or the env var) applies to every worker; activate once at startup.</li>
+        <li><b>Heavy jobs:</b> generating a large PDF on the main thread will stall other requests, so offload to a worker.</li>
+      </ul>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>// worker.js
+const { parentPort, workerData } = require("worker_threads");
+const { Document } = require("rustpdf");
+
+const doc = new Document();              // one document per worker
+doc.addPage().setFillRgb(0.1, 0.1, 0.12).rect(72, 700, 200, 80).fill();
+parentPort.postMessage(doc.toBytes());
+doc.close();</code></pre></div>
+
+      <!-- DOCUMENT CREATE -->
+      <h2 id="doc-create">Authoring: create &amp; save</h2>
+      <div class="api"><code>new Document()</code> <span class="badge free">free</span></div>
+      <p>Creates an empty document (A4 default page size). Call <code>close()</code> to free the native handle.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>addPage(size?)</code></td><td>Append a page. <code>size</code> is an optional <code>{ width, height }</code> object in points.</td></tr>
+        <tr><td><code>setDefaultSize(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
+        <tr><td><code>setVersion(v)</code></td><td>Set the PDF header version (e.g. <code>14</code> → PDF 1.4, <code>17</code> → 1.7).</td></tr>
+        <tr><td><code>pageCount</code></td><td>Property: number of pages so far.</td></tr>
+        <tr><td><code>toBytes()</code></td><td>Render the document to a <code>Buffer</code>.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Render and write to a file.</td></tr>
+        <tr><td><code>close()</code></td><td>Free the native handle.</td></tr>
+      </table>
+
+      <!-- GRAPHICS -->
+      <h2 id="graphics">Pages &amp; vector graphics</h2>
+      <p>Graphics state and path operators mirror PDF's content-stream model. Colors are RGB in <code>0.0–1.0</code>.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setFillRgb(r, g, b)</code></td><td>Fill color.</td></tr>
+        <tr><td><code>setStrokeRgb(r, g, b)</code></td><td>Stroke color.</td></tr>
+        <tr><td><code>setLineWidth(w)</code></td><td>Stroke width in points.</td></tr>
+        <tr><td><code>rect(x, y, w, h)</code></td><td>Add a rectangle subpath.</td></tr>
+        <tr><td><code>fill()</code></td><td>Fill the current path with the fill color.</td></tr>
+        <tr><td><code>stroke()</code></td><td>Stroke the current path with the stroke color.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+doc.addPage();
+doc.setStrokeRgb(0.10, 0.45, 0.90).setLineWidth(3);
+doc.rect(72, 600, 300, 160).stroke();
+doc.setFillRgb(0.95, 0.77, 0.06);
+doc.rect(120, 640, 120, 80).fill();
+doc.save("shapes.pdf");
+doc.close();</code></pre></div>
+
+      <!-- TEXT -->
+      <h2 id="text">Fonts &amp; text</h2>
+      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly). Register a font once, then reference it by its integer id.</p>
+      <div class="api"><code>addFontFile(path) → number</code> &nbsp; <code>addFont(data: Buffer) → number</code></div>
+      <div class="api"><code>showText(font, size, x, y, text, headingLevel?)</code></div>
+      <p><code>headingLevel</code> (1–6) tags the run as <code>H1</code>–<code>H6</code> in an accessible document (see <a href="#tagged">Accessibility</a>); leave it out (or <code>0</code>) for ordinary text.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+const regular = doc.addFontFile("Roboto-Regular.ttf");
+// …or from bytes you already have in memory:
+// const regular = doc.addFont(fs.readFileSync("Roboto-Regular.ttf"));
+
+doc.addPage();
+doc.showText(regular, 28, 72, 760, "Invoice #1024");
+doc.showText(regular, 12, 72, 720, "日本語 · Ελληνικά · العربية");
+doc.save("text.pdf");
+doc.close();</code></pre></div>
+
+      <!-- PARAGRAPHS -->
+      <h2 id="paragraphs">Paragraphs</h2>
+      <p>The paragraph layer wraps, aligns and justifies text inside a fixed width (greedy line breaking using shaped glyph widths).</p>
+      <div class="api"><code>paragraph(font, size, x, y, width, text, align?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, Align } = require("rustpdf");
+
+const intro =
+  "A long paragraph that wraps to the given width and is justified " +
+  "automatically; extra space is distributed between words.";
+
+const doc = new Document();
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.paragraph(f, 12, 72, 700, 451, intro, Align.Justify);
+doc.save("paragraph.pdf");
+doc.close();</code></pre></div>
+      <p>See the <a href="#enums"><code>Align</code></a> enum for the alignment options.</p>
+
+      <!-- IMAGES -->
+      <h2 id="images">Images</h2>
+      <p>JPEGs are embedded verbatim (<code>DCTDecode</code>, no re-encode). PNGs are decoded and re-encoded (<code>FlateDecode</code>); alpha becomes an <code>/SMask</code>, palette becomes an <code>Indexed</code> color space. Register an image once, draw it many times.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>addImageFile(path) → number</code></td><td>Load JPEG/PNG from a file; returns the image id.</td></tr>
+        <tr><td><code>addImagePng(data: Buffer) → number</code></td><td>Register a PNG from memory.</td></tr>
+        <tr><td><code>addImageJpeg(data: Buffer) → number</code></td><td>Register a JPEG from memory.</td></tr>
+        <tr><td><code>drawImage(image, x, y, w, h)</code></td><td>Draw at <code>(x, y)</code> scaled to <code>w × h</code> points.</td></tr>
+        <tr><td><code>figure(image, x, y, w, h, alt)</code></td><td>Draw as a tagged <code>/Figure</code> with alt text (accessibility).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+const logo = doc.addImageFile("logo.png");
+doc.addPage();
+doc.drawImage(logo, 72, 680, 160, 90);
+doc.save("with_image.pdf");
+doc.close();</code></pre></div>
+
+      <!-- PDF/A -->
+      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <div class="api"><code>pdfa(level?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, PdfaLevel } = require("rustpdf");
+
+const doc = new Document();
+doc.pdfa(PdfaLevel.A2b).setInfo({ title: "Q3 Report", author: "Acme Inc." });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 20, 72, 760, "Archival report");
+doc.save("report_pdfa.pdf");     // throws PdfError without a license granting PDF/A
+doc.close();</code></pre></div>
+      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>setInfo({ title: … })</code>.</div>
+
+      <!-- TAGGED -->
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <p><code>tagged()</code> builds a logical structure tree (PDF/UA-1). Combine with <code>pdfa(PdfaLevel.A2a)</code> for archival <i>and</i> accessible output. Use <code>headingLevel</code> on <code>showText</code> for <code>H1</code>–<code>H6</code>, and <code>figure(..., alt)</code> for described images.</p>
+      <div class="api"><code>tagged()</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, PdfaLevel } = require("rustpdf");
+
+const doc = new Document();
+doc.pdfa(PdfaLevel.A2a).tagged().setInfo({ title: "Accessible report" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 26, 72, 760, "Annual report", 1);   // H1
+doc.showText(f, 14, 72, 720, "Overview", 2);         // H2
+doc.showText(f, 11, 72, 690, "Body paragraph of the section…");
+const chart = doc.addImageFile("chart.png");
+doc.figure(chart, 72, 520, 300, 150, "Revenue grew 18% year over year");
+doc.save("accessible.pdf");
+doc.close();</code></pre></div>
+
+      <!-- ATTACHMENTS -->
+      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>AFRelationship</code></a>.</p>
+      <div class="api"><code>attachFile(name, mime, data, relationship?, description?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
+const { Document, PdfaLevel, AFRelationship } = require("rustpdf");
+
+const xml = fs.readFileSync("invoice.xml");
+const doc = new Document();
+doc.pdfa(PdfaLevel.A3b).setInfo({ title: "E-invoice 1024" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 18, 72, 760, "Invoice 1024");
+doc.attachFile("invoice.xml", "text/xml", xml,
+               AFRelationship.Source, "Structured invoice data");
+doc.save("einvoice.pdf");
+doc.close();</code></pre></div>
+
+      <!-- FORMS -->
+      <h2 id="forms">AcroForm fields</h2>
+      <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>[x0, y0, x1, y1]</code> arrays; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>textField(name, page, rect, value?, size?)</code></td><td>Text input (<code>size=0</code> → auto font size).</td></tr>
+        <tr><td><code>checkbox(name, page, rect, checked)</code></td><td>Checkbox.</td></tr>
+        <tr><td><code>dropdown(name, page, rect, options, selected?, size?)</code></td><td>Combo box from an array of strings.</td></tr>
+        <tr><td><code>radioGroup(name, page, buttons, selected?)</code></td><td><code>buttons</code> = array of <code>{ rect, export }</code> objects.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+doc.addPage();
+doc.textField("applicant.name", 0, [72, 700, 320, 720], "");
+doc.checkbox("agree", 0, [72, 660, 88, 676], false);
+doc.dropdown("plan", 0, [72, 620, 240, 640],
+             ["Starter", "Pro", "Enterprise"], 1);
+doc.radioGroup("billing", 0, [
+  { rect: [72, 580, 88, 596], export: "monthly" },
+  { rect: [140, 580, 156, 596], export: "annual" },
+], 1);
+doc.save("form.pdf");
+doc.close();</code></pre></div>
+      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc.fillTextField</code></a>.</p>
+
+      <!-- METADATA -->
+      <h2 id="metadata">Metadata</h2>
+      <div class="api"><code>setInfo({ title?, author?, subject?, keywords?, creator? })</code></div>
+      <p>Sets the document information dictionary (and, for PDF/A, the matching XMP). Pass only the fields you need.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>doc.setInfo({ title: "Q3 Report", author: "Acme Inc.",
+              subject: "Quarterly results", keywords: "finance, q3" });</code></pre></div>
+
+      <!-- EDITABLE LOAD -->
+      <h2 id="ed-load">Manipulation: load an existing PDF</h2>
+      <p><code>EditableDoc</code> parses an existing document (classic &amp; xref streams, object streams, all standard filters, RC4/AES decryption) into an editable model. Pages are a flat list; the page tree is rebuilt on output.</p>
+      <div class="api"><code>EditableDoc.load(data: Buffer, password?)</code></div>
+      <div class="api"><code>EditableDoc.loadFile(path, password?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc } = require("rustpdf");
+
+const ed = EditableDoc.loadFile("in.pdf");
+console.log(ed.pageCount);
+ed.close();
+
+// encrypted input:
+const sec = EditableDoc.loadFile("secured.pdf", "user-or-owner-pw");
+sec.save("plain.pdf");
+sec.close();</code></pre></div>
+
+      <!-- ED PAGES -->
+      <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>merge(other)</code></td><td>Append all pages of another <code>EditableDoc</code> (objects renumbered &amp; remapped).</td></tr>
+        <tr><td><code>rotatePage(index, degrees)</code></td><td>Rotate one page (90 / 180 / 270).</td></tr>
+        <tr><td><code>deletePage(index)</code></td><td>Remove a page.</td></tr>
+        <tr><td><code>reorderPages(order)</code></td><td>Reorder with a full permutation array of indices.</td></tr>
+        <tr><td><code>extractPages(indices) → EditableDoc</code></td><td>New document containing just those pages.</td></tr>
+        <tr><td><code>pageCount</code></td><td>Property: current page count.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const a = EditableDoc.loadFile("a.pdf");
+const b = EditableDoc.loadFile("b.pdf");
+a.merge(b);                        // a now has a's pages followed by b's
+a.rotatePage(0, 90);
+a.reorderPages([...Array(a.pageCount).keys()].reverse());
+a.save("merged.pdf");
+b.close();
+
+const subset = a.extractPages([0, 2]);   // pages 1 and 3
+subset.save("subset.pdf");
+subset.close();
+a.close();</code></pre></div>
+
+      <!-- ED META -->
+      <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setInfo(key, value)</code></td><td>Set one info entry (e.g. <code>"Title"</code>).</td></tr>
+        <tr><td><code>getInfo(key) → string</code></td><td>Read an info entry.</td></tr>
+        <tr><td><code>setXmp(xml: Buffer)</code></td><td>Replace the XMP metadata stream.</td></tr>
+        <tr><td><code>overlayPage(index, content: Buffer)</code></td><td>Overlay a content-stream fragment onto a page (stamps/watermarks).</td></tr>
+        <tr><td><code>fillTextField(name, value) → boolean</code></td><td>Fill an AcroForm text field; returns whether it was found.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("form.pdf");
+ed.setInfo("Title", "Filled form");
+const found = ed.fillTextField("applicant.name", "Jane Doe");
+console.log("filled:", found, "| title:", ed.getInfo("Title"));
+ed.save("filled.pdf");
+ed.close();</code></pre></div>
+
+      <!-- ED OPTIMIZE -->
+      <h2 id="ed-optimize">Optimize &amp; compact</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>optimize()</code></td><td>Drop unreferenced objects, Flate-compress uncompressed streams, dedupe identical objects.</td></tr>
+        <tr><td><code>compact(on?)</code></td><td>Pack objects into object streams + emit a cross-reference stream.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("big.pdf");
+ed.optimize().compact(true);
+ed.save("small.pdf");
+ed.close();</code></pre></div>
+
+      <!-- ED ENCRYPT -->
+      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
+      <div class="api"><code>encrypt({ method?, user?, owner?, readOnly? })</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc, Encryption } = require("rustpdf");
+
+const ed = EditableDoc.loadFile("in.pdf");
+ed.encrypt({ user: "", owner: "owner-secret",
+             method: Encryption.Aes256, readOnly: true });
+ed.save("secured.pdf");          // throws PdfError without an Encryption license
+ed.close();</code></pre></div>
+      <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+
+      <!-- ED OUTPUT -->
+      <h2 id="ed-output">Output &amp; incremental update</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>toBytes() → Buffer</code></td><td>Serialize the manipulated document.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Serialize to a file.</td></tr>
+        <tr><td><code>toBytesIncremental(original: Buffer) → Buffer</code></td><td>Append only changes to the original bytes (signature-safe, non-destructive).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
+const original = fs.readFileSync("in.pdf");
+const ed = EditableDoc.load(original);
+ed.setInfo("Subject", "reviewed");
+const incremental = ed.toBytesIncremental(original);   // original bytes preserved verbatim
+fs.writeFileSync("reviewed.pdf", incremental);
+ed.close();</code></pre></div>
+
+      <!-- SIGN -->
+      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER <code>Buffer</code>s. <code>pades: true</code> switches to PAdES-B-B.</p>
+      <div class="api"><code>rustpdf.sign(pdf, keyDer, certDer, { reason?, location?, name?, pades? }?) → Buffer</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
+const rustpdf = require("rustpdf");
+
+const pdf     = fs.readFileSync("contract.pdf");
+const keyDer  = fs.readFileSync("signing-key.pkcs8.der");   // PKCS#8 private key (DER)
+const certDer = fs.readFileSync("signing-cert.der");        // X.509 certificate (DER)
+
+const signed = rustpdf.sign(pdf, keyDer, certDer, {
+  reason: "Approved", location: "New York",
+  name: "Jane Doe", pades: true,
+});
+fs.writeFileSync("contract.signed.pdf", signed);
+// Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- LTV -->
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
+      <div class="api"><code>rustpdf.addDss(pdf, certs?, crls?) → Buffer</code></div>
+      <div class="api"><code>rustpdf.timestamp(pdf, tsaKeyDer, tsaCertDer, date?) → Buffer</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const signed = fs.readFileSync("contract.signed.pdf");
+
+// B-LT: embed validation material (caller supplies DER certs/CRLs)
+const lt = rustpdf.addDss(signed, [certDer], [crlDer]);
+
+// B-LTA: add a document timestamp signed by a TSA key/cert
+const lta = rustpdf.timestamp(lt, tsaKeyDer, tsaCertDer);
+fs.writeFileSync("contract.lta.pdf", lta);</code></pre></div>
+
+      <!-- EXTRACT -->
+      <h2 id="extract">Text extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <div class="api"><code>rustpdf.extractText(data: Buffer) → string</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const data = fs.readFileSync("report.pdf");
+console.log(rustpdf.extractText(data));</code></pre></div>
+
+      <!-- ENUMS -->
+      <h2 id="enums">Enums</h2>
+      <h3>PdfaLevel</h3>
+      <table>
+        <tr><th>Value</th><th>Level</th></tr>
+        <tr><td><code>PdfaLevel.A1b</code></td><td>PDF/A-1b (basic, PDF 1.4)</td></tr>
+        <tr><td><code>PdfaLevel.A2b</code></td><td>PDF/A-2b (basic): default of <code>pdfa()</code></td></tr>
+        <tr><td><code>PdfaLevel.A2a</code></td><td>PDF/A-2a (accessible: pair with <code>tagged()</code>)</td></tr>
+        <tr><td><code>PdfaLevel.A3b</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
+        <tr><td><code>PdfaLevel.A3a</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+      </table>
+      <h3>Align</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>Align.Left</code></td><td>Left-aligned (default)</td></tr>
+        <tr><td><code>Align.Right</code></td><td>Right-aligned</td></tr>
+        <tr><td><code>Align.Center</code></td><td>Centered</td></tr>
+        <tr><td><code>Align.Justify</code></td><td>Justified (space distributed between words)</td></tr>
+      </table>
+      <h3>AFRelationship</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>AFRelationship.Source</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
+        <tr><td><code>AFRelationship.Data</code></td><td>Data used to derive the visual content</td></tr>
+        <tr><td><code>AFRelationship.Alternative</code></td><td>Alternative representation</td></tr>
+        <tr><td><code>AFRelationship.Supplement</code></td><td>Supplementary material</td></tr>
+        <tr><td><code>AFRelationship.Unspecified</code></td><td>Unspecified relationship</td></tr>
+      </table>
+      <h3>Encryption</h3>
+      <table>
+        <tr><th>Value</th><th>Cipher</th></tr>
+        <tr><td><code>Encryption.Rc4</code></td><td>RC4 (legacy)</td></tr>
+        <tr><td><code>Encryption.Aes128</code></td><td>AES-128</td></tr>
+        <tr><td><code>Encryption.Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+
+      <!-- ERRORS -->
+      <h2 id="errors">Error handling</h2>
+      <p>Every failing native call throws <code>PdfError</code> (an <code>Error</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, PdfError } = require("rustpdf");
+
+try {
+  const doc = new Document();
+  doc.pdfa().setInfo({ title: "x" });
+  doc.addPage();
+  doc.save("out.pdf");
+  doc.close();
+} catch (e) {
+  if (e instanceof PdfError) {
+    console.error("failed:", e.status, e.message);
+    // e.g. PdfStatus=7: feature 'pdfa' requires a valid license
+  }
+}</code></pre></div>
+
+      <!-- UTILS -->
+      <h2 id="utils">Utilities</h2>
+      <table>
+        <tr><th>Function</th><th>Description</th></tr>
+        <tr><td><code>rustpdf.version() → string</code></td><td>Native library version string.</td></tr>
+        <tr><td><code>rustpdf.activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
+      </table>
+
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Delphi / Free Pascal, Swift, C#, Go, PHP, Ruby and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+    </main>
+
+    <!-- RIGHT TOC -->
+    <nav class="docs-toc">
+      <h4>On this page</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#typescript">TypeScript</a>
+      <a href="#licensing">Licensing</a>
+      <a href="#threading">Threading</a>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">Forms</a>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#sign">Signatures</a>
+      <a href="#extract">Extraction</a>
+      <a href="#enums">Enums</a>
+    </nav>
+  </div>
+
+  <script src="/highlight.js"></script>
+  <script src="/docs/docs.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>
