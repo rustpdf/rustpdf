@@ -62,11 +62,12 @@
       <h4>Language</h4>
       <a href="/docs/python.html" class="lang-pill">Python</a>
       <a href="/docs/delphi.html" class="lang-pill" style="color:var(--brand-2)">● Delphi / Free Pascal</a>
+      <a href="/docs/swift.html" class="lang-pill">Swift</a>
+      <a href="/docs/node.html" class="lang-pill">Node / TypeScript</a>
       <a class="soon">C# / .NET (soon)</a>
       <a class="soon">Go (soon)</a>
       <a class="soon">PHP (soon)</a>
       <a class="soon">Ruby (soon)</a>
-      <a class="soon">Node / TS (soon)</a>
       <a class="soon">Java (soon)</a>
 
       <h4>Getting started</h4>
@@ -432,7 +433,7 @@ end;</code></pre></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('form.pdf');
 try
   Ed.SetInfo('Title', 'Filled form');
-  Found := Ed.FillTextField('applicant.name', 'Edivan Teixeira');
+  Found := Ed.FillTextField('applicant.name', 'Jane Doe');
   Writeln('filled: ', Found, ' | title: ', Ed.GetInfo('Title'));
   Ed.SaveToFile('filled.pdf');
 finally
@@ -492,7 +493,7 @@ end;</code></pre></div>
 KeyDer   := ...;   // PKCS#8 private key (DER)
 CertDer  := ...;   // X.509 certificate (DER)
 
-Signed := Pdf.Sign(PdfBytes, KeyDer, CertDer, 'Approved', 'São Paulo', 'Edivan Teixeira', True);
+Signed := Pdf.Sign(PdfBytes, KeyDer, CertDer, 'Approved', 'New York', 'Jane Doe', True);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
       <!-- LTV -->
@@ -569,7 +570,7 @@ end;</code></pre></div>
         <tr><td><code>Pdf.ActivateLicense(Token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Swift, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

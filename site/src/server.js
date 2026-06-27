@@ -178,6 +178,56 @@ app.get(["/docs/delphi.html", "/docs/delphi"], (_req, res) => {
   }
 });
 
+// --- Swift docs: inject the current package version + xcframework checksum ----
+// /docs/swift.html carries __SWIFT_VERSION__ and __SWIFT_CHECKSUM__ placeholders.
+// Both derive from what the deploy baked into /downloads (single source of truth):
+// the version from the published zip, the checksum from the .checksum file.
+function swiftVersion() {
+  try {
+    const versions = fs
+      .readdirSync(path.join(publicDir, "downloads"))
+      .map((f) => f.match(/^rustpdf-swift-(\d+\.\d+\.\d+)\.zip$/))
+      .filter(Boolean)
+      .map((m) => m[1])
+      .sort(cmpSemver);
+    if (versions.length) return versions[versions.length - 1];
+  } catch {
+    /* no downloads dir yet */
+  }
+  return process.env.SWIFT_VERSION || "0.1.0";
+}
+function swiftChecksum(version) {
+  try {
+    return fs
+      .readFileSync(
+        path.join(publicDir, "downloads", `RustPdfFFI-${version}.xcframework.zip.checksum`),
+        "utf8",
+      )
+      .trim();
+  } catch {
+    return "PASTE_FROM_THE_.checksum_FILE";
+  }
+}
+function renderSwiftPage() {
+  const v = swiftVersion();
+  const html = fs.readFileSync(path.join(publicDir, "docs", "swift.html"), "utf8");
+  return html.replace(/__SWIFT_VERSION__/g, v).replace(/__SWIFT_CHECKSUM__/g, swiftChecksum(v));
+}
+let swiftPageCache = null;
+try {
+  swiftPageCache = renderSwiftPage();
+  console.log(`Swift docs pinned to v${swiftVersion()}`);
+} catch (err) {
+  console.error("Swift docs render failed:", err.message);
+}
+app.get(["/docs/swift.html", "/docs/swift"], (_req, res) => {
+  try {
+    res.type("html").send(swiftPageCache || renderSwiftPage());
+  } catch {
+    res.sendFile(path.join(publicDir, "docs", "swift.html"));
+  }
+});
+
 // --- Static site -------------------------------------------------------------
 app.use(express.static(publicDir, { extensions: ["html"] }));
 app.get("/success", (_req, res) => res.sendFile(path.join(publicDir, "success.html")));

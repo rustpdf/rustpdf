@@ -45,7 +45,7 @@ never `Rc`/`RefCell` (ADR [0002](docs/adr/0002-concurrency-model.md)).
 | `fonts`    | parsing / embedding / subsetting / shaping / BiDi | ✅ Fase 3 |
 | `images`   | JPEG / PNG / palette / alpha / 16-bit | ✅ Fase 4 |
 | `parser`   | read existing PDFs (xref/streams, filters, crypto) | ✅ Fase 5 |
-| `ffi`      | C ABI boundary (full surface, ~60 exports) | ✅ + Python binding |
+| `ffi`      | C ABI boundary (full surface, ~60 exports) | ✅ + 9 bindings (Python on PyPI, Node on npm) |
 | `license`  | Ed25519-signed feature licensing (gates PDF/A, signing, encryption) | ✅ |
 | `testkit`  | external validators + visual regression | ✅ Fase 0 |
 | `layout`   | high-level flow (tables, pagination) | ⏳ Fase 7 (paragraph done in `pdf`) |
@@ -93,17 +93,23 @@ cargo run -p pdf --example report          -- report.pdf     # Fase 3F (paragrap
 cargo run -p pdf --example images_demo     -- images.pdf     # Fase 4 (JPEG + transparent PNG)
 ```
 
-## Quick start (Python, via C ABI)
+## Quick start (bindings, via C ABI)
 
-Seven bindings cover the **whole product surface** over the C ABI — Python
+Nine bindings cover the **whole product surface** over the C ABI: Python
 (`bindings/python/rustpdf`, `ctypes`), **C#/.NET** (`bindings/csharp/RustPdf`,
 source-generated P/Invoke), **Go** (`bindings/go/rustpdf`, cgo), **PHP**
 (`bindings/php`, `ext-ffi`), **Ruby** (`bindings/ruby`, Fiddle),
-**Node.js/TypeScript** (`bindings/node`, Koffi) and **Java**
-(`bindings/java`, JNA): fonts/text/paragraphs, images,
-PDF/A (1b–3a), tagging, attachments, AcroForm fields, manipulation, extraction,
-encryption, signatures and licensing. Smoke tests:
-`make {python,csharp,go,php,ruby,node,java}-test`.
+**Node.js/TypeScript** (`bindings/node`, Koffi), **Java** (`bindings/java`, JNA),
+**Delphi / Free Pascal** (`bindings/delphi`, dynamic-loading FFI) and **Swift**
+(`bindings/swift`, SwiftPM): fonts/text/paragraphs, images, PDF/A (1b–3a),
+tagging, attachments, AcroForm fields, manipulation, extraction, encryption,
+signatures and licensing. Smoke tests:
+`make {python,csharp,go,php,ruby,node,java,delphi,swift}-test`.
+
+**Published packages:** Python (`pip install rustpdf`) and Node.js
+(`npm install rustpdf`) are live on PyPI and npm; both bundle the native
+`libpdf_ffi` per platform, so there's nothing to build. The other bindings build
+from this repo.
 
 ```sh
 cargo build -p pdf-ffi          # builds the cdylib + generates include/pdf.h
@@ -129,6 +135,30 @@ PY
 For the same vector drawing, the Python output is **byte-identical** to the Rust
 API (dogfood, Fase 1.7) — `make python-test` checks this and exercises the full
 surface.
+
+The same surface in **Node.js / TypeScript** (`npm install rustpdf`), with
+idiomatic camelCase and `Buffer` payloads:
+
+```js
+const { Document, PdfaLevel, Encryption, EditableDoc, extractText } = require("rustpdf");
+
+const doc = new Document();
+doc.pdfa(PdfaLevel.A2a).tagged().setInfo({ title: "Report" });
+const f = doc.addFontFile("assets/fonts/Roboto-Regular.ttf");
+doc.addPage().showText(f, 20, 72, 760, "Title", 1);   // headingLevel 1 = H1
+const data = doc.toBytes();
+doc.close();
+
+console.log(extractText(data));                        // round-trip the text
+
+const ed = EditableDoc.load(data);                     // manipulate + encrypt
+ed.setInfo("Subject", "via FFI");
+ed.encrypt({ owner: "owner", method: Encryption.Aes256 });
+ed.save("secured.pdf");
+ed.close();
+```
+
+Full per-language references live at [rustpdf.dev/docs](https://rustpdf.dev/docs/).
 
 ## Building & testing
 
