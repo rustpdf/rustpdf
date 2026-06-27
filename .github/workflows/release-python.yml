@@ -73,6 +73,19 @@ jobs:
           for whl in dist_raw/*.whl; do
             /opt/python/cp311-cp311/bin/python -m auditwheel repair "$whl" -w dist
           done
+      - name: smoke-test repaired wheel
+        run: |
+          /opt/python/cp311-cp311/bin/python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          cd /tmp && /tmp/smoke/bin/python -c "$SMOKE"
+        env:
+          SMOKE: |
+            import rustpdf
+            with rustpdf.Document() as d:
+                d.add_page(); d.set_fill_rgb(0.1, 0.2, 0.8); d.rect(72, 72, 200, 100); d.fill()
+                data = d.to_bytes()
+            assert data[:5] == b"%PDF-", data[:5]
+            print("smoke OK", rustpdf.version(), len(data), "bytes")
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.arch }}
@@ -122,6 +135,19 @@ jobs:
           python -m pip install --upgrade build delocate
           python -m build --wheel --outdir dist_raw bindings/python
           for whl in dist_raw/*.whl; do delocate-wheel -w dist "$whl"; done
+      - name: smoke-test repaired wheel
+        run: |
+          python -m venv "$RUNNER_TEMP/smoke"
+          "$RUNNER_TEMP/smoke/bin/pip" install --quiet dist/*.whl
+          cd "$RUNNER_TEMP" && "$RUNNER_TEMP/smoke/bin/python" -c "$SMOKE"
+        env:
+          SMOKE: |
+            import rustpdf
+            with rustpdf.Document() as d:
+                d.add_page(); d.set_fill_rgb(0.1, 0.2, 0.8); d.rect(72, 72, 200, 100); d.fill()
+                data = d.to_bytes()
+            assert data[:5] == b"%PDF-", data[:5]
+            print("smoke OK", rustpdf.version(), len(data), "bytes")
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.arch }}
@@ -153,33 +179,33 @@ jobs:
           python -m pip install --upgrade build delvewheel
           python -m build --wheel --outdir dist_raw bindings/python
           for whl in dist_raw/*.whl; do python -m delvewheel repair -w dist "$whl"; done
+      - name: smoke-test repaired wheel
+        run: |
+          python -m venv "$RUNNER_TEMP/smoke"
+          "$RUNNER_TEMP/smoke/Scripts/pip" install --quiet dist/*.whl
+          cd "$RUNNER_TEMP" && "$RUNNER_TEMP/smoke/Scripts/python" -c "$SMOKE"
+        env:
+          SMOKE: |
+            import rustpdf
+            with rustpdf.Document() as d:
+                d.add_page(); d.set_fill_rgb(0.1, 0.2, 0.8); d.rect(72, 72, 200, 100); d.fill()
+                data = d.to_bytes()
+            assert data[:5] == b"%PDF-", data[:5]
+            print("smoke OK", rustpdf.version(), len(data), "bytes")
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-x64
           path: dist/*.whl
 
-  # ---- source distribution ----------------------------------------------------
-  sdist:
-    name: sdist
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: build sdist
-        run: |
-          python -m pip install --upgrade build
-          python -m build --sdist --outdir dist bindings/python
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sdist
-          path: dist/*.tar.gz
+  # No sdist: the cdylib needs the full cargo workspace (which lives at the repo
+  # root, not inside the package dir), so an sdist build off bindings/python alone
+  # cannot compile and would only serve as a broken install fallback. Platform
+  # wheels cover macOS/Linux/Windows on the mainstream architectures.
 
   # ---- publish: only on a py-v* tag, via PyPI Trusted Publishing (OIDC) --------
   publish:
     name: publish to PyPI
-    needs: [linux, macos, windows, sdist]
+    needs: [linux, macos, windows]
     if: startsWith(github.ref, 'refs/tags/py-v')
     runs-on: ubuntu-latest
     environment: pypi
