@@ -30,10 +30,42 @@ function libFileName() {
   return 'libpdf_ffi.so';
 }
 
+// On Linux the cdylib links glibc or musl — pick the matching prebuilt package.
+function isMusl() {
+  if (process.platform !== 'linux') return false;
+  try {
+    // glibcVersionRuntime is present on glibc, absent on musl.
+    return !process.report.getReport().header.glibcVersionRuntime;
+  } catch {
+    return false;
+  }
+}
+
+// Name of the published @rustpdf/<platform> package that ships this host's
+// cdylib (mirrors the per-platform wheels the Python binding publishes to PyPI).
+function platformPackage() {
+  const { platform, arch } = process;
+  if (platform === 'linux') return `@rustpdf/linux-${arch}-${isMusl() ? 'musl' : 'gnu'}`;
+  if (platform === 'win32') return `@rustpdf/win32-${arch}-msvc`;
+  return `@rustpdf/${platform}-${arch}`; // darwin-arm64, darwin-x64
+}
+
 function libPath() {
+  // 1) explicit override.
   const env = process.env.RUSTPDF_LIB;
   if (env && fs.existsSync(env)) return env;
+
   const file = libFileName();
+
+  // 2) published per-platform package (the production install path: npm pulls in
+  //    only the @rustpdf/<platform> optionalDependency matching os/cpu).
+  try {
+    return require.resolve(`${platformPackage()}/${file}`);
+  } catch {
+    /* not installed — monorepo dev, or an unsupported platform; fall through. */
+  }
+
+  // 3) workspace build tree (monorepo dev): walk up from lib/ to target/.
   let dir = __dirname;
   for (let i = 0; i < 10; i++) {
     for (const profile of ['debug', 'release']) {
@@ -44,7 +76,14 @@ function libPath() {
     if (parent === dir) break;
     dir = parent;
   }
-  throw new PdfError(0, `could not locate ${file}; build it with \`cargo build -p pdf-ffi\` or set RUSTPDF_LIB`);
+
+  throw new PdfError(
+    0,
+    `could not locate ${file}: no matching prebuilt package installed ` +
+      `(expected ${platformPackage()}), no RUSTPDF_LIB set, and no ` +
+      `target/{debug,release} build found. Install rustpdf from npm, run ` +
+      '`cargo build -p pdf-ffi`, or set RUSTPDF_LIB to a libpdf_ffi path.',
+  );
 }
 
 const lib = koffi.load(libPath());

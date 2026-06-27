@@ -10,16 +10,32 @@ update), **text extraction**, **encryption** (RC4 / AES-128 / AES-256) and
 **digital signatures** (PKCS#7 / PAdES) — plus **feature licensing**. Ships with
 TypeScript types (`lib/index.d.ts`).
 
-## Install / load the native library
+## Install
+
+```sh
+npm install rustpdf
+```
+
+The native library ships as **per-platform optional dependencies**
+(`@rustpdf/darwin-arm64`, `@rustpdf/linux-x64-gnu`, `@rustpdf/linux-arm64-gnu`,
+`@rustpdf/win32-x64-msvc`) — npm installs only the one matching your `os`/`cpu`,
+so there's no native compilation and no node-gyp. This mirrors how the Python
+binding ships one platform wheel per target.
+
+The cdylib is located at load time in this order:
+
+1. `RUSTPDF_LIB` (explicit path to a `libpdf_ffi.*`);
+2. the matching `@rustpdf/<platform>` package (the normal install path);
+3. the workspace `target/{debug,release}` (monorepo dev — see below).
+
+### Developing in the monorepo
 
 ```sh
 npm install            # installs koffi
 cargo build -p pdf-ffi # builds libpdf_ffi (from the repo root)
 ```
 
-The library is found via `RUSTPDF_LIB`, then by walking up from `lib/` to
-`target/{debug,release}`. For a published package, ship the platform `libpdf_ffi.*`
-inside the package (or point `RUSTPDF_LIB` at it).
+No platform package is installed, so the loader falls back to `target/`.
 
 ## Quick start
 

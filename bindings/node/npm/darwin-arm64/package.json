@@ -1,0 +1,22 @@
+{
+  "name": "@rustpdf/darwin-arm64",
+  "version": "0.1.0",
+  "description": "Prebuilt rust-pdf native library (libpdf_ffi) for macOS arm64. Installed automatically as an optional dependency of `rustpdf`.",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://rustpdf.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rustpdf/rustpdf.git",
+    "directory": "bindings/node/npm/darwin-arm64"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "libpdf_ffi.dylib",
+    "README.md"
+  ]
+}

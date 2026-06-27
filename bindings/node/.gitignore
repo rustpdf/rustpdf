@@ -1,2 +1,8 @@
 node_modules/
 package-lock.json
+
+# Prebuilt cdylibs are staged into the per-platform packages by CI at publish
+# time (one per runner); never commit the binaries.
+npm/*/libpdf_ffi.dylib
+npm/*/libpdf_ffi.so
+npm/*/pdf_ffi.dll
