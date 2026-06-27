@@ -42,6 +42,20 @@ else
   say "SKIP_DOWNLOADS=1 — pulando sync do download do Delphi"
 fi
 
+# ---- 0b. Atualizar o download público do Swift (xcframework + pacote) --------
+# Mesmo fluxo do Delphi, mas não-fatal: se ainda não há release swift-v*, segue
+# usando o zip local (se existir) ou simplesmente sem o download Swift.
+if [ "${SKIP_DOWNLOADS:-0}" != "1" ]; then
+  say "sincronizando download do Swift (GitHub Release -> site/public/downloads)"
+  if ! "$ROOT/site/scripts/sync-swift-download.sh"; then
+    if ls "$ROOT"/site/public/downloads/rustpdf-swift-*.zip >/dev/null 2>&1; then
+      printf '\033[1;33m   aviso: sync Swift falhou; usando o zip já presente em public/downloads\033[0m\n'
+    else
+      printf '\033[1;33m   aviso: sem release Swift ainda; seguindo sem o download Swift\033[0m\n'
+    fi
+  fi
+fi
+
 # ---- 1. Sincronizar o build context ----------------------------------------
 if [ "${SKIP_RSYNC:-0}" != "1" ]; then
   say "rsync do código para $VPS:$REMOTE_DIR (segredos preservados)"

@@ -102,7 +102,14 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   {Document,EditableDoc}` + módulo de funções + enums; `make ruby-test`.
 - ✅ **Binding Node.js/TypeScript completo** (`bindings/node`, Koffi FFI puro):
   `RustPdf.{Document,EditableDoc}` + funcs + enums + tipos `index.d.ts`; `node
-  bindings/node/test/run.js` (`make node-test`).
+  bindings/node/test/run.js` (`make node-test`). **Empacotado para npm** (não
+  publicado): layout de `optionalDependencies` por plataforma (estilo
+  esbuild) — pacote principal `rustpdf` + 4 pacotes `@rustpdf/<plataforma>`
+  (`darwin-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `win32-x64-msvc`) com a
+  cdylib e seletores `os`/`cpu`/`libc`; loader resolve via `require.resolve` do
+  pacote-plataforma com fallback `target/`; `scripts/sync-versions.mjs` mantém
+  versões em sincronia; CI `.github/workflows/release-node.yml` (tag `node-v*`).
+  Falta publicar: criar a org/scope `@rustpdf` no npm + secret `NPM_TOKEN`.
 - ✅ **Binding Java/JVM completo** (`bindings/java`, JNA FFI puro): `dev.rustpdf.
   {Pdf,Document,EditableDoc}` (AutoCloseable) + enums; `make java-test`.
 - ✅ **Binding Delphi/Free Pascal completo** (`bindings/delphi/RustPdf.pas`, FFI
@@ -114,13 +121,18 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   `boss.json`); o resolver acha a cdylib ao lado do executável. Falta: rodar o
   empacotamento no CI com os targets de cross-compile (win-x64/x86, linux-x64,
   macos universal) e assinar/notarizar a dylib do macOS.
-- ✅ **Binding Swift completo** (`bindings/swift`, SwiftPM, FFI puro com
-  `dlopen`/`dlsym`): `Document`/`EditableDoc` (reference types, handle liberado
-  em `deinit`) + enum `Pdf` + enums Swift; resolver acha a cdylib via
-  `RUSTPDF_LIB` → ao lado do executável → `target/{debug,release}`; `make
-  swift-test` roda o `SmokeTest` (`swift test`, pula sem `swift`), e `swift run
-  rustpdf-example` é um demo. Falta: empacotar como binary xcframework/artefato
-  SwiftPM com a cdylib embutida por plataforma e publicar.
+- ✅ **Binding Swift completo** (`bindings/swift`, SwiftPM, ligação por target C
+  `CRustPdf` sobre cópia do `pdf.h`): `Document`/`EditableDoc` (reference types,
+  handle liberado em `deinit`) + enum `Pdf` + enums Swift; `make swift-test` roda
+  o `SmokeTest` (`swift test`, liga `target/debug`; pula sem `swift`), e `swift
+  run rustpdf-example` é um demo.
+  Distribuição Swift: `make swift-dist` (`bindings/swift/scripts/package.sh`)
+  monta `RustPdfFFI.xcframework` **estático** (macOS universal + iOS device + iOS
+  simulator) e um pacote consumível em `bindings/swift/dist/` (`.binaryTarget`,
+  liga `iconv`), mais o `.xcframework.zip` + checksum para `.binaryTarget(url:)`.
+  Estático → funciona dentro de app bundle iOS sem sidecar. Falta: rodar o
+  empacotamento no CI, hospedar o zip em `/downloads/`, e (opcional) slices
+  tvOS/visionOS/Catalyst (basta `rustup target add` antes do `swift-dist`).
   Refino: bindings de outras linguagens (Dart/Flutter), empacotamento com a lib
   nativa embutida (NuGet/wheel/Packagist/gem/npm/Maven com binários por
   plataforma), **WASM** para edge/serverless, e `/Span` inline + assinatura

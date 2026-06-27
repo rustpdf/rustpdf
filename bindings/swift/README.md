@@ -8,17 +8,20 @@ manipulation (merge/split/rotate/optimize/incremental update), **text
 extraction**, **encryption** (RC4 / AES-128 / AES-256) and **digital
 signatures** (PKCS#7 / PAdES) — plus **feature licensing**.
 
-The binding is **pure FFI**: it `dlopen`s the cdylib and binds every export with
-`dlsym` at run time, so there is no link-time dependency and the same package
-works from the repo checkout and from an installed library path. It builds with
-SwiftPM and runs on macOS and Linux (Swift 5.9+).
+The native library is **linked**, not loaded at run time: the C declarations
+come from the `CRustPdf` clang module (a vendored copy of `include/pdf.h`), and
+the symbols resolve at link time. In the repo it links the dev build tree
+(`target/{debug,release}`); when distributed, it links a **static**
+`libpdf_ffi.a` carried inside an `.xcframework`, so the binding works inside an
+iOS app bundle with nothing to ship alongside. Builds with SwiftPM on
+macOS 11+ and iOS 13+ (Swift 5.9+).
 
 ## Layout
 
 `Sources/RustPdf/`
 
-* `Native.swift` — the raw FFI surface: function-pointer typedefs, the symbol
-  binder, and the run-time library resolver. Mirrors `include/pdf.h` one-to-one.
+* `Native.swift` — the raw FFI surface: one typed reference per linked C export,
+  mirroring `include/pdf.h` one-to-one.
 * `Status.swift` — `PdfStatus` and the thrown `PdfError`.
 * `Enums.swift` — `PdfaLevel`, `Align`, `AFRelationship`, `Encryption`, `PdfVersion`.
 * `Helpers.swift` — out-buffer copy/free and C-string helpers.
@@ -27,34 +30,60 @@ SwiftPM and runs on macOS and Linux (Swift 5.9+).
 * `Document.swift` — the `Document` authoring type.
 * `EditableDoc.swift` — the `EditableDoc` manipulation type.
 
+`Sources/CRustPdf/` — the C ABI module (vendored header + module map).
 `Sources/Example/main.swift` — a runnable demo. `Tests/RustPdfTests/` — the
 full-surface smoke test.
 
-## Building
+## Building (in the repo)
 
 Build the native library first, then build/test the package:
 
 ```sh
 cargo build -p pdf-ffi
 cd bindings/swift
-swift test          # full-surface smoke test
+swift test          # full-surface smoke test (links target/debug)
 swift run rustpdf-example out.pdf ../../assets/fonts/Roboto-Regular.ttf
 ```
 
-### Finding the native library
+The in-repo `Package.swift` links `<repo>/target/{debug,release}/libpdf_ffi.*`.
 
-At first use the binding locates `libpdf_ffi.{dylib,so,dll}` in this order:
+## Distribution (to consumers)
 
-1. `$RUSTPDF_LIB` — an explicit path to the cdylib;
-2. next to the running executable, or in the current directory (the normal
-   deployment layout — ship the lib beside your app);
-3. `target/{debug,release}/<lib>` walking up from the executable dir and the
-   current dir (the dev tree);
-4. the bare platform name, letting the OS loader resolve it (install-name /
-   `DYLD_*` / `LD_LIBRARY_PATH`).
+`make swift-dist` (`scripts/package.sh`) builds the static library for every
+buildable Apple target, assembles a `RustPdfFFI.xcframework` (macOS universal +
+iOS device + iOS simulator slices) and stages a self-contained package under
+`bindings/swift/dist/`:
 
-So in the repo `swift test` just works; to deploy, drop the cdylib next to your
-binary or set `RUSTPDF_LIB`.
+* `dist/RustPdf/` — the consumable package: `Sources/RustPdf/*.swift` +
+  `RustPdfFFI.xcframework` + a `Package.swift` that uses a `.binaryTarget`.
+  Zipped as `rustpdf-swift-<version>.zip`.
+* `dist/RustPdfFFI-<version>.xcframework.zip` + `.checksum` — the standalone
+  framework for URL-hosted distribution.
+
+Customers consume it one of two ways:
+
+**A. Local package** (unzip `rustpdf-swift-<version>.zip`):
+
+```swift
+dependencies: [.package(path: "path/to/RustPdf")],
+targets: [.executableTarget(name: "MyApp",
+    dependencies: [.product(name: "RustPdf", package: "RustPdf")])]
+```
+
+**B. URL-hosted xcframework** (host the zip yourself, e.g. rustpdf.dev):
+
+```swift
+// In a thin wrapper package, or compose directly:
+.binaryTarget(
+    name: "CRustPdf",
+    url: "https://rustpdf.dev/downloads/RustPdfFFI-0.1.0.xcframework.zip",
+    checksum: "<contents of the .checksum file>")
+```
+
+The static Rust library's only non-system dependency is `libiconv`, which the
+generated package links for you (`.linkedLibrary("iconv")`). To add tvOS /
+visionOS / Mac Catalyst slices, install those Rust std targets
+(`rustup target add …`) before running `make swift-dist`.
 
 ## Using it from another package
 

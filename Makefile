@@ -4,7 +4,7 @@
 # PATH; allow overriding CARGO. Defaults to plain `cargo`.
 CARGO ?= cargo
 
-.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish clean ci
+.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish swift-dist swift-dist-publish clean ci
 
 all: build
 
@@ -89,6 +89,16 @@ swift-test: ffi
 # under bindings/delphi/dist/. Builds the cdylib for every installed Rust target.
 delphi-dist:
 	CARGO="$(CARGO)" bash bindings/delphi/scripts/package.sh
+
+# Assemble a distributable Swift package: RustPdf sources + a static binary
+# RustPdfFFI.xcframework (macOS + iOS slices), under bindings/swift/dist/.
+swift-dist:
+	CARGO="$(CARGO)" bash bindings/swift/scripts/package.sh
+
+# Same, but also copy the zips + checksums to site/public/downloads/ (served at
+# /downloads/). Run on a macOS build box with the Apple Rust targets installed.
+swift-dist-publish:
+	CARGO="$(CARGO)" PUBLISH=1 bash bindings/swift/scripts/package.sh
 
 # Same, but also publish the zip + checksum to site/public/downloads/ (served as
 # the public trial download at /downloads/). Run on the multi-platform build box.

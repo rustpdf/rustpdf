@@ -2,4 +2,5 @@
 .swiftpm/
 .impeccable/
 Package.resolved
+dist/
 *.pdf

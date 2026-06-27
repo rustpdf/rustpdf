@@ -7,8 +7,8 @@
 //
 //  Usage:  swift run rustpdf-example [output.pdf] [font.ttf]
 //
-//  Build the native library first: `cargo build -p pdf-ffi`, or set
-//  RUSTPDF_LIB to the cdylib path.
+//  Build the native library first: `cargo build -p pdf-ffi` (the in-repo
+//  package links it from target/debug).
 //
 
 import Foundation
