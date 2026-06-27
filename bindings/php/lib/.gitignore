@@ -1,0 +1,4 @@
+# Native libpdf_ffi binaries are fetched per-platform at install time
+# (see src/Installer.php) and must never be committed to the source tree.
+*
+!.gitignore

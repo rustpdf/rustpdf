@@ -1,0 +1,149 @@
+name: release-php
+
+# Builds the native cdylib for every platform the PHP binding supports and
+# attaches each one to a GitHub Release tagged `php-v<version>`. The binding is
+# pure PHP (FFI over libpdf_ffi); Packagist serves only the git tree, so the
+# per-platform binaries live on the Release and src/Installer.php downloads the
+# matching one on first use (or via `bin/rustpdf-install-lib`).
+#
+# Asset names MUST match RustPdf\Installer::assetName():
+#   libpdf_ffi-darwin-aarch64.dylib   libpdf_ffi-darwin-x86_64.dylib
+#   libpdf_ffi-linux-x86_64.so        libpdf_ffi-linux-aarch64.so
+#   pdf_ffi-windows-x86_64.dll
+#
+# Trigger by pushing a tag like `php-v0.1.0` (must equal Installer::VERSION), or
+# run manually (build only — the release upload is gated on the tag).
+
+on:
+  push:
+    tags: ["php-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Production Ed25519 public key embedded into libpdf_ffi at compile time, so the
+# shipped library rejects the committed dev token. Same secret as the other
+# binding release pipelines.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux: build in manylinux_2_28 so the .so runs on old glibc ----------
+  linux:
+    name: lib linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/php-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - name: stage asset
+        run: |
+          mkdir -p out
+          cp target/release/libpdf_ffi.so "out/libpdf_ffi-linux-${{ matrix.arch }}.so"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-lib-linux-${{ matrix.arch }}
+          path: out/*
+
+  # ---- macOS: separate arm64 + x86_64 dylibs (PHP picks one per host) --------
+  macos:
+    name: lib macos
+    runs-on: macos-14
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/php-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: build both arches
+        run: |
+          cargo build -p pdf-ffi --release --target aarch64-apple-darwin
+          cargo build -p pdf-ffi --release --target x86_64-apple-darwin
+      - name: stage assets
+        run: |
+          mkdir -p out
+          cp target/aarch64-apple-darwin/release/libpdf_ffi.dylib out/libpdf_ffi-darwin-aarch64.dylib
+          cp target/x86_64-apple-darwin/release/libpdf_ffi.dylib  out/libpdf_ffi-darwin-x86_64.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-lib-macos
+          path: out/*
+
+  # ---- Windows: x64 cdylib --------------------------------------------------
+  windows:
+    name: lib windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/php-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release --target x86_64-pc-windows-msvc
+      - name: stage asset
+        run: |
+          mkdir -p out
+          cp target/x86_64-pc-windows-msvc/release/pdf_ffi.dll out/pdf_ffi-windows-x86_64.dll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-lib-windows
+          path: out/*
+
+  # ---- gather every cdylib + checksums and publish the Release --------------
+  release:
+    name: publish release
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create/update the GitHub Release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: staged
+          pattern: php-lib-*
+          merge-multiple: true   # → staged/<asset>
+      - name: checksums + list
+        run: |
+          cd staged
+          for f in *; do sha256sum "$f" > "$f.sha256"; done
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustpdf-php-libs
+          path: staged/*
+      - name: publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/php-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            staged/*

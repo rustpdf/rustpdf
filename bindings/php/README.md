@@ -18,12 +18,52 @@ Classes (namespace `RustPdf`, PSR-4 under `src/`):
 * `PdfaLevel`, `Align`, `AFRelationship`, `Encryption` — enums;
 * `PdfException`, `Ffi` (internal FFI loader).
 
-## Loading the native library
+## Install
 
-`Ffi` finds `libpdf_ffi` via `RUSTPDF_LIB`, then by walking up from `src/` to
-`target/{debug,release}`. Build it from the repo root with
-`cargo build -p pdf-ffi`. In CLI, FFI is enabled by default; for FPM/web you
-typically preload (`ffi.preload`) or set `ffi.enable=1`.
+```sh
+composer require rust-pdf/rustpdf
+```
+
+The package is pure PHP; the native `libpdf_ffi` is fetched per platform from the
+GitHub Release. `Ffi::libPath()` resolves it in this order:
+
+1. `RUSTPDF_LIB` — an absolute path to a library you provide (always wins);
+2. the bundled copy under `lib/<os>-<arch>/`, placed there by the installer;
+3. the dev tree (`target/{debug,release}`, walking up from `src/`);
+4. **lazy download** of the matching prebuilt library on first use.
+
+Because Composer only runs scripts for the *root* package (never a dependency),
+the download can't fire automatically on `composer require`. The step-4 lazy
+fetch covers most setups with zero config, but if your production filesystem is
+read-only, fetch the library **once at deploy/CI time** instead:
+
+```sh
+php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib
+```
+
+Or wire it into your **root** `composer.json`:
+
+```json
+"scripts": {
+  "post-install-cmd": "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib",
+  "post-update-cmd":  "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib"
+}
+```
+
+Set `RUSTPDF_NO_DOWNLOAD=1` to forbid the network fetch (you must then supply the
+library via `RUSTPDF_LIB` or a local `cargo build -p pdf-ffi --release`).
+
+### Enabling `ext-ffi`
+
+FFI ships with PHP 8.1+ but is often **disabled in production**. In CLI it's
+enabled by default; for FPM/web set in `php.ini`:
+
+```ini
+extension=ffi
+ffi.enable=true        ; or, hardened: ffi.enable=preload + ffi.preload=...
+```
+
+Without it, install succeeds but the first call throws.
 
 ## Quick start
 
