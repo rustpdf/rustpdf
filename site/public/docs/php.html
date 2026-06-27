@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PHP · rust-pdf docs</title>
+  <meta name="description" content="Complete PHP reference for rust-pdf: authoring, fonts & text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction. Install with composer require rust-pdf/rustpdf." />
+  <link rel="canonical" href="https://rustpdf.dev/docs/php.html" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:title" content="PHP · rust-pdf docs" />
+  <meta property="og:description" content="Complete PHP reference: authoring, PDF/A, accessibility, forms, manipulation, encryption and signatures. composer require rust-pdf/rustpdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:alt" content="rust-pdf PHP documentation" />
+  <meta name="twitter:image:alt" content="rust-pdf PHP documentation" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://rustpdf.dev/docs/" },
+          { "@type": "ListItem", "position": 3, "name": "PHP", "item": "https://rustpdf.dev/docs/php.html" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "rust-pdf for PHP",
+        "description": "Complete PHP reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction.",
+        "url": "https://rustpdf.dev/docs/php.html",
+        "inLanguage": "en",
+        "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/docs/docs.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <div class="docs-shell with-toc">
+    <!-- LEFT NAV -->
+    <aside class="docs-side">
+      <h4>Language</h4>
+      <a href="/docs/python.html" class="lang-pill">Python</a>
+      <a href="/docs/node.html" class="lang-pill">Node / TypeScript</a>
+      <a href="/docs/ruby.html" class="lang-pill">Ruby</a>
+      <a href="/docs/php.html" class="lang-pill" style="color:var(--brand-2)">● PHP</a>
+      <a href="/docs/delphi.html" class="lang-pill">Delphi / Free Pascal</a>
+      <a href="/docs/swift.html" class="lang-pill">Swift</a>
+      <a class="soon">C# / .NET (soon)</a>
+      <a class="soon">Go (soon)</a>
+      <a class="soon">Java (soon)</a>
+
+      <h4>Getting started</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#native">Native library</a>
+      <a href="#licensing">Licensing &amp; activation</a>
+      <a href="#coords">Coordinate system</a>
+      <a href="#lifetime">Handles &amp; lifetime</a>
+
+      <h4>Authoring: Document</h4>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Pages &amp; vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility (PDF/UA)</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">AcroForm fields</a>
+      <a href="#metadata">Metadata</a>
+
+      <h4>Manipulation: EditableDoc</h4>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-optimize">Optimize</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-output">Output &amp; incremental</a>
+
+      <h4>Signatures</h4>
+      <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+
+      <h4>Other</h4>
+      <a href="#extract">Text extraction</a>
+      <a href="#enums">Enums</a>
+      <a href="#errors">Errors</a>
+      <a href="#utils">Utilities</a>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="docs-main">
+      <h1>PHP</h1>
+      <p class="docs-lead">The <code>rust-pdf/rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over PHP's built-in <a href="https://www.php.net/manual/en/book.ffi.php" rel="noopener">FFI</a> extension (PHP 8.1+, no compilation). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
+
+      <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle freed automatically on destruction; call <code>close()</code> to free it promptly.</div>
+
+      <!-- INSTALL -->
+      <h2 id="install">Installation</h2>
+      <p>Install from Packagist with Composer:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>composer require rust-pdf/rustpdf</code></pre></div>
+      <p>Requires <b>PHP 8.1+</b> with the <b>FFI</b> extension. The package itself is pure PHP; the native library (<code>libpdf_ffi</code>) for your OS/architecture is fetched automatically on first use (see <a href="#native">Native library</a>). Verify it loaded:</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>&lt;?php
+require 'vendor/autoload.php';
+echo RustPdf\Pdf::version(), "\n";   // native library version</code></pre></div>
+      <div class="note"><b>Enable FFI.</b> The extension ships with PHP 8.1+ but is often disabled for the web SAPI. In CLI it is on by default; for FPM/web set in <code>php.ini</code>:
+      <div class="code" style="margin-top:8px"><pre><code>extension=ffi
+ffi.enable=true        ; or, hardened: ffi.enable=preload + ffi.preload=...</code></pre></div>
+      Without it the install succeeds but the first call throws.</div>
+
+      <!-- QUICKSTART -->
+      <h2 id="quickstart">Quick start</h2>
+      <p>A one-page document with a filled rectangle, saved to disk:</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>&lt;?php
+require 'vendor/autoload.php';
+
+use RustPdf\Document;
+
+$doc = new Document();            // A4 by default
+$doc-&gt;addPage()
+    -&gt;setFillRgb(0.86, 0.20, 0.18)
+    -&gt;rect(72, 640, 200, 120)     // x, y, width, height (points)
+    -&gt;fill()
+    -&gt;save('out.pdf');</code></pre></div>
+      <p>Most methods return the document, so calls chain. <code>toBytes()</code> returns the PDF as a binary string instead of writing a file:</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc  = new Document();
+$font = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;setFillRgb(0.1, 0.1, 0.12)
+    -&gt;rect(0, 800, 595, 42)-&gt;fill()
+    -&gt;showText($font, 24, 72, 740, 'Olá, açúcar — café');
+$data = $doc-&gt;toBytes();          // binary string
+file_put_contents('out.pdf', $data);</code></pre></div>
+
+      <!-- NATIVE -->
+      <h2 id="native">Native library</h2>
+      <p>The binding loads a prebuilt <code>libpdf_ffi</code> matching your platform. It is resolved in this order:</p>
+      <ol>
+        <li><code>RUSTPDF_LIB</code>: an absolute path to a library you provide (always wins);</li>
+        <li>the copy bundled into the package under <code>lib/&lt;os&gt;-&lt;arch&gt;/</code>;</li>
+        <li>a development build under <code>target/{debug,release}</code> (monorepo checkout);</li>
+        <li><b>lazy download</b> of the matching prebuilt library on first use.</li>
+      </ol>
+      <p>Because Composer runs install scripts only for the <i>root</i> project (never a dependency), the download cannot fire automatically on <code>composer require</code>. The lazy fetch (step 4) covers most setups with no configuration. If your production filesystem is <b>read-only</b>, fetch the library once at deploy/CI time instead:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib</code></pre></div>
+      <p>Or wire it into your <b>root</b> <code>composer.json</code>:</p>
+      <div class="code has-label"><span class="lbl">json</span><pre><code>"scripts": {
+  "post-install-cmd": "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib",
+  "post-update-cmd":  "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib"
+}</code></pre></div>
+      <div class="note">Set <code>RUSTPDF_NO_DOWNLOAD=1</code> to forbid the network fetch; you must then supply the library through <code>RUSTPDF_LIB</code>. Prebuilt platforms: macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows (x86_64).</div>
+
+      <!-- LICENSING -->
+      <h2 id="licensing">Licensing &amp; activation</h2>
+      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls throw <code>PdfException</code> and produce no output.</p>
+      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
+# or point at a file:
+export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
+      <p>Or activate explicitly in code:</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>RustPdf\Pdf::activateLicense($token);   // throws PdfException if forged / expired / malformed</code></pre></div>
+      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
+
+      <!-- COORDS -->
+      <h2 id="coords">Coordinate system</h2>
+      <ul>
+        <li>Units are <b>points</b> (1 pt = 1/72 inch). A4 is <code>595 × 842</code>, US&nbsp;Letter <code>612 × 792</code>.</li>
+        <li>The origin <code>(0, 0)</code> is the <b>bottom-left</b> corner; <code>y</code> grows upward.</li>
+        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
+        <li>Drawing/text always targets the <b>most recently added page</b>.</li>
+      </ul>
+
+      <!-- LIFETIME -->
+      <h2 id="lifetime">Handles &amp; lifetime</h2>
+      <p>Each <code>Document</code>/<code>EditableDoc</code> owns a native handle. It is freed automatically when the object is garbage-collected (<code>__destruct</code>), so explicit cleanup is optional. For long-running workers or tight loops, call <code>close()</code> to release it immediately.</p>
+      <ul>
+        <li>The core is <b>Send but not Sync</b>: never share one live handle across threads/processes. Build independent documents instead; each shares no state.</li>
+        <li>Native errors are <b>thread-local</b>, so a failure in one request never clobbers another's.</li>
+        <li>The license is <b>process-global</b>: activate once at startup.</li>
+      </ul>
+
+      <!-- DOCUMENT CREATE -->
+      <h2 id="doc-create">Authoring: create &amp; save</h2>
+      <div class="api"><code>new Document()</code> <span class="badge free">free</span></div>
+      <p>Creates an empty document (A4 default page size). The handle is freed on destruction or via <code>close()</code>.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>addPage(?w = null, ?h = null)</code></td><td>Append a page, optionally sized in points.</td></tr>
+        <tr><td><code>setDefaultSize(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
+        <tr><td><code>setVersion(v)</code></td><td>Set the PDF header version (e.g. <code>14</code> → PDF 1.4, <code>17</code> → 1.7).</td></tr>
+        <tr><td><code>pageCount()</code></td><td>Number of pages so far.</td></tr>
+        <tr><td><code>toBytes()</code></td><td>Render the document to a binary string.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Render and write to a file.</td></tr>
+        <tr><td><code>close()</code></td><td>Free the native handle.</td></tr>
+      </table>
+
+      <!-- GRAPHICS -->
+      <h2 id="graphics">Pages &amp; vector graphics</h2>
+      <p>Graphics state and path operators mirror PDF's content-stream model. Colors are RGB in <code>0.0–1.0</code>.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setFillRgb(r, g, b)</code></td><td>Fill color.</td></tr>
+        <tr><td><code>setStrokeRgb(r, g, b)</code></td><td>Stroke color.</td></tr>
+        <tr><td><code>setLineWidth(w)</code></td><td>Stroke width in points.</td></tr>
+        <tr><td><code>rect(x, y, w, h)</code></td><td>Add a rectangle subpath.</td></tr>
+        <tr><td><code>fill()</code></td><td>Fill the current path with the fill color.</td></tr>
+        <tr><td><code>stroke()</code></td><td>Stroke the current path with the stroke color.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc = new Document();
+$doc-&gt;addPage()
+    -&gt;setStrokeRgb(0.10, 0.45, 0.90)-&gt;setLineWidth(3)
+    -&gt;rect(72, 600, 300, 160)-&gt;stroke()
+    -&gt;setFillRgb(0.95, 0.77, 0.06)
+    -&gt;rect(120, 640, 120, 80)-&gt;fill()
+    -&gt;save('shapes.pdf');</code></pre></div>
+
+      <!-- TEXT -->
+      <h2 id="text">Fonts &amp; text</h2>
+      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly). Register a font once, then reference it by its integer id.</p>
+      <div class="api"><code>addFontFile(path): int</code> &nbsp; <code>addFont(data: string): int</code></div>
+      <div class="api"><code>showText(font, size, x, y, text, headingLevel = 0): self</code></div>
+      <p><code>headingLevel</code> (1–6) tags the run as <code>H1</code>–<code>H6</code> in an accessible document (see <a href="#tagged">Accessibility</a>); leave it <code>0</code> for ordinary text.</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc     = new Document();
+$regular = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+// …or from bytes you already have in memory:
+// $regular = $doc-&gt;addFont(file_get_contents('Roboto-Regular.ttf'));
+
+$doc-&gt;addPage()
+    -&gt;showText($regular, 28, 72, 760, 'Invoice #1024')
+    -&gt;showText($regular, 12, 72, 720, '日本語 · Ελληνικά · العربية')
+    -&gt;save('text.pdf');</code></pre></div>
+
+      <!-- PARAGRAPHS -->
+      <h2 id="paragraphs">Paragraphs</h2>
+      <p>The paragraph layer wraps, aligns and justifies text inside a fixed width (greedy line breaking using shaped glyph widths).</p>
+      <div class="api"><code>paragraph(font, size, x, y, width, text, align = Align::Left): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, Align};
+
+$intro =
+  'A long paragraph that wraps to the given width and is justified '
+  . 'automatically; extra space is distributed between words.';
+
+$doc = new Document();
+$f   = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;paragraph($f, 12, 72, 700, 451, $intro, Align::Justify)
+    -&gt;save('paragraph.pdf');</code></pre></div>
+      <p>See the <a href="#enums"><code>Align</code></a> enum for the alignment options.</p>
+
+      <!-- IMAGES -->
+      <h2 id="images">Images</h2>
+      <p>JPEGs are embedded verbatim (<code>DCTDecode</code>, no re-encode). PNGs are decoded and re-encoded (<code>FlateDecode</code>); alpha becomes an <code>/SMask</code>, palette becomes an <code>Indexed</code> color space. Register an image once, draw it many times.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>addImageFile(path): int</code></td><td>Load JPEG/PNG from a file; returns the image id.</td></tr>
+        <tr><td><code>addImagePng(data: string): int</code></td><td>Register a PNG from memory.</td></tr>
+        <tr><td><code>addImageJpeg(data: string): int</code></td><td>Register a JPEG from memory.</td></tr>
+        <tr><td><code>drawImage(image, x, y, w, h)</code></td><td>Draw at <code>(x, y)</code> scaled to <code>w × h</code> points.</td></tr>
+        <tr><td><code>figure(image, x, y, w, h, alt)</code></td><td>Draw as a tagged <code>/Figure</code> with alt text (accessibility).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc  = new Document();
+$logo = $doc-&gt;addImageFile('logo.png');
+$doc-&gt;addPage()
+    -&gt;drawImage($logo, 72, 680, 160, 90)
+    -&gt;save('with_image.pdf');</code></pre></div>
+
+      <!-- PDF/A -->
+      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <div class="api"><code>pdfa(?PdfaLevel $level = null): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel};
+
+$doc = new Document();
+$doc-&gt;pdfa(PdfaLevel::A2b)-&gt;setInfo(title: 'Q3 Report', author: 'Acme Inc.');
+$f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;showText($f, 20, 72, 760, 'Archival report')
+    -&gt;save('report_pdfa.pdf');   // throws PdfException without a PDF/A license</code></pre></div>
+      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>setInfo(title: …)</code>.</div>
+
+      <!-- TAGGED -->
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <p><code>tagged()</code> builds a logical structure tree (PDF/UA-1). Combine with <code>pdfa(PdfaLevel::A2a)</code> for archival <i>and</i> accessible output. Use <code>headingLevel</code> on <code>showText</code> for <code>H1</code>–<code>H6</code>, and <code>figure(..., alt)</code> for described images.</p>
+      <div class="api"><code>tagged(): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel};
+
+$doc = new Document();
+$doc-&gt;pdfa(PdfaLevel::A2a)-&gt;tagged()-&gt;setInfo(title: 'Accessible report');
+$f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;showText($f, 26, 72, 760, 'Annual report', 1)   // H1
+    -&gt;showText($f, 14, 72, 720, 'Overview', 2)         // H2
+    -&gt;showText($f, 11, 72, 690, 'Body paragraph of the section…');
+$chart = $doc-&gt;addImageFile('chart.png');
+$doc-&gt;figure($chart, 72, 520, 300, 150, 'Revenue grew 18% year over year')
+    -&gt;save('accessible.pdf');</code></pre></div>
+
+      <!-- ATTACHMENTS -->
+      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>AFRelationship</code></a>.</p>
+      <div class="api"><code>attachFile(name, mime, data, rel = AFRelationship::Source, description = ''): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel, AFRelationship};
+
+$xml = file_get_contents('invoice.xml');
+$doc = new Document();
+$doc-&gt;pdfa(PdfaLevel::A3b)-&gt;setInfo(title: 'E-invoice 1024');
+$f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;showText($f, 18, 72, 760, 'Invoice 1024')
+    -&gt;attachFile('invoice.xml', 'text/xml', $xml,
+                 AFRelationship::Source, 'Structured invoice data')
+    -&gt;save('einvoice.pdf');</code></pre></div>
+
+      <!-- FORMS -->
+      <h2 id="forms">AcroForm fields</h2>
+      <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>[x0, y0, x1, y1]</code> arrays; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>textField(name, page, rect, value = '', size = 0)</code></td><td>Text input (<code>size=0</code> → auto font size).</td></tr>
+        <tr><td><code>checkbox(name, page, rect, checked)</code></td><td>Checkbox.</td></tr>
+        <tr><td><code>dropdown(name, page, rect, options, ?selected, size = 0)</code></td><td>Combo box from an array of strings.</td></tr>
+        <tr><td><code>radioGroup(name, page, buttons, ?selected)</code></td><td><code>buttons</code> = array of <code>[rect, export]</code> pairs.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc = new Document();
+$doc-&gt;addPage()
+    -&gt;textField('applicant.name', 0, [72, 700, 320, 720], '')
+    -&gt;checkbox('agree', 0, [72, 660, 88, 676], false)
+    -&gt;dropdown('plan', 0, [72, 620, 240, 640],
+               ['Starter', 'Pro', 'Enterprise'], 1)
+    -&gt;radioGroup('billing', 0, [
+        [[72, 580, 88, 596], 'monthly'],
+        [[140, 580, 156, 596], 'annual'],
+    ], 1)
+    -&gt;save('form.pdf');</code></pre></div>
+      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc::fillTextField</code></a>.</p>
+
+      <!-- METADATA -->
+      <h2 id="metadata">Metadata</h2>
+      <div class="api"><code>setInfo(?title, ?author, ?subject, ?keywords, ?creator): self</code></div>
+      <p>Sets the document information dictionary (and, for PDF/A, the matching XMP). Pass only the fields you need; named arguments keep it readable.</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc-&gt;setInfo(
+    title: 'Q3 Report',
+    author: 'Acme Inc.',
+    subject: 'Quarterly results',
+    keywords: 'finance, q3',
+);</code></pre></div>
+
+      <!-- EDITABLE LOAD -->
+      <h2 id="ed-load">Manipulation: load an existing PDF</h2>
+      <p><code>EditableDoc</code> parses an existing document (classic &amp; xref streams, object streams, all standard filters, RC4/AES decryption) into an editable model. Pages are a flat list; the page tree is rebuilt on output.</p>
+      <div class="api"><code>EditableDoc::load(data: string, ?password = null): self</code></div>
+      <div class="api"><code>EditableDoc::loadFile(path: string, ?password = null): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\EditableDoc;
+
+$ed = EditableDoc::loadFile('in.pdf');
+echo $ed-&gt;pageCount(), "\n";
+$ed-&gt;close();
+
+// encrypted input:
+$sec = EditableDoc::loadFile('secured.pdf', 'user-or-owner-pw');
+$sec-&gt;save('plain.pdf');</code></pre></div>
+
+      <!-- ED PAGES -->
+      <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>merge(other)</code></td><td>Append all pages of another <code>EditableDoc</code> (objects renumbered &amp; remapped).</td></tr>
+        <tr><td><code>rotatePage(index, degrees)</code></td><td>Rotate one page (90 / 180 / 270).</td></tr>
+        <tr><td><code>deletePage(index)</code></td><td>Remove a page.</td></tr>
+        <tr><td><code>reorderPages(order)</code></td><td>Reorder with a full permutation array of indices.</td></tr>
+        <tr><td><code>extractPages(indices): EditableDoc</code></td><td>New document containing just those pages.</td></tr>
+        <tr><td><code>pageCount()</code></td><td>Current page count.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$a = EditableDoc::loadFile('a.pdf');
+$b = EditableDoc::loadFile('b.pdf');
+$a-&gt;merge($b);                         // a now has a's pages followed by b's
+$a-&gt;rotatePage(0, 90);
+$a-&gt;reorderPages(array_reverse(range(0, $a-&gt;pageCount() - 1)));
+$a-&gt;save('merged.pdf');
+
+$subset = $a-&gt;extractPages([0, 2]);    // pages 1 and 3
+$subset-&gt;save('subset.pdf');</code></pre></div>
+
+      <!-- ED META -->
+      <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setInfo(key, value)</code></td><td>Set one info entry (e.g. <code>"Title"</code>).</td></tr>
+        <tr><td><code>getInfo(key): string</code></td><td>Read an info entry.</td></tr>
+        <tr><td><code>setXmp(xml: string)</code></td><td>Replace the XMP metadata stream.</td></tr>
+        <tr><td><code>overlayPage(index, content: string)</code></td><td>Overlay a content-stream fragment onto a page (stamps/watermarks).</td></tr>
+        <tr><td><code>fillTextField(name, value): bool</code></td><td>Fill an AcroForm text field; returns whether it was found.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('form.pdf');
+$ed-&gt;setInfo('Title', 'Filled form');
+$found = $ed-&gt;fillTextField('applicant.name', 'Jane Doe');
+printf("filled: %s | title: %s\n", $found ? 'yes' : 'no', $ed-&gt;getInfo('Title'));
+$ed-&gt;save('filled.pdf');</code></pre></div>
+
+      <!-- ED OPTIMIZE -->
+      <h2 id="ed-optimize">Optimize &amp; compact</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>optimize()</code></td><td>Drop unreferenced objects, Flate-compress uncompressed streams, dedupe identical objects.</td></tr>
+        <tr><td><code>compact(on = true)</code></td><td>Pack objects into object streams + emit a cross-reference stream.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('big.pdf');
+$ed-&gt;optimize()-&gt;compact(true)-&gt;save('small.pdf');</code></pre></div>
+
+      <!-- ED ENCRYPT -->
+      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
+      <div class="api"><code>encrypt(method = Encryption::Aes256, user = '', owner = '', readOnly = false): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{EditableDoc, Encryption};
+
+$ed = EditableDoc::loadFile('in.pdf');
+$ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
+   -&gt;save('secured.pdf');          // throws PdfException without an Encryption license</code></pre></div>
+      <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+
+      <!-- ED OUTPUT -->
+      <h2 id="ed-output">Output &amp; incremental update</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>toBytes(): string</code></td><td>Serialize the manipulated document.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Serialize to a file.</td></tr>
+        <tr><td><code>toBytesIncremental(original: string): string</code></td><td>Append only changes to the original bytes (signature-safe, non-destructive).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$original = file_get_contents('in.pdf');
+$ed = EditableDoc::load($original);
+$ed-&gt;setInfo('Subject', 'reviewed');
+$incremental = $ed-&gt;toBytesIncremental($original);   // original bytes preserved verbatim
+file_put_contents('reviewed.pdf', $incremental);</code></pre></div>
+
+      <!-- SIGN -->
+      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER binary strings. <code>pades: true</code> switches to PAdES-B-B.</p>
+      <div class="api"><code>Pdf::sign(pdf, keyDer, certDer, ?reason, ?location, ?name, pades = false): string</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
+
+$pdf     = file_get_contents('contract.pdf');
+$keyDer  = file_get_contents('signing-key.pkcs8.der');   // PKCS#8 private key (DER)
+$certDer = file_get_contents('signing-cert.der');        // X.509 certificate (DER)
+
+$signed = Pdf::sign($pdf, $keyDer, $certDer,
+    reason: 'Approved', location: 'New York',
+    name: 'Jane Doe', pades: true);
+file_put_contents('contract.signed.pdf', $signed);
+// Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- LTV -->
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
+      <div class="api"><code>Pdf::addDss(pdf, certs = [], crls = []): string</code></div>
+      <div class="api"><code>Pdf::timestamp(pdf, tsaKeyDer, tsaCertDer, ?date = null): string</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$signed = file_get_contents('contract.signed.pdf');
+
+// B-LT: embed validation material (caller supplies DER certs/CRLs)
+$lt = Pdf::addDss($signed, [$certDer], [$crlDer]);
+
+// B-LTA: add a document timestamp signed by a TSA key/cert
+$lta = Pdf::timestamp($lt, $tsaKeyDer, $tsaCertDer);
+file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
+
+      <!-- EXTRACT -->
+      <h2 id="extract">Text extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <div class="api"><code>Pdf::extractText(pdf: string): string</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$data = file_get_contents('report.pdf');
+echo RustPdf\Pdf::extractText($data);</code></pre></div>
+
+      <!-- ENUMS -->
+      <h2 id="enums">Enums</h2>
+      <p>All enums are PHP 8.1 backed enums in the <code>RustPdf</code> namespace.</p>
+      <h3>PdfaLevel</h3>
+      <table>
+        <tr><th>Value</th><th>Level</th></tr>
+        <tr><td><code>PdfaLevel::A1b</code></td><td>PDF/A-1b (basic, PDF 1.4)</td></tr>
+        <tr><td><code>PdfaLevel::A2b</code></td><td>PDF/A-2b (basic): default of <code>pdfa()</code></td></tr>
+        <tr><td><code>PdfaLevel::A2a</code></td><td>PDF/A-2a (accessible: pair with <code>tagged()</code>)</td></tr>
+        <tr><td><code>PdfaLevel::A3b</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
+        <tr><td><code>PdfaLevel::A3a</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+      </table>
+      <h3>Align</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>Align::Left</code></td><td>Left-aligned (default)</td></tr>
+        <tr><td><code>Align::Right</code></td><td>Right-aligned</td></tr>
+        <tr><td><code>Align::Center</code></td><td>Centered</td></tr>
+        <tr><td><code>Align::Justify</code></td><td>Justified (space distributed between words)</td></tr>
+      </table>
+      <h3>AFRelationship</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>AFRelationship::Source</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
+        <tr><td><code>AFRelationship::Data</code></td><td>Data used to derive the visual content</td></tr>
+        <tr><td><code>AFRelationship::Alternative</code></td><td>Alternative representation</td></tr>
+        <tr><td><code>AFRelationship::Supplement</code></td><td>Supplementary material</td></tr>
+        <tr><td><code>AFRelationship::Unspecified</code></td><td>Unspecified relationship</td></tr>
+      </table>
+      <h3>Encryption</h3>
+      <table>
+        <tr><th>Value</th><th>Cipher</th></tr>
+        <tr><td><code>Encryption::Rc4</code></td><td>RC4 (legacy)</td></tr>
+        <tr><td><code>Encryption::Aes128</code></td><td>AES-128</td></tr>
+        <tr><td><code>Encryption::Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+
+      <!-- ERRORS -->
+      <h2 id="errors">Error handling</h2>
+      <p>Every failing native call throws <code>PdfException</code> (a <code>RuntimeException</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too.</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfException};
+
+try {
+    $doc = new Document();
+    $doc-&gt;pdfa()-&gt;setInfo(title: 'x')-&gt;addPage()-&gt;save('out.pdf');
+} catch (PdfException $e) {
+    fprintf(STDERR, "failed: %d %s\n", $e-&gt;status, $e-&gt;getMessage());
+    // e.g. PdfStatus=7: feature 'pdfa' requires a valid license
+}</code></pre></div>
+
+      <!-- UTILS -->
+      <h2 id="utils">Utilities</h2>
+      <table>
+        <tr><th>Function</th><th>Description</th></tr>
+        <tr><td><code>Pdf::version(): string</code></td><td>Native library version string.</td></tr>
+        <tr><td><code>Pdf::activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
+      </table>
+
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go, Ruby and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+    </main>
+
+    <!-- RIGHT TOC -->
+    <nav class="docs-toc">
+      <h4>On this page</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#native">Native library</a>
+      <a href="#licensing">Licensing</a>
+      <a href="#lifetime">Handles</a>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">Forms</a>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#sign">Signatures</a>
+      <a href="#extract">Extraction</a>
+      <a href="#enums">Enums</a>
+    </nav>
+  </div>
+
+  <script src="/highlight.js"></script>
+  <script src="/docs/docs.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

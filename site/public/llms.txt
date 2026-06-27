@@ -53,6 +53,7 @@ static xcframework for macOS and iOS).
 - Swift reference: https://rustpdf.dev/docs/swift.html
 - Node.js / TypeScript reference: https://rustpdf.dev/docs/node.html
 - Ruby reference: https://rustpdf.dev/docs/ruby.html
+- PHP reference: https://rustpdf.dev/docs/php.html
 - Pricing: https://rustpdf.dev/#pricing
 - Terms: https://rustpdf.dev/legal/terms.html
 - Privacy: https://rustpdf.dev/legal/privacy.html
