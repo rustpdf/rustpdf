@@ -77,7 +77,12 @@ jobs:
           dotnet-version: "8.0.x"
       # Free-surface smoke: proves the .so loads + links on this RID. (The full
       # Sample activates the dev license, which a production-key build rejects.)
+      # The manylinux_2_28 build container has no ICU, so .NET would FailFast in
+      # its globalization cctor — run the smoke in invariant mode (it needs no
+      # culture data) to verify the lib loads anyway.
       - name: smoke (free surface)
+        env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
         run: |
           export RUSTPDF_LIB="$PWD/target/release/libpdf_ffi.so"
           dotnet run --project bindings/csharp/Smoke -c Release
