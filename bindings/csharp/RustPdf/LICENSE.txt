@@ -1,0 +1,15 @@
+RustPdf — Proprietary Commercial License
+=========================================
+
+Copyright (c) rust-pdf. All rights reserved.
+
+This package and the bundled native library (libpdf_ffi) are proprietary
+software distributed as a paid product. Use is governed by a commercial
+license agreement. Corporate features (PDF/A, accessibility/tagged output,
+encryption and digital signatures) require an active license token at
+runtime; without one they fail.
+
+See docs/LICENSING.md in the rust-pdf distribution for activation details
+(set the RUSTPDF_LICENSE environment variable to your token, or call
+Pdf.ActivateLicense). No redistribution or reverse engineering is permitted
+except as expressly allowed by your commercial license agreement.

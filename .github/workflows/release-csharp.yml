@@ -1,0 +1,191 @@
+name: release-csharp
+
+# Publishes the C#/.NET binding to NuGet.org as a SINGLE package `RustPdf` that
+# bundles the native libpdf_ffi for every supported runtime. Unlike npm/Python
+# (one artifact per platform), NuGet uses the RID-asset convention: one .nupkg
+# carries every platform's native lib under runtimes/<rid>/native/<lib> and the
+# .NET runtime resolves the matching one at restore/run time — so consumers just
+# `dotnet add package RustPdf`.
+#
+# Flow (fan-out / fan-in, like the Go release):
+#   * fan-out — one job per RID builds the cdylib, free-surface smoke-tests it,
+#     and uploads it as an artifact (osx-arm64, linux-x64, linux-arm64, win-x64);
+#   * fan-in  — the `pack` job downloads all four, lays them out under
+#     bindings/csharp/RustPdf/runtimes/<rid>/native/, runs `dotnet pack`, and
+#     pushes to NuGet.org via Trusted Publishing (OIDC — no long-lived API key).
+#
+# Trigger by pushing a tag like `csharp-v0.1.0`, or run manually
+# (workflow_dispatch) for a build/smoke/pack dry run (publish is gated on the tag).
+#
+# Trusted Publishing setup (one-time, on nuget.org): create a trusted publishing
+# policy for the `RustPdf` package bound to repo rustpdf/rustpdf, this workflow,
+# and the `nuget` environment. Set the NUGET_USER repo variable to the nuget.org
+# account that owns the policy.
+
+on:
+  push:
+    tags: ["csharp-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
+# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
+# token. Same secret the Python/Node/Go/Delphi release pipelines use.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux RIDs: built inside manylinux_2_28 (glibc 2.28) so the .so stays
+  #      compatible with old glibc (matches the Python/Node/Go builds) ----------
+  linux:
+    name: ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/csharp-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      # Free-surface smoke: proves the .so loads + links on this RID. (The full
+      # Sample activates the dev license, which a production-key build rejects.)
+      - name: smoke (free surface)
+        run: |
+          export RUSTPDF_LIB="$PWD/target/release/libpdf_ffi.so"
+          dotnet run --project bindings/csharp/Smoke -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: target/release/libpdf_ffi.so
+          if-no-files-found: error
+
+  # ---- macOS / Windows RIDs: native build on the host runner -----------------
+  native:
+    name: ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+            lib: libpdf_ffi.dylib
+          - rid: win-x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            lib: pdf_ffi.dll
+    runs-on: ${{ matrix.runner }}
+    # Pin the macOS floor so the cdylib loads on machines older than the runner.
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/csharp-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release --target ${{ matrix.target }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: smoke (free surface)
+        run: |
+          export RUSTPDF_LIB="$PWD/target/${{ matrix.target }}/release/${{ matrix.lib }}"
+          dotnet run --project bindings/csharp/Smoke -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: target/${{ matrix.target }}/release/${{ matrix.lib }}
+          if-no-files-found: error
+
+  # ---- Fan-in: stage every RID under runtimes/, pack one .nupkg, publish ------
+  pack:
+    name: pack & publish RustPdf
+    needs: [linux, native]
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for NuGet Trusted Publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: _native
+      - name: stage native libs into runtimes/<rid>/native/
+        working-directory: bindings/csharp/RustPdf
+        run: |
+          for d in "$GITHUB_WORKSPACE"/_native/native-*; do
+            rid="${d##*/native-}"
+            mkdir -p "runtimes/$rid/native"
+            cp "$d"/* "runtimes/$rid/native/"
+            echo "staged $rid: $(ls "runtimes/$rid/native")"
+          done
+      - name: pack
+        working-directory: bindings/csharp/RustPdf
+        run: dotnet pack -c Release -o "$GITHUB_WORKSPACE/_nupkg"
+      - name: list package contents
+        run: |
+          for p in _nupkg/*.nupkg; do
+            echo "== $p =="
+            unzip -l "$p" | grep -E 'runtimes/|\.dll$|\.dylib$|\.so$' || true
+          done
+      # Trusted Publishing: exchange the GitHub OIDC token for a short-lived
+      # NuGet API key. No long-lived secret. Gated on a csharp-v* tag.
+      - name: nuget login (OIDC)
+        if: startsWith(github.ref, 'refs/tags/csharp-v')
+        id: nugetlogin
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: push to nuget.org
+        if: startsWith(github.ref, 'refs/tags/csharp-v')
+        run: |
+          dotnet nuget push "_nupkg/*.nupkg" \
+            --api-key "${{ steps.nugetlogin.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: _nupkg/*
+          if-no-files-found: error

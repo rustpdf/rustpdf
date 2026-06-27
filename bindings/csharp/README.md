@@ -19,9 +19,23 @@ Layout:
   `Sign`, `Timestamp`, `AddDss`) and the `PdfaLevel` / `Align` / `AFRelationship`
   / `Encryption` enums.
 
+## Install
+
+```sh
+dotnet add package RustPdf
+```
+
+The NuGet package bundles the native `libpdf_ffi` for every supported runtime
+(`osx-arm64`, `linux-x64`, `linux-arm64`, `win-x64`) under
+`runtimes/<rid>/native/`. .NET's runtime resolves the matching one
+automatically — no native build, no extra setup.
+
 ## Loading the native library
 
-`Native.cs` resolves `libpdf_ffi` in this order:
+For a published package the native lib is resolved from the package's
+`runtimes/<rid>/native/` (the standard NuGet RID-asset convention). For local
+development against the repo build tree, `Native.cs` falls back to resolving
+`libpdf_ffi` in this order:
 
 1. `RUSTPDF_LIB` (explicit path);
 2. by walking up from the assembly directory looking for
@@ -29,6 +43,16 @@ Layout:
 3. the platform default search path (e.g. a library shipped next to the app).
 
 Build it from the repo root with `cargo build -p pdf-ffi`.
+
+## Distribution
+
+Published to NuGet.org as the single package **`RustPdf`** that carries all four
+platforms' cdylibs. CI (`.github/workflows/release-csharp.yml`, trigger
+`csharp-v*`) fans out one build job per RID (Linux in `manylinux_2_28`, macOS
+arm64, Windows x64 — all with the production license pubkey), then a `pack` job
+stages each lib into `runtimes/<rid>/native/`, runs `dotnet pack`, and pushes via
+NuGet **Trusted Publishing** (OIDC — no long-lived API key). A free-surface
+smoke (`bindings/csharp/Smoke`) verifies each platform's lib loads.
 
 ## Quick start
 
