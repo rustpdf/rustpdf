@@ -141,9 +141,20 @@ jobs:
         with:
           name: rustpdf-php-libs
           path: staged/*
-      - name: publish GitHub Release
+      - name: resolve mirror tag
+        id: ver
+        run: echo "tag=v${GITHUB_REF_NAME#php-v}" >> "$GITHUB_OUTPUT"   # php-v0.1.0 -> v0.1.0
+      # The cdylibs must live on the PUBLIC mirror (rustpdf/rustpdf-php) — assets
+      # on this private monorepo's release 404 for unauthenticated `composer`
+      # clients. Cross-repo upload needs a PAT with `contents:write` on the
+      # mirror, stored as the MIRROR_RELEASE_TOKEN secret. Run the source split
+      # (scripts/packagist-split.sh) first so the v<version> tag already exists.
+      - name: publish binaries to public mirror release
         if: startsWith(github.ref, 'refs/tags/php-v')
         uses: softprops/action-gh-release@v2
         with:
+          repository: rustpdf/rustpdf-php
+          tag_name: ${{ steps.ver.outputs.tag }}
+          token: ${{ secrets.MIRROR_RELEASE_TOKEN }}
           files: |
             staged/*
