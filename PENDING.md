@@ -109,7 +109,9 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   cdylib e seletores `os`/`cpu`/`libc`; loader resolve via `require.resolve` do
   pacote-plataforma com fallback `target/`; `scripts/sync-versions.mjs` mantém
   versões em sincronia; CI `.github/workflows/release-node.yml` (tag `node-v*`).
-  Falta publicar: criar a org/scope `@rustpdf` no npm + secret `NPM_TOKEN`.
+  **Publicado: `npm install rustpdf` (0.1.0)** — `rustpdf` +
+  `@rustpdf/{darwin-arm64,linux-x64-gnu,linux-arm64-gnu,win32-x64-msvc}` no ar
+  (release pela tag `node-v0.1.0`; principal é JS puro, publicado direto).
 - ✅ **Binding Java/JVM completo** (`bindings/java`, JNA FFI puro): `dev.rustpdf.
   {Pdf,Document,EditableDoc}` (AutoCloseable) + enums; `make java-test`.
 - ✅ **Binding Delphi/Free Pascal completo** (`bindings/delphi/RustPdf.pas`, FFI
