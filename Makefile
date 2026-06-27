@@ -4,7 +4,7 @@
 # PATH; allow overriding CARGO. Defaults to plain `cargo`.
 CARGO ?= cargo
 
-.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish swift-dist swift-dist-publish clean ci
+.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test go-dist php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish swift-dist swift-dist-publish clean ci
 
 all: build
 
@@ -44,8 +44,16 @@ csharp-test: ffi
 	dotnet run --project bindings/csharp/Sample -c Release
 
 # Go binding test (cgo; exercises the whole surface over the C ABI).
+# `rustpdf_dev` links the dynamic lib from the build tree (no staged static libs).
 go-test: ffi
-	cd bindings/go && CGO_ENABLED=1 go test ./...
+	cd bindings/go && CGO_ENABLED=1 go test -tags rustpdf_dev ./...
+
+# Build the per-platform static libpdf_ffi.a into bindings/go/rustpdf/lib/<os>_<arch>/
+# so a consumer's `go get` + `go build` works with no external native lib.
+# Best effort per target (like swift-dist); honors $(CARGO). Run in release CI
+# with the production RUSTPDF_LICENSE_PUBKEY, then commit/tag the result.
+go-dist:
+	bash bindings/go/scripts/package.sh
 
 # PHP binding smoke test (ext-ffi; exercises the whole surface over the C ABI).
 php-test: ffi

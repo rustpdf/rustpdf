@@ -1,0 +1,5 @@
+# Prebuilt static libs are ~50MB each — keep them off the development branch.
+# `make go-dist` stages them here; the release workflow force-adds them
+# (`git add -f`) into the released tag so `go get @<tag>` is self-contained.
+*.a
+!.gitkeep

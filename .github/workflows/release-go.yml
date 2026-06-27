@@ -1,0 +1,215 @@
+name: release-go
+
+# Publishes the Go binding. Go has no upload registry — a module is published by
+# pushing a git tag; the proxy (proxy.golang.org) fetches the tree at that tag.
+# Because the module lives in a subdirectory, the consumer-facing tag is PREFIXED:
+# `bindings/go/vX.Y.Z` (NOT `vX.Y.Z`).
+#
+# The binding links libpdf_ffi STATICALLY from a prebuilt `libpdf_ffi.a` vendored
+# per platform under bindings/go/rustpdf/lib/<os>_<arch>/ (Option B — the Go
+# analog of the Python wheels / npm per-platform packages), so a consumer's
+# `go get` + `go build` needs no external native library. The .a files are ~50MB
+# each and are kept OFF the development branch (rustpdf/lib/.gitignore); they exist
+# only inside the released tag.
+#
+# Flow: fan-out — one job per platform builds its `.a`, statically smoke-tests it
+# (default build tags) where the slice is host-runnable, and uploads it as an
+# artifact. Fan-in — the `release` job downloads all five, force-adds them into a
+# single new commit (on top of the source ref, NOT pushed to a branch), tags it
+# `bindings/go/v<version>`, and pushes only that tag — so main stays clean.
+#
+# Trigger by pushing a tag like `go-v0.1.0` (this trigger tag only kicks off CI;
+# consumers use the `bindings/go/v0.1.0` tag the workflow creates), or run
+# manually (workflow_dispatch) for a build/smoke dry run.
+
+on:
+  push:
+    tags: ["go-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Module version without the leading v (e.g. 0.1.0)"
+        required: true
+      publish:
+        description: "Create and push the bindings/go/v<version> tag"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
+# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
+# token. Same secret the Python/Node/Delphi release pipelines use.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux slices: built inside manylinux_2_28 (glibc 2.28) so the archive's
+  #      objects stay compatible with old glibc (matches the Python/Node builds) --
+  linux:
+    name: ${{ matrix.key }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: linux_amd64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - key: linux_arm64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/go-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build staticlib
+        run: cargo build -p pdf-ffi --release
+      - name: stage slice
+        run: |
+          mkdir -p "bindings/go/rustpdf/lib/${{ matrix.key }}"
+          cp target/release/libpdf_ffi.a "bindings/go/rustpdf/lib/${{ matrix.key }}/libpdf_ffi.a"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      # Default build tags => statically link the slice we just built. Proves the
+      # link_dist.go LDFLAGS (system libs) are correct on this platform.
+      - name: smoke (static link)
+        working-directory: bindings/go
+        run: CGO_ENABLED=1 go test ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golib-${{ matrix.key }}
+          path: bindings/go/rustpdf/lib/${{ matrix.key }}/libpdf_ffi.a
+          if-no-files-found: error
+
+  # ---- Apple slices: arm64 (host, smoke-tested) + x86_64 (cross — a staticlib is
+  #      just an ar archive, so cross needs only the target std, no linker) -------
+  apple:
+    name: darwin
+    runs-on: macos-14
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/go-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - name: build staticlibs
+        run: |
+          cargo build -p pdf-ffi --release --target aarch64-apple-darwin
+          cargo build -p pdf-ffi --release --target x86_64-apple-darwin
+      - name: stage slices
+        run: |
+          mkdir -p bindings/go/rustpdf/lib/darwin_arm64 bindings/go/rustpdf/lib/darwin_amd64
+          cp target/aarch64-apple-darwin/release/libpdf_ffi.a bindings/go/rustpdf/lib/darwin_arm64/libpdf_ffi.a
+          cp target/x86_64-apple-darwin/release/libpdf_ffi.a  bindings/go/rustpdf/lib/darwin_amd64/libpdf_ffi.a
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      # Host is arm64 → default tags statically link the darwin_arm64 slice.
+      - name: smoke (static link, arm64)
+        working-directory: bindings/go
+        run: CGO_ENABLED=1 go test ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golib-darwin_arm64
+          path: bindings/go/rustpdf/lib/darwin_arm64/libpdf_ffi.a
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golib-darwin_amd64
+          path: bindings/go/rustpdf/lib/darwin_amd64/libpdf_ffi.a
+          if-no-files-found: error
+
+  # ---- Windows slice: GNU ABI (cgo uses mingw gcc, so the archive must be GNU,
+  #      not the MSVC pdf_ffi.lib). Build only — the mingw-gcc-on-PATH smoke is
+  #      left to manual verification to keep the release from flaking. -----------
+  windows:
+    name: windows_amd64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/go-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+      - name: build staticlib
+        run: cargo build -p pdf-ffi --release --target x86_64-pc-windows-gnu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golib-windows_amd64
+          path: target/x86_64-pc-windows-gnu/release/libpdf_ffi.a
+          if-no-files-found: error
+
+  # ---- Fan-in: assemble all slices into one commit and tag it -----------------
+  release:
+    name: tag bindings/go/v*
+    needs: [linux, apple, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: golib-*
+          path: _libs
+      - name: stage all slices
+        run: |
+          for d in _libs/golib-*; do
+            key="${d#_libs/golib-}"
+            mkdir -p "bindings/go/rustpdf/lib/$key"
+            cp "$d/libpdf_ffi.a" "bindings/go/rustpdf/lib/$key/libpdf_ffi.a"
+            echo "staged $key ($(du -h "bindings/go/rustpdf/lib/$key/libpdf_ffi.a" | cut -f1))"
+          done
+      - name: resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            v="${{ github.event.inputs.version }}"
+          else
+            v="${GITHUB_REF_NAME#go-v}"   # go-v0.1.0 -> 0.1.0
+          fi
+          echo "modver=v$v" >> "$GITHUB_OUTPUT"
+          echo "modtag=bindings/go/v$v" >> "$GITHUB_OUTPUT"
+          echo "resolved module tag: bindings/go/v$v"
+      # Push only when triggered by a go-v* tag, or a dispatch with publish=true.
+      - name: create and push module tag
+        if: startsWith(github.ref, 'refs/tags/go-v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f bindings/go/rustpdf/lib/*/libpdf_ffi.a
+          git commit -m "go: stage native libs for ${{ steps.ver.outputs.modtag }}"
+          git tag "${{ steps.ver.outputs.modtag }}"
+          git push origin "${{ steps.ver.outputs.modtag }}"
+          echo "::notice::pushed ${{ steps.ver.outputs.modtag }} — consumers: go get github.com/rustpdf/rustpdf/bindings/go/rustpdf@${{ steps.ver.outputs.modver }}"

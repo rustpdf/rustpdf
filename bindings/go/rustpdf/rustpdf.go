@@ -5,15 +5,16 @@
 // (merge/split/rotate/optimize/incremental update), text extraction, encryption
 // and digital signatures — plus feature licensing.
 //
-// Build the native library first: `cargo build -p pdf-ffi`. The cgo directives
-// below find the header in ../../../include and the library in
-// ../../../target/{debug,release}.
+// The C header (pdf.h) is vendored alongside these sources, so the module is
+// self-contained for `go get`. The native library is linked per build tag:
+// link_dist.go (default) statically links the prebuilt libpdf_ffi.a vendored
+// under lib/<os>_<arch>/; link_dev.go (build tag `rustpdf_dev`) links the
+// dynamic library from the monorepo build tree (../../../target/{debug,release})
+// for in-repo development and tests.
 package rustpdf
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../../../include
-#cgo LDFLAGS: -L${SRCDIR}/../../../target/debug -L${SRCDIR}/../../../target/release -lpdf_ffi
-#cgo linux LDFLAGS: -Wl,-rpath,${SRCDIR}/../../../target/debug -Wl,-rpath,${SRCDIR}/../../../target/release
+#cgo CFLAGS: -I${SRCDIR}
 #include <stdlib.h>
 #include "pdf.h"
 */

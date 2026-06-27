@@ -95,7 +95,15 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   de lib nativa, projeto `net8.0`; `bindings/csharp/Sample` (`make csharp-test`).
 - ✅ **Binding Go completo** (`bindings/go/rustpdf`, cgo): `Document`/`EditableDoc`
   + funcs de pacote + enums + tipo `Error`; `go test` exercita toda a superfície
-  (`make go-test`).
+  (`make go-test`, agora via tag `rustpdf_dev`). **Pronto para publicar:** module
+  path corrigido (`github.com/rustpdf/rustpdf/bindings/go`), `pdf.h` vendorizado
+  ao lado das fontes, e linkagem por build tag — `link_dev.go` (`rustpdf_dev`,
+  dylib do build tree) vs `link_dist.go` (default, `.a` estático por plataforma em
+  `rustpdf/lib/<os>_<arch>/`). `make go-dist` (`bindings/go/scripts/package.sh`)
+  builda os `.a` por target (best effort, igual swift-dist). Publicação = git tag
+  **prefixada** `bindings/go/vX.Y.Z` com os `.a` force-adicionados (mantidos fora
+  da branch por `lib/.gitignore`); CI deve buildar com o `RUSTPDF_LICENSE_PUBKEY`
+  de produção. Falta: rodar go-dist nas 5 plataformas em CI + push da tag.
 - ✅ **Binding PHP completo** (`bindings/php`, `ext-ffi`): `RustPdf\{Pdf,Document,
   EditableDoc}` + enums (PSR-4); `php bindings/php/test/run.php` (`make php-test`).
 - ✅ **Binding Ruby completo** (`bindings/ruby`, Fiddle stdlib): `RustPdf::

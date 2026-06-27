@@ -15,21 +15,51 @@ Files (package `rustpdf`):
 * `document.go` — the `Document` authoring type;
 * `editable.go` — the `EditableDoc` manipulation type.
 
-## Building
+## Installing (consumers)
 
-Build the native library first, then use the package:
+```sh
+go get github.com/rustpdf/rustpdf/bindings/go/rustpdf@latest
+```
+
+The module is **self-contained**: `pdf.h` is vendored alongside the sources and
+a prebuilt static `libpdf_ffi.a` for your platform is vendored under
+`rustpdf/lib/<os>_<arch>/`, so the default build statically links it with no
+external native library to install. cgo (a C toolchain + `CGO_ENABLED=1`, the
+default) is the only requirement. Supported slices: `darwin/arm64`,
+`darwin/amd64`, `linux/amd64`, `linux/arm64`, `windows/amd64`.
+
+## Building (in-repo development)
+
+Inside the monorepo the static libs are **not** present (they are ~50MB each and
+are staged only at release). Build the native library and use the `rustpdf_dev`
+tag to link the dynamic library from the build tree instead:
 
 ```sh
 cargo build -p pdf-ffi
-cd bindings/go && go test ./...
+cd bindings/go && go test -tags rustpdf_dev ./...   # or: make go-test
 ```
 
-The cgo directives point at `../../../include` (header) and
-`../../../target/{debug,release}` (library). On macOS the built dylib's install
-name is absolute, so binaries find it in the build tree automatically; on Linux
-an `-rpath` to the build tree is added. To run a binary elsewhere, copy
-`libpdf_ffi.*` next to it (or set `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH`), and
-pass `CGO_LDFLAGS`/`CGO_CFLAGS` if your layout differs.
+## Releasing (maintainers)
+
+Go has no upload registry — publishing is a git tag. Because the module lives in
+a subdirectory, the consumer tag is **prefixed** `bindings/go/vX.Y.Z`.
+
+The `.github/workflows/release-go.yml` pipeline does it: push a `go-v0.1.0` tag
+(this trigger tag only kicks off CI) and it builds the five `libpdf_ffi.a` slices
+(with the production `RUSTPDF_LICENSE_PUBKEY`), statically smoke-tests each, then
+force-adds them into a single commit and pushes the `bindings/go/v0.1.0` tag —
+the dev branch never carries the binaries. `go get …@v0.1.0` then resolves it.
+
+Manual fallback (one host can only build its own slice):
+
+```sh
+make go-dist          # build per-platform libpdf_ffi.a into rustpdf/lib/*
+git add -f bindings/go/rustpdf/lib/*/libpdf_ffi.a
+git commit -m "go: stage native libs for v0.1.0"
+git tag bindings/go/v0.1.0 && git push origin bindings/go/v0.1.0
+```
+
+The `.a` files are kept off the development branch by `rustpdf/lib/.gitignore`.
 
 ## Quick start
 
@@ -39,7 +69,7 @@ package main
 import (
 	"fmt"
 
-	rustpdf "github.com/rust-pdf/rustpdf/rustpdf"
+	rustpdf "github.com/rustpdf/rustpdf/bindings/go/rustpdf"
 )
 
 func main() {
