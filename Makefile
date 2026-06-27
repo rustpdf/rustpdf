@@ -4,7 +4,7 @@
 # PATH; allow overriding CARGO. Defaults to plain `cargo`.
 CARGO ?= cargo
 
-.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test php-test ruby-test node-test java-test clean ci
+.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish clean ci
 
 all: build
 
@@ -62,6 +62,38 @@ node-test: ffi
 # Java binding smoke test (JNA FFI; exercises the whole surface over the C ABI).
 java-test: ffi
 	cd bindings/java && mvn -q -e test-compile exec:java
+
+# Delphi / Free Pascal binding smoke test (pure FFI; whole surface over the C
+# ABI). Compiles with fpc or Delphi's dcc64; skips cleanly when neither exists.
+delphi-test: ffi
+	@if command -v fpc >/dev/null 2>&1; then \
+		fpc -Mdelphi -O2 -Fubindings/delphi -FEbindings/delphi/test bindings/delphi/test/run.dpr && \
+		bindings/delphi/test/run ; \
+	elif command -v dcc64 >/dev/null 2>&1; then \
+		dcc64 -B -Ubindings/delphi -NUbindings/delphi/test -Ebindings/delphi/test bindings/delphi/test/run.dpr && \
+		bindings/delphi/test/run ; \
+	else \
+		echo "skip delphi-test: no Free Pascal (fpc) or Delphi (dcc64) compiler on PATH" ; \
+	fi
+
+# Swift binding smoke test (pure FFI via dlopen; whole surface over the C ABI).
+# Skips cleanly when the Swift toolchain isn't on PATH.
+swift-test: ffi
+	@if command -v swift >/dev/null 2>&1; then \
+		cd bindings/swift && swift test ; \
+	else \
+		echo "skip swift-test: no Swift toolchain on PATH" ; \
+	fi
+
+# Assemble a distributable Delphi/FPC archive (RustPdf.pas + native libs + sample)
+# under bindings/delphi/dist/. Builds the cdylib for every installed Rust target.
+delphi-dist:
+	CARGO="$(CARGO)" bash bindings/delphi/scripts/package.sh
+
+# Same, but also publish the zip + checksum to site/public/downloads/ (served as
+# the public trial download at /downloads/). Run on the multi-platform build box.
+delphi-dist-publish:
+	CARGO="$(CARGO)" PUBLISH=1 bash bindings/delphi/scripts/package.sh
 
 # Regenerate the synthetic golden corpus.
 corpus:

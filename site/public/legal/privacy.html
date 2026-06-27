@@ -6,7 +6,7 @@
   <title>Privacy Policy · rust-pdf</title>
   <meta name="robots" content="index,follow" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
   <link rel="stylesheet" href="/legal/legal.css" />
 </head>
 <body>
@@ -25,11 +25,9 @@
   <main class="legal">
     <p class="legal-back"><a href="/">← Home</a></p>
     <h1>Privacy Policy</h1>
-    <p class="legal-meta">Last updated: 26 June 2026</p>
+    <p class="legal-meta">Last updated: 27 June 2026</p>
 
-    <div class="note warn">Template for review. Replace the <b>[bracketed]</b> placeholders and have this policy reviewed by qualified counsel (GDPR / LGPD as applicable) before going live.</div>
-
-    <p>This Privacy Policy explains how <b>[Legal Entity Name]</b> ("we", "rust-pdf") handles personal data in connection with the rustpdf.dev website and the purchase of a license. We collect as little as possible.</p>
+    <p>This Privacy Policy explains how <b>CaseFy Inc.</b> ("we", "rust-pdf") handles personal data in connection with the rustpdf.dev website and the purchase of a license. We collect as little as possible.</p>
 
     <h2>1. The product itself collects nothing</h2>
     <p>The rust-pdf software runs entirely on your own machines. License verification is <b>fully offline</b>: it checks a cryptographic signature and expiry against a key embedded in the library. There is <b>no network callback, no telemetry, and no usage tracking</b> from the Software. Your documents never leave your infrastructure.</p>
@@ -47,7 +45,9 @@
     <ul>
       <li><b>Stripe, Inc.</b> — payment processing. See Stripe's privacy policy.</li>
       <li><b>Twilio SendGrid</b> — transactional email delivery (your license key).</li>
-      <li><b>[Hosting provider]</b> — hosts the website and license database.</li>
+      <li><b>Hostinger International Ltd.</b> — hosts the website and license database.</li>
+      <li><b>Cloudflare, Inc.</b> — CDN, DNS, and edge TLS in front of the website.</li>
+      <li><b>Google LLC (Google Analytics)</b> — privacy-friendly website analytics, loaded only after you accept analytics cookies (see Section 9).</li>
     </ul>
     <p>These processors handle data only to provide their service to us.</p>
 
@@ -58,7 +58,7 @@
     <p>Purchase and license records are retained for the period required by applicable tax and accounting law, then deleted or anonymized. You can request earlier deletion of data not subject to a retention obligation.</p>
 
     <h2>6. Your rights</h2>
-    <p>Depending on your jurisdiction (including GDPR and LGPD), you may have the right to access, correct, delete, port, or restrict processing of your personal data, and to object to certain processing. To exercise these rights, contact <a href="mailto:privacy@rustpdf.dev">privacy@rustpdf.dev</a>.</p>
+    <p>Depending on your jurisdiction (including GDPR and LGPD), you may have the right to access, correct, delete, port, or restrict processing of your personal data, and to object to certain processing. To exercise these rights, contact <a href="mailto:sales@casefy.io">sales@casefy.io</a>.</p>
 
     <h2>7. International transfers</h2>
     <p>Our processors may store data in countries other than yours. Where required, transfers are covered by appropriate safeguards (such as standard contractual clauses).</p>
@@ -67,27 +67,30 @@
     <p>We use industry-standard measures to protect data in transit (TLS) and at rest. The license-signing key is held securely and never distributed.</p>
 
     <h2>9. Cookies</h2>
-    <p>The website uses only what is strictly necessary to operate checkout. We do not use advertising or cross-site tracking cookies. <b>[Update this section if you add analytics.]</b></p>
+    <p>By default the website sets only the cookies strictly necessary to operate checkout. We do not use advertising or cross-site tracking cookies.</p>
+    <p>With your consent, we also use <b>Google Analytics</b> (Google LLC) to understand how the site is used. These analytics cookies load <b>only after you click "Accept"</b> in the cookie banner; if you choose "Reject", no analytics cookies are set and Google Analytics is not loaded. You can change your choice at any time by clearing the site's cookies in your browser. IP addresses are anonymized.</p>
 
     <h2>10. Changes</h2>
     <p>We may update this policy; the "Last updated" date reflects the latest version.</p>
 
     <h2>11. Contact</h2>
-    <p>Data controller: <b>[Legal Entity Name, address]</b>. Privacy questions: <a href="mailto:privacy@rustpdf.dev">privacy@rustpdf.dev</a>.</p>
+    <p>Data controller: <b>CaseFy Inc., 131 Continental Dr, Suite 305, Newark, DE 19713, USA</b>. Privacy questions: <a href="mailto:sales@casefy.io">sales@casefy.io</a>.</p>
   </main>
 
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms.html">Terms</a>
         <a href="/legal/privacy.html">Privacy</a>
         <a href="/legal/refund.html">Refunds</a>
-        <a href="mailto:sales@rustpdf.dev">Contact</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>
   </footer>
+  <script src="/consent.js" defer></script>
 </body>
 </html>

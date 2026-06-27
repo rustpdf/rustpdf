@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delphi / Free Pascal · rust-pdf docs</title>
+  <meta name="description" content="Complete Delphi & Free Pascal reference for rust-pdf: authoring, fonts & text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction." />
+  <link rel="canonical" href="https://rustpdf.dev/docs/delphi.html" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:title" content="Delphi / Free Pascal · rust-pdf docs" />
+  <meta property="og:description" content="Complete Delphi & Free Pascal reference: authoring, PDF/A, accessibility, forms, manipulation, encryption and signatures." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:alt" content="rust-pdf Delphi documentation" />
+  <meta name="twitter:image:alt" content="rust-pdf Delphi documentation" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://rustpdf.dev/docs/" },
+          { "@type": "ListItem", "position": 3, "name": "Delphi / Free Pascal", "item": "https://rustpdf.dev/docs/delphi.html" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "rust-pdf for Delphi and Free Pascal",
+        "description": "Complete Delphi and Free Pascal reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction.",
+        "url": "https://rustpdf.dev/docs/delphi.html",
+        "inLanguage": "en",
+        "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/docs/docs.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <div class="docs-shell with-toc">
+    <!-- LEFT NAV -->
+    <aside class="docs-side">
+      <h4>Language</h4>
+      <a href="/docs/python.html" class="lang-pill">Python</a>
+      <a href="/docs/delphi.html" class="lang-pill" style="color:var(--brand-2)">● Delphi / Free Pascal</a>
+      <a class="soon">C# / .NET (soon)</a>
+      <a class="soon">Go (soon)</a>
+      <a class="soon">PHP (soon)</a>
+      <a class="soon">Ruby (soon)</a>
+      <a class="soon">Node / TS (soon)</a>
+      <a class="soon">Java (soon)</a>
+
+      <h4>Getting started</h4>
+      <a href="#download">Download</a>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#licensing">Licensing &amp; activation</a>
+      <a href="#coords">Coordinate system</a>
+      <a href="#threading">Threading &amp; concurrency</a>
+
+      <h4>Authoring: TPdfDocument</h4>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Pages &amp; vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility (PDF/UA)</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">AcroForm fields</a>
+      <a href="#metadata">Metadata</a>
+
+      <h4>Manipulation: TPdfEditable</h4>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-optimize">Optimize</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-output">Output &amp; incremental</a>
+
+      <h4>Signatures</h4>
+      <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+
+      <h4>Other</h4>
+      <a href="#extract">Text extraction</a>
+      <a href="#enums">Enums</a>
+      <a href="#errors">Errors</a>
+      <a href="#utils">Utilities</a>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="docs-main">
+      <h1>Delphi / Free Pascal</h1>
+      <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
+
+      <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle — free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
+
+      <!-- DOWNLOAD -->
+      <h2 id="download">Download</h2>
+      <p>The binding ships as one versioned archive: the <code>RustPdf.pas</code> unit, the native library for each platform (<code>lib/&lt;os-arch&gt;/</code>), a sample and an <code>INSTALL.txt</code>. Basic PDF generation works immediately as a free trial; the corporate features unlock with a <a href="#licensing">license token</a>.</p>
+      <div class="download-card">
+        <div class="dl-meta">
+          <span class="dl-version">rustpdf-delphi v__DELPHI_VERSION__</span>
+          <span class="dl-plat">Windows · macOS · Linux native libraries included · Delphi 10.x+ / FPC 3.2+</span>
+        </div>
+        <a class="btn" href="/downloads/rustpdf-delphi-__DELPHI_VERSION__.zip" download>Download .zip</a>
+        <a class="dl-sum" href="/downloads/rustpdf-delphi-__DELPHI_VERSION__.zip.sha256">SHA-256 checksum</a>
+      </div>
+      <p class="muted">Prefer to build from source? <code>make delphi-dist</code> assembles the same archive. Using <a href="https://github.com/HashLoad/boss" rel="noopener">Boss</a>? The repo is <code>boss install</code>-able. After unzipping, drop the matching native library next to your executable (matching the app's bitness on Windows). Full steps are in the bundled <code>INSTALL.txt</code> and the <a href="#install">Installation</a> section below.</p>
+
+      <!-- INSTALL -->
+      <h2 id="install">Installation</h2>
+      <p>The binding is a single source unit, <code>RustPdf.pas</code> — no native build step, no headers to install. It loads the shared library (<code>libpdf_ffi</code>) built from the Rust core at run time, so there is no fixed link name. Add the binding directory to your unit search path:</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>uses RustPdf;   // add bindings/delphi to the unit search path (-Fu / Project Options)</code></pre></div>
+      <p>Build the native library and (optionally) point <code>RUSTPDF_LIB</code> at it:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>cargo build -p pdf-ffi                       # → target/debug/libpdf_ffi.{dylib,so,dll}
+export RUSTPDF_LIB=/path/to/target/debug/libpdf_ffi.dylib   # optional</code></pre></div>
+      <p>The loader searches, in order: <code>$RUSTPDF_LIB</code>; the library next to the executable or in the current directory (the deployment layout); <code>target/debug</code> and <code>target/release</code> walking up from those dirs (the dev tree); then the bare platform name via the OS loader. Compile a console program with Free Pascal:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>fpc -Mdelphi -Fubindings/delphi hello.dpr</code></pre></div>
+      <p>or with Delphi's command-line compiler:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>dcc64 -Ubindings/delphi hello.dpr</code></pre></div>
+      <p>Verify the library loads:</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Writeln(Pdf.Version);   // native library version, e.g. 0.1.0</code></pre></div>
+
+      <!-- QUICKSTART -->
+      <h2 id="quickstart">Quick start</h2>
+      <p>A one-page document with a filled rectangle, saved to disk:</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>program hello;
+{$IFDEF FPC}{$MODE DELPHI}{$H+}{$CODEPAGE UTF8}{$ENDIF}
+uses RustPdf;
+var
+  Doc: TPdfDocument;
+begin
+  Doc := TPdfDocument.Create;          // A4 by default
+  try
+    Doc.AddPage;
+    Doc.FillRgb(0.86, 0.20, 0.18);
+    Doc.Rect(72, 640, 200, 120);       // x, y, width, height (points)
+    Doc.Fill;
+    Doc.SaveToFile('out.pdf');
+  finally
+    Doc.Free;
+  end;
+end.</code></pre></div>
+      <p>Most methods return the document, so calls chain:</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var
+  Doc: TPdfDocument;
+  Font: Integer;
+  Data: TBytes;
+begin
+  Doc := TPdfDocument.Create;
+  try
+    Font := Doc.AddFontFile('Roboto-Regular.ttf');
+    Doc.AddPage
+       .FillRgb(0.1, 0.1, 0.12).Rect(0, 800, 595, 42).Fill
+       .ShowText(Font, 24, 72, 740, 'Olá, açúcar — café');
+    Data := Doc.ToBytes;               // in-memory bytes instead of a file
+  finally
+    Doc.Free;
+  end;
+end;</code></pre></div>
+      <div class="note"><b>UTF-8 source.</b> Under Free Pascal, add <code>{$CODEPAGE UTF8}</code> so accented string literals reach the engine as proper UTF-8. Delphi handles UTF-8 source natively.</div>
+
+      <!-- LICENSING -->
+      <h2 id="licensing">Licensing &amp; activation</h2>
+      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls raise <code>ERustPdf</code> and produce no output.</p>
+      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
+# or point at a file:
+export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
+      <p>Or activate explicitly in code:</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Pdf.ActivateLicense(Token);   // raises ERustPdf if forged / expired / malformed</code></pre></div>
+      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
+
+      <!-- COORDS -->
+      <h2 id="coords">Coordinate system</h2>
+      <ul>
+        <li>Units are <b>points</b> (1 pt = 1/72 inch). A4 is <code>595 × 842</code>, US&nbsp;Letter <code>612 × 792</code>.</li>
+        <li>The origin <code>(0, 0)</code> is the <b>bottom-left</b> corner; <code>y</code> grows upward.</li>
+        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
+        <li>Drawing/text always targets the <b>most recently added page</b>.</li>
+      </ul>
+
+      <!-- THREADING -->
+      <h2 id="threading">Threading &amp; concurrency</h2>
+      <p>The core is <b>Send but not Sync</b>: you can build many documents in parallel, but a single handle must never be touched by two threads at once.</p>
+      <ul>
+        <li><b>Generate in parallel.</b> Give each thread its own <code>TPdfDocument</code>/<code>TPdfEditable</code> — independent documents share no state and run truly concurrently.</li>
+        <li><b>Move between threads.</b> A handle may be created on one thread and used on another.</li>
+        <li><b>Never share a live handle.</b> Two threads calling into the same <code>TPdfDocument</code> at the same time is unsupported; protect it with a <code>TCriticalSection</code> if you really must.</li>
+        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's — <code>ERustPdf</code> is always raised on the calling thread.</li>
+        <li><b>License is process-global.</b> <code>Pdf.ActivateLicense</code> (or the env var) applies to every thread; activate once at startup.</li>
+      </ul>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>type
+  TRenderThread = class(TThread)
+  protected
+    procedure Execute; override;
+  end;
+
+procedure TRenderThread.Execute;
+var
+  Doc: TPdfDocument;
+begin
+  Doc := TPdfDocument.Create;        // one document per thread
+  try
+    Doc.AddPage.FillRgb(0.1, 0.1, 0.12).Rect(72, 700, 200, 80).Fill;
+    Doc.SaveToFile(Format('out-%d.pdf', [ThreadID]));
+  finally
+    Doc.Free;
+  end;
+end;</code></pre></div>
+
+      <!-- DOCUMENT CREATE -->
+      <h2 id="doc-create">Authoring: create &amp; save</h2>
+      <div class="api"><code>TPdfDocument.Create</code> <span class="badge free">free</span></div>
+      <p>Creates an empty document (A4 default page size). Always pair with <code>try…finally Doc.Free end</code> so the native handle is released.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>AddPage</code></td><td>Append a page using the default size.</td></tr>
+        <tr><td><code>AddPage(Width, Height)</code></td><td>Append a page with an explicit size in points.</td></tr>
+        <tr><td><code>DefaultSize(W, H)</code></td><td>Default size for subsequently added pages.</td></tr>
+        <tr><td><code>SetVersion(V)</code></td><td>PDF header version: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7.</td></tr>
+        <tr><td><code>PageCount</code></td><td>Number of pages so far.</td></tr>
+        <tr><td><code>ToBytes</code></td><td>Render the document to <code>TBytes</code>.</td></tr>
+        <tr><td><code>SaveToFile(Path)</code></td><td>Render and write to a file.</td></tr>
+      </table>
+
+      <!-- GRAPHICS -->
+      <h2 id="graphics">Pages &amp; vector graphics</h2>
+      <p>Graphics state and path operators mirror PDF's content-stream model. Colors are RGB in <code>0.0–1.0</code>.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>FillRgb(R, G, B)</code></td><td>Fill color.</td></tr>
+        <tr><td><code>StrokeRgb(R, G, B)</code></td><td>Stroke color.</td></tr>
+        <tr><td><code>LineWidth(W)</code></td><td>Stroke width in points.</td></tr>
+        <tr><td><code>Rect(X, Y, W, H)</code></td><td>Add a rectangle subpath.</td></tr>
+        <tr><td><code>Fill</code></td><td>Fill the current path with the fill color.</td></tr>
+        <tr><td><code>Stroke</code></td><td>Stroke the current path with the stroke color.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.AddPage;
+Doc.StrokeRgb(0.10, 0.45, 0.90).LineWidth(3);
+Doc.Rect(72, 600, 300, 160).Stroke;
+Doc.FillRgb(0.95, 0.77, 0.06);
+Doc.Rect(120, 640, 120, 80).Fill;
+Doc.SaveToFile('shapes.pdf');</code></pre></div>
+
+      <!-- TEXT -->
+      <h2 id="text">Fonts &amp; text</h2>
+      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly). Register a font once, then reference it by its integer id.</p>
+      <div class="api"><code>AddFontFile(Path): Integer</code> &nbsp; <code>AddFont(Data: TBytes): Integer</code></div>
+      <div class="api"><code>ShowText(Font, Size, X, Y, Text, HeadingLevel = 0)</code></div>
+      <p><code>HeadingLevel</code> (1–6) tags the run as <code>H1</code>–<code>H6</code> in an accessible document (see <a href="#tagged">Accessibility</a>); leave <code>0</code> for ordinary text. Strings cross the boundary as UTF-8.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Regular: Integer;
+…
+Regular := Doc.AddFontFile('Roboto-Regular.ttf');
+Doc.AddPage;
+Doc.ShowText(Regular, 28, 72, 760, 'Invoice #1024');
+Doc.ShowText(Regular, 12, 72, 720, '日本語 · Ελληνικά · العربية');
+Doc.SaveToFile('text.pdf');</code></pre></div>
+
+      <!-- PARAGRAPHS -->
+      <h2 id="paragraphs">Paragraphs</h2>
+      <p>The paragraph layer wraps, aligns and justifies text inside a fixed width (greedy line breaking using shaped glyph widths).</p>
+      <div class="api"><code>Paragraph(Font, Size, X, Y, Width, Text, Align = paLeft)</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>const
+  Intro = 'A long paragraph that wraps to the given width and is justified ' +
+          'automatically; extra space is distributed between words.';
+…
+F := Doc.AddFontFile('Roboto-Regular.ttf');
+Doc.AddPage;
+Doc.Paragraph(F, 12, 72, 700, 451, Intro, paJustify);
+Doc.SaveToFile('paragraph.pdf');</code></pre></div>
+      <p>See the <a href="#enums"><code>TPdfAlign</code></a> enum for the alignment options.</p>
+
+      <!-- IMAGES -->
+      <h2 id="images">Images</h2>
+      <p>JPEGs are embedded verbatim (<code>DCTDecode</code>, no re-encode). PNGs are decoded and re-encoded (<code>FlateDecode</code>); alpha becomes an <code>/SMask</code>, palette becomes an <code>Indexed</code> color space. Register an image once, draw it many times.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>AddImageFile(Path): Integer</code></td><td>Load JPEG/PNG from a file; returns the image id.</td></tr>
+        <tr><td><code>AddImagePng(Data: TBytes): Integer</code></td><td>Register a PNG from memory.</td></tr>
+        <tr><td><code>AddImageJpeg(Data: TBytes): Integer</code></td><td>Register a JPEG from memory.</td></tr>
+        <tr><td><code>DrawImage(Image, X, Y, W, H)</code></td><td>Draw at <code>(x, y)</code> scaled to <code>w × h</code> points.</td></tr>
+        <tr><td><code>Figure(Image, X, Y, W, H, Alt)</code></td><td>Draw as a tagged <code>/Figure</code> with alt text (accessibility).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Logo := Doc.AddImageFile('logo.png');
+Doc.AddPage;
+Doc.DrawImage(Logo, 72, 680, 160, 90);
+Doc.SaveToFile('with_image.pdf');</code></pre></div>
+
+      <!-- PDF/A -->
+      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Produce archival-grade output. <code>Pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>TPdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <div class="api"><code>Pdfa</code> &nbsp; <code>Pdfa(Level: TPdfaLevel)</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.Pdfa(palA2B).SetInfo('Q3 Report', 'Acme Inc.', '', '', '');
+F := Doc.AddFontFile('Roboto-Regular.ttf');
+Doc.AddPage;
+Doc.ShowText(F, 20, 72, 760, 'Archival report');
+Doc.SaveToFile('report_pdfa.pdf');   // raises ERustPdf without a license granting PDF/A</code></pre></div>
+      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>SetInfo</code> with a non-empty title.</div>
+
+      <!-- TAGGED -->
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <p><code>Tagged</code> builds a logical structure tree (PDF/UA-1). Combine with <code>Pdfa(palA2A)</code> for archival <i>and</i> accessible output. Use <code>HeadingLevel</code> on <code>ShowText</code> for <code>H1</code>–<code>H6</code>, and <code>Figure(…, Alt)</code> for described images.</p>
+      <div class="api"><code>Tagged</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.Pdfa(palA2A).Tagged.SetInfo('Accessible report', '', '', '', '');
+F := Doc.AddFontFile('Roboto-Regular.ttf');
+Doc.AddPage;
+Doc.ShowText(F, 26, 72, 760, 'Annual report', 1);   // H1
+Doc.ShowText(F, 14, 72, 720, 'Overview', 2);         // H2
+Doc.ShowText(F, 11, 72, 690, 'Body paragraph of the section…');
+Chart := Doc.AddImageFile('chart.png');
+Doc.Figure(Chart, 72, 520, 300, 150, 'Revenue grew 18% year over year');
+Doc.SaveToFile('accessible.pdf');</code></pre></div>
+
+      <!-- ATTACHMENTS -->
+      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>TAFRelationship</code></a>.</p>
+      <div class="api"><code>AttachFile(Name, Mime, Data, Relationship = afSource, Description = '')</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Xml := ...;   // TBytes of invoice.xml
+Doc.Pdfa(palA3B).SetInfo('E-invoice 1024', '', '', '', '');
+F := Doc.AddFontFile('Roboto-Regular.ttf');
+Doc.AddPage;
+Doc.ShowText(F, 18, 72, 760, 'Invoice 1024');
+Doc.AttachFile('invoice.xml', 'text/xml', Xml, afSource, 'Structured invoice data');
+Doc.SaveToFile('einvoice.pdf');</code></pre></div>
+
+      <!-- FORMS -->
+      <h2 id="forms">AcroForm fields</h2>
+      <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>PdfRect(x0, y0, x1, y1)</code>; <code>Page</code> is a 0-based page index. Dotted names (<code>'a.b.c'</code>) create hierarchical fields.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>TextField(Name, Page, Rect, Value = '', Size = 0)</code></td><td>Text input (<code>Size = 0</code> → auto font size).</td></tr>
+        <tr><td><code>Checkbox(Name, Page, Rect, Checked)</code></td><td>Checkbox (<code>Checked: Boolean</code>).</td></tr>
+        <tr><td><code>Dropdown(Name, Page, Rect, Options, Selected = -1, Size = 0)</code></td><td>Combo box from an array of strings.</td></tr>
+        <tr><td><code>RadioGroup(Name, Page, Buttons, Selected = -1)</code></td><td><code>Buttons: TRadioButtons</code> — each has a <code>Rect</code> and <code>ExportValue</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Buttons: TRadioButtons;
+…
+Doc.AddPage;
+Doc.TextField('applicant.name', 0, PdfRect(72, 700, 320, 720));
+Doc.Checkbox('agree', 0, PdfRect(72, 660, 88, 676), False);
+Doc.Dropdown('plan', 0, PdfRect(72, 620, 240, 640), ['Starter', 'Pro', 'Enterprise'], 1);
+
+SetLength(Buttons, 2);
+Buttons[0].Rect := PdfRect(72, 580, 88, 596);   Buttons[0].ExportValue := 'monthly';
+Buttons[1].Rect := PdfRect(140, 580, 156, 596); Buttons[1].ExportValue := 'annual';
+Doc.RadioGroup('billing', 0, Buttons, 1);
+Doc.SaveToFile('form.pdf');</code></pre></div>
+      <p>Fill fields later with <a href="#ed-meta"><code>TPdfEditable.FillTextField</code></a>.</p>
+
+      <!-- METADATA -->
+      <h2 id="metadata">Metadata</h2>
+      <div class="api"><code>SetInfo(Title, Author, Subject, Keywords, Creator)</code></div>
+      <p>Sets the document information dictionary (and, for PDF/A, the matching XMP). Pass an empty string <code>''</code> for any field you want to leave unset.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.SetInfo('Q3 Report', 'Acme Inc.', 'Quarterly results', 'finance, q3', '');</code></pre></div>
+
+      <!-- EDITABLE LOAD -->
+      <h2 id="ed-load">Manipulation: load an existing PDF</h2>
+      <p><code>TPdfEditable</code> parses an existing document (classic &amp; xref streams, object streams, all standard filters, RC4/AES decryption) into an editable model. Pages are a flat list; the page tree is rebuilt on output.</p>
+      <div class="api"><code>TPdfEditable.Load(Data: TBytes)</code> &nbsp; <code>TPdfEditable.Load(Data, Password)</code></div>
+      <div class="api"><code>TPdfEditable.LoadFromFile(Path)</code> &nbsp; <code>TPdfEditable.LoadFromFile(Path, Password)</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Ed: TPdfEditable;
+…
+Ed := TPdfEditable.LoadFromFile('in.pdf');
+try
+  Writeln(Ed.PageCount);
+finally
+  Ed.Free;
+end;
+
+// encrypted input:
+Ed := TPdfEditable.LoadFromFile('secured.pdf', 'user-or-owner-pw');
+try
+  Ed.SaveToFile('plain.pdf');
+finally
+  Ed.Free;
+end;</code></pre></div>
+
+      <!-- ED PAGES -->
+      <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>Merge(Other)</code></td><td>Append all pages of another <code>TPdfEditable</code> (objects renumbered &amp; remapped).</td></tr>
+        <tr><td><code>RotatePage(Index, Degrees)</code></td><td>Rotate one page (90 / 180 / 270).</td></tr>
+        <tr><td><code>DeletePage(Index)</code></td><td>Remove a page.</td></tr>
+        <tr><td><code>ReorderPages(Order)</code></td><td>Reorder with a full permutation array of indices.</td></tr>
+        <tr><td><code>ExtractPages(Indices): TPdfEditable</code></td><td>New document containing just those pages.</td></tr>
+        <tr><td><code>PageCount</code></td><td>Current page count.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>A := TPdfEditable.LoadFromFile('a.pdf');
+B := TPdfEditable.LoadFromFile('b.pdf');
+try
+  A.Merge(B);                       // a now has a's pages followed by b's
+  A.RotatePage(0, 90);
+  A.ReorderPages([2, 1, 0]);
+  A.SaveToFile('merged.pdf');
+finally
+  A.Free; B.Free;
+end;</code></pre></div>
+
+      <!-- ED META -->
+      <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>SetInfo(Key, Value)</code></td><td>Set one info entry (e.g. <code>'Title'</code>).</td></tr>
+        <tr><td><code>GetInfo(Key): string</code></td><td>Read an info entry.</td></tr>
+        <tr><td><code>SetXmp(Xml: TBytes)</code></td><td>Replace the XMP metadata stream.</td></tr>
+        <tr><td><code>OverlayPage(Index, Content: TBytes)</code></td><td>Overlay a content-stream fragment onto a page (stamps/watermarks).</td></tr>
+        <tr><td><code>FillTextField(Name, Value): Boolean</code></td><td>Fill an AcroForm text field; returns whether it was found.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('form.pdf');
+try
+  Ed.SetInfo('Title', 'Filled form');
+  Found := Ed.FillTextField('applicant.name', 'Edivan Teixeira');
+  Writeln('filled: ', Found, ' | title: ', Ed.GetInfo('Title'));
+  Ed.SaveToFile('filled.pdf');
+finally
+  Ed.Free;
+end;</code></pre></div>
+
+      <!-- ED OPTIMIZE -->
+      <h2 id="ed-optimize">Optimize &amp; compact</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>Optimize</code></td><td>Drop unreferenced objects, Flate-compress uncompressed streams, dedupe identical objects.</td></tr>
+        <tr><td><code>Compact(On = True)</code></td><td>Pack objects into object streams + emit a cross-reference stream.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('big.pdf');
+try
+  Ed.Optimize.Compact(True);
+  Ed.SaveToFile('small.pdf');
+finally
+  Ed.Free;
+end;</code></pre></div>
+
+      <!-- ED ENCRYPT -->
+      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
+      <div class="api"><code>Encrypt(Method = encAES256, User = '', Owner = '', ReadOnlyPerms = False)</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('in.pdf');
+try
+  Ed.Encrypt(encAES256, '', 'owner-secret', True);
+  Ed.SaveToFile('secured.pdf');     // raises ERustPdf without an Encryption license
+finally
+  Ed.Free;
+end;</code></pre></div>
+      <p>See the <a href="#enums"><code>TEncryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+
+      <!-- ED OUTPUT -->
+      <h2 id="ed-output">Output &amp; incremental update</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>ToBytes: TBytes</code></td><td>Serialize the manipulated document.</td></tr>
+        <tr><td><code>SaveToFile(Path)</code></td><td>Serialize to a file.</td></tr>
+        <tr><td><code>ToBytesIncremental(Original: TBytes): TBytes</code></td><td>Append only changes to the original bytes (signature-safe, non-destructive).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Original := ...;   // TBytes of in.pdf
+Ed := TPdfEditable.Load(Original);
+try
+  Ed.SetInfo('Subject', 'reviewed');
+  Incremental := Ed.ToBytesIncremental(Original);   // original bytes preserved verbatim
+finally
+  Ed.Free;
+end;</code></pre></div>
+
+      <!-- SIGN -->
+      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER <code>TBytes</code>. <code>Pades = True</code> switches to PAdES-B-B.</p>
+      <div class="api"><code>Pdf.Sign(PdfBytes, KeyDer, CertDer, Reason = '', Location = '', Name = '', Pades = False): TBytes</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>PdfBytes := ...;   // TBytes of contract.pdf
+KeyDer   := ...;   // PKCS#8 private key (DER)
+CertDer  := ...;   // X.509 certificate (DER)
+
+Signed := Pdf.Sign(PdfBytes, KeyDer, CertDer, 'Approved', 'São Paulo', 'Edivan Teixeira', True);
+// Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- LTV -->
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <p>Build long-term-validation signatures offline. <code>AddDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>Timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
+      <div class="api"><code>Pdf.AddDss(PdfBytes, Certs, Crls): TBytes</code></div>
+      <div class="api"><code>Pdf.Timestamp(PdfBytes, TsaKeyDer, TsaCertDer, Date = ''): TBytes</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>// B-LT: embed validation material (caller supplies DER certs/CRLs)
+Lt := Pdf.AddDss(Signed, [CertDer], [CrlDer]);
+
+// B-LTA: add a document timestamp signed by a TSA key/cert
+Lta := Pdf.Timestamp(Lt, TsaKeyDer, TsaCertDer);</code></pre></div>
+
+      <!-- EXTRACT -->
+      <h2 id="extract">Text extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <div class="api"><code>Pdf.ExtractText(PdfBytes: TBytes): string</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Data := ...;   // TBytes of report.pdf
+Writeln(Pdf.ExtractText(Data));</code></pre></div>
+
+      <!-- ENUMS -->
+      <h2 id="enums">Enums</h2>
+      <h3>TPdfaLevel</h3>
+      <table>
+        <tr><th>Value</th><th>Level</th></tr>
+        <tr><td><code>palA1B</code></td><td>PDF/A-1b (basic, PDF 1.4)</td></tr>
+        <tr><td><code>palA2B</code></td><td>PDF/A-2b (basic): default of <code>Pdfa</code></td></tr>
+        <tr><td><code>palA2A</code></td><td>PDF/A-2a (accessible: pair with <code>Tagged</code>)</td></tr>
+        <tr><td><code>palA3B</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
+        <tr><td><code>palA3A</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+      </table>
+      <h3>TPdfAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>paLeft</code></td><td>Left-aligned (default)</td></tr>
+        <tr><td><code>paRight</code></td><td>Right-aligned</td></tr>
+        <tr><td><code>paCenter</code></td><td>Centered</td></tr>
+        <tr><td><code>paJustify</code></td><td>Justified (space distributed between words)</td></tr>
+      </table>
+      <h3>TAFRelationship</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>afSource</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
+        <tr><td><code>afData</code></td><td>Data used to derive the visual content</td></tr>
+        <tr><td><code>afAlternative</code></td><td>Alternative representation</td></tr>
+        <tr><td><code>afSupplement</code></td><td>Supplementary material</td></tr>
+        <tr><td><code>afUnspecified</code></td><td>Unspecified relationship</td></tr>
+      </table>
+      <h3>TEncryption</h3>
+      <table>
+        <tr><th>Value</th><th>Cipher</th></tr>
+        <tr><td><code>encRC4_128</code></td><td>RC4-128 (legacy)</td></tr>
+        <tr><td><code>encAES128</code></td><td>AES-128</td></tr>
+        <tr><td><code>encAES256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+
+      <!-- ERRORS -->
+      <h2 id="errors">Error handling</h2>
+      <p>Every failing native call raises <code>ERustPdf</code> (a <code>Exception</code>) carrying the <code>Status</code> (a <code>TPdfStatus</code>) and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>try
+  Doc.Pdfa.SetInfo('x', '', '', '', '');
+  Doc.AddPage;
+  Doc.SaveToFile('out.pdf');
+except
+  on E: ERustPdf do
+    Writeln('failed: ', E.Message, ' (status ', Ord(E.Status), ')');
+end;</code></pre></div>
+
+      <!-- UTILS -->
+      <h2 id="utils">Utilities</h2>
+      <table>
+        <tr><th>Function</th><th>Description</th></tr>
+        <tr><td><code>Pdf.Version: string</code></td><td>Native library version string.</td></tr>
+        <tr><td><code>Pdf.ActivateLicense(Token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
+      </table>
+
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+    </main>
+
+    <!-- RIGHT TOC -->
+    <nav class="docs-toc">
+      <h4>On this page</h4>
+      <a href="#download">Download</a>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#licensing">Licensing</a>
+      <a href="#threading">Threading</a>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#forms">Forms</a>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#sign">Signatures</a>
+      <a href="#extract">Extraction</a>
+      <a href="#enums">Enums</a>
+    </nav>
+  </div>
+
+  <script src="/highlight.js"></script>
+  <script src="/docs/docs.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

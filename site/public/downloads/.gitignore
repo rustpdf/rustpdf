@@ -1,0 +1,3 @@
+# Release artifacts are published by CI (make delphi-dist-publish), not committed.
+*.zip
+*.zip.sha256

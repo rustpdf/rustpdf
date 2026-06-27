@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, assertRuntime } from "./config.js";
@@ -131,6 +132,51 @@ app.get("/api/pricing", async (_req, res) => {
 });
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
+
+// --- Delphi docs: inject the current package version ------------------------
+// The download links/version on /docs/delphi.html carry a __DELPHI_VERSION__
+// placeholder so the page never needs a manual edit per release. The version is
+// derived from the zip actually present in /downloads (the single source of
+// truth — whatever the deploy baked in), falling back to $DELPHI_VERSION. Cached
+// at startup; the container restarts on every deploy, so it stays current.
+function cmpSemver(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  return 0;
+}
+function delphiVersion() {
+  try {
+    const versions = fs
+      .readdirSync(path.join(publicDir, "downloads"))
+      .map((f) => f.match(/^rustpdf-delphi-(\d+\.\d+\.\d+)\.zip$/))
+      .filter(Boolean)
+      .map((m) => m[1])
+      .sort(cmpSemver);
+    if (versions.length) return versions[versions.length - 1];
+  } catch {
+    /* no downloads dir yet */
+  }
+  return process.env.DELPHI_VERSION || "0.1.0";
+}
+function renderDelphiPage() {
+  const html = fs.readFileSync(path.join(publicDir, "docs", "delphi.html"), "utf8");
+  return html.replace(/__DELPHI_VERSION__/g, delphiVersion());
+}
+let delphiPageCache = null;
+try {
+  delphiPageCache = renderDelphiPage();
+  console.log(`Delphi docs pinned to v${delphiVersion()}`);
+} catch (err) {
+  console.error("Delphi docs render failed:", err.message);
+}
+app.get(["/docs/delphi.html", "/docs/delphi"], (_req, res) => {
+  try {
+    res.type("html").send(delphiPageCache || renderDelphiPage());
+  } catch {
+    res.sendFile(path.join(publicDir, "docs", "delphi.html"));
+  }
+});
 
 // --- Static site -------------------------------------------------------------
 app.use(express.static(publicDir, { extensions: ["html"] }));

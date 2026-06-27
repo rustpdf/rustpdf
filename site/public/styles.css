@@ -90,6 +90,31 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 .tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; background: #1f2937; color: var(--muted); font-weight: 700; }
 .tag-pro { background: var(--brand); color: #1a0e02; }
 
+/* performance */
+.perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 20px; text-align: center; }
+.hero-stat { position: relative; overflow: hidden; }
+.hero-stat::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); opacity: .8; }
+.stat-num { display: block; font-weight: 800; font-size: 3rem; line-height: 1; letter-spacing: -0.03em; }
+.stat-label { display: block; margin-top: 14px; color: var(--muted); font-size: 0.95rem; }
+.stat-big { display: block; font-weight: 700; font-size: 1.1rem; color: #e5e7eb; }
+
+/* scaling bar chart */
+.perf-chart { margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 32px; }
+.perf-chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.perf-chart-head h3 { margin: 0; font-size: 1.15rem; }
+.perf-chart-head .muted { font-size: 0.86rem; }
+.bars { display: flex; flex-direction: column; gap: 12px; }
+.bar-row { display: grid; grid-template-columns: 64px 1fr 130px; align-items: center; gap: 16px; }
+.bar-label { color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.bar-track { height: 22px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, rgba(249,115,22,.55), var(--brand)); }
+.bar-fill.is-top { background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
+.bar-val { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.bar-val em { color: var(--brand-2); font-style: normal; font-weight: 800; }
+.stat-note { margin-top: 26px; font-size: 0.82rem; opacity: .85; }
+.stat-note a { color: var(--brand-2); text-decoration: none; }
+
 /* languages */
 .lang-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
 .lang { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
@@ -141,11 +166,24 @@ details p { margin: 0 0 16px; color: var(--muted); }
 .footer { border-top: 1px solid var(--border); padding: 40px 0; margin-top: 40px; }
 .footer-inner { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .footer .muted { flex: 1; min-width: 220px; font-size: 0.9rem; }
+.footer-by { color: var(--muted); font-size: 0.9rem; }
+.footer-by a { color: var(--brand-2); text-decoration: none; }
+.footer-by a:hover { text-decoration: underline; }
+
+/* cookie consent banner */
+.cookie-banner { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 100; margin: 0 auto; max-width: 760px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: space-between; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: 0 20px 60px -20px rgba(0,0,0,.7); }
+.cookie-banner p { margin: 0; flex: 1; min-width: 240px; font-size: 0.9rem; color: var(--muted); }
+.cookie-banner a { color: var(--brand-2); text-decoration: none; }
+.cookie-banner a:hover { text-decoration: underline; }
+.cookie-actions { display: flex; gap: 10px; }
 
 @media (max-width: 820px) {
   .nav-links { display: none; }
   .grid-2, .feature-grid { grid-template-columns: 1fr; }
   .lang-grid { grid-template-columns: repeat(2, 1fr); }
+  .perf-grid { grid-template-columns: 1fr; }
+  .perf-chart { padding: 22px 18px; }
+  .bar-row { grid-template-columns: 56px 1fr 92px; gap: 10px; }
   .pricing { grid-template-columns: 1fr; max-width: 460px; margin-inline: auto; }
 }
 

@@ -1,0 +1,16 @@
+# Free Pascal / Delphi build artifacts
+*.o
+*.ppu
+*.ppl
+*.a
+*.or
+*.rsj
+*.dcu
+*.exe
+link*.res
+ppas.sh
+# The compiled smoke-test executable (FPC names it after run.dpr)
+test/run
+
+# Packaged distribution archives
+dist/

@@ -33,6 +33,7 @@ png = "0.18"
 cms = "0.2"
 der = "0.7"
 const-oid = { version = "0.9", features = ["db"] }
+libc = "0.2"
 
 [lints]
 workspace = true

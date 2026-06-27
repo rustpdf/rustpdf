@@ -34,12 +34,12 @@
         "url": "https://rustpdf.dev/docs/python.html",
         "inLanguage": "en",
         "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
-        "publisher": { "@type": "Organization", "name": "rust-pdf", "url": "https://rustpdf.dev/" }
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
       }
     ]
   }
   </script>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
   <link rel="stylesheet" href="/docs/docs.css" />
 </head>
 <body>
@@ -61,17 +61,20 @@
     <aside class="docs-side">
       <h4>Language</h4>
       <a href="/docs/python.html" class="lang-pill" style="color:var(--brand-2)">● Python</a>
+      <a href="/docs/delphi.html" class="lang-pill">Delphi / Free Pascal</a>
       <a class="soon">C# / .NET (soon)</a>
       <a class="soon">Go (soon)</a>
       <a class="soon">PHP (soon)</a>
       <a class="soon">Ruby (soon)</a>
       <a class="soon">Node / TS (soon)</a>
+      <a class="soon">Java (soon)</a>
 
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#licensing">Licensing &amp; activation</a>
       <a href="#coords">Coordinate system</a>
+      <a href="#threading">Threading &amp; concurrency</a>
 
       <h4>Authoring: Document</h4>
       <a href="#doc-create">Create &amp; save</a>
@@ -113,12 +116,9 @@
 
       <!-- INSTALL -->
       <h2 id="install">Installation</h2>
-      <p>Install the package, which loads a native shared library (<code>libpdf_ffi</code>) built from the Rust core.</p>
+      <p>Install the package from PyPI. The wheel bundles the native shared library (<code>libpdf_ffi</code>) built from the Rust core for your platform — nothing else to build or configure.</p>
       <div class="code has-label"><span class="lbl">shell</span><pre><code>pip install rustpdf</code></pre></div>
-      <p>If you are working from the source tree (or the prebuilt library isn't bundled for your platform), build the native library and point <code>RUSTPDF_LIB</code> at it:</p>
-      <div class="code has-label"><span class="lbl">shell</span><pre><code>cargo build -p pdf-ffi                       # → target/debug/libpdf_ffi.{dylib,so,dll}
-export RUSTPDF_LIB=/path/to/target/debug/libpdf_ffi.dylib</code></pre></div>
-      <p>The loader searches, in order: <code>$RUSTPDF_LIB</code>, the library bundled inside the installed wheel, then <code>target/debug</code> and <code>target/release</code> in the source tree. Verify with:</p>
+      <p>Verify it loaded:</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>import rustpdf
 print(rustpdf.version())          # native library version
 print(rustpdf.library_path())     # which .dylib/.so/.dll was loaded</code></pre></div>
@@ -162,6 +162,29 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
         <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
         <li>Drawing/text always targets the <b>most recently added page</b>.</li>
       </ul>
+
+      <!-- THREADING -->
+      <h2 id="threading">Threading &amp; concurrency</h2>
+      <p>The core is <b>Send but not Sync</b>: you can build many documents in parallel, but a single handle must never be touched by two threads at once.</p>
+      <ul>
+        <li><b>Generate in parallel.</b> Give each thread its own <code>Document</code>/<code>EditableDoc</code> — independent documents share no state and run truly concurrently (<code>ctypes</code> releases the GIL during each native call).</li>
+        <li><b>Move between threads.</b> A handle may be created on one thread and used on another.</li>
+        <li><b>Never share a live handle.</b> Two threads calling into the same <code>Document</code> at the same time is unsupported; protect it with your own lock if you really must.</li>
+        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's — <code>PdfError</code> is always raised on the calling thread.</li>
+        <li><b>License is process-global.</b> <code>activate_license</code> (or the env var) applies to every thread; activate once at startup.</li>
+      </ul>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>from concurrent.futures import ThreadPoolExecutor
+import rustpdf
+
+def render(i: int) -&gt; bytes:
+    with rustpdf.Document() as doc:          # one document per task
+        doc.add_page()
+        doc.set_fill_rgb(0.1, 0.1, 0.12)
+        doc.rect(72, 700, 200, 80).fill()
+        return doc.to_bytes()
+
+with ThreadPoolExecutor(max_workers=8) as pool:
+    pdfs = list(pool.map(render, range(100)))   # 100 PDFs built concurrently</code></pre></div>
 
       <!-- DOCUMENT CREATE -->
       <h2 id="doc-create">Authoring: create &amp; save</h2>
@@ -506,7 +529,7 @@ except PdfError as e:
         <tr><td><code>rustpdf.activate_license(token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in C#, Go, PHP, Ruby and Node: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Delphi / Free Pascal, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->
@@ -515,6 +538,7 @@ except PdfError as e:
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#licensing">Licensing</a>
+      <a href="#threading">Threading</a>
       <a href="#doc-create">Create &amp; save</a>
       <a href="#graphics">Vector graphics</a>
       <a href="#text">Fonts &amp; text</a>
@@ -535,5 +559,6 @@ except PdfError as e:
 
   <script src="/highlight.js"></script>
   <script src="/docs/docs.js"></script>
+  <script src="/consent.js" defer></script>
 </body>
 </html>

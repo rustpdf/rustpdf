@@ -103,10 +103,28 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
 - ✅ **Binding Node.js/TypeScript completo** (`bindings/node`, Koffi FFI puro):
   `RustPdf.{Document,EditableDoc}` + funcs + enums + tipos `index.d.ts`; `node
   bindings/node/test/run.js` (`make node-test`).
-  Refino: bindings de outras linguagens (**Java/JVM** é o próximo de maior valor;
-  Swift/Dart), empacotamento com a lib nativa embutida (NuGet/wheel/Packagist/gem/
-  npm com binários por plataforma), **WASM** para edge/serverless, e `/Span`
-  inline + assinatura visível ainda não expostos na borda C.
+- ✅ **Binding Java/JVM completo** (`bindings/java`, JNA FFI puro): `dev.rustpdf.
+  {Pdf,Document,EditableDoc}` (AutoCloseable) + enums; `make java-test`.
+- ✅ **Binding Delphi/Free Pascal completo** (`bindings/delphi/RustPdf.pas`, FFI
+  puro com carregamento dinâmico da cdylib): `TPdfDocument`/`TPdfEditable` +
+  record `Pdf` + enums; compila em Delphi 10.x+ e FPC 3.2+; `make delphi-test`
+  (`bindings/delphi/test/run.dpr`, pula sem `fpc`/`dcc64`).
+  Distribuição Delphi: `make delphi-dist` (`scripts/package.sh`) gera um zip
+  versionado (unit + `lib/<os-arch>/` por target Rust instalado + sample +
+  `boss.json`); o resolver acha a cdylib ao lado do executável. Falta: rodar o
+  empacotamento no CI com os targets de cross-compile (win-x64/x86, linux-x64,
+  macos universal) e assinar/notarizar a dylib do macOS.
+- ✅ **Binding Swift completo** (`bindings/swift`, SwiftPM, FFI puro com
+  `dlopen`/`dlsym`): `Document`/`EditableDoc` (reference types, handle liberado
+  em `deinit`) + enum `Pdf` + enums Swift; resolver acha a cdylib via
+  `RUSTPDF_LIB` → ao lado do executável → `target/{debug,release}`; `make
+  swift-test` roda o `SmokeTest` (`swift test`, pula sem `swift`), e `swift run
+  rustpdf-example` é um demo. Falta: empacotar como binary xcframework/artefato
+  SwiftPM com a cdylib embutida por plataforma e publicar.
+  Refino: bindings de outras linguagens (Dart/Flutter), empacotamento com a lib
+  nativa embutida (NuGet/wheel/Packagist/gem/npm/Maven com binários por
+  plataforma), **WASM** para edge/serverless, e `/Span` inline + assinatura
+  visível ainda não expostos na borda C.
 
 ## Licenciamento (corporativo)
 

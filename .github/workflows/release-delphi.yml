@@ -1,0 +1,152 @@
+name: release-delphi
+
+# Builds the native cdylib for every platform the Delphi/FPC binding ships
+# (Windows x64+x86, macOS universal, Linux x64+arm64), assembles the versioned
+# archive with bindings/delphi/scripts/package.sh, and attaches the zip + its
+# SHA-256 to a GitHub Release. The site's deploy then pulls that asset into
+# site/public/downloads/ (see site/scripts/sync-delphi-download.sh).
+#
+# Trigger by pushing a tag like `delphi-v0.1.0`, or run manually (build only —
+# the release job is gated on a tag).
+
+on:
+  push:
+    tags: ["delphi-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the release job creates/updates a GitHub Release
+
+# Production Ed25519 public key embedded into libpdf_ffi at compile time, so the
+# shipped library rejects the committed dev token. Same secret as release-python.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux: build in manylinux_2_28 so the .so runs on old glibc ----------
+  linux:
+    name: lib linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/delphi-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - name: stage
+        run: |
+          mkdir -p pkg/lib/linux-${{ matrix.arch }}
+          cp target/release/libpdf_ffi.so pkg/lib/linux-${{ matrix.arch }}/libpdf_ffi.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: delphi-lib-linux-${{ matrix.arch }}
+          path: pkg
+
+  # ---- macOS: one universal dylib (arm64 + x86_64) --------------------------
+  macos:
+    name: lib macos universal
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/delphi-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: build both arches
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: |
+          cargo build -p pdf-ffi --release --target aarch64-apple-darwin
+          cargo build -p pdf-ffi --release --target x86_64-apple-darwin
+      - name: lipo universal
+        run: |
+          mkdir -p pkg/lib/macos-universal
+          lipo -create -output pkg/lib/macos-universal/libpdf_ffi.dylib \
+            target/aarch64-apple-darwin/release/libpdf_ffi.dylib \
+            target/x86_64-apple-darwin/release/libpdf_ffi.dylib
+          lipo -info pkg/lib/macos-universal/libpdf_ffi.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: delphi-lib-macos-universal
+          path: pkg
+
+  # ---- Windows: x64 + x86 (32-bit for classic VCL apps) ---------------------
+  windows:
+    name: lib windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/delphi-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc,i686-pc-windows-msvc
+      - name: build x64 + x86
+        run: |
+          cargo build -p pdf-ffi --release --target x86_64-pc-windows-msvc
+          cargo build -p pdf-ffi --release --target i686-pc-windows-msvc
+      - name: stage
+        run: |
+          mkdir -p pkg/lib/windows-x64 pkg/lib/windows-x86
+          cp target/x86_64-pc-windows-msvc/release/pdf_ffi.dll pkg/lib/windows-x64/pdf_ffi.dll
+          cp target/i686-pc-windows-msvc/release/pdf_ffi.dll  pkg/lib/windows-x86/pdf_ffi.dll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: delphi-lib-windows
+          path: pkg
+
+  # ---- assemble the archive + publish the Release ---------------------------
+  assemble:
+    name: assemble + release
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: download all native libs
+        uses: actions/download-artifact@v4
+        with:
+          path: staged
+          pattern: delphi-lib-*
+          merge-multiple: true    # → staged/lib/<os-arch>/<file>
+      - name: install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+      - name: assemble archive (zip + sha256)
+        run: STAGED_LIB_ROOT="$PWD/staged" bash bindings/delphi/scripts/package.sh
+      - name: list contents
+        run: unzip -l bindings/delphi/dist/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustpdf-delphi-zip
+          path: |
+            bindings/delphi/dist/*.zip
+            bindings/delphi/dist/*.zip.sha256
+      - name: publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/delphi-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bindings/delphi/dist/*.zip
+            bindings/delphi/dist/*.zip.sha256

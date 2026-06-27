@@ -59,6 +59,15 @@
 .docs-toc a { display: block; color: #7e8ca3; padding: 3px 0; }
 .docs-toc a:hover, .docs-toc a.active { color: var(--text); text-decoration: none; }
 
+/* download card */
+.download-card { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin: 18px 0; }
+.download-card .dl-meta { display: flex; flex-direction: column; gap: 3px; margin-right: auto; }
+.download-card .dl-version { font-weight: 700; color: var(--brand-2); font-size: 1.05rem; }
+.download-card .dl-plat { color: var(--muted); font-size: 0.86rem; }
+.download-card .btn { white-space: nowrap; }
+.download-card .dl-sum { font-size: 0.78rem; color: var(--muted); }
+.download-card .dl-sum:hover { color: var(--text); }
+
 /* docs landing cards */
 .lang-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; margin-top: 30px; }
 .lang-card { display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px; color: var(--text); }

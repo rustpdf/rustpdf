@@ -25,6 +25,23 @@ cd "$ROOT"
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 die() { printf '\n\033[1;31mERRO: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# ---- 0. Atualizar o download público do Delphi (zip + sha em public/downloads) --
+# Puxa o artefato do GitHub Release (gerado pelo workflow release-delphi) para
+# site/public/downloads/, que o rsync abaixo leva para a imagem. Pule com
+# SKIP_DOWNLOADS=1 (ex.: antes de existir o primeiro release).
+if [ "${SKIP_DOWNLOADS:-0}" != "1" ]; then
+  say "sincronizando download do Delphi (GitHub Release -> site/public/downloads)"
+  if ! "$ROOT/site/scripts/sync-delphi-download.sh"; then
+    if ls "$ROOT"/site/public/downloads/rustpdf-delphi-*.zip >/dev/null 2>&1; then
+      printf '\033[1;33m   aviso: sync falhou; usando o zip já presente em public/downloads\033[0m\n'
+    else
+      die "não consegui obter o zip do Delphi e não há cópia local. Publique o release (tag delphi-v*) ou rode com SKIP_DOWNLOADS=1"
+    fi
+  fi
+else
+  say "SKIP_DOWNLOADS=1 — pulando sync do download do Delphi"
+fi
+
 # ---- 1. Sincronizar o build context ----------------------------------------
 if [ "${SKIP_RSYNC:-0}" != "1" ]; then
   say "rsync do código para $VPS:$REMOTE_DIR (segredos preservados)"

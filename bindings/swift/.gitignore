@@ -1,0 +1,5 @@
+.build/
+.swiftpm/
+.impeccable/
+Package.resolved
+*.pdf

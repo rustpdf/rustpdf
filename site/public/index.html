@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>rust-pdf · enterprise PDF for every language</title>
-  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
+  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
   <link rel="canonical" href="https://rustpdf.dev/" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,16 +12,16 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/" />
   <meta property="og:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node and Java. Runs on your servers, no per-document fees." />
+  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node, Java and Delphi. Runs on your servers, no per-document fees." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, seven languages, offline, licensed per feature." />
+  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, eight languages, offline, licensed per feature." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java" />
+  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi" />
+  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java and Delphi" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -29,10 +29,11 @@
       {
         "@type": "Organization",
         "@id": "https://rustpdf.dev/#org",
-        "name": "rust-pdf",
-        "url": "https://rustpdf.dev/",
+        "name": "CaseFy Inc.",
+        "url": "https://casefy.io",
         "logo": "https://rustpdf.dev/favicon.svg",
-        "description": "Enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node and Java."
+        "sameAs": ["https://casefy.io"],
+        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Java and Delphi."
       },
       {
         "@type": "WebSite",
@@ -49,7 +50,7 @@
         "operatingSystem": "Linux, macOS, Windows",
         "url": "https://rustpdf.dev/",
         "publisher": { "@id": "https://rustpdf.dev/#org" },
-        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node and Java. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
+        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Java and Delphi. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
         "featureList": [
           "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
@@ -88,7 +89,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -110,7 +111,7 @@
     <!-- HERO -->
     <section class="hero">
       <div class="wrap">
-        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Java</p>
+        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Java · Delphi</p>
         <h1>The enterprise PDF library<br />the rest of your stack <span class="grad">doesn't have</span>.</h1>
         <p class="lede">
           Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
@@ -126,6 +127,77 @@
           Validated by independent tools:
           <span>veraPDF</span><span>pdfsig</span><span>openssl&nbsp;cms</span><span>qpdf</span><span>mutool</span>
         </div>
+      </div>
+    </section>
+
+    <!-- PERFORMANCE -->
+    <section id="performance" class="band">
+      <div class="wrap">
+        <h2 class="center">Generate documents at the speed of your API</h2>
+        <p class="center muted narrow">
+          A memory-safe Rust core with <b>no garbage collector</b> and a lock-free,
+          <code>Send</code> object model. No GC pauses, no spikes, predictable
+          latency, and throughput that scales with every core you add.
+        </p>
+
+        <div class="perf-grid">
+          <div class="stat hero-stat reveal">
+            <span class="stat-num grad">10,000</span>
+            <span class="stat-label">full PDFs generated in</span>
+            <span class="stat-big">~3&nbsp;seconds</span>
+          </div>
+          <div class="stat hero-stat reveal">
+            <span class="stat-num grad">2.4&nbsp;ms</span>
+            <span class="stat-label">to build a real,</span>
+            <span class="stat-big">text-heavy page</span>
+          </div>
+          <div class="stat hero-stat reveal">
+            <span class="stat-num grad">~22&nbsp;MB</span>
+            <span class="stat-label">RAM generating</span>
+            <span class="stat-big">thousands in parallel</span>
+          </div>
+        </div>
+
+        <div class="perf-chart reveal">
+          <div class="perf-chart-head">
+            <h3>Near-linear scaling across cores</h3>
+            <span class="muted">documents / second &middot; one independent document per task</span>
+          </div>
+          <div class="bars">
+            <div class="bar-row">
+              <span class="bar-label">1 core</span>
+              <span class="bar-track"><span class="bar-fill" style="width:12%"></span></span>
+              <span class="bar-val">413</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">2 cores</span>
+              <span class="bar-track"><span class="bar-fill" style="width:22%"></span></span>
+              <span class="bar-val">758</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">4 cores</span>
+              <span class="bar-track"><span class="bar-fill" style="width:41%"></span></span>
+              <span class="bar-val">1,411</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">8 cores</span>
+              <span class="bar-track"><span class="bar-fill" style="width:76%"></span></span>
+              <span class="bar-val">2,601</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">14 cores</span>
+              <span class="bar-track"><span class="bar-fill is-top" style="width:100%"></span></span>
+              <span class="bar-val">3,415 <em>&middot; 8.3&times;</em></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="center muted stat-note">
+          <a href="#perf-note" id="perf-note">*</a> Each document is a one-page report
+          (header, title and 35 lines of shaped, subsetted Unicode text), benchmarked on
+          an Apple&nbsp;M3&nbsp;Max. Numbers are reproducible:
+          <code>cargo run --release -p pdf --example stress</code>.
+        </p>
       </div>
     </section>
 
@@ -196,7 +268,7 @@
     <!-- LANGUAGES -->
     <section id="languages" class="band">
       <div class="wrap">
-        <h2 class="center">One engine. Seven languages. Identical behavior.</h2>
+        <h2 class="center">One engine. Eight languages. Identical behavior.</h2>
         <p class="center muted narrow">
           The same engine powers every binding, so you get identical results in any
           language. Every feature behaves the same everywhere, with no per-language
@@ -211,6 +283,7 @@
           <div class="lang reveal"><span>Ruby</span><small>Fiddle</small></div>
           <div class="lang reveal"><span>Node / TS</span><small>Koffi</small></div>
           <div class="lang reveal"><span>Java</span><small>JNA</small></div>
+          <div class="lang reveal"><span>Delphi / FPC</span><small>pure FFI</small></div>
         </div>
       </div>
     </section>
@@ -229,6 +302,7 @@
             <button class="tab" data-tab="ruby">Ruby</button>
             <button class="tab" data-tab="node">Node</button>
             <button class="tab" data-tab="java">Java</button>
+            <button class="tab" data-tab="delphi">Delphi</button>
             <button class="tab" data-tab="activate">Activate</button>
           </div>
 <pre class="tab-pane active" data-pane="rust"><code>let mut doc = pdf::Document::new();
@@ -299,6 +373,15 @@ data = doc.to_bytes               # archival-grade PDF</code></pre>
     doc.addPage().showText(f, 20, 72, 760, "Title", 1);
     byte[] bytes = doc.toBytes();  // archival-grade PDF
 }</code></pre>
+<pre class="tab-pane" data-pane="delphi"><code>Doc := TPdfDocument.Create;
+try
+  Doc.Pdfa(palA2A).Tagged.SetInfo('Report', '', '', '', '');
+  F := Doc.AddFontFile('Roboto-Regular.ttf');
+  Doc.AddPage.ShowText(F, 20, 72, 760, 'Title', 1);   // heading level 1 = H1
+  Bytes := Doc.ToBytes;            // archival-grade PDF
+finally
+  Doc.Free;
+end;</code></pre>
 <pre class="tab-pane" data-pane="activate"><code># No rebuild. One environment variable activates every binding:
 export RUSTPDF_LICENSE="010f0000…"   # the token we email you
 
@@ -328,7 +411,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
             <div class="price-head">
               <h3>Pro</h3>
               <p class="price-amount"><span id="price-amount-pro">$1,490</span><span class="per" id="price-interval-pro">/year</span></p>
-              <p class="muted">Per application · renews yearly · offline · all seven languages</p>
+              <p class="muted">Per application · renews yearly · offline · all eight languages</p>
             </div>
             <ul class="price-features">
               <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a)</li>
@@ -374,10 +457,10 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
               <li>✓ Purchase orders &amp; invoicing</li>
               <li>✓ SLA &amp; onboarding support</li>
             </ul>
-            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@rustpdf.dev?subject=rust-pdf%20OEM%20licensing">Talk to sales</a>
+            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@casefy.io?subject=rust-pdf%20OEM%20licensing">Talk to sales</a>
           </div>
         </div>
-        <p class="center fineprint">Secure checkout by Stripe · cancel anytime · activates offline in seconds. Questions? <a href="mailto:sales@rustpdf.dev">Talk to sales</a>.</p>
+        <p class="center fineprint">Secure checkout by Stripe · cancel anytime · activates offline in seconds. Questions? <a href="mailto:sales@casefy.io">Talk to sales</a>.</p>
       </div>
     </section>
 
@@ -395,7 +478,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
           <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, merge/split, text extraction and optimization. Forever free, no license.</p>
         </details>
         <details><summary>What's the difference between Pro and Enterprise?</summary>
-          <p><b>Pro</b> unlocks PDF/A archival and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, and PDF/UA accessibility — plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan — <a href="mailto:sales@rustpdf.dev">talk to sales</a>.</p>
+          <p><b>Pro</b> unlocks PDF/A archival and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, and PDF/UA accessibility — plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan — <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
         </details>
         <details><summary>How is this validated?</summary>
           <p>Output is checked by independent tools: veraPDF (PDF/A 1b–3a + PDF/UA-1), pdfsig and <code>openssl cms</code> (signatures), and qpdf/mutool (structure). It isn't "conformance marketing".</p>
@@ -410,18 +493,20 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms.html">Terms</a>
         <a href="/legal/privacy.html">Privacy</a>
         <a href="/legal/refund.html">Refunds</a>
-        <a href="mailto:sales@rustpdf.dev">Contact</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>
   </footer>
 
   <script src="/highlight.js"></script>
   <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
 </body>
 </html>

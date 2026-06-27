@@ -746,6 +746,7 @@ dependencies = [
  "graphics",
  "image",
  "images",
+ "libc",
  "license",
  "md-5",
  "parser",

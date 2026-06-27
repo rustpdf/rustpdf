@@ -78,7 +78,7 @@ document.querySelectorAll(".buy-btn").forEach((btn) => {
       btn.disabled = false;
       btn.innerHTML = original;
       if (err) {
-        err.textContent = "Could not start checkout. Please try again or email sales@rustpdf.dev.";
+        err.textContent = "Could not start checkout. Please try again or email sales@casefy.io.";
         err.hidden = false;
       }
     }
