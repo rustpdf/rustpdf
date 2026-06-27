@@ -120,8 +120,8 @@
           per-document SaaS fees, no data leaving your network, and no AGPL strings.
         </p>
         <div class="cta-row">
-          <a href="#pricing" class="btn btn-lg">Get the license</a>
-          <a href="#code" class="btn btn-ghost btn-lg">See the code</a>
+          <a href="/docs/" class="btn btn-lg">Get started &middot; install</a>
+          <a href="#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
           Validated by independent tools:
@@ -275,16 +275,16 @@
           quirks to debug in production.
         </p>
         <div class="lang-grid">
-          <div class="lang reveal"><span>Rust</span><small>native core</small></div>
-          <div class="lang reveal"><span>Python</span><small>ctypes</small></div>
-          <div class="lang reveal"><span>C# / .NET</span><small>P/Invoke</small></div>
-          <div class="lang reveal"><span>Go</span><small>cgo</small></div>
-          <div class="lang reveal"><span>PHP</span><small>ext-ffi</small></div>
-          <div class="lang reveal"><span>Ruby</span><small>Fiddle</small></div>
-          <div class="lang reveal"><span>Node / TS</span><small>Koffi</small></div>
-          <div class="lang reveal"><span>Java</span><small>JNA</small></div>
-          <div class="lang reveal"><span>Delphi / FPC</span><small>pure FFI</small></div>
-          <div class="lang reveal"><span>Swift</span><small>SwiftPM</small></div>
+          <a class="lang reveal" href="/docs/"><span>Rust</span><small>native core</small></a>
+          <a class="lang reveal" href="/python"><span>Python</span><small>ctypes</small></a>
+          <a class="lang reveal" href="/dotnet"><span>C# / .NET</span><small>P/Invoke</small></a>
+          <a class="lang reveal" href="/golang"><span>Go</span><small>cgo</small></a>
+          <a class="lang reveal" href="/php"><span>PHP</span><small>ext-ffi</small></a>
+          <a class="lang reveal" href="/ruby"><span>Ruby</span><small>Fiddle</small></a>
+          <a class="lang reveal" href="/nodejs"><span>Node / TS</span><small>Koffi</small></a>
+          <a class="lang reveal" href="/java"><span>Java</span><small>JNA</small></a>
+          <a class="lang reveal" href="/delphi"><span>Delphi / FPC</span><small>pure FFI</small></a>
+          <a class="lang reveal" href="/swift"><span>Swift</span><small>SwiftPM</small></a>
         </div>
       </div>
     </section>
@@ -307,7 +307,9 @@
             <button class="tab" data-tab="swift">Swift</button>
             <button class="tab" data-tab="activate">Activate</button>
           </div>
-<pre class="tab-pane active" data-pane="rust"><code>let mut doc = pdf::Document::new();
+<pre class="tab-pane active" data-pane="rust"><code>// Cargo.toml: rustpdf = "0.1"
+
+let mut doc = pdf::Document::new();
 doc.pdfa_a(); // PDF/A-2a (archival + accessible)
 let font = doc.add_font_file("Roboto-Regular.ttf")?;
 doc.add_page()
@@ -318,7 +320,8 @@ doc.add_page()
 let signer = pdf::Signer::from_pkcs8_der(&key, &cert)?;
 let signed = pdf::sign(&doc.to_bytes()?, &signer, &Default::default())?;
 // pdfsig → "Signature is Valid. Total document signed."</code></pre>
-<pre class="tab-pane" data-pane="python"><code>import rustpdf
+<pre class="tab-pane" data-pane="python"><code># pip install rustpdf
+import rustpdf
 
 with rustpdf.Document() as doc:
     doc.pdfa(rustpdf.PdfaLevel.A2A).set_info(title="Report")
@@ -330,7 +333,8 @@ with rustpdf.Document() as doc:
 with rustpdf.EditableDoc.load(data) as ed:
     ed.encrypt(owner="owner", method=rustpdf.Encryption.AES256)
     ed.save("secured.pdf")</code></pre>
-<pre class="tab-pane" data-pane="node"><code>const { Document, Encryption } = require("rustpdf");
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document, Encryption } = require("rustpdf");
 
 const doc = new Document();
 doc.pdfa();                       // PDF/A-2b
@@ -338,7 +342,8 @@ const f = doc.addFontFile("Roboto-Regular.ttf");
 doc.addPage();
 doc.showText(f, 20, 72, 760, "Invoice #1024");
 const bytes = doc.toBytes();      // archival-grade PDF</code></pre>
-<pre class="tab-pane" data-pane="csharp"><code>using RustPdf;
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
 
 using var doc = new Document();
 doc.Pdfa(PdfaLevel.A2a).Tagged().SetInfo(title: "Report");
@@ -346,7 +351,8 @@ int f = doc.AddFontFile("Roboto-Regular.ttf");
 doc.AddPage();
 doc.ShowText(f, 20, 72, 760, "Title", headingLevel: 1);
 byte[] bytes = doc.ToBytes();      // archival-grade PDF</code></pre>
-<pre class="tab-pane" data-pane="go"><code>doc, _ := rustpdf.New()
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+doc, _ := rustpdf.New()
 defer doc.Close()
 doc.PdfaLevel(rustpdf.A2a)
 doc.Tagged()
@@ -355,7 +361,8 @@ f, _ := doc.AddFontFile("Roboto-Regular.ttf")
 doc.AddPage()
 doc.ShowText(f, 20, 72, 760, "Title", 1) // heading level 1 = H1
 data, _ := doc.ToBytes()</code></pre>
-<pre class="tab-pane" data-pane="php"><code>use RustPdf\Document;
+<pre class="tab-pane" data-pane="php"><code>// composer require rust-pdf/rustpdf
+use RustPdf\Document;
 use RustPdf\PdfaLevel;
 
 $doc = new Document();
@@ -363,19 +370,22 @@ $doc->pdfa(PdfaLevel::A2a)->setInfo(title: 'Report');
 $f = $doc->addFontFile('Roboto-Regular.ttf');
 $doc->addPage()->showText($f, 20, 72, 760, 'Title', 1);
 $bytes = $doc->toBytes();          // archival-grade PDF</code></pre>
-<pre class="tab-pane" data-pane="ruby"><code>doc = RustPdf::Document.new
+<pre class="tab-pane" data-pane="ruby"><code># gem install rustpdf
+doc = RustPdf::Document.new
 doc.pdfa(RustPdf::Pdfa::A2A).info(title: "Report")
 f = doc.add_font_file("Roboto-Regular.ttf")
 doc.add_page
    .show_text(f, 20, 72, 760, "Title", heading_level: 1)
 data = doc.to_bytes               # archival-grade PDF</code></pre>
-<pre class="tab-pane" data-pane="java"><code>try (Document doc = new Document()) {
+<pre class="tab-pane" data-pane="java"><code>// Maven: dev.rustpdf:rustpdf:0.1.0
+try (Document doc = new Document()) {
     doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Report");
     int f = doc.addFontFile("Roboto-Regular.ttf");
     doc.addPage().showText(f, 20, 72, 760, "Title", 1);
     byte[] bytes = doc.toBytes();  // archival-grade PDF
 }</code></pre>
-<pre class="tab-pane" data-pane="delphi"><code>Doc := TPdfDocument.Create;
+<pre class="tab-pane" data-pane="delphi"><code>// add RustPdf.pas to your unit search path (rustpdf.dev/docs/delphi)
+Doc := TPdfDocument.Create;
 try
   Doc.Pdfa(palA2A).Tagged.SetInfo('Report', '', '', '', '');
   F := Doc.AddFontFile('Roboto-Regular.ttf');
@@ -384,7 +394,8 @@ try
 finally
   Doc.Free;
 end;</code></pre>
-<pre class="tab-pane" data-pane="swift"><code>import RustPdf
+<pre class="tab-pane" data-pane="swift"><code>// SwiftPM: .package(url: "…/rustpdf-swift", from: "0.1.0")
+import RustPdf
 
 let doc = try Document()
 try doc.pdfa(.a2a).tagged().setInfo(DocumentInfo(title: "Report"))

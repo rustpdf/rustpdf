@@ -47,6 +47,15 @@ static xcframework for macOS and iOS).
 ## Key pages
 
 - Home: https://rustpdf.dev/
+- Python landing page: https://rustpdf.dev/python
+- C# / .NET landing page: https://rustpdf.dev/dotnet
+- Node.js / TypeScript landing page: https://rustpdf.dev/nodejs
+- Go landing page: https://rustpdf.dev/golang
+- PHP landing page: https://rustpdf.dev/php
+- Ruby landing page: https://rustpdf.dev/ruby
+- Java landing page: https://rustpdf.dev/java
+- Delphi / Free Pascal landing page: https://rustpdf.dev/delphi
+- Swift landing page: https://rustpdf.dev/swift
 - Documentation (per language): https://rustpdf.dev/docs/
 - Python reference: https://rustpdf.dev/docs/python.html
 - Delphi / Free Pascal reference: https://rustpdf.dev/docs/delphi.html
