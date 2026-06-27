@@ -1,3 +1,5 @@
-# Release artifacts are published by CI (make delphi-dist-publish), not committed.
+# Release artifacts are published by CI (make {delphi,swift}-dist-publish or the
+# deploy sync), not committed.
 *.zip
 *.zip.sha256
+*.checksum

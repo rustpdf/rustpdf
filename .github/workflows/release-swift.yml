@@ -1,0 +1,73 @@
+name: release-swift
+
+# Builds the static libpdf_ffi.a for every Apple target the Swift binding ships
+# (macOS arm64+x86_64, iOS device arm64, iOS simulator arm64+x86_64), assembles
+# RustPdfFFI.xcframework + the consumable package with
+# bindings/swift/scripts/package.sh, and attaches the zips + checksums to a
+# GitHub Release. The site's deploy then pulls the asset into
+# site/public/downloads/ (see site/scripts/sync-swift-download.sh).
+#
+# Trigger by pushing a tag like `swift-v0.1.0`, or run manually (build only —
+# the release job is gated on a tag). Requires an Xcode toolchain → macOS runner.
+
+on:
+  push:
+    tags: ["swift-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the release job creates/updates a GitHub Release
+
+# Production Ed25519 public key embedded into libpdf_ffi at compile time, so the
+# shipped library rejects the committed dev token. Same secret as release-python.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  xcframework:
+    name: build xcframework + release
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/swift-v')
+        run: test -n "$RUSTPDF_LICENSE_PUBKEY" || { echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set"; exit 1; }
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: build xcframework + stage package
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+          IPHONEOS_DEPLOYMENT_TARGET: "13.0"
+        run: make swift-dist
+
+      - name: list artifacts
+        run: |
+          ls -lh bindings/swift/dist/*.zip bindings/swift/dist/*.sha256 bindings/swift/dist/*.checksum
+          echo "--- xcframework slices ---"
+          /usr/libexec/PlistBuddy -c "Print :AvailableLibraries" \
+            bindings/swift/dist/RustPdf/RustPdfFFI.xcframework/Info.plist | grep -E "LibraryIdentifier|SupportedPlatform"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustpdf-swift
+          path: |
+            bindings/swift/dist/*.zip
+            bindings/swift/dist/*.sha256
+            bindings/swift/dist/*.checksum
+
+      - name: publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/swift-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bindings/swift/dist/*.zip
+            bindings/swift/dist/*.sha256
+            bindings/swift/dist/*.checksum
