@@ -33,8 +33,13 @@ final class Installer
      */
     public const VERSION = '0.1.0';
 
-    /** GitHub repo that hosts the release assets. */
-    private const REPO = 'rustpdf/rustpdf';
+    /**
+     * Public GitHub repo that hosts the per-platform release assets. This is the
+     * Packagist mirror, NOT the (private) monorepo — assets on a private repo's
+     * release 404 for unauthenticated clients. The binary release shares the
+     * source tag, `v<VERSION>`.
+     */
+    private const REPO = 'rustpdf/rustpdf-php';
 
     /** Directory the platform cdylib is installed into (package_root/lib/<os>-<arch>). */
     public static function libDir(): string
@@ -113,7 +118,7 @@ final class Installer
 
         $asset = self::assetName($key);
         $url = sprintf(
-            'https://github.com/%s/releases/download/php-v%s/%s',
+            'https://github.com/%s/releases/download/v%s/%s',
             self::REPO,
             self::VERSION,
             $asset
@@ -180,7 +185,9 @@ final class Installer
             ]);
             $body = curl_exec($ch);
             $err = curl_error($ch);
-            curl_close($ch);
+            if (PHP_VERSION_ID < 80000) {
+                curl_close($ch); // no-op since 8.0, deprecated 8.5+
+            }
             if ($body === false || $body === '') {
                 if ($err !== '') {
                     throw new PdfException("download error: $err");
