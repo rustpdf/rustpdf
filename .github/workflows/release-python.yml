@@ -1,6 +1,6 @@
 name: release-python
 
-# Builds platform wheels (macOS arm64/x86_64, manylinux x86_64/aarch64, Windows)
+# Builds platform wheels (macOS arm64, manylinux_2_28 x86_64/aarch64, Windows)
 # for the rustpdf ctypes binding and publishes them to PyPI via Trusted Publishing.
 #
 # The native cdylib is compiled per-platform here and dropped into
@@ -100,10 +100,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: x86_64
-            runner: macos-13
-            target: x86_64-apple-darwin
-            deployment: "10.12"
+          # macOS arm64 only: the macos-13 Intel runners are being retired and
+          # are unavailable/queued indefinitely on this private repo. Intel Macs
+          # fall back to "no matching wheel"; add x86_64 back if demand appears.
           - arch: arm64
             runner: macos-14
             target: aarch64-apple-darwin

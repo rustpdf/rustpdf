@@ -20,7 +20,7 @@ Two layers, per the project's porting strategy:
 pip install rustpdf
 ```
 
-Platform wheels (macOS arm64/x86_64, manylinux x86_64/aarch64, Windows x64)
+Platform wheels (macOS arm64, manylinux_2_28 x86_64/aarch64, Windows x64)
 bundle the native `libpdf_ffi` library — no Rust toolchain needed to install.
 Basic PDF generation is free; corporate features (PDF/A, accessibility,
 encryption, signatures) unlock with a license token via the `RUSTPDF_LICENSE`
