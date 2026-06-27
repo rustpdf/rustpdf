@@ -3,13 +3,25 @@
     "description": "Idiomatic PHP binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) via FFI.",
     "type": "library",
     "license": "proprietary",
+    "homepage": "https://rustpdf.dev",
     "require": {
         "php": ">=8.1",
         "ext-ffi": "*"
     },
+    "bin": [
+        "bin/rustpdf-install-lib"
+    ],
     "autoload": {
         "psr-4": {
             "RustPdf\\": "src/"
+        }
+    },
+    "scripts": {
+        "install-lib": "@php bin/rustpdf-install-lib"
+    },
+    "extra": {
+        "rustpdf": {
+            "note": "The native libpdf_ffi is fetched per-platform from the GitHub Release on first use, or eagerly via `composer run install-lib` / `php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib`. Set RUSTPDF_LIB to use a locally built library, or RUSTPDF_NO_DOWNLOAD=1 to forbid the fetch."
         }
     }
 }

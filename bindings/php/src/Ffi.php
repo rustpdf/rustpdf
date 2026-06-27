@@ -22,11 +22,22 @@ final class Ffi
 
     private static function libPath(): string
     {
+        // 1. Explicit override — always wins (advanced users, custom deploys).
         $env = getenv('RUSTPDF_LIB');
         if ($env !== false && $env !== '' && is_file($env)) {
             return $env;
         }
+
         $file = self::libFileName();
+
+        // 2. The cdylib bundled into the package by the installer (Composer
+        //    consumers): <package>/lib/<os>-<arch>/<file>. __DIR__ is src/.
+        $packaged = Installer::libDir() . '/' . $file;
+        if (is_file($packaged)) {
+            return $packaged;
+        }
+
+        // 3. Development tree: cargo's target/{debug,release}, walking up.
         $dir = __DIR__;
         for ($i = 0; $i < 10; $i++) {
             foreach (['debug', 'release'] as $profile) {
@@ -41,12 +52,14 @@ final class Ffi
             }
             $dir = $parent;
         }
-        throw new PdfException(
-            "could not locate $file; build it with `cargo build -p pdf-ffi` or set RUSTPDF_LIB"
-        );
+
+        // 4. Last resort: download the matching prebuilt lib for this platform
+        //    (no-op if disabled via RUSTPDF_NO_DOWNLOAD). Throws a descriptive
+        //    PdfException listing every location tried if it can't be obtained.
+        return Installer::ensure();
     }
 
-    private static function libFileName(): string
+    public static function libFileName(): string
     {
         return match (PHP_OS_FAMILY) {
             'Windows' => 'pdf_ffi.dll',

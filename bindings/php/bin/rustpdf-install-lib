@@ -1,0 +1,46 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Downloads the prebuilt libpdf_ffi for this platform into the package's
+ * lib/<os>-<arch>/ directory.
+ *
+ * Run it once at deploy/CI time so the native library is in place before any
+ * read-only production filesystem (or to avoid a lazy fetch on first request):
+ *
+ *   php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib
+ *
+ * Or wire it into your *root* composer.json (dependency scripts never fire):
+ *
+ *   "scripts": {
+ *     "post-install-cmd": "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib",
+ *     "post-update-cmd":  "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib"
+ *   }
+ */
+
+// Find the package autoloader whether run from the dev tree or a vendor install.
+$candidates = [
+    __DIR__ . '/../vendor/autoload.php',   // installed as a dependency
+    __DIR__ . '/../../../autoload.php',    // vendor/rust-pdf/rustpdf/bin -> vendor/autoload.php
+    __DIR__ . '/../autoload.php',          // dev tree (bundled PSR-4 autoloader)
+];
+foreach ($candidates as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+use RustPdf\Installer;
+use RustPdf\PdfException;
+
+try {
+    $path = Installer::ensure(verbose: true);
+    fwrite(STDOUT, "rustpdf: native library ready at $path\n");
+    exit(0);
+} catch (PdfException $e) {
+    fwrite(STDERR, 'rustpdf: ' . $e->getMessage() . "\n");
+    exit(1);
+}
