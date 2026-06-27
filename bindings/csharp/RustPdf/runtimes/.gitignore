@@ -1,0 +1,5 @@
+# Native libpdf_ffi is staged here per-RID by CI (release-csharp.yml) before
+# `dotnet pack`. Keep the prebuilt binaries off the dev branch — they exist only
+# inside the published .nupkg.
+*
+!.gitignore

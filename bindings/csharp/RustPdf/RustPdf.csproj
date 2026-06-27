@@ -6,10 +6,45 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- NuGet package metadata -->
     <PackageId>RustPdf</PackageId>
     <Version>0.1.0</Version>
     <Authors>rust-pdf</Authors>
-    <Description>Idiomatic .NET binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) over its C ABI.</Description>
+    <Company>rust-pdf</Company>
+    <Description>Idiomatic .NET binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) over its C ABI. Bundles the native libpdf_ffi for osx-arm64, linux-x64, linux-arm64 and win-x64 — no native build required.</Description>
+    <Copyright>Copyright (c) rust-pdf</Copyright>
+    <PackageProjectUrl>https://github.com/rustpdf/rustpdf</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rustpdf/rustpdf</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>pdf;pdfa;signing;pades;acroform;accessibility;encryption</PackageTags>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- A managed assembly carrying native assets: keep it RID-agnostic so the
+         single package restores on any of the bundled runtimes. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- We ship the .nupkg from CI; suppress the no-runtime-asset warning that
+         fires during a plain dev `dotnet pack` before libs are staged. -->
+    <NoWarn>$(NoWarn);NU5100;CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Packed into the NuGet package root. -->
+    <None Include="LICENSE.txt" Pack="true" PackagePath="" />
+    <None Include="../README.md" Pack="true" PackagePath="" />
+
+    <!-- Native libraries, staged by CI into runtimes/<rid>/native/ before pack.
+         .NET's default DllImport resolver loads the matching RID automatically;
+         the Native.cs resolver only kicks in for the local dev (target/) tree.
+         The glob is empty during a dev build, which is fine. -->
+    <None Include="runtimes/**/*"
+          Pack="true"
+          PackagePath="runtimes/"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>
