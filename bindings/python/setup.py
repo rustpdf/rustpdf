@@ -25,6 +25,7 @@ from pathlib import Path
 
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
+from setuptools.dist import Distribution
 
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
@@ -84,17 +85,26 @@ class build_py(_build_py):
         super().run()
 
 
+class BinaryDistribution(Distribution):
+    """Forces a platform wheel with the package at the wheel root (platlib).
+
+    Without this, setuptools sees no ``ext_modules``, treats the package as pure
+    Python, and routes the bundled ``.so`` into ``*.data/purelib/`` — a layout
+    auditwheel can't find/repair. Declaring ext modules puts the binary at the
+    wheel root where auditwheel/delocate/delvewheel expect it.
+    """
+
+    def has_ext_modules(self) -> bool:  # noqa: D401
+        return True
+
+
 if _bdist_wheel is not None:
 
     class bdist_wheel(_bdist_wheel):
-        def finalize_options(self) -> None:
-            super().finalize_options()
-            # Contains a native binary -> not a pure-Python wheel; gets a platform tag.
-            self.root_is_pure = False
-
         def get_tag(self):
-            # ctypes binding: works on any CPython 3, so override the interpreter/ABI
-            # tags to the universal "py3-none", keeping only the platform tag.
+            # ctypes binding: loads via dlopen, never links libpython, so it works
+            # on any CPython 3. Collapse the interpreter/ABI tags to "py3-none",
+            # keeping only the platform tag set by BinaryDistribution.
             _python, _abi, plat = super().get_tag()
             return "py3", "none", plat
 
@@ -103,4 +113,4 @@ else:  # pragma: no cover
     cmdclass = {"build_py": build_py}
 
 
-setup(cmdclass=cmdclass)
+setup(cmdclass=cmdclass, distclass=BinaryDistribution)
