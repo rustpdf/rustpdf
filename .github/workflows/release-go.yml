@@ -88,10 +88,13 @@ jobs:
         with:
           go-version: "1.21"
       # Default build tags => statically link the slice we just built. Proves the
-      # link_dist.go LDFLAGS (system libs) are correct on this platform.
+      # link_dist.go LDFLAGS (system libs) are correct on this platform. Uses the
+      # free-surface smoke (not `go test`), since release binaries are built with
+      # the production license pubkey, which rejects the dev token the full suite
+      # activates.
       - name: smoke (static link)
         working-directory: bindings/go
-        run: CGO_ENABLED=1 go test ./...
+        run: CGO_ENABLED=1 go run ./smoke
       - uses: actions/upload-artifact@v4
         with:
           name: golib-${{ matrix.key }}
@@ -130,9 +133,10 @@ jobs:
         with:
           go-version: "1.21"
       # Host is arm64 → default tags statically link the darwin_arm64 slice.
+      # Free-surface smoke only (production-key binary rejects the dev token).
       - name: smoke (static link, arm64)
         working-directory: bindings/go
-        run: CGO_ENABLED=1 go test ./...
+        run: CGO_ENABLED=1 go run ./smoke
       - uses: actions/upload-artifact@v4
         with:
           name: golib-darwin_arm64
