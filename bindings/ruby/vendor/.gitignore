@@ -1,0 +1,6 @@
+# Prebuilt cdylibs are staged here per platform by CI (release-ruby.yml) and
+# force-added into the published gem only — never committed to the dev branch.
+*.so
+*.dylib
+*.dll
+!.gitignore

@@ -104,6 +104,16 @@ module RustPdf
       return env if env && !env.empty? && File.file?(env)
 
       file = lib_file_name
+
+      # Packaged gem: the platform-specific cdylib is vendored under
+      # vendor/<gem-platform>/ (staged by CI, see release-ruby.yml). Matches the
+      # per-platform wheel/npm-package layout used by the Python/Node bindings.
+      # A platform gem ships exactly one vendor/<plat>/ dir, so the first match
+      # for this OS's lib file name is the right one — no platform-string parsing.
+      vendored = Dir[File.join(gem_root, "vendor", "*", file)].find { |p| File.file?(p) }
+      return vendored if vendored
+
+      # Monorepo dev: walk up from lib/ to the Cargo build tree.
       dir = __dir__
       10.times do
         %w[debug release].each do |profile|
@@ -115,6 +125,11 @@ module RustPdf
         dir = parent
       end
       raise Error, "could not locate #{file}; build it with `cargo build -p pdf-ffi` or set RUSTPDF_LIB"
+    end
+
+    # Repo/gem root = two levels up from lib/rustpdf/.
+    def gem_root
+      File.expand_path("../..", __dir__)
     end
 
     def lib_file_name
