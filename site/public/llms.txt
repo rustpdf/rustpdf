@@ -52,6 +52,7 @@ static xcframework for macOS and iOS).
 - Delphi / Free Pascal reference: https://rustpdf.dev/docs/delphi.html
 - Swift reference: https://rustpdf.dev/docs/swift.html
 - Node.js / TypeScript reference: https://rustpdf.dev/docs/node.html
+- Ruby reference: https://rustpdf.dev/docs/ruby.html
 - Pricing: https://rustpdf.dev/#pricing
 - Terms: https://rustpdf.dev/legal/terms.html
 - Privacy: https://rustpdf.dev/legal/privacy.html
