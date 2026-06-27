@@ -43,6 +43,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://rustpdf.dev/docs/php.html</loc>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://rustpdf.dev/legal/terms.html</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
