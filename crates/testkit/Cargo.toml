@@ -1,0 +1,13 @@
+[package]
+name = "testkit"
+description = "Corpus, external validators, visual regression"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true

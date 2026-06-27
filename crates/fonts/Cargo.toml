@@ -1,0 +1,16 @@
+[package]
+name = "fonts"
+description = "Font parsing, embedding, subsetting, shaping"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ttf-parser = "0.25"
+rustybuzz = "0.20"
+subsetter = "0.2"
+unicode-bidi = "0.3"
+
+[lints]
+workspace = true

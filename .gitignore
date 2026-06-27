@@ -1,0 +1,22 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+*.pdf
+!corpus/**/*.pdf
+!crates/**/tests/fixtures/*.pdf
+*.png
+!docs/**/*.png
+__pycache__/
+*.pyc
+python_out.pdf
+bindings/java/target/
+
+# Python packaging artifacts
+bindings/python/dist/
+bindings/python/dist_raw/
+bindings/python/build/
+bindings/python/*.egg-info/
+# Native lib staged into the package by setup.py at build time (bundled into wheels, never committed)
+bindings/python/rustpdf/*.so
+bindings/python/rustpdf/*.dylib
+bindings/python/rustpdf/*.dll

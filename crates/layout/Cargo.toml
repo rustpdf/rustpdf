@@ -1,0 +1,12 @@
+[package]
+name = "layout"
+description = "High-level flow layout engine (L2)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

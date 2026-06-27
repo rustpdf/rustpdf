@@ -1,0 +1,187 @@
+name: release-python
+
+# Builds platform wheels (macOS arm64/x86_64, manylinux x86_64/aarch64, Windows)
+# for the rustpdf ctypes binding and publishes them to PyPI via Trusted Publishing.
+#
+# The native cdylib is compiled per-platform here and dropped into
+# bindings/python/rustpdf/ before `python -m build`; setup.py then tags the wheel
+# py3-none-<platform>. Linux builds run inside a manylinux2014 container so the
+# .so stays compatible with old glibc, then auditwheel/delocate/delvewheel repair
+# the platform tag.
+#
+# Trigger by pushing a tag like `py-v0.1.0`, or run manually (test build only —
+# the publish job is gated on a tag).
+
+on:
+  push:
+    tags: ["py-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
+# MUST be the PRODUCTION Ed25519 public key so published wheels reject the dev
+# token. Configure it as a repo secret. Kept defined (even if empty) on every
+# job so CI artifacts never silently fall back to the committed dev key.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux: build inside manylinux2014 for broad glibc compatibility -------
+  linux:
+    name: wheel linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux2014_x86_64
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux2014_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/py-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish wheels built with the dev key"
+            exit 1
+          }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - name: stage native lib
+        run: cp target/release/libpdf_ffi.so bindings/python/rustpdf/
+      - name: build wheel
+        run: |
+          /opt/python/cp311-cp311/bin/python -m pip install --upgrade build auditwheel
+          /opt/python/cp311-cp311/bin/python -m build --wheel --outdir dist_raw bindings/python
+      - name: repair (manylinux tag)
+        run: |
+          for whl in dist_raw/*.whl; do
+            /opt/python/cp311-cp311/bin/python -m auditwheel repair "$whl" -w dist
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.arch }}
+          path: dist/*.whl
+
+  # ---- macOS: native build on each arch, repair with delocate -----------------
+  macos:
+    name: wheel macos ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: macos-13
+            target: x86_64-apple-darwin
+          - arch: arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/py-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish wheels built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release --target ${{ matrix.target }}
+      - name: stage native lib
+        run: cp target/${{ matrix.target }}/release/libpdf_ffi.dylib bindings/python/rustpdf/
+      - name: build + repair wheel
+        run: |
+          python -m pip install --upgrade build delocate
+          python -m build --wheel --outdir dist_raw bindings/python
+          for whl in dist_raw/*.whl; do delocate-wheel -w dist "$whl"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.arch }}
+          path: dist/*.whl
+
+  # ---- Windows: native build, repair with delvewheel --------------------------
+  windows:
+    name: wheel windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/py-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish wheels built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - name: stage native lib
+        run: cp target/release/pdf_ffi.dll bindings/python/rustpdf/
+      - name: build + repair wheel
+        run: |
+          python -m pip install --upgrade build delvewheel
+          python -m build --wheel --outdir dist_raw bindings/python
+          for whl in dist_raw/*.whl; do python -m delvewheel repair -w dist "$whl"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-x64
+          path: dist/*.whl
+
+  # ---- source distribution ----------------------------------------------------
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: build sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build --sdist --outdir dist bindings/python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # ---- publish: only on a py-v* tag, via PyPI Trusted Publishing (OIDC) --------
+  publish:
+    name: publish to PyPI
+    needs: [linux, macos, windows, sdist]
+    if: startsWith(github.ref, 'refs/tags/py-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # required for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

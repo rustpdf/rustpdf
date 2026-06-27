@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rustpdf"
+version = "0.1.0"
+description = "Generate, manipulate, sign and validate PDFs — Python binding for the rust-pdf core"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "rust-pdf", email = "edivanteixeira@gmail.com" }]
+keywords = ["pdf", "pdf/a", "pdf/ua", "accessibility", "signature", "acroform"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "License :: Other/Proprietary License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Office/Business",
+]
+
+[project.urls]
+Homepage = "https://rustpdf.dev"
+Documentation = "https://rustpdf.dev/docs/python"
+Repository = "https://github.com/rustpdf/rustpdf"
+Issues = "https://github.com/rustpdf/rustpdf/issues"
+
+# Platform wheel: the native cdylib (libpdf_ffi) is compiled per-platform and
+# bundled into the package by setup.py; the wheel is tagged py3-none-<platform>
+# (ABI-agnostic ctypes binding). See setup.py for the build hook.
+[tool.setuptools]
+packages = ["rustpdf"]
+
+[tool.setuptools.package-data]
+rustpdf = ["*.so", "*.dylib", "*.dll", "py.typed"]

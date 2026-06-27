@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <radialGradient id="glow" cx="80%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#15233b"/>
+      <stop offset="60%" stop-color="#0a0e16"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="#0a0e16" opacity="0.15"/>
+
+  <!-- mark -->
+  <g transform="translate(96,96)">
+    <rect width="76" height="76" rx="18" fill="#0a0e16" stroke="#1e293b" stroke-width="2"/>
+    <path d="M22 16 h24 l12 12 v30 a2 2 0 0 1-2 2 H22 a2 2 0 0 1-2-2 V18 a2 2 0 0 1 2-2 Z" fill="#f97316"/>
+    <path d="M46 16 l12 12 h-11 a1 1 0 0 1-1-1 Z" fill="#c2570c"/>
+    <circle cx="38" cy="46" r="8.5" fill="#0a0e16"/>
+    <path d="M33.8 46.3 l3 3 l5.4-6" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="190" y="138" fill="#e6edf6" font-size="44" font-weight="700">rust</text>
+  <circle cx="284" cy="124" r="5" fill="#f97316"/>
+  <text x="296" y="138" fill="#e6edf6" font-size="44" font-weight="700">pdf</text>
+
+  <!-- headline -->
+  <text x="96" y="262" fill="#e6edf6" font-size="66" font-weight="700">The enterprise PDF library</text>
+  <text x="96" y="338" fill="#94a3b8" font-size="66" font-weight="700">every language is</text>
+  <text x="690" y="338" fill="#fb923c" font-size="66" font-weight="700">missing.</text>
+
+  <!-- feature chips -->
+  <g font-size="26" font-weight="600">
+    <g transform="translate(96,452)">
+      <rect width="200" height="52" rx="26" fill="#111827" stroke="#1e293b"/>
+      <text x="100" y="34" fill="#cbd5e1" text-anchor="middle">PDF/A</text>
+    </g>
+    <g transform="translate(312,452)">
+      <rect width="270" height="52" rx="26" fill="#111827" stroke="#1e293b"/>
+      <text x="135" y="34" fill="#cbd5e1" text-anchor="middle">Signatures · PAdES</text>
+    </g>
+    <g transform="translate(598,452)">
+      <rect width="210" height="52" rx="26" fill="#111827" stroke="#1e293b"/>
+      <text x="105" y="34" fill="#cbd5e1" text-anchor="middle">AES-256</text>
+    </g>
+    <g transform="translate(824,452)">
+      <rect width="280" height="52" rx="26" fill="#111827" stroke="#1e293b"/>
+      <text x="140" y="34" fill="#cbd5e1" text-anchor="middle">Accessibility · UA</text>
+    </g>
+  </g>
+
+  <!-- footer line -->
+  <text x="96" y="566" fill="#64748b" font-size="26">Python · C# · Go · PHP · Ruby · Node · Java  ·  one core, licensed per feature</text>
+</svg>

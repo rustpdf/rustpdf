@@ -1,0 +1,19 @@
+# Convenience compose for a VPS. Build context is the repo root so the Rust
+# licctl binary can be compiled and bundled.
+#   cd <repo root> && docker compose -f site/docker-compose.yml up -d --build
+services:
+  site:
+    build:
+      context: ..
+      dockerfile: site/Dockerfile
+    image: rustpdf-site
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - licenses-data:/app/data
+
+volumes:
+  licenses-data:

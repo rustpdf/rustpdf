@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#0a0e16"/>
+  <!-- page with folded corner -->
+  <path d="M18 14 h20 l10 10 v26 a2 2 0 0 1-2 2 H18 a2 2 0 0 1-2-2 V16 a2 2 0 0 1 2-2 Z" fill="#f97316"/>
+  <path d="M38 14 l10 10 h-9 a1 1 0 0 1-1-1 Z" fill="#c2570c"/>
+  <!-- validation seal dot -->
+  <circle cx="33" cy="40" r="7" fill="#0a0e16"/>
+  <path d="M29.6 40.2 l2.4 2.4 l4.4-4.8" fill="none" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

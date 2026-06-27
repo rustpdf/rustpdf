@@ -1,0 +1,20 @@
+[package]
+name = "pdf-ffi"
+description = "C ABI boundary for the PDF core (the only restricted layer)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "pdf_ffi"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+pdf.workspace = true
+
+[build-dependencies]
+cbindgen = "0.27"
+
+[lints]
+workspace = true

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.rustpdf</groupId>
+  <artifactId>rustpdf</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <name>rustpdf</name>
+  <description>Java binding for rust-pdf — enterprise PDF (PDF/A, signatures/PAdES, AES-256, accessibility) over the C ABI via JNA.</description>
+  <url>https://rustpdf.dev</url>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jna.version>5.14.0</jna.version>
+  </properties>
+
+  <dependencies>
+    <!-- Pure-Java FFI: loads libpdf_ffi, no native compile step. -->
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>${jna.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- `mvn test-compile exec:java` runs the full-surface smoke test. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <mainClass>dev.rustpdf.SmokeTest</mainClass>
+          <classpathScope>test</classpathScope>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

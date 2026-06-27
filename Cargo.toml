@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cos",
+    "crates/license",
+    "crates/parser",
+    "crates/writer",
+    "crates/graphics",
+    "crates/fonts",
+    "crates/images",
+    "crates/layout",
+    "crates/pdf",
+    "crates/ffi",
+    "crates/testkit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "Proprietary"
+repository = ""
+authors = ["rust-pdf contributors"]
+
+[workspace.dependencies]
+cos = { path = "crates/cos" }
+license = { path = "crates/license" }
+parser = { path = "crates/parser" }
+writer = { path = "crates/writer" }
+graphics = { path = "crates/graphics" }
+fonts = { path = "crates/fonts" }
+images = { path = "crates/images" }
+layout = { path = "crates/layout" }
+pdf = { path = "crates/pdf" }
+testkit = { path = "crates/testkit" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[workspace.lints.clippy]
+all = "warn"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"

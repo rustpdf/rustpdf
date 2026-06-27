@@ -1,0 +1,8 @@
+include LICENSE
+include README.md
+include rustpdf/py.typed
+
+# The native library is built per-platform and bundled into wheels by setup.py;
+# never ship a stale binary inside the source distribution.
+recursive-exclude rustpdf *.so *.dylib *.dll
+global-exclude __pycache__ *.py[cod]

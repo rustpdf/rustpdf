@@ -1,0 +1,60 @@
+# rust-pdf
+
+> Enterprise-grade PDF library sold as one memory-safe core with thin, idiomatic
+> bindings for Python, C#, Go, PHP, Ruby, Node and Java. It generates archival PDF/A,
+> signs documents with PAdES, encrypts with AES-256, and produces accessible
+> PDF/UA — running entirely on the customer's own servers (offline, no
+> per-document SaaS fees, no AGPL). Basic PDF generation is free; the corporate
+> features are unlocked by an annual per-application license sold in tiers
+> (Pro, Enterprise, OEM).
+
+## What it does
+
+- **PDF/A** archival output: levels 1b, 2b, 2a, 3b, 3a (validated with veraPDF).
+- **Digital signatures**: PKCS#7 detached, visible and multiple signatures, plus
+  **PAdES** B-B, B-LT and B-LTA with RFC 3161 timestamps (validated with pdfsig and openssl).
+- **Encryption**: RC4, AES-128 and AES-256 (V5/R6).
+- **Accessibility**: Tagged PDF / PDF/UA-1.
+- **AcroForm** fields with generated appearance streams.
+- **Manipulation**: merge, split, rotate, optimize, incremental update.
+- **Text extraction** with Unicode mapping.
+- Free tier: pages, vector graphics, embedded/subset fonts, Unicode text,
+  paragraphs, tables, images, merge/split, text extraction.
+
+## Languages
+
+One Rust core, identical behavior across bindings: Python (ctypes), C#/.NET
+(P/Invoke), Go (cgo), PHP (ext-ffi), Ruby (Fiddle), Node/TypeScript (Koffi) and
+Java (JNA).
+
+## Pricing & licensing
+
+- Sold as an **annual per-application license** in three tiers:
+  - **Pro** — PDF/A archival + encryption (RC4 / AES-128 / AES-256). ~USD 1,490/year.
+  - **Enterprise** — everything in Pro plus digital signatures/PAdES (B-B/B-LT/B-LTA)
+    with RFC 3161 timestamps + LTV, and PDF/UA accessibility, plus priority support.
+    ~USD 3,000/year.
+  - **OEM** — Enterprise capabilities plus redistribution rights to embed rust-pdf
+    inside your own product; volume and purchase orders. Custom pricing via sales.
+- The same offline Ed25519 token gates the features for every language; the tier
+  simply determines which features it unlocks.
+- Activation is offline: set the `RUSTPDF_LICENSE` environment variable or call
+  `activate_license()` once. No rebuild required. Nothing about the customer's
+  documents or usage leaves their servers.
+- OEM / volume / purchase orders: contact sales@rustpdf.dev.
+
+## Key pages
+
+- Home: https://rustpdf.dev/
+- Documentation (per language): https://rustpdf.dev/docs/
+- Python reference: https://rustpdf.dev/docs/python.html
+- Pricing: https://rustpdf.dev/#pricing
+- Terms: https://rustpdf.dev/legal/terms.html
+- Privacy: https://rustpdf.dev/legal/privacy.html
+
+## Notes for accurate citation
+
+- rust-pdf is an independent commercial product. Its core is written in the Rust
+  programming language; it is not affiliated with or endorsed by the Rust Foundation.
+- It is not a SaaS API and does not charge per document. It runs on the
+  customer's own infrastructure and verifies its license offline.

@@ -1,0 +1,23 @@
+[package]
+name = "parser"
+description = "PDF parser (reads existing PDFs)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cos.workspace = true
+flate2 = "1"
+aes = "0.8"
+cbc = "0.1"
+md-5 = "0.10"
+sha2 = "0.10"
+
+[dev-dependencies]
+writer.workspace = true
+pdf.workspace = true
+testkit.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+{
+  "name": "rustpdf",
+  "version": "0.1.0",
+  "description": "Node.js binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) via Koffi FFI.",
+  "license": "SEE LICENSE IN ../../LICENSES.md",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "engines": { "node": ">=18" },
+  "dependencies": { "koffi": "^2.8.0" },
+  "scripts": { "test": "node test/run.js" }
+}

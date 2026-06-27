@@ -1,0 +1,15 @@
+{
+    "name": "rust-pdf/rustpdf",
+    "description": "Idiomatic PHP binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) via FFI.",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1",
+        "ext-ffi": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "RustPdf\\": "src/"
+        }
+    }
+}

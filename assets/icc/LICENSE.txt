@@ -1,0 +1,3 @@
+sRGB.icc — "sRGB-v2-micro.icc" from the Compact ICC Profiles project
+(https://github.com/saucecontrol/Compact-ICC-Profiles), released into the
+public domain under CC0 1.0. Bundled as the PDF/A OutputIntent DestOutputProfile.

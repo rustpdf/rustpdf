@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rust-pdf · enterprise PDF for every language</title>
+  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
+  <link rel="canonical" href="https://rustpdf.dev/" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/" />
+  <meta property="og:title" content="rust-pdf · enterprise PDF for every language" />
+  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node and Java. Runs on your servers, no per-document fees." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="rust-pdf · enterprise PDF for every language" />
+  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, seven languages, offline, licensed per feature." />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java" />
+  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node and Java" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "name": "rust-pdf",
+        "url": "https://rustpdf.dev/",
+        "logo": "https://rustpdf.dev/favicon.svg",
+        "description": "Enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node and Java."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://rustpdf.dev/#website",
+        "url": "https://rustpdf.dev/",
+        "name": "rust-pdf",
+        "publisher": { "@id": "https://rustpdf.dev/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "name": "rust-pdf",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, macOS, Windows",
+        "url": "https://rustpdf.dev/",
+        "publisher": { "@id": "https://rustpdf.dev/#org" },
+        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node and Java. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
+        "featureList": [
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+          "AES-256 encryption",
+          "PDF/UA accessibility (Tagged PDF)",
+          "AcroForm fields",
+          "Merge, split, text extraction"
+        ],
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "USD",
+          "lowPrice": "1490",
+          "highPrice": "3000",
+          "offerCount": "2",
+          "url": "https://rustpdf.dev/#pricing",
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Pro",
+              "price": "1490",
+              "priceCurrency": "USD",
+              "category": "Annual license",
+              "url": "https://rustpdf.dev/#pricing"
+            },
+            {
+              "@type": "Offer",
+              "name": "Enterprise",
+              "price": "3000",
+              "priceCurrency": "USD",
+              "category": "Annual license",
+              "url": "https://rustpdf.dev/#pricing"
+            }
+          ]
+        }
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a href="#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Java</p>
+        <h1>The enterprise PDF library<br />the rest of your stack <span class="grad">doesn't have</span>.</h1>
+        <p class="lede">
+          Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
+          with <b>AES-256</b>, and produce accessible <b>PDF/UA</b>, natively in the
+          language you already use. It runs entirely on your servers, so there are no
+          per-document SaaS fees, no data leaving your network, and no AGPL strings.
+        </p>
+        <div class="cta-row">
+          <a href="#pricing" class="btn btn-lg">Get the license</a>
+          <a href="#code" class="btn btn-ghost btn-lg">See the code</a>
+        </div>
+        <div class="validators">
+          Validated by independent tools:
+          <span>veraPDF</span><span>pdfsig</span><span>openssl&nbsp;cms</span><span>qpdf</span><span>mutool</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="band">
+      <div class="wrap grid-2">
+        <div>
+          <h2>"Serious" PDF support is scarce and uneven</h2>
+          <p class="muted">
+            Almost every language can emit a simple PDF. Almost none have a
+            modern, complete library for what regulated businesses actually need:
+            legal archival (PDF/A), juridically-valid signatures (PAdES),
+            AES-256 for LGPD/GDPR, and accessibility (PDF/UA).
+          </p>
+          <p class="muted">
+            So teams settle for old incomplete libs, fragile <code>HTML→PDF</code>
+            via headless Chrome, or expensive per-document SaaS that ships your
+            sensitive data off-site. Building it right takes <b>years</b> of ISO
+            32000 + validator work.
+          </p>
+        </div>
+        <ul class="check-list">
+          <li><b>Runs on your servers</b>: your documents never leave your network, and nothing phones home.</li>
+          <li><b>Auditable output</b>: the same input always produces the same file, so you can diff and verify it.</li>
+          <li><b>Dependable</b>: a memory-safe core that won't crash the service generating your documents.</li>
+          <li><b>Predictable pricing</b>: a per-application annual license, never a meter that bills you per document.</li>
+          <li><b>No legal landmines</b>: none of the AGPL or per-server licensing of iText / Aspose.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="section">
+      <div class="wrap">
+        <h2 class="center">Free to build with. Licensed when you ship.</h2>
+        <p class="center muted narrow">
+          Prototype and generate everyday PDFs for free, forever. When you need the
+          regulated-grade features (archival, signatures, encryption, accessibility),
+          one license unlocks them all, in every language you use.
+        </p>
+        <div class="feature-grid">
+          <div class="card free reveal">
+            <h3>Community <span class="tag">free</span></h3>
+            <ul>
+              <li>Pages &amp; vector graphics</li>
+              <li>Embedded/subset fonts, Unicode shaping</li>
+              <li>Justified paragraphs &amp; tables</li>
+              <li>Images (JPEG/PNG/alpha/16-bit)</li>
+              <li>Merge / split / rotate</li>
+              <li>Text extraction &amp; optimize</li>
+            </ul>
+          </div>
+          <div class="card pro reveal">
+            <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
+            <ul>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
+              <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
+              <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
+              <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
+              <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
+              <li><b>AcroForm</b>: fields with generated appearances</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LANGUAGES -->
+    <section id="languages" class="band">
+      <div class="wrap">
+        <h2 class="center">One engine. Seven languages. Identical behavior.</h2>
+        <p class="center muted narrow">
+          The same engine powers every binding, so you get identical results in any
+          language. Every feature behaves the same everywhere, with no per-language
+          quirks to debug in production.
+        </p>
+        <div class="lang-grid">
+          <div class="lang reveal"><span>Rust</span><small>native core</small></div>
+          <div class="lang reveal"><span>Python</span><small>ctypes</small></div>
+          <div class="lang reveal"><span>C# / .NET</span><small>P/Invoke</small></div>
+          <div class="lang reveal"><span>Go</span><small>cgo</small></div>
+          <div class="lang reveal"><span>PHP</span><small>ext-ffi</small></div>
+          <div class="lang reveal"><span>Ruby</span><small>Fiddle</small></div>
+          <div class="lang reveal"><span>Node / TS</span><small>Koffi</small></div>
+          <div class="lang reveal"><span>Java</span><small>JNA</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CODE -->
+    <section id="code" class="section">
+      <div class="wrap">
+        <h2 class="center">Author a tagged PDF/A in a few lines</h2>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="rust">Rust</button>
+            <button class="tab" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="php">PHP</button>
+            <button class="tab" data-tab="ruby">Ruby</button>
+            <button class="tab" data-tab="node">Node</button>
+            <button class="tab" data-tab="java">Java</button>
+            <button class="tab" data-tab="activate">Activate</button>
+          </div>
+<pre class="tab-pane active" data-pane="rust"><code>let mut doc = pdf::Document::new();
+doc.pdfa_a(); // PDF/A-2a (archival + accessible)
+let font = doc.add_font_file("Roboto-Regular.ttf")?;
+doc.add_page()
+   .text(font, 24.0)
+   .at(72.0, 740.0)
+   .show("Olá, açúcar — café"); // shaped, kerned, Unicode
+
+let signer = pdf::Signer::from_pkcs8_der(&key, &cert)?;
+let signed = pdf::sign(&doc.to_bytes()?, &signer, &Default::default())?;
+// pdfsig → "Signature is Valid. Total document signed."</code></pre>
+<pre class="tab-pane" data-pane="python"><code>import rustpdf
+
+with rustpdf.Document() as doc:
+    doc.pdfa(rustpdf.PdfaLevel.A2A).set_info(title="Report")
+    f = doc.add_font_file("Roboto-Regular.ttf")
+    doc.add_page()
+    doc.show_text(f, 20, 72, 760, "Title", heading_level=1)
+    data = doc.to_bytes()
+
+with rustpdf.EditableDoc.load(data) as ed:
+    ed.encrypt(owner="owner", method=rustpdf.Encryption.AES256)
+    ed.save("secured.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>const { Document, Encryption } = require("rustpdf");
+
+const doc = new Document();
+doc.pdfa();                       // PDF/A-2b
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 20, 72, 760, "Invoice #1024");
+const bytes = doc.toBytes();      // archival-grade PDF</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>using RustPdf;
+
+using var doc = new Document();
+doc.Pdfa(PdfaLevel.A2a).Tagged().SetInfo(title: "Report");
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 20, 72, 760, "Title", headingLevel: 1);
+byte[] bytes = doc.ToBytes();      // archival-grade PDF</code></pre>
+<pre class="tab-pane" data-pane="go"><code>doc, _ := rustpdf.New()
+defer doc.Close()
+doc.PdfaLevel(rustpdf.A2a)
+doc.Tagged()
+doc.SetInfo(rustpdf.Info{Title: "Report"})
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+doc.AddPage()
+doc.ShowText(f, 20, 72, 760, "Title", 1) // heading level 1 = H1
+data, _ := doc.ToBytes()</code></pre>
+<pre class="tab-pane" data-pane="php"><code>use RustPdf\Document;
+use RustPdf\PdfaLevel;
+
+$doc = new Document();
+$doc->pdfa(PdfaLevel::A2a)->setInfo(title: 'Report');
+$f = $doc->addFontFile('Roboto-Regular.ttf');
+$doc->addPage()->showText($f, 20, 72, 760, 'Title', 1);
+$bytes = $doc->toBytes();          // archival-grade PDF</code></pre>
+<pre class="tab-pane" data-pane="ruby"><code>doc = RustPdf::Document.new
+doc.pdfa(RustPdf::Pdfa::A2A).info(title: "Report")
+f = doc.add_font_file("Roboto-Regular.ttf")
+doc.add_page
+   .show_text(f, 20, 72, 760, "Title", heading_level: 1)
+data = doc.to_bytes               # archival-grade PDF</code></pre>
+<pre class="tab-pane" data-pane="java"><code>try (Document doc = new Document()) {
+    doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Report");
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage().showText(f, 20, 72, 760, "Title", 1);
+    byte[] bytes = doc.toBytes();  // archival-grade PDF
+}</code></pre>
+<pre class="tab-pane" data-pane="activate"><code># No rebuild. One environment variable activates every binding:
+export RUSTPDF_LICENSE="010f0000…"   # the token we email you
+
+# …or point at a file:
+export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
+
+# …or activate in code:
+#   pdf::activate_license(token)?            // Rust
+#   rustpdf.activate_license(token)          # Python</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" class="section">
+      <div class="wrap">
+        <h2 class="center">Pick the plan you need.</h2>
+        <p class="center muted narrow">
+          Per-application annual pricing, in every language, with no per-document
+          metering or usage caps. Start with <b>Pro</b> for archival and encryption;
+          move to <b>Enterprise</b> when you need juridically-valid signatures and
+          accessibility.
+        </p>
+        <div class="pricing">
+          <!-- PRO -->
+          <div class="price-card reveal">
+            <div class="price-head">
+              <h3>Pro</h3>
+              <p class="price-amount"><span id="price-amount-pro">$1,490</span><span class="per" id="price-interval-pro">/year</span></p>
+              <p class="muted">Per application · renews yearly · offline · all seven languages</p>
+            </div>
+            <ul class="price-features">
+              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a)</li>
+              <li>✓ Encryption (RC4 / AES-128 / AES-256)</li>
+              <li>✓ AcroForm fields with appearances</li>
+              <li>✓ All language bindings, no rebuild to activate</li>
+              <li>✓ Token emailed instantly after checkout</li>
+            </ul>
+            <button class="btn btn-lg btn-block buy-btn" data-tier="pro">Buy Pro · <span class="buy-price" data-tier="pro">$1,490/yr</span></button>
+            <p class="fineprint buy-error" data-tier="pro" hidden></p>
+          </div>
+
+          <!-- ENTERPRISE (featured) -->
+          <div class="price-card featured reveal">
+            <span class="popular">Most popular</span>
+            <div class="price-head">
+              <h3>Enterprise</h3>
+              <p class="price-amount"><span id="price-amount-enterprise">$3,000</span><span class="per" id="price-interval-enterprise">/year</span></p>
+              <p class="muted">Everything in Pro, plus signatures &amp; accessibility · priority support</p>
+            </div>
+            <ul class="price-features">
+              <li>✓ <b>Everything in Pro</b></li>
+              <li>✓ Digital signatures &amp; PAdES (B-B / B-LT / B-LTA)</li>
+              <li>✓ RFC 3161 timestamps + LTV (DSS)</li>
+              <li>✓ Accessibility (Tagged PDF / PDF/UA-1)</li>
+              <li>✓ Priority email support</li>
+            </ul>
+            <button class="btn btn-lg btn-block buy-btn" data-tier="enterprise">Buy Enterprise · <span class="buy-price" data-tier="enterprise">$3,000/yr</span></button>
+            <p class="fineprint buy-error" data-tier="enterprise" hidden></p>
+          </div>
+
+          <!-- OEM (sales-led) -->
+          <div class="price-card reveal">
+            <div class="price-head">
+              <h3>OEM</h3>
+              <p class="price-amount"><span>Custom</span></p>
+              <p class="muted">Redistribute rust-pdf inside your own product · volume &amp; POs</p>
+            </div>
+            <ul class="price-features">
+              <li>✓ <b>Everything in Enterprise</b></li>
+              <li>✓ Redistribution rights for your product</li>
+              <li>✓ Volume &amp; multi-application licensing</li>
+              <li>✓ Purchase orders &amp; invoicing</li>
+              <li>✓ SLA &amp; onboarding support</li>
+            </ul>
+            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@rustpdf.dev?subject=rust-pdf%20OEM%20licensing">Talk to sales</a>
+          </div>
+        </div>
+        <p class="center fineprint">Secure checkout by Stripe · cancel anytime · activates offline in seconds. Questions? <a href="mailto:sales@rustpdf.dev">Talk to sales</a>.</p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="band">
+      <div class="wrap narrow">
+        <h2 class="center">FAQ</h2>
+        <details><summary>How does activation work?</summary>
+          <p>After checkout we email you a license key. Set one environment variable (<code>RUSTPDF_LICENSE</code>) or call <code>activate_license()</code> once. No rebuild, and it works the same in every language.</p>
+        </details>
+        <details><summary>Is anything sent off my servers?</summary>
+          <p>No. Activation is fully offline, so nothing about your documents or your usage ever leaves your servers. There are no network calls of any kind. Ideal for government, banking and healthcare.</p>
+        </details>
+        <details><summary>What can the free tier do?</summary>
+          <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, merge/split, text extraction and optimization. Forever free, no license.</p>
+        </details>
+        <details><summary>What's the difference between Pro and Enterprise?</summary>
+          <p><b>Pro</b> unlocks PDF/A archival and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, and PDF/UA accessibility — plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan — <a href="mailto:sales@rustpdf.dev">talk to sales</a>.</p>
+        </details>
+        <details><summary>How is this validated?</summary>
+          <p>Output is checked by independent tools: veraPDF (PDF/A 1b–3a + PDF/UA-1), pdfsig and <code>openssl cms</code> (signatures), and qpdf/mutool (structure). It isn't "conformance marketing".</p>
+        </details>
+        <details><summary>What happens when the license expires?</summary>
+          <p>The corporate features stop producing output and return a clear license error; basic generation keeps working. Renew to receive a fresh token.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/refund.html">Refunds</a>
+        <a href="mailto:sales@rustpdf.dev">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
