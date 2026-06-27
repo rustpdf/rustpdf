@@ -19,6 +19,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://rustpdf.dev/docs/csharp.html</loc>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://rustpdf.dev/docs/delphi.html</loc>
     <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
