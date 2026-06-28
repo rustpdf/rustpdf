@@ -6,6 +6,8 @@ export class PdfError extends Error {
 
 export const PdfaLevel: {
   readonly A1b: 0; readonly A2b: 1; readonly A2a: 2; readonly A3b: 3; readonly A3a: 4;
+  // PDF/A-4 (ISO 19005-4), based on PDF 2.0.
+  readonly A4: 5; readonly A4e: 6; readonly A4f: 7;
 };
 export const Align: {
   readonly Left: 0; readonly Right: 1; readonly Center: 2; readonly Justify: 3;

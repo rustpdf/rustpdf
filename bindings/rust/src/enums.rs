@@ -13,6 +13,12 @@ pub enum PdfaLevel {
     A3b,
     /// PDF/A-3a (also enables tagging).
     A3a,
+    /// PDF/A-4 (ISO 19005-4), based on PDF 2.0.
+    A4,
+    /// PDF/A-4e (engineering).
+    A4e,
+    /// PDF/A-4f (embedded files).
+    A4f,
 }
 
 impl PdfaLevel {
@@ -23,6 +29,9 @@ impl PdfaLevel {
             Self::A2a => 2,
             Self::A3b => 3,
             Self::A3a => 4,
+            Self::A4 => 5,
+            Self::A4e => 6,
+            Self::A4f => 7,
         }
     }
 }
@@ -123,6 +132,8 @@ pub enum PdfVersion {
     V1_4,
     V1_5,
     V1_7,
+    /// PDF 2.0 (ISO 32000-2).
+    V2_0,
 }
 
 impl PdfVersion {
@@ -131,6 +142,7 @@ impl PdfVersion {
             Self::V1_4 => 0,
             Self::V1_5 => 1,
             Self::V1_7 => 2,
+            Self::V2_0 => 3,
         }
     }
 }

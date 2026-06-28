@@ -21,6 +21,11 @@ public enum PdfaLevel
     A2a = 2,
     A3b = 3,
     A3a = 4,
+
+    // PDF/A-4 (ISO 19005-4), based on PDF 2.0.
+    A4 = 5,
+    A4e = 6,
+    A4f = 7,
 }
 
 /// <summary>Paragraph horizontal alignment.</summary>

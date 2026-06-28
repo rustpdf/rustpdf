@@ -30,14 +30,16 @@ pub(crate) struct ZugferdXmp {
 }
 
 /// Add the PDF/A objects, mutate `catalog`, and set the document `/ID`.
-/// `part` is the PDF/A part (1, 2 or 3); `conformance` is 'A'
-/// (accessible/tagged) or 'B' (basic).
+/// `part` is the PDF/A part (1–4); `conformance` is the level marker
+/// (`'A'`/`'B'` for parts 1–3, `'E'`/`'F'` or `None` for part 4); `rev` is the
+/// amendment year (`Some(2020)` for part 4, `None` otherwise).
 pub(crate) fn apply(
     doc: &mut WriterDoc,
     catalog: &mut Dict,
     info: &[(&str, String)],
     part: u8,
-    conformance: char,
+    conformance: Option<char>,
+    rev: Option<u16>,
     zugferd: Option<&ZugferdXmp>,
 ) {
     // 1. Embedded sRGB ICC profile (N = 3 components).
@@ -62,7 +64,7 @@ pub(crate) fn apply(
 
     // 3. XMP metadata (uncompressed) with the PDF/A identifier, kept in sync
     //    with the Info dictionary.
-    let xmp = build_xmp(info, part, conformance, zugferd);
+    let xmp = build_xmp(info, part, conformance, rev, zugferd);
     let meta_dict = Dict::new()
         .with("Type", Object::name("Metadata"))
         .with("Subtype", Object::name("XML"));
@@ -79,7 +81,8 @@ pub(crate) fn apply(
 pub(crate) fn build_xmp(
     info: &[(&str, String)],
     part: u8,
-    conformance: char,
+    conformance: Option<char>,
+    rev: Option<u16>,
     zugferd: Option<&ZugferdXmp>,
 ) -> String {
     let get = |k: &str| {
@@ -123,7 +126,7 @@ pub(crate) fn build_xmp(
 
     // PDF/UA-1 identifier (level A / tagged) + the required extension-schema
     // declaration for the non-predefined `pdfuaid` namespace.
-    let ua = if conformance == 'A' {
+    let ua = if conformance == Some('A') {
         "<rdf:Description rdf:about=\"\" xmlns:pdfuaid=\"http://www.aiim.org/pdfua/ns/id/\">\
          <pdfuaid:part>1</pdfuaid:part></rdf:Description>\n\
          <rdf:Description rdf:about=\"\" \
@@ -180,12 +183,23 @@ pub(crate) fn build_xmp(
         None => String::new(),
     };
 
+    // The pdfaid identifier: `part` always; `rev` (year) for PDF/A-4; the
+    // `conformance` letter for the levels that carry one (A/B for parts 1–3,
+    // E/F for the PDF/A-4 variants — the base PDF/A-4 has none).
+    let mut pdfaid = format!("<pdfaid:part>{part}</pdfaid:part>");
+    if let Some(r) = rev {
+        pdfaid.push_str(&format!("<pdfaid:rev>{r}</pdfaid:rev>"));
+    }
+    if let Some(c) = conformance {
+        pdfaid.push_str(&format!("<pdfaid:conformance>{c}</pdfaid:conformance>"));
+    }
+
     format!(
         "<?xpacket begin=\"\u{feff}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n\
          <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n\
          <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n\
          <rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\
-         <pdfaid:part>{part}</pdfaid:part><pdfaid:conformance>{conformance}</pdfaid:conformance></rdf:Description>\n\
+         {pdfaid}</rdf:Description>\n\
          <rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">{dc}</rdf:Description>\n\
          <rdf:Description rdf:about=\"\" xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">{pdf_ns}</rdf:Description>\n\
          <rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">{xmp_ns}</rdf:Description>\n\
@@ -236,9 +250,44 @@ mod tests {
 
     #[test]
     fn xmp_contains_pdfa_identifier() {
-        let xmp = build_xmp(&[("Producer", "rust-pdf 0.1.0".into())], 2, 'B', None);
+        let xmp = build_xmp(
+            &[("Producer", "rust-pdf 0.1.0".into())],
+            2,
+            Some('B'),
+            None,
+            None,
+        );
         assert!(xmp.contains("<pdfaid:part>2</pdfaid:part>"));
         assert!(xmp.contains("<pdfaid:conformance>B</pdfaid:conformance>"));
         assert!(xmp.contains("<pdf:Producer>rust-pdf 0.1.0</pdf:Producer>"));
+        assert!(!xmp.contains("<pdfaid:rev>"));
+    }
+
+    #[test]
+    fn xmp_pdfa4_uses_rev_not_conformance() {
+        // Base PDF/A-4: part 4 + rev 2020, and NO conformance letter.
+        let xmp = build_xmp(
+            &[("Producer", "rust-pdf".into())],
+            4,
+            None,
+            Some(2020),
+            None,
+        );
+        assert!(xmp.contains("<pdfaid:part>4</pdfaid:part>"));
+        assert!(xmp.contains("<pdfaid:rev>2020</pdfaid:rev>"));
+        assert!(!xmp.contains("<pdfaid:conformance>"));
+    }
+
+    #[test]
+    fn xmp_pdfa4f_carries_conformance_f() {
+        let xmp = build_xmp(
+            &[("Producer", "rust-pdf".into())],
+            4,
+            Some('F'),
+            Some(2020),
+            None,
+        );
+        assert!(xmp.contains("<pdfaid:rev>2020</pdfaid:rev>"));
+        assert!(xmp.contains("<pdfaid:conformance>F</pdfaid:conformance>"));
     }
 }
