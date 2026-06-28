@@ -1,0 +1,6 @@
+# Standalone crate (outside the workspace) — its own build dir + lockfile.
+/target
+Cargo.lock
+
+# Distribution artifacts (built by scripts/package.sh): large native libs.
+dist/

@@ -5,9 +5,17 @@
 use std::ffi::{c_char, c_int, c_uchar};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use pdf::{EditableDoc, Encryption, Permissions};
+use pdf::{ConvertError, EditableDoc, Encryption, Image, PdfaLevel, Permissions, WatermarkOptions};
 
 use crate::{bytes, clear_last_error, cstr, emit_buffer, guard, set_last_error, PdfStatus};
+
+fn pdfa_level(v: c_int) -> PdfaLevel {
+    match v {
+        0 => PdfaLevel::A1b,
+        3 => PdfaLevel::A3b,
+        _ => PdfaLevel::A2b,
+    }
+}
 
 /// Opaque editable-document handle.
 pub struct PdfEditable {
@@ -322,6 +330,256 @@ pub unsafe extern "C" fn pdf_editable_fill_text_field(
     })
 }
 
+/// Check/uncheck a checkbox field by name. `out_found` (if non-NULL) gets 1/0.
+///
+/// # Safety
+/// `ed`, `name` valid; `out_found` NULL or writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_set_checkbox(
+    ed: *mut PdfEditable,
+    name: *const c_char,
+    checked: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_set_checkbox", |d| {
+        let name = match unsafe { cstr(name, "set_checkbox:name") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.set_checkbox(&name, checked != 0);
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Select a radio button by its export value. `out_found` (if non-NULL) gets 1/0.
+///
+/// # Safety
+/// `ed`, `name`, `export_value` valid; `out_found` NULL or writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_set_radio(
+    ed: *mut PdfEditable,
+    name: *const c_char,
+    export_value: *const c_char,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_set_radio", |d| {
+        let name = match unsafe { cstr(name, "set_radio:name") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let export = match unsafe { cstr(export_value, "set_radio:export") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.set_radio(&name, &export);
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Set a choice (dropdown/list) field value. `out_found` (if non-NULL) gets 1/0.
+///
+/// # Safety
+/// `ed`, `name`, `value` valid; `out_found` NULL or writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_set_choice(
+    ed: *mut PdfEditable,
+    name: *const c_char,
+    value: *const c_char,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_set_choice", |d| {
+        let name = match unsafe { cstr(name, "set_choice:name") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let value = match unsafe { cstr(value, "set_choice:value") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.set_choice(&name, &value);
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Flatten all interactive form fields into static page content (removes the
+/// `/AcroForm` and widgets).
+///
+/// # Safety
+/// `ed` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_flatten_forms(ed: *mut PdfEditable) -> PdfStatus {
+    with_editable(ed, "pdf_editable_flatten_forms", |d| {
+        d.flatten_forms();
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Write the document's terminal field names (newline-separated) into a buffer.
+///
+/// # Safety
+/// `ed`, `out_ptr`, `out_len` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_field_names(
+    ed: *const PdfEditable,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let Some(ed) = (unsafe { ed.as_ref() }) else {
+            set_last_error("field_names: null handle");
+            return PdfStatus::NullPointer;
+        };
+        let joined = ed.inner.field_names().join("\n");
+        unsafe { emit_buffer(joined.into_bytes(), out_ptr, out_len) }
+    })
+}
+
+/// Stamp a diagonal text watermark across every page (standard Helvetica).
+/// `rotation_deg` is counter-clockwise; `opacity` in 0..=1.
+///
+/// # Safety
+/// `ed`, `text` valid.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_watermark_text(
+    ed: *mut PdfEditable,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    opacity: f64,
+    rotation_deg: f64,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_watermark_text", |d| {
+        let text = match unsafe { cstr(text, "watermark_text:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        d.watermark_text(
+            &text,
+            WatermarkOptions {
+                size,
+                color: (r, g, b),
+                opacity,
+                rotation_deg,
+            },
+        );
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Stamp an image (from a JPEG/PNG file `path`) centered on every page at
+/// `width`×`height` points, at `opacity`.
+///
+/// # Safety
+/// `ed`, `path` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_watermark_image_file(
+    ed: *mut PdfEditable,
+    path: *const c_char,
+    width: f64,
+    height: f64,
+    opacity: f64,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_watermark_image_file", |d| {
+        let path = match unsafe { cstr(path, "watermark_image_file:path") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let img = match Image::from_file(&path) {
+            Ok(i) => i,
+            Err(e) => {
+                set_last_error(format!("watermark image load failed: {e}"));
+                return PdfStatus::Image;
+            }
+        };
+        d.watermark_image(&img, width, height, opacity);
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Redact rectangular regions on page `index`: `rects` holds `count*4` doubles
+/// (x0,y0,x1,y1 per region). The covered content is removed and a black box is
+/// drawn. `out_found` (if non-NULL) gets 1 if the page existed.
+///
+/// # Safety
+/// `ed` valid; `rects` points to `count*4` doubles; `out_found` NULL or writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_redact(
+    ed: *mut PdfEditable,
+    index: usize,
+    rects: *const f64,
+    count: usize,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_redact", |d| {
+        if rects.is_null() && count > 0 {
+            set_last_error("redact: null rects");
+            return PdfStatus::NullPointer;
+        }
+        let flat = unsafe { std::slice::from_raw_parts(rects, count * 4) };
+        let mut boxes = Vec::with_capacity(count);
+        for i in 0..count {
+            boxes.push([
+                flat[i * 4],
+                flat[i * 4 + 1],
+                flat[i * 4 + 2],
+                flat[i * 4 + 3],
+            ]);
+        }
+        let found = d.redact(index, &boxes);
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Convert the loaded document to PDF/A at `level` (0=A-1b, 1=A-2b, 3=A-3b).
+/// Fails if fonts are not embedded or a level-A profile is requested.
+///
+/// # Safety
+/// `ed` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_convert_to_pdfa(
+    ed: *mut PdfEditable,
+    level: c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_convert_to_pdfa", |d| {
+        match d.convert_to_pdfa(pdfa_level(level)) {
+            Ok(()) => {
+                clear_last_error();
+                PdfStatus::Ok
+            }
+            Err(ConvertError::License(e)) => {
+                set_last_error(format!("convert_to_pdfa: {e}"));
+                PdfStatus::License
+            }
+            Err(e) => {
+                set_last_error(format!("convert_to_pdfa: {e}"));
+                PdfStatus::InvalidArgument
+            }
+        }
+    })
+}
+
 /// Drop unreferenced objects, recompress, dedupe and emit object streams on save.
 ///
 /// # Safety
@@ -400,10 +658,19 @@ pub unsafe extern "C" fn pdf_editable_to_bytes(
             Ok(b) => unsafe { emit_buffer(b, out_ptr, out_len) },
             Err(e) => {
                 set_last_error(format!("serialize failed: {e}"));
-                PdfStatus::Serialize
+                build_status(&e)
             }
         }
     })
+}
+
+/// Map a `BuildError` to a status code (license errors are distinguished so the
+/// caller can tell "needs a license" from a generic serialization failure).
+fn build_status(e: &pdf::BuildError) -> PdfStatus {
+    match e {
+        pdf::BuildError::License(_) => PdfStatus::License,
+        _ => PdfStatus::Serialize,
+    }
 }
 
 /// Serialize as an incremental update over `original` (preserves it verbatim).
@@ -430,7 +697,7 @@ pub unsafe extern "C" fn pdf_editable_to_bytes_incremental(
             Ok(b) => unsafe { emit_buffer(b, out_ptr, out_len) },
             Err(e) => {
                 set_last_error(format!("incremental update failed: {e}"));
-                PdfStatus::Serialize
+                build_status(&e)
             }
         }
     })
@@ -484,5 +751,46 @@ pub unsafe extern "C" fn pdf_extract_text(
             set_last_error(format!("extract_text failed: {e}"));
             PdfStatus::Parse
         }
+    })
+}
+
+/// Extract every raster image from `data`/`len` and write each one as a file
+/// into the directory `dir`. JPEG (`DCTDecode`) images are written verbatim as
+/// `.jpg`; everything else is re-encoded as `.png`. Files are named
+/// `page{N}_{name}.{ext}`. The number written is stored in `out_count`.
+///
+/// # Safety
+/// `data`/`len` readable; `dir` a valid NUL-terminated UTF-8 path to an existing
+/// directory; `out_count` writable (or NULL to ignore the count).
+#[no_mangle]
+pub unsafe extern "C" fn pdf_extract_images_to_dir(
+    data: *const u8,
+    len: usize,
+    dir: *const c_char,
+    out_count: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let dir = match unsafe { cstr(dir, "pdf_extract_images_to_dir") } {
+            Ok(d) => d,
+            Err(s) => return s,
+        };
+        let images = match pdf::extract_images(unsafe { bytes(data, len) }) {
+            Ok(v) => v,
+            Err(e) => {
+                set_last_error(format!("extract_images failed: {e}"));
+                return PdfStatus::Parse;
+            }
+        };
+        for img in &images {
+            if let Err(e) = img.save_in(dir) {
+                set_last_error(format!("extract_images write failed: {e}"));
+                return PdfStatus::Io;
+            }
+        }
+        if !out_count.is_null() {
+            unsafe { *out_count = images.len() };
+        }
+        clear_last_error();
+        PdfStatus::Ok
     })
 }

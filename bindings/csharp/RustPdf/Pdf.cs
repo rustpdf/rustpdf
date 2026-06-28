@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 
 namespace RustPdf;
 
@@ -49,6 +50,58 @@ public enum Encryption
     Aes256 = 2,
 }
 
+/// <summary>ZUGFeRD / Factur-X conformance profile.</summary>
+public enum FacturxProfile
+{
+    Minimum = 0,
+    BasicWL = 1,
+    Basic = 2,
+    En16931 = 3,
+    Extended = 4,
+}
+
+/// <summary>A document outline entry. Nest with <see cref="Child"/> to build a tree.</summary>
+public sealed class Bookmark
+{
+    public string Title { get; }
+    public int Page { get; }
+    public double? Top { get; }
+    public List<Bookmark> Children { get; }
+
+    public Bookmark(string title, int page, double? top = null, IEnumerable<Bookmark>? children = null)
+    {
+        Title = title;
+        Page = page;
+        Top = top;
+        Children = children is null ? new List<Bookmark>() : new List<Bookmark>(children);
+    }
+
+    /// <summary>Append a nested child and return this bookmark (for chaining).</summary>
+    public Bookmark Child(Bookmark bookmark)
+    {
+        Children.Add(bookmark);
+        return this;
+    }
+
+    internal void Flatten(int level, List<(int Level, string Title, int Page, double? Top)> outList)
+    {
+        outList.Add((level, Title, Page, Top));
+        foreach (var c in Children)
+            c.Flatten(level + 1, outList);
+    }
+}
+
+/// <summary>The validation result for a single signature in a PDF.</summary>
+public sealed record SignatureInfo(
+    string? FieldName,
+    string SubFilter,
+    string? Signer,
+    bool CoversWholeDocument,
+    bool DigestValid,
+    bool SignatureValid,
+    bool IsValid,
+    int[] ByteRange);
+
 /// <summary>Top-level helpers: version, licensing, extraction and signing.</summary>
 public static class Pdf
 {
@@ -77,6 +130,16 @@ public static class Pdf
         var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
             Native.pdf_extract_text(pdf, (nuint)pdf.Length, out p, out n));
         return Encoding.UTF8.GetString(bytes);
+    }
+
+    /// <summary>Extract every raster image from <paramref name="pdf"/> into
+    /// <paramref name="outDir"/> (JPEG verbatim as <c>.jpg</c>, everything else as
+    /// <c>.png</c>, named <c>page{N}_{name}.{ext}</c>). Returns the number written.</summary>
+    public static int ExtractImagesToDir(byte[] pdf, string outDir)
+    {
+        Native.Init();
+        Check(Native.pdf_extract_images_to_dir(pdf, (nuint)pdf.Length, outDir, out var count));
+        return (int)count;
     }
 
     /// <summary>Sign <paramref name="pdf"/> (PKCS#7 detached, incremental update).
@@ -116,6 +179,39 @@ public static class Pdf
             foreach (var h in handles)
                 h.Free();
         }
+    }
+
+    /// <summary>Validate every signature in <paramref name="pdf"/>. Returns one
+    /// <see cref="SignatureInfo"/> per signature; an empty list means the document
+    /// is unsigned. Parses the JSON produced by <c>pdf_verify_signatures_json</c>.</summary>
+    public static IReadOnlyList<SignatureInfo> VerifySignatures(byte[] pdf)
+    {
+        var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_verify_signatures_json(pdf, (nuint)pdf.Length, out p, out n));
+        var json = Encoding.UTF8.GetString(bytes);
+        var result = new List<SignatureInfo>();
+        if (string.IsNullOrEmpty(json))
+            return result;
+        using var doc = JsonDocument.Parse(json);
+        foreach (var el in doc.RootElement.EnumerateArray())
+        {
+            string? GetStr(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind != JsonValueKind.Null ? v.GetString() : null;
+            bool GetBool(string k) => el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.True;
+            var range = Array.Empty<int>();
+            if (el.TryGetProperty("byte_range", out var br) && br.ValueKind == JsonValueKind.Array)
+                range = br.EnumerateArray().Select(x => x.GetInt32()).ToArray();
+            result.Add(new SignatureInfo(
+                GetStr("field_name"),
+                GetStr("sub_filter") ?? "",
+                GetStr("signer"),
+                GetBool("covers_whole_document"),
+                GetBool("digest_valid"),
+                GetBool("signature_valid"),
+                GetBool("is_valid"),
+                range));
+        }
+        return result;
     }
 
     private static (IntPtr[], nuint[]) Pin(byte[][] items, List<GCHandle> handles)

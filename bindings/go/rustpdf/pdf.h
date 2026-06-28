@@ -638,6 +638,21 @@ PdfStatus pdf_extract_text(const uint8_t *data,
                            uintptr_t *out_len);
 
 /**
+ * Extract every raster image from `data`/`len` and write each one as a file
+ * into the directory `dir`. JPEG (`DCTDecode`) images are written verbatim as
+ * `.jpg`; everything else is re-encoded as `.png`. Files are named
+ * `page{N}_{name}.{ext}`. The number written is stored in `out_count`.
+ *
+ * # Safety
+ * `data`/`len` readable; `dir` a valid NUL-terminated UTF-8 path to an existing
+ * directory; `out_count` writable (or NULL to ignore the count).
+ */
+PdfStatus pdf_extract_images_to_dir(const uint8_t *data,
+                                    uintptr_t len,
+                                    const char *dir,
+                                    uintptr_t *out_count);
+
+/**
  * Sign `pdf` with a PKCS#8 DER private key + DER certificate, producing a new
  * PDF (incremental update) in `out_ptr`/`out_len`. `reason`/`location`/`name`
  * may be NULL; `pades` != 0 selects PAdES-B-B.
@@ -694,6 +709,120 @@ PdfStatus pdf_add_dss(const uint8_t *pdf,
                       uintptr_t crl_count,
                       unsigned char **out_ptr,
                       uintptr_t *out_len);
+
+/**
+ * Add a clickable web link over `(x0,y0,x1,y1)` opening `uri` on the current page.
+ */
+PdfStatus pdf_page_link_uri(PdfDocument *doc,
+                            double x0,
+                            double y0,
+                            double x1,
+                            double y1,
+                            const char *uri);
+
+/**
+ * Add an internal link over `(x0,y0,x1,y1)` jumping to `target_page` (0-based).
+ */
+PdfStatus pdf_page_link_to_page(PdfDocument *doc,
+                                double x0,
+                                double y0,
+                                double x1,
+                                double y1,
+                                uintptr_t target_page,
+                                double top,
+                                int has_top);
+
+/**
+ * Add the document outline from a flat, pre-order list.
+ */
+PdfStatus pdf_document_add_bookmarks(PdfDocument *doc,
+                                     uintptr_t count,
+                                     const int *levels,
+                                     const char *const *titles,
+                                     const uintptr_t *pages,
+                                     const double *tops,
+                                     const int *has_tops);
+
+/**
+ * Make the document a ZUGFeRD / Factur-X invoice.
+ */
+PdfStatus pdf_document_facturx(PdfDocument *doc, const uint8_t *xml, uintptr_t len, int profile);
+
+/**
+ * Check/uncheck a checkbox field by name. `out_found` (if non-NULL) gets 1/0.
+ */
+PdfStatus pdf_editable_set_checkbox(PdfEditable *ed, const char *name, int checked, int *out_found);
+
+/**
+ * Select a radio button by its export value. `out_found` (if non-NULL) gets 1/0.
+ */
+PdfStatus pdf_editable_set_radio(PdfEditable *ed,
+                                 const char *name,
+                                 const char *export_value,
+                                 int *out_found);
+
+/**
+ * Set a choice (dropdown/list) field value. `out_found` (if non-NULL) gets 1/0.
+ */
+PdfStatus pdf_editable_set_choice(PdfEditable *ed,
+                                  const char *name,
+                                  const char *value,
+                                  int *out_found);
+
+/**
+ * Flatten all interactive form fields into static page content.
+ */
+PdfStatus pdf_editable_flatten_forms(PdfEditable *ed);
+
+/**
+ * Write the document's terminal field names (newline-separated) into a buffer.
+ */
+PdfStatus pdf_editable_field_names(const PdfEditable *ed,
+                                   unsigned char **out_ptr,
+                                   uintptr_t *out_len);
+
+/**
+ * Stamp a diagonal text watermark across every page (standard Helvetica).
+ */
+PdfStatus pdf_editable_watermark_text(PdfEditable *ed,
+                                      const char *text,
+                                      double size,
+                                      double r,
+                                      double g,
+                                      double b,
+                                      double opacity,
+                                      double rotation_deg);
+
+/**
+ * Stamp an image (from a JPEG/PNG file `path`) centered on every page.
+ */
+PdfStatus pdf_editable_watermark_image_file(PdfEditable *ed,
+                                            const char *path,
+                                            double width,
+                                            double height,
+                                            double opacity);
+
+/**
+ * Redact rectangular regions on page `index`: `rects` holds `count*4` doubles.
+ */
+PdfStatus pdf_editable_redact(PdfEditable *ed,
+                              uintptr_t index,
+                              const double *rects,
+                              uintptr_t count,
+                              int *out_found);
+
+/**
+ * Convert the loaded document to PDF/A at `level` (0=A-1b, 1=A-2b, 3=A-3b).
+ */
+PdfStatus pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
+
+/**
+ * Validate every signature; writes a JSON array string into the buffer.
+ */
+PdfStatus pdf_verify_signatures_json(const uint8_t *data,
+                                     uintptr_t len,
+                                     unsigned char **out_ptr,
+                                     uintptr_t *out_len);
 
 #ifdef __cplusplus
 }  // extern "C"

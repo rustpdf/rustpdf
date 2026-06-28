@@ -12,7 +12,10 @@ Run: ``python3 bindings/python/test_binding.py path/to/rust_reference.pdf``
 The reference file is produced by the Rust example with the same drawing.
 """
 
+import struct
 import sys
+import tempfile
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -136,6 +139,38 @@ def exercise_full_surface() -> None:
         enc = ed.to_bytes()
     assert b"/AESV3" in enc, "AES-256 marker missing"
     assert "segredo" in rustpdf.extract_text(enc), "encrypted text not recoverable"
+
+    # 7. Image extraction: embed a PNG, then pull every raster image back out.
+    with rustpdf.Document() as doc:
+        doc.add_page()
+        img = doc.add_image_png(_tiny_png())
+        doc.draw_image(img, 72, 600, 64, 64)
+        with_img = doc.to_bytes()
+    out_dir = tempfile.mkdtemp(prefix="rustpdf_images_")
+    n_images = rustpdf.extract_images_to_dir(with_img, out_dir)
+    assert isinstance(n_images, int) and n_images >= 1, f"expected >=1 image, got {n_images}"
+    written = list(Path(out_dir).iterdir())
+    assert len(written) == n_images, f"count {n_images} != files {written}"
+
+
+def _tiny_png() -> bytes:
+    """A minimal valid 1x1 red RGB PNG, built with the stdlib only."""
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)  # 1x1, 8-bit, RGB
+    idat = zlib.compress(b"\x00\xff\x00\x00")  # filter byte 0 + one red pixel
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", idat)
+        + chunk(b"IEND", b"")
+    )
 
 
 if __name__ == "__main__":

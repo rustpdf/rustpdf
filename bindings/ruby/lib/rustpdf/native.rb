@@ -78,9 +78,30 @@ module RustPdf
       "pdf_editable_save"            => [[VP, VP], I],
 
       "pdf_extract_text"             => [[VP, SZ, VP, VP], I],
+      "pdf_extract_images_to_dir"    => [[VP, SZ, VP, VP], I],
       "pdf_sign"                     => [[VP, SZ, VP, SZ, VP, SZ, VP, VP, VP, I, VP, VP], I],
       "pdf_timestamp"                => [[VP, SZ, VP, SZ, VP, SZ, VP, VP, VP], I],
       "pdf_add_dss"                  => [[VP, SZ, VP, VP, SZ, VP, VP, SZ, VP, VP], I],
+
+      # Tier 1: hyperlinks + bookmarks (Document)
+      "pdf_page_link_uri"            => [[VP, D, D, D, D, VP], I],
+      "pdf_page_link_to_page"        => [[VP, D, D, D, D, SZ, D, I], I],
+      "pdf_document_add_bookmarks"   => [[VP, SZ, VP, VP, VP, VP, VP], I],
+      # Tier 2: ZUGFeRD / Factur-X (Document)
+      "pdf_document_facturx"         => [[VP, VP, SZ, I], I],
+      # Tier 1: form fill + flatten + watermark (EditableDoc)
+      "pdf_editable_set_checkbox"    => [[VP, VP, I, VP], I],
+      "pdf_editable_set_radio"       => [[VP, VP, VP, VP], I],
+      "pdf_editable_set_choice"      => [[VP, VP, VP, VP], I],
+      "pdf_editable_flatten_forms"   => [[VP], I],
+      "pdf_editable_field_names"     => [[VP, VP, VP], I],
+      "pdf_editable_watermark_text"  => [[VP, VP, D, D, D, D, D, D], I],
+      "pdf_editable_watermark_image_file" => [[VP, VP, D, D, D], I],
+      # Tier 2: redaction + PDF/A conversion (EditableDoc)
+      "pdf_editable_redact"          => [[VP, SZ, VP, SZ, VP], I],
+      "pdf_editable_convert_to_pdfa" => [[VP, I], I],
+      # Tier 2: signature validation (module-level)
+      "pdf_verify_signatures_json"   => [[VP, SZ, VP, VP], I],
     }.freeze
 
     def lib

@@ -232,6 +232,10 @@ app.get(["/docs/swift.html", "/docs/swift"], (_req, res) => {
 app.use(express.static(publicDir, { extensions: ["html"] }));
 app.get("/success", (_req, res) => res.sendFile(path.join(publicDir, "success.html")));
 app.get("/cancel", (_req, res) => res.sendFile(path.join(publicDir, "cancel.html")));
+// /zugferd is the canonical hybrid-e-invoice page; serve the same page for the
+// French "Factur-X" spelling (the page's <link rel=canonical> points to /zugferd).
+app.get(["/factur-x", "/facturx"], (_req, res) =>
+  res.sendFile(path.join(publicDir, "zugferd.html")));
 
 // 404 — anything unmatched (HTML pages get the styled page; APIs get JSON).
 app.use((req, res) => {

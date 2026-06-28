@@ -1,0 +1,263 @@
+//! Full-surface smoke test against the precompiled `libpdf_ffi`.
+//!
+//! Run with the engine cdylib resolvable. `make rust-test` builds it and points
+//! `RUSTPDF_LIB` at `target/debug/libpdf_ffi.dylib`; this test also sets it from
+//! `CARGO_MANIFEST_DIR` as a fallback so `cargo test` works from the repo.
+
+use std::path::PathBuf;
+use std::sync::Once;
+
+use rustpdf::{Align, Bookmark, Document, EditableDoc, Encryption, FacturxProfile, PdfaLevel};
+
+static INIT: Once = Once::new();
+
+/// Point RUSTPDF_LIB at the workspace's debug cdylib if not already set.
+fn setup() {
+    INIT.call_once(|| {
+        if std::env::var_os("RUSTPDF_LIB").is_some() {
+            return;
+        }
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let repo_root = manifest.parent().unwrap().parent().unwrap();
+        for name in ["libpdf_ffi.dylib", "libpdf_ffi.so", "pdf_ffi.dll"] {
+            let p = repo_root.join("target").join("debug").join(name);
+            if p.is_file() {
+                std::env::set_var("RUSTPDF_LIB", &p);
+                break;
+            }
+        }
+    });
+}
+
+#[test]
+fn full_surface() {
+    setup();
+
+    // Library loads and reports a version.
+    let version = rustpdf::ensure_loaded().expect("cdylib should load");
+    assert!(!version.is_empty(), "version string should be non-empty");
+
+    // Activate the committed dev license so the gated paths (encryption,
+    // PDF/A) are exercised. The dev cdylib embeds the dev public key, so this
+    // token verifies; a production build would reject it.
+    let token = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("crates/license/fixtures/dev_license.txt"),
+    )
+    .expect("read dev license");
+    rustpdf::activate_license(token.trim()).expect("activate dev license");
+
+    // --- author a document exercising graphics, text and a paragraph ---
+    let mut doc = Document::new().expect("new document");
+    doc.set_info(
+        Some("Smoke Test"),
+        Some("rustpdf"),
+        None,
+        None,
+        Some("binding"),
+    )
+    .unwrap();
+    doc.add_page().unwrap();
+    doc.set_fill_rgb(0.1, 0.2, 0.8)
+        .unwrap()
+        .rect(72.0, 700.0, 200.0, 60.0)
+        .unwrap()
+        .fill()
+        .unwrap();
+
+    let font = doc
+        .add_font_file("../../assets/fonts/Roboto-Regular.ttf")
+        .expect("embed Roboto");
+    doc.show_text(font, 24.0, 72.0, 650.0, "Hello from Rust", 1)
+        .unwrap();
+    doc.paragraph(
+        font,
+        12.0,
+        72.0,
+        600.0,
+        400.0,
+        Align::Justify,
+        "A wrapping paragraph laid out by the engine through the C ABI.",
+    )
+    .unwrap();
+
+    assert_eq!(doc.page_count(), 1);
+
+    let bytes = doc.write().expect("serialize document");
+    assert!(bytes.starts_with(b"%PDF-"), "output should be a PDF");
+
+    // --- round-trip through the editable / extraction surface ---
+    let mut ed = EditableDoc::load(&bytes).expect("load editable");
+    assert_eq!(ed.page_count(), 1);
+    ed.set_info("Producer", "rustpdf-smoke").unwrap();
+    let producer = ed.get_info("Producer").unwrap();
+    assert_eq!(producer, "rustpdf-smoke");
+
+    // Merge with a copy → two pages.
+    let other = EditableDoc::load(&bytes).expect("load second editable");
+    ed.merge(&other).unwrap();
+    assert_eq!(ed.page_count(), 2);
+
+    // Extract just the first page into a new doc.
+    let extracted = ed.extract_pages(&[0]).expect("extract pages");
+    assert_eq!(extracted.page_count(), 1);
+
+    let out = ed.to_bytes().expect("serialize editable");
+    assert!(out.starts_with(b"%PDF-"));
+
+    // Text extraction returns a string (content may be empty without a font).
+    let _text = rustpdf::extract_text(&bytes).expect("extract text");
+
+    // Image extraction writes any raster images into a temp dir.
+    let img_dir = std::env::temp_dir().join("rustpdf_smoke_images");
+    std::fs::create_dir_all(&img_dir).expect("create image dir");
+    let _count =
+        rustpdf::extract_images_to_dir(&bytes, img_dir.to_str().unwrap()).expect("extract images");
+
+    // --- encryption path ---
+    let mut enc = EditableDoc::load(&bytes).expect("load for encrypt");
+    enc.encrypt(Encryption::Aes256, "user", "owner", false)
+        .unwrap();
+    let encrypted = enc.to_bytes().expect("encrypt to bytes");
+    assert!(encrypted.starts_with(b"%PDF-"));
+
+    // --- PDF/A tagging path on a fresh doc (licensed) ---
+    let mut pdfa = Document::new().unwrap();
+    pdfa.pdfa_level(PdfaLevel::A2b).unwrap();
+    pdfa.add_page().unwrap();
+    let pdfa_bytes = pdfa.write().expect("write PDF/A");
+    assert!(pdfa_bytes.starts_with(b"%PDF-"));
+
+    // --- Tier 1/2 authoring: links + bookmarks (Document) ---
+    let mut nav = Document::new().unwrap();
+    nav.add_page().unwrap();
+    nav.add_page().unwrap();
+    nav.link_uri([72.0, 700.0, 272.0, 720.0], "https://example.com")
+        .unwrap()
+        .link_to_page([72.0, 660.0, 272.0, 680.0], 1, Some(700.0))
+        .unwrap()
+        .link_to_page([72.0, 620.0, 272.0, 640.0], 0, None)
+        .unwrap();
+    let outline = Bookmark::new("Chapter 1", 0)
+        .with_top(740.0)
+        .child(Bookmark::new("Section 1.1", 0).with_top(600.0))
+        .child(Bookmark::new("Section 1.2", 1));
+    nav.add_bookmark(&outline).unwrap();
+    nav.add_bookmark(&Bookmark::new("Chapter 2", 1)).unwrap();
+    let nav_bytes = nav.write().expect("write nav doc");
+    assert!(nav_bytes.starts_with(b"%PDF-"));
+
+    // --- Factur-X / ZUGFeRD embedding (licensed, PDF/A-3) ---
+    let mut invoice = Document::new().unwrap();
+    invoice.add_page().unwrap();
+    let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:invoice"><Doc>1</Doc></rsm:CrossIndustryInvoice>"#;
+    invoice.facturx(xml, FacturxProfile::En16931).unwrap();
+    let invoice_bytes = invoice.write().expect("write facturx");
+    assert!(invoice_bytes.starts_with(b"%PDF-"));
+
+    // --- forms: build a doc with fields, then fill / flatten via EditableDoc ---
+    let mut form = Document::new().unwrap();
+    form.add_page().unwrap();
+    form.text_field("name", 0, [72.0, 700.0, 272.0, 720.0], "", 12.0)
+        .unwrap();
+    form.checkbox("agree", 0, [72.0, 660.0, 90.0, 678.0], false)
+        .unwrap();
+    form.radio_group(
+        "color",
+        0,
+        &[
+            ([72.0, 620.0, 90.0, 638.0], "red"),
+            ([100.0, 620.0, 118.0, 638.0], "green"),
+        ],
+        None,
+    )
+    .unwrap();
+    form.dropdown(
+        "size",
+        0,
+        [72.0, 580.0, 200.0, 598.0],
+        &["S", "M", "L"],
+        Some(0),
+        12.0,
+    )
+    .unwrap();
+    let form_bytes = form.write().expect("write form");
+
+    let mut ed_form = EditableDoc::load(&form_bytes).expect("load form");
+    let names = ed_form.field_names().expect("field names");
+    assert!(
+        names.iter().any(|n| n == "name"),
+        "expected 'name' field in {names:?}"
+    );
+    assert!(ed_form.fill_text_field("name", "Ada").unwrap());
+    assert!(ed_form.set_checkbox("agree", true).unwrap());
+    assert!(ed_form.set_radio("color", "green").unwrap());
+    assert!(ed_form.set_choice("size", "L").unwrap());
+    // Unknown fields report not-found rather than erroring.
+    assert!(!ed_form.set_checkbox("nope", true).unwrap());
+    ed_form.flatten_forms().unwrap();
+    let flattened = ed_form.to_bytes().expect("flatten to bytes");
+    assert!(flattened.starts_with(b"%PDF-"));
+
+    // --- watermarks + redaction + PDF/A conversion (EditableDoc) ---
+    let mut wm = EditableDoc::load(&bytes).expect("load for watermark");
+    wm.watermark_text("CONFIDENTIAL", 64.0, (0.5, 0.5, 0.5), 0.30, 45.0)
+        .unwrap();
+
+    let png: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+        0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8,
+        0xcf, 0xc0, 0x00, 0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92, 0xef, 0x00, 0x00, 0x00,
+        0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
+    let png_path = std::env::temp_dir().join("rustpdf_smoke_wm.png");
+    std::fs::write(&png_path, png).expect("write png");
+    wm.watermark_image_file(png_path.to_str().unwrap(), 100.0, 100.0, 0.30)
+        .unwrap();
+
+    // Redact a region on the first page; non-existent pages report false.
+    assert!(wm.redact(0, &[[72.0, 700.0, 200.0, 720.0]]).unwrap());
+    assert!(!wm.redact(999, &[[0.0, 0.0, 10.0, 10.0]]).unwrap());
+    let wm_bytes = wm.to_bytes().expect("watermark to bytes");
+    assert!(wm_bytes.starts_with(b"%PDF-"));
+
+    let mut conv = EditableDoc::load(&bytes).expect("load for pdfa convert");
+    conv.convert_to_pdfa(PdfaLevel::A2b).unwrap();
+    let conv_bytes = conv.to_bytes().expect("convert_to_pdfa to bytes");
+    assert!(conv_bytes.starts_with(b"%PDF-"));
+
+    // --- signature verification on a freshly-signed doc ---
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("crates/pdf/tests/fixtures");
+    let key = std::fs::read(fixtures.join("signer_key.pk8")).expect("read signer key");
+    let cert = std::fs::read(fixtures.join("signer_cert.der")).expect("read signer cert");
+
+    // Unsigned document → no reports.
+    assert!(rustpdf::verify_signatures(&bytes).unwrap().is_empty());
+
+    let signed = rustpdf::sign(
+        &bytes,
+        &key,
+        &cert,
+        Some("smoke test"),
+        Some("here"),
+        Some("Tester"),
+        false,
+    )
+    .expect("sign document");
+    let reports = rustpdf::verify_signatures(&signed).expect("verify signatures");
+    assert_eq!(reports.len(), 1, "expected exactly one signature");
+    let rep = &reports[0];
+    assert!(!rep.sub_filter.is_empty(), "sub_filter should be set");
+    assert_ne!(rep.byte_range, [0, 0, 0, 0], "byte_range should be filled");
+}

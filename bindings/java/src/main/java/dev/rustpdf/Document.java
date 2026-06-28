@@ -240,6 +240,70 @@ public final class Document implements AutoCloseable {
         return this;
     }
 
+    // ---- hyperlinks (Tier 1) ------------------------------------------------
+
+    /** Add a clickable URI link over {@code rect} = {x0, y0, x1, y1}. */
+    public Document linkUri(double[] rect, String uri) {
+        Pdf.check(FFI.C.pdf_page_link_uri(h(), rect[0], rect[1], rect[2], rect[3], uri));
+        return this;
+    }
+
+    /** Add an internal link over {@code rect} jumping to {@code pageIndex} (page top). */
+    public Document linkToPage(double[] rect, int pageIndex) {
+        Pdf.check(FFI.C.pdf_page_link_to_page(
+                h(), rect[0], rect[1], rect[2], rect[3], pageIndex, 0.0, 0));
+        return this;
+    }
+
+    /** Add an internal link over {@code rect} jumping to {@code pageIndex} at vertical {@code top}. */
+    public Document linkToPage(double[] rect, int pageIndex, double top) {
+        Pdf.check(FFI.C.pdf_page_link_to_page(
+                h(), rect[0], rect[1], rect[2], rect[3], pageIndex, top, 1));
+        return this;
+    }
+
+    // ---- bookmarks / outline (Tier 1) ---------------------------------------
+
+    /**
+     * Append a bookmark tree to the document outline. The tree is flattened in
+     * pre-order (root at level 0) and added in a single native call.
+     */
+    public Document addBookmark(Bookmark bookmark) {
+        java.util.List<Bookmark> nodes = new java.util.ArrayList<>();
+        java.util.List<Integer> levelList = new java.util.ArrayList<>();
+        bookmark.flatten(0, nodes, levelList);
+        int n = nodes.size();
+        int[] levels = new int[n];
+        String[] titles = new String[n];
+        long[] pages = new long[n];
+        double[] tops = new double[n];
+        int[] hasTops = new int[n];
+        for (int i = 0; i < n; i++) {
+            Bookmark b = nodes.get(i);
+            levels[i] = levelList.get(i);
+            titles[i] = b.title;
+            pages[i] = b.page;
+            if (b.top == null) {
+                hasTops[i] = 0;
+                tops[i] = 0.0;
+            } else {
+                hasTops[i] = 1;
+                tops[i] = b.top;
+            }
+        }
+        Pdf.check(FFI.C.pdf_document_add_bookmarks(
+                h(), n, levels, new StringArray(titles, "UTF-8"), pages, tops, hasTops));
+        return this;
+    }
+
+    // ---- ZUGFeRD / Factur-X (Tier 2) ----------------------------------------
+
+    /** Embed a Factur-X / ZUGFeRD e-invoice XML at the given profile. Requires a license. */
+    public Document facturx(byte[] xml, FacturxProfile profile) {
+        Pdf.check(FFI.C.pdf_document_facturx(h(), xml, xml.length, profile.code));
+        return this;
+    }
+
     // ---- output -------------------------------------------------------------
 
     public int pageCount() {

@@ -28,6 +28,36 @@ type RadioButton struct {
 	Export string
 }
 
+// Bookmark is a document outline (table of contents) entry. Nest entries via
+// Children to build a tree; pass a root Bookmark to Document.AddBookmark.
+type Bookmark struct {
+	Title    string
+	Page     int
+	Top      *float64
+	Children []Bookmark
+}
+
+// Child appends a child bookmark and returns the (modified) receiver.
+func (b Bookmark) Child(child Bookmark) Bookmark {
+	b.Children = append(b.Children, child)
+	return b
+}
+
+// flatten appends this bookmark and its descendants in pre-order.
+func (b Bookmark) flatten(level int, out *[]flatBookmark) {
+	*out = append(*out, flatBookmark{level: level, title: b.Title, page: b.Page, top: b.Top})
+	for _, c := range b.Children {
+		c.flatten(level+1, out)
+	}
+}
+
+type flatBookmark struct {
+	level int
+	title string
+	page  int
+	top   *float64
+}
+
 // New creates a new, empty A4 document.
 func New() (*Document, error) {
 	h := C.pdf_document_new()
@@ -276,6 +306,83 @@ func (d *Document) RadioGroup(name string, page int, buttons []RadioButton, sele
 		d.h, cn, C.uintptr_t(page), C.uintptr_t(len(buttons)), rectsHead, exportsHead, C.int(selected))
 	runtime.KeepAlive(rects)
 	runtime.KeepAlive(exports)
+	return check(st)
+}
+
+// ---- hyperlinks + bookmarks ------------------------------------------------
+
+// LinkURI adds a clickable web link over rect ([x0,y0,x1,y1]) on the current
+// page opening uri.
+func (d *Document) LinkURI(rect [4]float64, uri string) error {
+	c := C.CString(uri)
+	defer C.free(unsafe.Pointer(c))
+	return check(C.pdf_page_link_uri(
+		d.h, C.double(rect[0]), C.double(rect[1]), C.double(rect[2]), C.double(rect[3]), c))
+}
+
+// LinkToPage adds an internal link over rect jumping to pageIndex (0-based). If
+// top is non-nil, the view scrolls so top is at the top of the page.
+func (d *Document) LinkToPage(rect [4]float64, pageIndex int, top *float64) error {
+	t := C.double(0)
+	hasTop := C.int(0)
+	if top != nil {
+		t = C.double(*top)
+		hasTop = 1
+	}
+	return check(C.pdf_page_link_to_page(
+		d.h, C.double(rect[0]), C.double(rect[1]), C.double(rect[2]), C.double(rect[3]),
+		C.uintptr_t(pageIndex), t, hasTop))
+}
+
+// AddBookmark adds one outline tree (pre-order flattened into the native call).
+// Call it once per top-level entry.
+func (d *Document) AddBookmark(bookmark Bookmark) error {
+	var entries []flatBookmark
+	bookmark.flatten(0, &entries)
+	n := len(entries)
+	if n == 0 {
+		return nil
+	}
+
+	levels := make([]C.int, n)
+	pages := make([]C.uintptr_t, n)
+	tops := make([]C.double, n)
+	hasTops := make([]C.int, n)
+	titles := make([]*C.char, n)
+	for i, e := range entries {
+		levels[i] = C.int(e.level)
+		pages[i] = C.uintptr_t(e.page)
+		if e.top != nil {
+			tops[i] = C.double(*e.top)
+			hasTops[i] = 1
+		}
+		titles[i] = C.CString(e.title)
+	}
+	defer func() {
+		for _, t := range titles {
+			C.free(unsafe.Pointer(t))
+		}
+	}()
+
+	st := C.pdf_document_add_bookmarks(
+		d.h, C.uintptr_t(n),
+		&levels[0],
+		(**C.char)(unsafe.Pointer(&titles[0])),
+		&pages[0], &tops[0], &hasTops[0])
+	runtime.KeepAlive(levels)
+	runtime.KeepAlive(pages)
+	runtime.KeepAlive(tops)
+	runtime.KeepAlive(hasTops)
+	runtime.KeepAlive(titles)
+	return check(st)
+}
+
+// Facturx makes the document a ZUGFeRD / Factur-X invoice: embeds xml as
+// factur-x.xml, marks it PDF/A-3b and adds the Factur-X XMP (requires a
+// license).
+func (d *Document) Facturx(xml []byte, profile FacturxProfile) error {
+	st := C.pdf_document_facturx(d.h, uptr(xml), C.uintptr_t(len(xml)), C.int(profile))
+	runtime.KeepAlive(xml)
 	return check(st)
 }
 

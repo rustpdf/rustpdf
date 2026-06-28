@@ -87,13 +87,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -101,9 +108,10 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
-      <a href="#extract">Text extraction</a>
+      <a href="#extract">Text &amp; image extraction</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -335,6 +343,19 @@ try doc.attachFile(name: "invoice.xml", mime: "text/xml", data: xml,
                    relationship: .source, description: "Structured invoice data")
 try doc.save(to: "einvoice.pdf")</code></pre></div>
 
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>facturx(_ xml: [UInt8], profile: FacturxProfile = .en16931)</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let xml: [UInt8] = Array(crossIndustryInvoiceData)   // your Factur-X XML
+try doc.setInfo(DocumentInfo(title: "Invoice INV-2026-001"))
+let f = try doc.addFont(path: "Roboto-Regular.ttf")
+try doc.addPage()
+try doc.showText(font: f, size: 18, x: 72, y: 760, "Invoice INV-2026-001")
+try doc.facturx(xml, profile: .en16931)
+try doc.save(to: "einvoice.pdf")     // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (<code>.minimum</code> through <code>.extended</code>).</p>
+
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
       <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are tuples <code>(x0, y0, x1, y1)</code>; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
@@ -355,7 +376,33 @@ try doc.radioGroup(name: "billing", page: 0, buttons: [
     RadioButton(rect: (140, 580, 156, 596), export: "annual"),
 ], selected: 1)
 try doc.save(to: "form.pdf")</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc.fillTextField</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>linkURI(rect:uri:)</code> &nbsp; <code>linkToPage(rect:pageIndex:top:)</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let f = try doc.addFont(path: "Roboto-Regular.ttf")
+try doc.addPage()
+try doc.showText(font: f, size: 14, x: 72, y: 760, "Visit rustpdf.dev (see page 2)")
+try doc.linkURI(rect: (72, 756, 320, 776), uri: "https://rustpdf.dev/")   // web link
+try doc.linkToPage(rect: (330, 756, 430, 776), pageIndex: 1, top: 800)    // jump to page 2
+try doc.addPage()
+try doc.save(to: "links.pdf")</code></pre></div>
+      <p>Rectangles are tuples <code>(x0, y0, x1, y1)</code> in points; <code>pageIndex</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>.child(_:)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>Bookmark(title:page:top:)</code> &nbsp; <code>.child(_ bookmark: Bookmark)</code> &nbsp; <code>addBookmark(_:)</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let f = try doc.addFont(path: "Roboto-Regular.ttf")
+for _ in 0..&lt;3 { try doc.addPage() }
+try doc.addBookmark(
+    Bookmark(title: "Chapter 1", page: 0, top: 820)
+        .child(Bookmark(title: "Section 1.1", page: 1))
+        .child(Bookmark(title: "Section 1.2", page: 2)))
+try doc.addBookmark(Bookmark(title: "Chapter 2", page: 2))
+try doc.save(to: "outline.pdf")</code></pre></div>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -410,6 +457,54 @@ try ed.setInfo(key: "Title", value: "Filled form")
 let found = try ed.fillTextField(name: "applicant.name", value: "Jane Doe")
 print("filled:", found, "| title:", try ed.getInfo(key: "Title"))
 try ed.save(to: "filled.pdf")</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>fieldNames() -&gt; [String]</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>fillTextField(name:value:) -&gt; Bool</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>setCheckbox(name:checked:) -&gt; Bool</code></td><td>Check/uncheck a checkbox.</td></tr>
+        <tr><td><code>setRadio(name:exportValue:) -&gt; Bool</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>setChoice(name:value:) -&gt; Bool</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>flattenForms()</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("form.pdf"))
+print(try ed.fieldNames())              // ["applicant.name", "agree", "plan", ...]
+_ = try ed.fillTextField(name: "applicant.name", value: "Jane Doe")
+_ = try ed.setCheckbox(name: "agree", checked: true)
+_ = try ed.setRadio(name: "billing", exportValue: "annual")
+_ = try ed.setChoice(name: "plan", value: "Pro")
+try ed.flattenForms()                   // optional: make it non-editable
+try ed.save(to: "filled.pdf")</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>watermarkText(_:size:color:opacity:rotationDeg:)</code></div>
+      <div class="api"><code>watermarkImageFile(path:width:height:opacity:)</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("report.pdf"))
+try ed.watermarkText("CONFIDENTIAL", opacity: 0.25, rotationDeg: 45)
+try ed.save(to: "stamped.pdf")</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>redact(_ index: Int, rects: [(Double, Double, Double, Double)]) -&gt; Bool</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("statement.pdf"))
+// rects = array of (x0, y0, x1, y1) tuples on that page
+let ok = try ed.redact(0, rects: [(60, 590, 400, 620), (60, 540, 400, 570)])
+try ed.save(to: "redacted.pdf")     // throws without a license granting redaction</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf.extractText</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>convertToPdfa(_ level: PdfaLevel = .a2b)</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("in.pdf"))
+try ed.convertToPdfa(.a2b)          // throws if fonts aren't embedded
+try ed.save(to: "archival.pdf")     // veraPDF: PDF/A-2b compliant</code></pre></div>
 
       <!-- ED OPTIMIZE -->
       <h2 id="ed-optimize">Optimize &amp; compact</h2>
@@ -468,12 +563,27 @@ let lt = try Pdf.addDss(pdf: signed, certs: [cert], crls: [crl])
 // B-LTA: add a document timestamp signed by a TSA key/cert
 let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert)</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>Pdf.verifySignatures(_ data: [UInt8]) -&gt; [SignatureReport]</code></div>
+      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. An empty array means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("contract.signed.pdf")
+for sig in try Pdf.verifySignatures(data) {
+    print(sig.signer ?? "?", "valid:", sig.isValid,
+          "covers whole doc:", sig.coversWholeDocument)
+}</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>Pdf.extractText(_ pdf: [UInt8]) -&gt; String</code> <span class="badge free">free</span></div>
+      <div class="api"><code>Pdf.extractImagesToDir(_ data: [UInt8], _ dir: String) -&gt; Int</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("report.pdf")
-print(try Pdf.extractText(data))</code></pre></div>
+print(try Pdf.extractText(data))
+
+let n = try Pdf.extractImagesToDir(data, "out_images/")   // returns how many were written
+print("wrote \(n) image(s)")</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -509,6 +619,15 @@ print(try Pdf.extractText(data))</code></pre></div>
         <tr><td><code>.rc4</code></td><td>RC4-128 (legacy)</td></tr>
         <tr><td><code>.aes128</code></td><td>AES-128</td></tr>
         <tr><td><code>.aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>.minimum</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>.basicWL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>.basic</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>.en16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>.extended</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -549,11 +668,19 @@ print(try Pdf.extractText(data))</code></pre></div>
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

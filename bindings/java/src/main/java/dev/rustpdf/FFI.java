@@ -109,6 +109,7 @@ final class FFI {
 
         // ---- extract + sign -------------------------------------------------
         int pdf_extract_text(byte[] data, long len, PointerByReference outPtr, LongByReference outLen);
+        int pdf_extract_images_to_dir(byte[] data, long len, String dir, LongByReference outCount);
         int pdf_sign(byte[] pdf, long pdfLen, byte[] keyDer, long keyLen, byte[] certDer, long certLen,
                      String reason, String location, String name, int pades,
                      PointerByReference outPtr, LongByReference outLen);
@@ -118,6 +119,35 @@ final class FFI {
                         Pointer[] certPtrs, long[] certLens, long certCount,
                         Pointer[] crlPtrs, long[] crlLens, long crlCount,
                         PointerByReference outPtr, LongByReference outLen);
+
+        // ---- Tier 1: hyperlinks + bookmarks (Document) ----------------------
+        int pdf_page_link_uri(Pointer doc, double x0, double y0, double x1, double y1, String uri);
+        int pdf_page_link_to_page(Pointer doc, double x0, double y0, double x1, double y1,
+                                  long targetPage, double top, int hasTop);
+        int pdf_document_add_bookmarks(Pointer doc, long count, int[] levels, StringArray titles,
+                                       long[] pages, double[] tops, int[] hasTops);
+
+        // ---- Tier 2: ZUGFeRD / Factur-X (Document) --------------------------
+        int pdf_document_facturx(Pointer doc, byte[] xml, long len, int profile);
+
+        // ---- Tier 1: form fill + flatten + watermark (EditableDoc) ----------
+        int pdf_editable_set_checkbox(Pointer ed, String name, int checked, IntByReference outFound);
+        int pdf_editable_set_radio(Pointer ed, String name, String exportValue, IntByReference outFound);
+        int pdf_editable_set_choice(Pointer ed, String name, String value, IntByReference outFound);
+        int pdf_editable_flatten_forms(Pointer ed);
+        int pdf_editable_field_names(Pointer ed, PointerByReference outPtr, LongByReference outLen);
+        int pdf_editable_watermark_text(Pointer ed, String text, double size,
+                                        double r, double g, double b, double opacity, double rotationDeg);
+        int pdf_editable_watermark_image_file(Pointer ed, String path,
+                                              double width, double height, double opacity);
+
+        // ---- Tier 2: redaction + PDF/A conversion (EditableDoc) -------------
+        int pdf_editable_redact(Pointer ed, long index, double[] rects, long count, IntByReference outFound);
+        int pdf_editable_convert_to_pdfa(Pointer ed, int level);
+
+        // ---- Tier 2: signature validation (module-level) --------------------
+        int pdf_verify_signatures_json(byte[] data, long len,
+                                       PointerByReference outPtr, LongByReference outLen);
     }
 
     private static Lib load() {
@@ -127,7 +157,19 @@ final class FFI {
                 Collections.singletonMap(Library.OPTION_STRING_ENCODING, "UTF-8"));
     }
 
-    /** Resolve the shared library: {@code RUSTPDF_LIB}, else target/{debug,release}. */
+    /**
+     * Resolve the shared library, in priority order:
+     * <ol>
+     *   <li>{@code RUSTPDF_LIB} (an absolute path) — explicit override;</li>
+     *   <li>{@code target/{debug,release}} walking up from the CWD — the dev tree;</li>
+     *   <li>the bare name {@code "pdf_ffi"} — lets JNA extract the platform's native
+     *       lib bundled in the JAR as a classpath resource under
+     *       {@code <Platform.RESOURCE_PREFIX>/} (e.g. {@code darwin-aarch64/},
+     *       {@code linux-x86-64/}, {@code win32-x86-64/}). This is how the published
+     *       fat JAR ships: one prebuilt {@code libpdf_ffi} per platform, JNA picks
+     *       the matching one at load time.</li>
+     * </ol>
+     */
     private static String locate() {
         String env = System.getenv("RUSTPDF_LIB");
         if (env != null && !env.isEmpty()) {
@@ -145,7 +187,9 @@ final class FFI {
             }
             dir = dir.getParentFile();
         }
-        // Fall back to the platform loader's search path (jna.library.path / system).
+        // Bare name: JNA searches jna.library.path / the system loader AND extracts a
+        // bundled lib from the classpath at /<RESOURCE_PREFIX>/<libFileName> — the
+        // mechanism the published fat JAR relies on.
         return "pdf_ffi";
     }
 

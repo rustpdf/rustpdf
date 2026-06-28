@@ -87,13 +87,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -101,9 +108,10 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
-      <a href="#extract">Text extraction</a>
+      <a href="#extract">Text &amp; image extraction</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -278,7 +286,7 @@ doc, _ := rustpdf.New()
 defer doc.Close()
 f, _ := doc.AddFontFile("Roboto-Regular.ttf")
 _ = doc.AddPage()
-_ = doc.Paragraph(f, 12, 72, 700, 451, intro, rustpdf.Justify)
+_ = doc.Paragraph(f, 12, 72, 700, 451, intro, rustpdf.AlignJustify)
 _ = doc.Save("paragraph.pdf")</code></pre></div>
       <p>See the <a href="#enums"><code>Align</code></a> enum for the alignment options.</p>
 
@@ -348,8 +356,24 @@ f, _ := doc.AddFontFile("Roboto-Regular.ttf")
 _ = doc.AddPage()
 _ = doc.ShowText(f, 18, 72, 760, "Invoice 1024", 0)
 _ = doc.AttachFile("invoice.xml", "text/xml", xml,
-	rustpdf.Source, "Structured invoice data")
+	rustpdf.RelSource, "Structured invoice data")
 _ = doc.Save("einvoice.pdf")</code></pre></div>
+
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>Facturx(xml []byte, profile FacturxProfile) error</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>xml, _ := os.ReadFile("factur-x.xml")        // your Cross-Industry Invoice XML
+
+doc, _ := rustpdf.New()
+defer doc.Close()
+_ = doc.SetInfo(rustpdf.Info{Title: "Invoice INV-2026-001"})
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+_ = doc.AddPage()
+_ = doc.ShowText(f, 18, 72, 760, "Invoice INV-2026-001", 0)
+_ = doc.Facturx(xml, rustpdf.FacturxEN16931)
+_ = doc.Save("einvoice.pdf")        // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (<code>FacturxMinimum</code> through <code>FacturxExtended</code>).</p>
 
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
@@ -373,7 +397,41 @@ _ = doc.RadioGroup("billing", 0, []rustpdf.RadioButton{
 	{Rect: [4]float64{140, 580, 156, 596}, Export: "annual"},
 }, 1)
 _ = doc.Save("form.pdf")</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc.FillTextField</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>LinkURI(rect [4]float64, uri string) error</code> &nbsp; <code>LinkToPage(rect [4]float64, pageIndex int, top *float64) error</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>doc, _ := rustpdf.New()
+defer doc.Close()
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+_ = doc.AddPage()
+_ = doc.ShowText(f, 14, 72, 760, "Visit rustpdf.dev (see page 2)", 0)
+_ = doc.LinkURI([4]float64{72, 756, 320, 776}, "https://rustpdf.dev/")   // web link
+top := 800.0
+_ = doc.LinkToPage([4]float64{330, 756, 430, 776}, 1, &amp;top)              // jump to page 2
+_ = doc.AddPage()
+_ = doc.Save("links.pdf")</code></pre></div>
+      <p>Rectangles are <code>[4]float64{x0, y0, x1, y1}</code> in points; <code>pageIndex</code> is 0-based. Pass <code>nil</code> for <code>top</code> to keep the current scroll position.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>Top</code>; nest children with <code>.Child(...)</code> (or by setting the <code>Children</code> slice). A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>Bookmark{Title string, Page int, Top *float64, Children []Bookmark}</code> &nbsp; <code>.Child(bookmark) Bookmark</code> &nbsp; <code>AddBookmark(bookmark Bookmark) error</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>doc, _ := rustpdf.New()
+defer doc.Close()
+_, _ = doc.AddFontFile("Roboto-Regular.ttf")
+for i := 0; i &lt; 3; i++ {
+	_ = doc.AddPage()
+}
+top := 820.0
+_ = doc.AddBookmark(
+	rustpdf.Bookmark{Title: "Chapter 1", Page: 0, Top: &amp;top}.
+		Child(rustpdf.Bookmark{Title: "Section 1.1", Page: 1}).
+		Child(rustpdf.Bookmark{Title: "Section 1.2", Page: 2}))
+_ = doc.AddBookmark(rustpdf.Bookmark{Title: "Chapter 2", Page: 2})
+_ = doc.Save("outline.pdf")</code></pre></div>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -439,6 +497,72 @@ title, _ := ed.GetInfo("Title")
 fmt.Println("filled:", found, "| title:", title)
 _ = ed.Save("filled.pdf")</code></pre></div>
 
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely. The setter methods return <code>(bool, error)</code>: the bool reports whether a field with that name was found.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>FieldNames() ([]string, error)</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>FillTextField(name, value string) (bool, error)</code></td><td>Set a text (or text-style choice) field.</td></tr>
+        <tr><td><code>SetCheckbox(name string, checked bool) (bool, error)</code></td><td>Check or uncheck a checkbox.</td></tr>
+        <tr><td><code>SetRadio(name, exportValue string) (bool, error)</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>SetChoice(name, value string) (bool, error)</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>FlattenForms() error</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("form.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+names, _ := ed.FieldNames()                 // ["applicant.name", "agree", "plan", ...]
+fmt.Println(names)
+_, _ = ed.FillTextField("applicant.name", "Jane Doe")
+_, _ = ed.SetCheckbox("agree", true)
+_, _ = ed.SetRadio("billing", "annual")
+_, _ = ed.SetChoice("plan", "Pro")
+_ = ed.FlattenForms()                       // optional: make it non-editable
+_ = ed.Save("filled.pdf")</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". The color is RGB in <code>0.0..1.0</code>, opacity in <code>0.0..1.0</code>, and rotation is in degrees.</p>
+      <div class="api"><code>WatermarkText(text string, size, r, g, b, opacity, rotationDeg float64) error</code></div>
+      <div class="api"><code>WatermarkImageFile(path string, width, height, opacity float64) error</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+_ = ed.WatermarkText("CONFIDENTIAL", 64, 0.5, 0.5, 0.5, 0.25, 45)
+_ = ed.Save("stamped.pdf")</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions. Returns whether the target page existed.</p>
+      <div class="api"><code>Redact(pageIndex int, rects [][4]float64) (bool, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("statement.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+// rects = list of [4]float64{x0, y0, x1, y1} on that page
+ok, err := ed.Redact(0, [][4]float64{
+	{60, 590, 400, 620},
+	{60, 540, 400, 570},
+})
+if err != nil {
+	log.Fatal(err)   // *Error without a license granting redaction
+}
+fmt.Println("page found:", ok)
+_ = ed.Save("redacted.pdf")</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>ExtractText</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or if a level-A profile is requested.</p>
+      <div class="api"><code>ConvertToPdfa(level PdfaLevel) error</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("in.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+if err := ed.ConvertToPdfa(rustpdf.A2b); err != nil {
+	log.Fatal(err)   // *Error if fonts aren't embedded
+}
+_ = ed.Save("archival.pdf")     // veraPDF: PDF/A-2b compliant</code></pre></div>
+
       <!-- ED OPTIMIZE -->
       <h2 id="ed-optimize">Optimize &amp; compact</h2>
       <table>
@@ -460,7 +584,7 @@ _ = ed.Save("small.pdf")</code></pre></div>
       <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("in.pdf")
 ed, _ := rustpdf.Load(data)
 defer ed.Close()
-if err := ed.Encrypt(rustpdf.Aes256, "", "owner-secret", true); err != nil {
+if err := ed.Encrypt(rustpdf.AES256, "", "owner-secret", true); err != nil {
 	log.Fatal(err)   // *Error without an Encryption license
 }
 _ = ed.Save("secured.pdf")</code></pre></div>
@@ -513,13 +637,33 @@ lt, _ := rustpdf.AddDss(signed, [][]byte{certDER}, [][]byte{crlDER})
 lta, _ := rustpdf.Timestamp(lt, tsaKeyDER, tsaCertDER, "")
 _ = os.WriteFile("contract.lta.pdf", lta, 0o644)</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>rustpdf.VerifySignatures(pdf []byte) ([]SignatureReport, error)</code></div>
+      <p>Each <code>SignatureReport</code> has <code>FieldName</code>, <code>SubFilter</code>, <code>Signer</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. An empty slice means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("contract.signed.pdf")
+reports, _ := rustpdf.VerifySignatures(data)
+for _, sig := range reports {
+	signer := "(unknown)"
+	if sig.Signer != nil {
+		signer = *sig.Signer
+	}
+	fmt.Printf("%s valid:%v covers whole doc:%v\n",
+		signer, sig.IsValid, sig.CoversWholeDocument)
+}</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>rustpdf.ExtractText(data []byte) (string, error)</code> <span class="badge free">free</span></div>
+      <div class="api"><code>rustpdf.ExtractImagesToDir(data []byte, dir string) (int, error)</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
 text, _ := rustpdf.ExtractText(data)
-fmt.Println(text)</code></pre></div>
+fmt.Println(text)
+
+n, _ := rustpdf.ExtractImagesToDir(data, "out_images/")   // returns how many were written
+fmt.Printf("wrote %d image(s)\n", n)</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -535,26 +679,35 @@ fmt.Println(text)</code></pre></div>
       <h3>Align</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
-        <tr><td><code>rustpdf.Left</code></td><td>Left-aligned (default)</td></tr>
-        <tr><td><code>rustpdf.Right</code></td><td>Right-aligned</td></tr>
-        <tr><td><code>rustpdf.Center</code></td><td>Centered</td></tr>
-        <tr><td><code>rustpdf.Justify</code></td><td>Justified (space distributed between words)</td></tr>
+        <tr><td><code>rustpdf.AlignLeft</code></td><td>Left-aligned (default)</td></tr>
+        <tr><td><code>rustpdf.AlignRight</code></td><td>Right-aligned</td></tr>
+        <tr><td><code>rustpdf.AlignCenter</code></td><td>Centered</td></tr>
+        <tr><td><code>rustpdf.AlignJustify</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
       <h3>AFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
-        <tr><td><code>rustpdf.Source</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
-        <tr><td><code>rustpdf.Data</code></td><td>Data used to derive the visual content</td></tr>
-        <tr><td><code>rustpdf.Alternative</code></td><td>Alternative representation</td></tr>
-        <tr><td><code>rustpdf.Supplement</code></td><td>Supplementary material</td></tr>
-        <tr><td><code>rustpdf.Unspecified</code></td><td>Unspecified relationship</td></tr>
+        <tr><td><code>rustpdf.RelSource</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
+        <tr><td><code>rustpdf.RelData</code></td><td>Data used to derive the visual content</td></tr>
+        <tr><td><code>rustpdf.RelAlternative</code></td><td>Alternative representation</td></tr>
+        <tr><td><code>rustpdf.RelSupplement</code></td><td>Supplementary material</td></tr>
+        <tr><td><code>rustpdf.RelUnspecified</code></td><td>Unspecified relationship</td></tr>
       </table>
       <h3>Encryption</h3>
       <table>
         <tr><th>Value</th><th>Cipher</th></tr>
-        <tr><td><code>rustpdf.Rc4</code></td><td>RC4 (legacy)</td></tr>
-        <tr><td><code>rustpdf.Aes128</code></td><td>AES-128</td></tr>
-        <tr><td><code>rustpdf.Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+        <tr><td><code>rustpdf.RC4</code></td><td>RC4 (legacy)</td></tr>
+        <tr><td><code>rustpdf.AES128</code></td><td>AES-128</td></tr>
+        <tr><td><code>rustpdf.AES256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>rustpdf.FacturxMinimum</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>rustpdf.FacturxBasicWL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>rustpdf.FacturxBasic</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>rustpdf.FacturxEN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>rustpdf.FacturxExtended</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -602,11 +755,19 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

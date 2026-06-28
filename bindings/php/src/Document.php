@@ -247,6 +247,84 @@ final class Document
         return $this;
     }
 
+    // ---- links + bookmarks + factur-x --------------------------------------
+
+    /**
+     * Add a clickable hyperlink rectangle on the current page that opens a URI.
+     *
+     * @param array{0: float, 1: float, 2: float, 3: float} $rect [x0,y0,x1,y1]
+     */
+    public function linkUri(array $rect, string $uri): self
+    {
+        Ffi::check($this->ffi->pdf_page_link_uri($this->h(), $rect[0], $rect[1], $rect[2], $rect[3], $uri));
+        return $this;
+    }
+
+    /**
+     * Add a clickable rectangle on the current page that jumps to another page.
+     *
+     * @param array{0: float, 1: float, 2: float, 3: float} $rect [x0,y0,x1,y1]
+     */
+    public function linkToPage(array $rect, int $pageIndex, ?float $top = null): self
+    {
+        Ffi::check($this->ffi->pdf_page_link_to_page(
+            $this->h(),
+            $rect[0],
+            $rect[1],
+            $rect[2],
+            $rect[3],
+            $pageIndex,
+            $top ?? 0.0,
+            $top === null ? 0 : 1,
+        ));
+        return $this;
+    }
+
+    /**
+     * Append one outline tree (pre-order flattened into the document outline).
+     * Call once per root bookmark.
+     */
+    public function addBookmark(Bookmark $bookmark): self
+    {
+        /** @var list<array{0: int, 1: string, 2: int, 3: float|null}> $entries */
+        $entries = [];
+        $bookmark->flatten(0, $entries);
+        $n = \count($entries);
+
+        $levels = $this->ffi->new("int[$n]");
+        $pages = $this->ffi->new("uintptr_t[$n]");
+        $tops = $this->ffi->new("double[$n]");
+        $hasTops = $this->ffi->new("int[$n]");
+        $titles = $this->ffi->new("char*[$n]");
+        $keep = [];
+        foreach ($entries as $i => [$level, $title, $page, $top]) {
+            $levels[$i] = $level;
+            $pages[$i] = $page;
+            if ($top === null) {
+                $hasTops[$i] = 0;
+                $tops[$i] = 0.0;
+            } else {
+                $hasTops[$i] = 1;
+                $tops[$i] = $top;
+            }
+            $cs = $this->ffi->new('char[' . (\strlen($title) + 1) . ']');
+            \FFI::memcpy($cs, $title, \strlen($title));
+            $titles[$i] = $this->ffi->cast('char*', $cs);
+            $keep[] = $cs;
+        }
+        Ffi::check($this->ffi->pdf_document_add_bookmarks($this->h(), $n, $levels, $titles, $pages, $tops, $hasTops));
+        unset($keep);
+        return $this;
+    }
+
+    /** Embed a ZUGFeRD / Factur-X invoice XML (requires a license). */
+    public function facturx(string $xml, FacturxProfile $profile = FacturxProfile::EN16931): self
+    {
+        [$buf, $len] = Ffi::bytes($xml);
+        Ffi::check($this->ffi->pdf_document_facturx($this->h(), $buf, $len, $profile->value));
+        return $this;
+    }
+
     // ---- output -------------------------------------------------------------
 
     public function pageCount(): int

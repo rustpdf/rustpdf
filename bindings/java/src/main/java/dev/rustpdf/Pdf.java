@@ -7,7 +7,9 @@ import com.sun.jna.ptr.PointerByReference;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Top-level helpers: version, licensing, text extraction and signing. */
 public final class Pdf {
@@ -40,6 +42,17 @@ public final class Pdf {
     public static String extractText(byte[] pdf) {
         byte[] bytes = takeBuffer((p, n) -> FFI.C.pdf_extract_text(pdf, pdf.length, p, n));
         return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Extract every raster image from {@code pdf} into directory {@code dir}
+     * (JPEG verbatim as {@code .jpg}, everything else as {@code .png}; files named
+     * {@code page{N}_{name}.{ext}}). Returns the number of images written.
+     */
+    public static long extractImagesToDir(byte[] pdf, String dir) {
+        LongByReference count = new LongByReference();
+        check(FFI.C.pdf_extract_images_to_dir(pdf, pdf.length, dir, count));
+        return count.getValue();
     }
 
     /**
@@ -100,6 +113,170 @@ public final class Pdf {
             out[i] = items.get(i).length;
         }
         return out;
+    }
+
+    /**
+     * Validate every signature in {@code pdf}. Returns one {@link SignatureReport}
+     * per signature; an empty list means the document is unsigned.
+     */
+    public static List<SignatureReport> verifySignatures(byte[] pdf) {
+        byte[] bytes = takeBuffer((p, n) -> FFI.C.pdf_verify_signatures_json(pdf, pdf.length, p, n));
+        String json = new String(bytes, StandardCharsets.UTF_8).trim();
+        List<SignatureReport> out = new ArrayList<>();
+        if (json.isEmpty()) {
+            return out;
+        }
+        Object parsed = new Json(json).parse();
+        if (!(parsed instanceof List<?> arr)) {
+            return out;
+        }
+        for (Object item : arr) {
+            if (!(item instanceof Map<?, ?> obj)) {
+                continue;
+            }
+            long[] br = new long[0];
+            Object brVal = obj.get("byte_range");
+            if (brVal instanceof List<?> brList) {
+                br = new long[brList.size()];
+                for (int i = 0; i < brList.size(); i++) {
+                    br[i] = ((Number) brList.get(i)).longValue();
+                }
+            }
+            out.add(new SignatureReport(
+                    (String) obj.get("field_name"),
+                    str(obj.get("sub_filter")),
+                    (String) obj.get("signer"),
+                    bool(obj.get("covers_whole_document")),
+                    bool(obj.get("digest_valid")),
+                    bool(obj.get("signature_valid")),
+                    bool(obj.get("is_valid")),
+                    br));
+        }
+        return out;
+    }
+
+    private static String str(Object o) {
+        return o == null ? "" : o.toString();
+    }
+
+    private static boolean bool(Object o) {
+        return o instanceof Boolean b && b;
+    }
+
+    /**
+     * A tiny, dependency-free JSON reader (objects, arrays, strings, numbers,
+     * booleans, null) — enough to parse the signature-report array. Kept minimal
+     * on purpose so the binding stays a single JNA dependency.
+     */
+    private static final class Json {
+        private final String s;
+        private int i;
+
+        Json(String s) {
+            this.s = s;
+        }
+
+        Object parse() {
+            Object v = value();
+            ws();
+            return v;
+        }
+
+        private Object value() {
+            ws();
+            char c = s.charAt(i);
+            switch (c) {
+                case '{': return object();
+                case '[': return array();
+                case '"': return string();
+                case 't': i += 4; return Boolean.TRUE;   // true
+                case 'f': i += 5; return Boolean.FALSE;  // false
+                case 'n': i += 4; return null;           // null
+                default:  return number();
+            }
+        }
+
+        private Map<String, Object> object() {
+            Map<String, Object> m = new LinkedHashMap<>();
+            i++; // {
+            ws();
+            if (s.charAt(i) == '}') { i++; return m; }
+            while (true) {
+                ws();
+                String key = string();
+                ws();
+                i++; // :
+                m.put(key, value());
+                ws();
+                char c = s.charAt(i++);
+                if (c == '}') break;
+                // c == ','
+            }
+            return m;
+        }
+
+        private List<Object> array() {
+            List<Object> list = new ArrayList<>();
+            i++; // [
+            ws();
+            if (s.charAt(i) == ']') { i++; return list; }
+            while (true) {
+                list.add(value());
+                ws();
+                char c = s.charAt(i++);
+                if (c == ']') break;
+                // c == ','
+            }
+            return list;
+        }
+
+        private String string() {
+            StringBuilder b = new StringBuilder();
+            i++; // opening quote
+            while (true) {
+                char c = s.charAt(i++);
+                if (c == '"') break;
+                if (c == '\\') {
+                    char e = s.charAt(i++);
+                    switch (e) {
+                        case '"': b.append('"'); break;
+                        case '\\': b.append('\\'); break;
+                        case '/': b.append('/'); break;
+                        case 'b': b.append('\b'); break;
+                        case 'f': b.append('\f'); break;
+                        case 'n': b.append('\n'); break;
+                        case 'r': b.append('\r'); break;
+                        case 't': b.append('\t'); break;
+                        case 'u':
+                            b.append((char) Integer.parseInt(s.substring(i, i + 4), 16));
+                            i += 4;
+                            break;
+                        default: b.append(e);
+                    }
+                } else {
+                    b.append(c);
+                }
+            }
+            return b.toString();
+        }
+
+        private Number number() {
+            int start = i;
+            while (i < s.length() && "+-0123456789.eE".indexOf(s.charAt(i)) >= 0) {
+                i++;
+            }
+            String n = s.substring(start, i);
+            if (n.indexOf('.') >= 0 || n.indexOf('e') >= 0 || n.indexOf('E') >= 0) {
+                return Double.parseDouble(n);
+            }
+            return Long.parseLong(n);
+        }
+
+        private void ws() {
+            while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
+                i++;
+            }
+        }
     }
 
     // ---- shared helpers (used by Document/EditableDoc too) -------------------

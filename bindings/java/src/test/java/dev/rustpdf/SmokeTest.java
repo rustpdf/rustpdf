@@ -16,6 +16,13 @@ import java.util.List;
  */
 public final class SmokeTest {
 
+    private static final String INVOICE_XML =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + "<rsm:CrossIndustryInvoice"
+            + " xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\">\n"
+            + "  <rsm:ExchangedDocument><ram:ID>INV-2026-001</ram:ID></rsm:ExchangedDocument>\n"
+            + "</rsm:CrossIndustryInvoice>";
+
     public static void main(String[] args) throws Exception {
         Path root = repoRoot();
         String font = root.resolve("assets/fonts/Roboto-Regular.ttf").toString();
@@ -114,7 +121,129 @@ public final class SmokeTest {
         assertThat(latin1(signed).contains("/ByteRange"), "signature ByteRange");
         System.out.println("signed ok (" + signed.length + " bytes)");
 
+        // 8. Extract images to a directory.
+        byte[] withImage;
+        try (Document doc = new Document()) {
+            doc.addPage();
+            int img = doc.addImagePng(tinyPng());
+            doc.drawImage(img, 72, 600, 64, 64);
+            withImage = doc.toBytes();
+        }
+        Path imgDir = Files.createTempDirectory("rustpdf-images");
+        long count = Pdf.extractImagesToDir(withImage, imgDir.toString());
+        assertThat(count >= 1, "extracted image count: " + count);
+        System.out.println("extracted " + count + " image(s) to " + imgDir);
+
+        // 9. Tier 1: hyperlinks + bookmarks (Document authoring).
+        byte[] navDoc;
+        try (Document doc = new Document()) {
+            int f = doc.addFontFile(font);
+            doc.addPage();
+            doc.showText(f, 18, 72, 740, "Cover");
+            doc.linkUri(new double[] {72, 700, 300, 720}, "https://rustpdf.dev");
+            doc.linkToPage(new double[] {72, 670, 300, 690}, 1, 760.0);
+            doc.addPage();
+            doc.showText(f, 18, 72, 740, "Chapter");
+            Bookmark outline = new Bookmark("Cover", 0)
+                    .child(new Bookmark("Chapter", 1, 760.0));
+            doc.addBookmark(outline);
+            navDoc = doc.toBytes();
+        }
+        assertThat(latin1(navDoc).contains("/URI"), "URI link present");
+        assertThat(latin1(navDoc).contains("/Outlines"), "outline present");
+        System.out.println("links + bookmarks ok (" + navDoc.length + " bytes)");
+
+        // 10. Tier 2: ZUGFeRD / Factur-X e-invoice embedding (license-gated).
+        byte[] invoice;
+        try (Document doc = new Document()) {
+            int f = doc.addFontFile(font);
+            doc.addPage();
+            doc.showText(f, 18, 72, 760, "Invoice INV-2026-001");
+            doc.facturx(INVOICE_XML.getBytes(StandardCharsets.UTF_8), FacturxProfile.EN16931);
+            invoice = doc.toBytes();
+        }
+        assertThat(latin1(invoice).contains("factur-x.xml"), "factur-x embedded file");
+        assertThat(latin1(invoice).contains("<pdfaid:part>3</pdfaid:part>"), "Factur-X is PDF/A-3");
+        System.out.println("factur-x ok (" + invoice.length + " bytes)");
+
+        // 11. Tier 1/2: form set/flatten/field-names + watermark + redact + convert.
+        try (EditableDoc ed = EditableDoc.load(form)) {
+            List<String> names = ed.fieldNames();
+            assertThat(names.contains("city") && names.contains("ok"), "field names: " + names);
+            assertThat(ed.setCheckbox("ok", false), "set checkbox");
+            assertThat(ed.setRadio("plan", "a"), "set radio");
+            assertThat(ed.setChoice("country", "PT"), "set choice");
+            assertThat(!ed.setCheckbox("nope", true), "missing field returns false");
+            ed.flattenForms();
+            assertThat(ed.fieldNames().isEmpty(), "fields gone after flatten");
+        }
+        System.out.println("form set/flatten/field-names ok");
+
+        byte[] stamped;
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            ed.watermarkText("CONFIDENTIAL");
+            assertThat(ed.redact(0, new double[][] {{72, 695, 200, 712}}), "redact page 0");
+            stamped = ed.toBytes();
+        }
+        assertThat(stamped.length > 0, "watermark + redact bytes");
+        System.out.println("watermark + redact ok (" + stamped.length + " bytes)");
+
+        // convert_to_pdfa needs all fonts embedded (plain uses an embedded subset font).
+        byte[] converted;
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            ed.convertToPdfa(PdfaLevel.A2B);
+            converted = ed.toBytes();
+        }
+        assertThat(latin1(converted).contains("pdfaid"), "converted to PDF/A");
+        System.out.println("convert_to_pdfa ok (" + converted.length + " bytes)");
+
+        // 12. Tier 2: signature validation on the freshly-signed doc.
+        List<SignatureReport> reports = Pdf.verifySignatures(signed);
+        assertThat(!reports.isEmpty(), "at least one signature reported");
+        SignatureReport r = reports.get(0);
+        assertThat(r.byteRange().length == 4, "byte range has 4 entries");
+        System.out.println("verify_signatures: " + reports.size() + " sig(s), first isValid="
+                + r.isValid() + " subFilter=" + r.subFilter()
+                + " coversWhole=" + r.coversWholeDocument());
+
         System.out.println("OK: full Java binding surface exercised");
+    }
+
+    /** A minimal valid 1x1 red RGB PNG, built with the JDK only. */
+    private static byte[] tinyPng() throws Exception {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        out.write(new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'});
+        java.io.ByteArrayOutputStream ihdr = new java.io.ByteArrayOutputStream();
+        java.io.DataOutputStream ih = new java.io.DataOutputStream(ihdr);
+        ih.writeInt(1);        // width
+        ih.writeInt(1);        // height
+        ih.writeByte(8);       // bit depth
+        ih.writeByte(2);       // color type: RGB
+        ih.writeByte(0);       // compression
+        ih.writeByte(0);       // filter
+        ih.writeByte(0);       // interlace
+        writeChunk(out, "IHDR", ihdr.toByteArray());
+        java.util.zip.Deflater def = new java.util.zip.Deflater();
+        def.setInput(new byte[] {0x00, (byte) 0xff, 0x00, 0x00}); // filter 0 + one red pixel
+        def.finish();
+        byte[] buf = new byte[64];
+        int n = def.deflate(buf);
+        writeChunk(out, "IDAT", java.util.Arrays.copyOf(buf, n));
+        writeChunk(out, "IEND", new byte[0]);
+        return out.toByteArray();
+    }
+
+    private static void writeChunk(java.io.ByteArrayOutputStream out, String tag, byte[] data)
+            throws Exception {
+        java.io.DataOutputStream d = new java.io.DataOutputStream(out);
+        d.writeInt(data.length);
+        byte[] tagBytes = tag.getBytes(StandardCharsets.US_ASCII);
+        d.write(tagBytes);
+        d.write(data);
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(tagBytes);
+        crc.update(data);
+        d.writeInt((int) crc.getValue());
     }
 
     private static String latin1(byte[] b) {

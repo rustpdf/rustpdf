@@ -10,16 +10,20 @@ mod attach;
 mod edit;
 mod encrypt;
 mod extract;
+mod extract_image;
 mod flow;
 mod font;
 mod form;
 mod image;
+mod outline;
 mod paragraph;
 mod pdfa;
+mod redact;
 mod sign;
 mod tag;
 mod tagtree;
 mod text;
+mod verify;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::RwLock;
@@ -103,20 +107,23 @@ pub(crate) fn require(feature: Feature) -> Result<(), LicenseError> {
     }
 }
 
-pub use edit::EditableDoc;
+pub use edit::{ConvertError, EditableDoc, WatermarkOptions};
 pub use encrypt::{Encryption, Permissions};
 pub use extract::{extract_text, page_text};
+pub use extract_image::{extract_images, ExtractedImage, ImageFormat};
 pub use flow::{Report, Table};
 pub use font::FontId;
 pub use fonts::FontError;
 pub use graphics::{Content, Matrix};
 pub use image::ImageId;
 pub use images::{Image, ImageError};
+pub use outline::Bookmark;
 pub use paragraph::{Align, Paragraph};
 pub use parser::{PdfError, PdfReader};
 pub use sign::{add_dss, sign, timestamp, SignError, SignOptions, Signer, VisibleSignature};
 pub use tag::StructTag;
 pub use text::{Rgb, TextObject};
+pub use verify::{verify_signatures, SignatureReport};
 pub use writer::PdfVersion as Version;
 
 use font::{FontUsage, RegisteredFont};
@@ -205,6 +212,23 @@ enum PageItem {
     },
 }
 
+/// Where a [`Page`] link annotation points.
+#[derive(Debug, Clone)]
+enum LinkTarget {
+    /// An external URI (web navigation).
+    Uri(String),
+    /// Another page in this document (document navigation), optionally scrolled
+    /// so `top` (page points from the bottom) is at the top of the view.
+    Page { index: usize, top: Option<f64> },
+}
+
+/// A clickable `/Link` annotation rectangle on a page.
+#[derive(Debug, Clone)]
+struct LinkAnnot {
+    rect: [f64; 4],
+    target: LinkTarget,
+}
+
 /// A single page: its media box plus an ordered list of drawables.
 #[derive(Debug, Clone)]
 pub struct Page {
@@ -212,6 +236,7 @@ pub struct Page {
     height: f64,
     items: Vec<PageItem>,
     used_images: BTreeSet<usize>,
+    links: Vec<LinkAnnot>,
 }
 
 impl Page {
@@ -221,6 +246,7 @@ impl Page {
             height,
             items: Vec::new(),
             used_images: BTreeSet::new(),
+            links: Vec::new(),
         }
     }
 
@@ -295,6 +321,37 @@ impl Page {
             w,
             h,
             alt: alt.into(),
+        });
+        self
+    }
+
+    /// Add a clickable **web link** over the rectangle `[x0, y0, x1, y1]`
+    /// (page points) that opens `uri` in a browser (a `/Link` annotation with a
+    /// `/URI` action). No visible border is drawn.
+    pub fn link_uri(&mut self, rect: [f64; 4], uri: impl Into<String>) -> &mut Self {
+        self.links.push(LinkAnnot {
+            rect,
+            target: LinkTarget::Uri(uri.into()),
+        });
+        self
+    }
+
+    /// Add a clickable **internal link** over `[x0, y0, x1, y1]` that jumps to
+    /// page `page_index` (0-based). `top` optionally scrolls the destination so
+    /// that y-coordinate (page points from the bottom) sits at the top of the
+    /// view; `None` keeps the current scroll position.
+    pub fn link_to_page(
+        &mut self,
+        rect: [f64; 4],
+        page_index: usize,
+        top: Option<f64>,
+    ) -> &mut Self {
+        self.links.push(LinkAnnot {
+            rect,
+            target: LinkTarget::Page {
+                index: page_index,
+                top,
+            },
         });
         self
     }
@@ -389,6 +446,37 @@ pub struct Document {
     tagged: bool,
     attachments: Vec<Attachment>,
     form_fields: Vec<form::FormField>,
+    bookmarks: Vec<Bookmark>,
+    facturx: Option<pdfa::ZugferdXmp>,
+}
+
+/// A ZUGFeRD / Factur-X conformance profile (the level of structured detail in
+/// the embedded XML invoice).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FacturxProfile {
+    /// Minimal header data only.
+    Minimum,
+    /// Basic, without line items.
+    BasicWl,
+    /// Basic, with line items.
+    Basic,
+    /// The EN 16931 ("Comfort") semantic core — the common interoperable level.
+    En16931,
+    /// EN 16931 plus extensions.
+    Extended,
+}
+
+impl FacturxProfile {
+    /// The conformance level string written into the Factur-X XMP.
+    fn conformance(self) -> &'static str {
+        match self {
+            FacturxProfile::Minimum => "MINIMUM",
+            FacturxProfile::BasicWl => "BASIC WL",
+            FacturxProfile::Basic => "BASIC",
+            FacturxProfile::En16931 => "EN 16931",
+            FacturxProfile::Extended => "EXTENDED",
+        }
+    }
 }
 
 impl Default for Document {
@@ -411,6 +499,8 @@ impl Document {
             tagged: false,
             attachments: Vec::new(),
             form_fields: Vec::new(),
+            bookmarks: Vec::new(),
+            facturx: None,
         }
     }
 
@@ -462,6 +552,39 @@ impl Document {
             data: data.into(),
             desc: description.into(),
             relationship: relationship.name(),
+        });
+        self
+    }
+
+    /// Add a top-level **bookmark** (document outline entry). Build a nested
+    /// tree with [`Bookmark::child`]; viewers show the outline pane and (because
+    /// a document with bookmarks sets `/PageMode /UseOutlines`) open it by
+    /// default.
+    pub fn add_bookmark(&mut self, bookmark: Bookmark) -> &mut Self {
+        self.bookmarks.push(bookmark);
+        self
+    }
+
+    /// Make this a **ZUGFeRD / Factur-X** electronic invoice: embed `xml` (the
+    /// Cross-Industry Invoice) as `factur-x.xml`, mark the document **PDF/A-3**,
+    /// and add the Factur-X identification to the XMP metadata at `profile`. The
+    /// visual PDF *is* the human-readable invoice; the embedded XML is the
+    /// machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.
+    pub fn facturx(&mut self, xml: impl Into<Vec<u8>>, profile: FacturxProfile) -> &mut Self {
+        const FILENAME: &str = "factur-x.xml";
+        self.pdfa = Some(PdfaLevel::A3b);
+        self.attach_file(
+            FILENAME,
+            "text/xml",
+            xml,
+            AFRelationship::Alternative,
+            "Factur-X invoice",
+        );
+        self.facturx = Some(pdfa::ZugferdXmp {
+            filename: FILENAME.to_string(),
+            document_type: "INVOICE".to_string(),
+            version: "1.0".to_string(),
+            conformance: profile.conformance().to_string(),
         });
         self
     }
@@ -886,6 +1009,67 @@ impl Document {
             }
         }
 
+        // Link annotations (Tier 1): resolved now that every page reference is
+        // known, so an internal `/Dest` can point at its target page. They are
+        // merged into each page's `/Annots` alongside any form widgets.
+        for (page_index, page) in self.pages.iter().enumerate() {
+            if page.links.is_empty() {
+                continue;
+            }
+            let mut link_refs: Vec<cos::Reference> = Vec::with_capacity(page.links.len());
+            for link in &page.links {
+                let mut annot = Dict::new()
+                    .with("Type", Object::name("Annot"))
+                    .with("Subtype", Object::name("Link"))
+                    .with("Rect", rect_array(link.rect))
+                    .with(
+                        "Border",
+                        Object::Array(vec![
+                            Object::Integer(0),
+                            Object::Integer(0),
+                            Object::Integer(0),
+                        ]),
+                    );
+                match &link.target {
+                    LinkTarget::Uri(uri) => {
+                        annot.set(
+                            "A",
+                            Object::Dict(
+                                Dict::new()
+                                    .with("S", Object::name("URI"))
+                                    .with("URI", PdfString::literal(uri.clone().into_bytes())),
+                            ),
+                        );
+                    }
+                    LinkTarget::Page { index, top } => {
+                        if let Some(&target_ref) = page_refs.get(*index) {
+                            let top_obj = top.map(Object::Real).unwrap_or(Object::Null);
+                            annot.set(
+                                "Dest",
+                                Object::Array(vec![
+                                    Object::Reference(target_ref),
+                                    Object::name("XYZ"),
+                                    Object::Null,
+                                    top_obj,
+                                    Object::Null,
+                                ]),
+                            );
+                        }
+                    }
+                }
+                link_refs.push(doc.add(Object::Dict(annot)));
+            }
+            let page_ref = page_refs[page_index];
+            doc.patch(page_ref, move |d| {
+                let mut annots = match d.get("Annots") {
+                    Some(Object::Array(a)) => a.clone(),
+                    _ => Vec::new(),
+                };
+                annots.extend(link_refs.into_iter().map(Object::Reference));
+                d.set("Annots", Object::Array(annots));
+            });
+        }
+
         let count = kids.len() as i64;
         doc.assign(
             pages_ref,
@@ -914,6 +1098,14 @@ impl Document {
             );
         }
 
+        // Document outline / bookmarks (Tier 1): a nested `/Outlines` tree whose
+        // destinations point at the now-known page references.
+        if !self.bookmarks.is_empty() {
+            let outlines_ref = outline::build(&mut doc, &page_refs, &self.bookmarks);
+            catalog.set("Outlines", outlines_ref);
+            catalog.set("PageMode", Object::name("UseOutlines"));
+        }
+
         // Interactive form (AcroForm + widgets + generated appearances, 6.7).
         if !self.form_fields.is_empty() {
             let acro_ref = form_builder.build(&mut doc, &page_refs);
@@ -934,6 +1126,7 @@ impl Document {
                 &self.info_entries(),
                 level.part(),
                 level.conformance(),
+                self.facturx.as_ref(),
             );
         }
 
@@ -998,6 +1191,16 @@ enum Drawable {
         h: f64,
         alt: String,
     },
+}
+
+/// A PDF rectangle array `[x0 y0 x1 y1]` from `[f64; 4]`.
+fn rect_array(r: [f64; 4]) -> Object {
+    Object::Array(vec![
+        Object::Real(r[0]),
+        Object::Real(r[1]),
+        Object::Real(r[2]),
+        Object::Real(r[3]),
+    ])
 }
 
 /// The library version string, surfaced through the FFI as `pdf_version()`.

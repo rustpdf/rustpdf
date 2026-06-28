@@ -230,6 +230,60 @@ public sealed class Document : IDisposable
         return this;
     }
 
+    // ---- hyperlinks + bookmarks (Tier 1) ------------------------------------
+
+    /// <summary>Add a clickable link rectangle that opens an external URI.</summary>
+    public Document LinkUri((double, double, double, double) rect, string uri)
+    {
+        var (x0, y0, x1, y1) = rect;
+        Pdf.Check(Native.pdf_page_link_uri(H, x0, y0, x1, y1, uri));
+        return this;
+    }
+
+    /// <summary>Add a clickable link rectangle that jumps to another page
+    /// (optionally scrolled to <paramref name="top"/>).</summary>
+    public Document LinkToPage((double, double, double, double) rect, int pageIndex, double? top = null)
+    {
+        var (x0, y0, x1, y1) = rect;
+        Pdf.Check(Native.pdf_page_link_to_page(
+            H, x0, y0, x1, y1, (nuint)pageIndex, top ?? 0.0, top is null ? 0 : 1));
+        return this;
+    }
+
+    /// <summary>Append one outline (bookmark) tree to the document. Children are
+    /// flattened pre-order and submitted in a single native call.</summary>
+    public Document AddBookmark(Bookmark bookmark)
+    {
+        var entries = new List<(int Level, string Title, int Page, double? Top)>();
+        bookmark.Flatten(0, entries);
+        int n = entries.Count;
+        var levels = new int[n];
+        var titles = new string[n];
+        var pages = new nuint[n];
+        var tops = new double[n];
+        var hasTops = new int[n];
+        for (int i = 0; i < n; i++)
+        {
+            var e = entries[i];
+            levels[i] = e.Level;
+            titles[i] = e.Title;
+            pages[i] = (nuint)e.Page;
+            hasTops[i] = e.Top is null ? 0 : 1;
+            tops[i] = e.Top ?? 0.0;
+        }
+        Pdf.Check(Native.pdf_document_add_bookmarks(H, (nuint)n, levels, titles, pages, tops, hasTops));
+        return this;
+    }
+
+    // ---- ZUGFeRD / Factur-X (Tier 2) ----------------------------------------
+
+    /// <summary>Embed a Factur-X/ZUGFeRD invoice XML (PDF/A-3). Requires a license.</summary>
+    public Document Facturx(byte[] xml, FacturxProfile profile = FacturxProfile.En16931)
+    {
+        Pdf.Check(Native.pdf_document_facturx(H, xml, (nuint)xml.Length, (int)profile));
+        return this;
+    }
+
     // ---- output -------------------------------------------------------------
 
     public int PageCount => Native.pdf_document_page_count(H);

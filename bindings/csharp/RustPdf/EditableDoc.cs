@@ -113,6 +113,83 @@ public sealed class EditableDoc : IDisposable
         return found != 0;
     }
 
+    /// <summary>Set an AcroForm checkbox on/off; returns whether it existed.</summary>
+    public bool SetCheckbox(string name, bool checkedFlag = true)
+    {
+        Pdf.Check(Native.pdf_editable_set_checkbox(H, name, checkedFlag ? 1 : 0, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Select a radio button by export value; returns whether it existed.</summary>
+    public bool SetRadio(string name, string exportValue)
+    {
+        Pdf.Check(Native.pdf_editable_set_radio(H, name, exportValue, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Set a choice (list/combo) field's value; returns whether it existed.</summary>
+    public bool SetChoice(string name, string value)
+    {
+        Pdf.Check(Native.pdf_editable_set_choice(H, name, value, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Flatten all AcroForm fields into page content (non-editable).</summary>
+    public EditableDoc FlattenForms()
+    {
+        Pdf.Check(Native.pdf_editable_flatten_forms(H));
+        return this;
+    }
+
+    /// <summary>List every AcroForm field's fully-qualified name.</summary>
+    public IReadOnlyList<string> FieldNames()
+    {
+        var bytes = Pdf.TakeBuffer((out IntPtr p, out nuint n) => Native.pdf_editable_field_names(H, out p, out n));
+        var text = Encoding.UTF8.GetString(bytes);
+        return text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    /// <summary>Stamp diagonal text across every page as a watermark.</summary>
+    public EditableDoc WatermarkText(string text, double size = 64.0,
+        (double R, double G, double B)? color = null, double opacity = 0.30, double rotationDeg = 45.0)
+    {
+        var (r, g, b) = color ?? (0.5, 0.5, 0.5);
+        Pdf.Check(Native.pdf_editable_watermark_text(H, text, size, r, g, b, opacity, rotationDeg));
+        return this;
+    }
+
+    /// <summary>Stamp an image file across every page as a watermark.</summary>
+    public EditableDoc WatermarkImageFile(string path, double width, double height, double opacity = 0.30)
+    {
+        Pdf.Check(Native.pdf_editable_watermark_image_file(H, path, width, height, opacity));
+        return this;
+    }
+
+    /// <summary>Redact rectangular regions on a page; returns whether the page existed.
+    /// Each rect is <c>(x0, y0, x1, y1)</c>.</summary>
+    public bool Redact(int pageIndex, IReadOnlyList<(double, double, double, double)> rects)
+    {
+        var flat = new double[rects.Count * 4];
+        for (int i = 0; i < rects.Count; i++)
+        {
+            var (x0, y0, x1, y1) = rects[i];
+            flat[i * 4] = x0;
+            flat[i * 4 + 1] = y0;
+            flat[i * 4 + 2] = x1;
+            flat[i * 4 + 3] = y1;
+        }
+        Pdf.Check(Native.pdf_editable_redact(H, (nuint)pageIndex, flat, (nuint)rects.Count, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Convert the loaded document to PDF/A (B-levels only: A1b/A2b/A3b).
+    /// Requires a license.</summary>
+    public EditableDoc ConvertToPdfa(PdfaLevel level = PdfaLevel.A2b)
+    {
+        Pdf.Check(Native.pdf_editable_convert_to_pdfa(H, (int)level));
+        return this;
+    }
+
     public EditableDoc Optimize()
     {
         Pdf.Check(Native.pdf_editable_optimize(H));

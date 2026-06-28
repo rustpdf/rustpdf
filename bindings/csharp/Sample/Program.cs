@@ -123,4 +123,108 @@ var signed = Pdf.Sign(plain, key, cert, reason: "Aprovado", pades: true);
 Assert(System.Text.Encoding.Latin1.GetString(signed).Contains("/ByteRange"), "signature ByteRange");
 Console.WriteLine($"signed ok ({signed.Length} bytes)");
 
+// 8. Extract raster images to a directory.
+var imgDir = Path.Combine(Path.GetTempPath(), "rustpdf-images-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(imgDir);
+int imgCount = Pdf.ExtractImagesToDir(pdfa, imgDir);
+Console.WriteLine($"extracted {imgCount} image(s) to {imgDir}");
+
+// 9. Hyperlinks + bookmarks (Tier 1, Document authoring).
+byte[] nav;
+using (var doc = new Document())
+{
+    int f = doc.AddFontFile(font);
+    doc.AddPage();
+    doc.ShowText(f, 14, 72, 700, "Page 1 — see Anthropic");
+    doc.LinkUri((72, 695, 300, 715), "https://www.anthropic.com");
+    doc.LinkToPage((72, 670, 200, 690), 1);
+    doc.AddPage();
+    doc.ShowText(f, 14, 72, 700, "Page 2");
+    doc.AddBookmark(new Bookmark("Cover", 0)
+        .Child(new Bookmark("Intro", 0, top: 700))
+        .Child(new Bookmark("Details", 1, top: 700)));
+    nav = doc.ToBytes();
+}
+var navStr = System.Text.Encoding.Latin1.GetString(nav);
+Assert(navStr.Contains("/Annots"), "link annotations present");
+Assert(navStr.Contains("/URI"), "URI action present");
+Assert(navStr.Contains("/Outlines"), "outline dictionary present");
+Console.WriteLine($"links + bookmarks ok ({nav.Length} bytes)");
+
+// 10. Factur-X / ZUGFeRD e-invoice (Tier 2, license-gated).
+const string invoiceXml =
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+    "<rsm:CrossIndustryInvoice xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\">" +
+    "<rsm:ExchangedDocument><ram:ID>INV-2026-001</ram:ID></rsm:ExchangedDocument>" +
+    "</rsm:CrossIndustryInvoice>";
+byte[] facturx;
+using (var doc = new Document())
+{
+    int f = doc.AddFontFile(font);
+    doc.AddPage();
+    doc.ShowText(f, 18, 72, 760, "Invoice INV-2026-001");
+    doc.Facturx(System.Text.Encoding.UTF8.GetBytes(invoiceXml), FacturxProfile.En16931);
+    facturx = doc.ToBytes();
+}
+var fxStr = System.Text.Encoding.Latin1.GetString(facturx);
+Assert(fxStr.Contains("factur-x.xml"), "factur-x.xml embedded");
+Assert(fxStr.Contains("<pdfaid:part>3</pdfaid:part>"), "factur-x marks PDF/A-3");
+Console.WriteLine($"factur-x ok ({facturx.Length} bytes)");
+
+// 11. Form filling: text/checkbox/radio/choice + field_names + flatten.
+byte[] richForm;
+using (var doc = new Document())
+{
+    doc.AddPage();
+    doc.TextField("city", 0, (120, 700, 300, 720), "", 12);
+    doc.Checkbox("ok", 0, (120, 670, 138, 688), false);
+    doc.RadioGroup("plan", 0, new[] { ((120.0, 640.0, 138.0, 658.0), "a"), ((160.0, 640.0, 178.0, 658.0), "b") });
+    doc.Dropdown("country", 0, (120, 610, 300, 630), new[] { "BR", "PT" }, size: 12);
+    richForm = doc.ToBytes();
+}
+byte[] filled;
+using (var ed = EditableDoc.Load(richForm))
+{
+    var names = ed.FieldNames();
+    Assert(names.Contains("city"), $"field_names contains city: [{string.Join(", ", names)}]");
+    Assert(ed.FillTextField("city", "São Paulo"), "fill text field found");
+    Assert(ed.SetCheckbox("ok", true), "set checkbox found");
+    Assert(ed.SetRadio("plan", "b"), "set radio found");
+    Assert(ed.SetChoice("country", "PT"), "set choice found");
+    Assert(!ed.SetCheckbox("missing"), "missing checkbox not found");
+    ed.FlattenForms();
+    filled = ed.ToBytes();
+}
+Assert(filled.Length > 0, "flattened form bytes");
+Console.WriteLine("form fill + flatten + field_names ok");
+
+// 12. Watermark + redaction (Tier 1 + Tier 2).
+byte[] stamped;
+using (var ed = EditableDoc.Load(pdfa))
+{
+    ed.WatermarkText("CONFIDENTIAL", size: 60, color: (0.7, 0.1, 0.1), opacity: 0.25, rotationDeg: 45);
+    Assert(ed.Redact(0, new[] { (70.0, 750.0, 200.0, 775.0) }), "redact page existed");
+    Assert(!ed.Redact(99, new[] { (0.0, 0.0, 10.0, 10.0) }), "redact missing page");
+    stamped = ed.ToBytes();
+}
+Assert(stamped.Length > 0, "watermark + redact bytes");
+Console.WriteLine("watermark + redaction ok");
+
+// 13. Convert an existing PDF to PDF/A (license-gated).
+byte[] converted;
+using (var ed = EditableDoc.Load(plain))
+{
+    ed.ConvertToPdfa(PdfaLevel.A2b);
+    converted = ed.ToBytes();
+}
+Assert(System.Text.Encoding.Latin1.GetString(converted).Contains("pdfaid"), "converted has PDF/A metadata");
+Console.WriteLine($"convert_to_pdfa ok ({converted.Length} bytes)");
+
+// 14. Verify signatures on the freshly-signed document.
+var sigs = Pdf.VerifySignatures(signed);
+Assert(sigs.Count >= 1, $"expected at least one signature, got {sigs.Count}");
+Assert(sigs[0].ByteRange.Length == 4, "signature byte range has 4 ints");
+Console.WriteLine($"verify_signatures ok: {sigs.Count} signature(s), first sub_filter={sigs[0].SubFilter}, valid={sigs[0].IsValid}");
+Assert(Pdf.VerifySignatures(plain).Count == 0, "unsigned doc has no signatures");
+
 Console.WriteLine("OK: full C# binding surface exercised");

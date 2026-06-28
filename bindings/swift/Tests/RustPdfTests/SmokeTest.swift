@@ -133,7 +133,122 @@ final class SmokeTest: XCTestCase {
         let signed = try Pdf.sign(pdf: plain, keyDER: key, certDER: cert,
                                   options: SignOptions(reason: "Aprovado", pades: true))
         XCTAssertTrue(contains(signed, "/ByteRange"), "signature ByteRange missing")
+
+        // 9. Image extraction: embed a PNG, then pull every raster image back out.
+        var withImg: [UInt8] = []
+        do {
+            let d = try Document()
+            try d.addPage()
+            let img = try d.addImagePNG(data: Self.tinyPNG)
+            _ = try d.drawImage(img, x: 72, y: 600, width: 64, height: 64)
+            withImg = try d.toBytes()
+        }
+        let outDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rustpdf_images_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        let n = try Pdf.extractImagesToDir(withImg, outDir.path)
+        XCTAssertGreaterThanOrEqual(n, 1, "expected at least one image, got \(n)")
+        let written = try FileManager.default.contentsOfDirectory(atPath: outDir.path)
+        XCTAssertEqual(written.count, n, "count \(n) != files written \(written)")
+
+        // 10. Links + bookmarks (Tier 1) on an authored document.
+        do {
+            let d = try Document()
+            let f = try d.addFont(data: font)
+            try d.addPage()
+            try d.showText(font: f, size: 16, x: 72, y: 740, "Page 1")
+            try d.linkURI(rect: (72, 700, 200, 720), uri: "https://example.com")
+            try d.addPage()
+            try d.showText(font: f, size: 16, x: 72, y: 740, "Page 2")
+            try d.linkToPage(rect: (72, 700, 200, 720), pageIndex: 0, top: 800)
+            try d.addBookmark(
+                Bookmark(title: "Chapter 1", page: 0)
+                    .child(Bookmark(title: "Section 1.1", page: 0, top: 720))
+                    .child(Bookmark(title: "Section 1.2", page: 1)))
+            try d.addBookmark(Bookmark(title: "Chapter 2", page: 1))
+            let bytes = try d.toBytes()
+            XCTAssertTrue(contains(bytes, "/URI"), "link annotation missing")
+            XCTAssertTrue(contains(bytes, "/Outlines"), "outline missing")
+        }
+
+        // 11. Factur-X / ZUGFeRD (Tier 2; license-gated, PDF/A-3b).
+        do {
+            let d = try Document()
+            let f = try d.addFont(data: font)
+            try d.addPage()
+            try d.showText(font: f, size: 12, x: 72, y: 740, "Invoice")
+            let xml = Array("<?xml version=\"1.0\"?><rsm:CrossIndustryInvoice/>".utf8)
+            try d.facturx(xml, profile: .en16931)
+            let bytes = try d.toBytes()
+            XCTAssertTrue(contains(bytes, "factur-x.xml"), "factur-x attachment missing")
+        }
+
+        // 12. Form manipulation on an EditableDoc: set + flatten + field names.
+        do {
+            let d = try Document()
+            try d.addPage()
+            try d.textField(name: "city", page: 0, rect: (120, 700, 300, 720), value: "", size: 12)
+            try d.checkbox(name: "ok", page: 0, rect: (120, 670, 138, 688), checked: false)
+            try d.radioGroup(name: "plan", page: 0, buttons: [
+                RadioButton(rect: (120, 640, 138, 658), export: "a"),
+                RadioButton(rect: (160, 640, 178, 658), export: "b"),
+            ], selected: -1)
+            try d.dropdown(name: "country", page: 0, rect: (120, 610, 300, 630),
+                           options: ["BR", "PT"], selected: -1, size: 12)
+            let formBytes = try d.toBytes()
+
+            let ed = try EditableDoc(loading: formBytes)
+            let names = try ed.fieldNames()
+            XCTAssertTrue(names.contains("city"), "field names: \(names)")
+            XCTAssertTrue(try ed.fillTextField(name: "city", value: "SP"))
+            XCTAssertTrue(try ed.setCheckbox(name: "ok", checked: true))
+            XCTAssertTrue(try ed.setRadio(name: "plan", exportValue: "b"))
+            XCTAssertTrue(try ed.setChoice(name: "country", value: "PT"))
+            XCTAssertFalse(try ed.setCheckbox(name: "nope"))
+            try ed.flattenForms()
+            let flat = try ed.toBytes()
+            XCTAssertFalse(contains(flat, "/AcroForm"), "AcroForm should be gone after flatten")
+        }
+
+        // 13. Watermarks + redaction on an EditableDoc.
+        do {
+            let ed = try EditableDoc(loading: plain)
+            try ed.watermarkText("DRAFT", size: 48, color: (0.6, 0.6, 0.6), opacity: 0.25)
+            let pngPath = outDir.appendingPathComponent("wm.png").path
+            try Data(Self.tinyPNG).write(to: URL(fileURLWithPath: pngPath))
+            try ed.watermarkImageFile(path: pngPath, width: 32, height: 32, opacity: 0.2)
+            XCTAssertTrue(try ed.redact(0, rects: [(70, 695, 160, 715)]), "page 0 should exist")
+            XCTAssertFalse(try ed.redact(99, rects: [(0, 0, 1, 1)]), "page 99 should not exist")
+            _ = try ed.toBytes()
+        }
+
+        // 14. Convert an existing (font-embedded) document to PDF/A (license-gated).
+        do {
+            let ed = try EditableDoc(loading: plain)
+            try ed.convertToPdfa(.a2b)
+            let out = try ed.toBytes()
+            XCTAssertTrue(contains(out, "pdfaid"), "PDF/A identifier missing after conversion")
+        }
+
+        // 15. Verify signatures on the freshly-signed document from step 8.
+        let reports = try Pdf.verifySignatures(signed)
+        XCTAssertGreaterThanOrEqual(reports.count, 1, "expected at least one signature")
+        if let r = reports.first {
+            XCTAssertEqual(r.byteRange.count, 4, "byteRange should have 4 ints")
+            XCTAssertFalse(r.subFilter.isEmpty, "subFilter should be set")
+        }
+        XCTAssertTrue(try Pdf.verifySignatures(plain).isEmpty, "unsigned doc should report no signatures")
     }
+
+    /// A minimal valid 1x1 red RGB PNG (built once with the stdlib).
+    private static let tinyPNG: [UInt8] = [
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+        0x0c, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+        0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92, 0xef, 0x00, 0x00, 0x00,
+        0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]
 
     /// True if the ASCII `needle` appears in the byte buffer.
     private func contains(_ haystack: [UInt8], _ needle: String) -> Bool {

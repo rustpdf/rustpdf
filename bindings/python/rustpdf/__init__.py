@@ -35,15 +35,19 @@ from pathlib import Path
 __all__ = [
     "Document",
     "EditableDoc",
+    "Bookmark",
     "PdfError",
     "PdfaLevel",
     "Align",
     "AFRelationship",
     "Encryption",
+    "FacturxProfile",
     "version",
     "library_path",
     "activate_license",
     "extract_text",
+    "extract_images_to_dir",
+    "verify_signatures",
     "sign",
     "timestamp",
     "add_dss",
@@ -84,6 +88,34 @@ class Encryption(IntEnum):
     RC4 = 0
     AES128 = 1
     AES256 = 2
+
+
+class FacturxProfile(IntEnum):
+    MINIMUM = 0
+    BASIC_WL = 1
+    BASIC = 2
+    EN16931 = 3
+    EXTENDED = 4
+
+
+class Bookmark:
+    """A document outline entry. Nest with :meth:`child` to build a tree."""
+
+    def __init__(self, title: str, page: int, top: float | None = None,
+                 children: list["Bookmark"] | None = None) -> None:
+        self.title = title
+        self.page = page
+        self.top = top
+        self.children: list[Bookmark] = list(children or [])
+
+    def child(self, bookmark: "Bookmark") -> "Bookmark":
+        self.children.append(bookmark)
+        return self
+
+    def _flatten(self, level: int, out: list) -> None:
+        out.append((level, self.title, self.page, self.top))
+        for c in self.children:
+            c._flatten(level + 1, out)
 
 
 # ---- locate and load the shared library -----------------------------------
@@ -239,6 +271,9 @@ _ed_incremental = _bind("pdf_editable_to_bytes_incremental", c_int, [_ED, _U8, c
 _ed_save = _bind("pdf_editable_save", c_int, [_ED, c_char_p])
 # extract + sign
 _extract_text = _bind("pdf_extract_text", c_int, [_U8, c_size_t, *_OUTBUF])
+_extract_images_to_dir = _bind(
+    "pdf_extract_images_to_dir", c_int, [_U8, c_size_t, c_char_p, POINTER(c_size_t)]
+)
 _sign = _bind(
     "pdf_sign",
     c_int,
@@ -259,6 +294,48 @@ _add_dss = _bind(
         *_OUTBUF,
     ],
 )
+# Tier 1: hyperlinks + bookmarks (Document)
+_link_uri = _bind(
+    "pdf_page_link_uri", c_int, [_DOC, c_double, c_double, c_double, c_double, c_char_p]
+)
+_link_to_page = _bind(
+    "pdf_page_link_to_page",
+    c_int,
+    [_DOC, c_double, c_double, c_double, c_double, c_size_t, c_double, c_int],
+)
+_add_bookmarks = _bind(
+    "pdf_document_add_bookmarks",
+    c_int,
+    [_DOC, c_size_t, POINTER(c_int), POINTER(c_char_p), POINTER(c_size_t),
+     POINTER(c_double), POINTER(c_int)],
+)
+# Tier 2: ZUGFeRD / Factur-X (Document)
+_facturx = _bind("pdf_document_facturx", c_int, [_DOC, _U8, c_size_t, c_int])
+# Tier 1: form fill + flatten + watermark (EditableDoc)
+_ed_set_checkbox = _bind("pdf_editable_set_checkbox", c_int, [_ED, c_char_p, c_int, POINTER(c_int)])
+_ed_set_radio = _bind(
+    "pdf_editable_set_radio", c_int, [_ED, c_char_p, c_char_p, POINTER(c_int)]
+)
+_ed_set_choice = _bind(
+    "pdf_editable_set_choice", c_int, [_ED, c_char_p, c_char_p, POINTER(c_int)]
+)
+_ed_flatten = _bind("pdf_editable_flatten_forms", c_int, [_ED])
+_ed_field_names = _bind("pdf_editable_field_names", c_int, [_ED, *_OUTBUF])
+_ed_watermark_text = _bind(
+    "pdf_editable_watermark_text",
+    c_int,
+    [_ED, c_char_p, c_double, c_double, c_double, c_double, c_double, c_double],
+)
+_ed_watermark_image = _bind(
+    "pdf_editable_watermark_image_file", c_int, [_ED, c_char_p, c_double, c_double, c_double]
+)
+# Tier 2: redaction + PDF/A conversion (EditableDoc)
+_ed_redact = _bind(
+    "pdf_editable_redact", c_int, [_ED, c_size_t, POINTER(c_double), c_size_t, POINTER(c_int)]
+)
+_ed_convert_pdfa = _bind("pdf_editable_convert_to_pdfa", c_int, [_ED, c_int])
+# Tier 2: signature validation (module-level)
+_verify_sigs = _bind("pdf_verify_signatures_json", c_int, [_U8, c_size_t, *_OUTBUF])
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -499,6 +576,46 @@ class Document:
         _check(_radio_group(self._ptr(), _enc(name), page, count, rects, exports, sel))
         return self
 
+    # hyperlinks (Tier 1)
+    def link_uri(self, rect, uri: str) -> "Document":
+        x0, y0, x1, y1 = rect
+        _check(_link_uri(self._ptr(), x0, y0, x1, y1, _enc(uri)))
+        return self
+
+    def link_to_page(self, rect, page_index: int, top: float | None = None) -> "Document":
+        x0, y0, x1, y1 = rect
+        _check(_link_to_page(self._ptr(), x0, y0, x1, y1, page_index,
+                             0.0 if top is None else top, 0 if top is None else 1))
+        return self
+
+    # bookmarks / outline (Tier 1)
+    def add_bookmark(self, bookmark: Bookmark) -> "Document":
+        entries: list = []
+        bookmark._flatten(0, entries)
+        n = len(entries)
+        levels = (c_int * n)(*[e[0] for e in entries])
+        pages = (c_size_t * n)(*[e[2] for e in entries])
+        titles = (c_char_p * n)()
+        tops = (c_double * n)()
+        has_tops = (c_int * n)()
+        keep = []
+        for i, (_lvl, title, _page, top) in enumerate(entries):
+            b = _enc(title)
+            keep.append(b)
+            titles[i] = b
+            if top is None:
+                has_tops[i], tops[i] = 0, 0.0
+            else:
+                has_tops[i], tops[i] = 1, top
+        _check(_add_bookmarks(self._ptr(), n, levels, titles, pages, tops, has_tops))
+        return self
+
+    # ZUGFeRD / Factur-X (Tier 2)
+    def facturx(self, xml: bytes, profile: FacturxProfile = FacturxProfile.EN16931) -> "Document":
+        ptr, n, _keep = _as_u8(bytes(xml))
+        _check(_facturx(self._ptr(), ptr, n, int(profile)))
+        return self
+
     # output
     @property
     def page_count(self) -> int:
@@ -598,6 +715,54 @@ class EditableDoc:
         _check(_ed_fill(self._ptr(), _enc(name), _enc(value), byref(found)))
         return bool(found.value)
 
+    def set_checkbox(self, name: str, checked: bool = True) -> bool:
+        found = c_int(0)
+        _check(_ed_set_checkbox(self._ptr(), _enc(name), 1 if checked else 0, byref(found)))
+        return bool(found.value)
+
+    def set_radio(self, name: str, export_value: str) -> bool:
+        found = c_int(0)
+        _check(_ed_set_radio(self._ptr(), _enc(name), _enc(export_value), byref(found)))
+        return bool(found.value)
+
+    def set_choice(self, name: str, value: str) -> bool:
+        found = c_int(0)
+        _check(_ed_set_choice(self._ptr(), _enc(name), _enc(value), byref(found)))
+        return bool(found.value)
+
+    def flatten_forms(self) -> "EditableDoc":
+        _check(_ed_flatten(self._ptr()))
+        return self
+
+    def field_names(self) -> list[str]:
+        text = _take(lambda p, n: _ed_field_names(self._ptr(), p, n)).decode("utf-8")
+        return [s for s in text.split("\n") if s]
+
+    def watermark_text(self, text: str, *, size: float = 64.0,
+                       color: tuple[float, float, float] = (0.5, 0.5, 0.5),
+                       opacity: float = 0.30, rotation_deg: float = 45.0) -> "EditableDoc":
+        r, g, b = color
+        _check(_ed_watermark_text(self._ptr(), _enc(text), size, r, g, b, opacity, rotation_deg))
+        return self
+
+    def watermark_image_file(self, path, width: float, height: float,
+                             opacity: float = 0.30) -> "EditableDoc":
+        _check(_ed_watermark_image(self._ptr(), _enc(str(path)), width, height, opacity))
+        return self
+
+    def redact(self, page_index: int, rects: list) -> bool:
+        n = len(rects)
+        flat = (c_double * (n * 4))()
+        for i, r in enumerate(rects):
+            flat[i * 4], flat[i * 4 + 1], flat[i * 4 + 2], flat[i * 4 + 3] = r
+        found = c_int(0)
+        _check(_ed_redact(self._ptr(), page_index, flat, n, byref(found)))
+        return bool(found.value)
+
+    def convert_to_pdfa(self, level: PdfaLevel = PdfaLevel.A2B) -> "EditableDoc":
+        _check(_ed_convert_pdfa(self._ptr(), int(level)))
+        return self
+
     def optimize(self) -> "EditableDoc":
         _check(_ed_optimize(self._ptr()))
         return self
@@ -634,6 +799,31 @@ def extract_text(data: bytes) -> str:
     """Extract a document's text (Unicode via ``ToUnicode``)."""
     ptr, n, _keep = _as_u8(bytes(data))
     return _take(lambda p, ln: _extract_text(ptr, n, p, ln)).decode("utf-8")
+
+
+def extract_images_to_dir(data: bytes, out_dir: str) -> int:
+    """Extract every raster image from ``data`` into directory ``out_dir``.
+
+    JPEGs are written verbatim as ``.jpg`` (no re-encoding); everything else is
+    written as ``.png``. Files are named ``page{N}_{name}.{ext}``. Returns the
+    number of images written.
+    """
+    ptr, n, _keep = _as_u8(bytes(data))
+    count = c_size_t(0)
+    _check(_extract_images_to_dir(ptr, n, _enc(str(out_dir)), byref(count)))
+    return count.value
+
+
+def verify_signatures(data: bytes) -> list[dict]:
+    """Validate every signature in ``data``. Returns one dict per signature with
+    keys ``field_name``, ``sub_filter``, ``signer``, ``covers_whole_document``,
+    ``digest_valid``, ``signature_valid``, ``is_valid`` and ``byte_range``. An
+    empty list means the document is unsigned."""
+    import json
+
+    ptr, n, _keep = _as_u8(bytes(data))
+    js = _take(lambda p, ln: _verify_sigs(ptr, n, p, ln)).decode("utf-8")
+    return json.loads(js) if js else []
 
 
 def sign(pdf: bytes, key_der: bytes, cert_der: bytes, *, reason=None,

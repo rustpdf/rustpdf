@@ -4,6 +4,7 @@
 // including licensing gating. Exits non-zero on any failed assertion.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const rp = require('../lib');
@@ -141,6 +142,128 @@ let plain;
   assert.ok(d.toBytes().includes(Buffer.from('/EmbeddedFile')), 'attachment present');
   d.close();
   console.log('attachment ok');
+}
+
+// 9. Extract raster images to a directory.
+{
+  // A minimal 1x1 PNG.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  const d = new rp.Document();
+  const img = d.addImagePng(png);
+  d.addPage().drawImage(img, 72, 600, 100, 100);
+  const withImg = d.toBytes();
+  d.close();
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rustpdf-imgs-'));
+  const count = rp.extractImagesToDir(withImg, dir);
+  assert.ok(count >= 1, `expected at least one image, got ${count}`);
+  const files = fs.readdirSync(dir);
+  assert.strictEqual(files.length, count, 'file count matches returned count');
+  console.log(`extracted ${count} image(s) to ${dir}`);
+}
+
+// 10. Hyperlinks + bookmarks + Factur-X on a Document (Tier 1/2).
+{
+  const xml = Buffer.from('<?xml version="1.0"?><rsm:CrossIndustryInvoice/>', 'utf8');
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'page one');
+  d.addPage().showText(fnt, 14, 72, 700, 'page two');
+  d.linkUri([72, 690, 200, 710], 'https://example.com')
+    .linkToPage([72, 660, 200, 680], 1, 720);
+
+  const root = new rp.Bookmark('Chapter 1', 0);
+  root.child(new rp.Bookmark('Section 1.1', 0, 720));
+  const ch2 = new rp.Bookmark('Chapter 2', 1, 700);
+  d.addBookmark(root).addBookmark(ch2);
+
+  d.facturx(xml, rp.FacturxProfile.EN16931);
+  const out = d.toBytes();
+  assert.ok(out.includes(Buffer.from('/URI')), 'URI link present');
+  assert.ok(out.includes(Buffer.from('/Outlines')), 'outline present');
+  assert.ok(out.includes(Buffer.from('factur-x.xml')), 'facturx attachment present');
+  d.close();
+  console.log(`links + bookmarks + facturx ok (${out.length} bytes)`);
+}
+
+// 11. Form fill / set_checkbox / set_radio / set_choice / field_names /
+//     flatten_forms on an EditableDoc (Tier 1).
+{
+  const d = new rp.Document();
+  d.addPage()
+    .textField('city', 0, [120, 700, 300, 720], '', 12)
+    .checkbox('ok', 0, [120, 670, 138, 688], false)
+    .radioGroup('plan', 0, [
+      { rect: [120, 640, 138, 658], export: 'a' },
+      { rect: [160, 640, 178, 658], export: 'b' },
+    ], 0)
+    .dropdown('country', 0, [120, 610, 300, 630], ['BR', 'PT'], 0, 12);
+  const form = d.toBytes();
+  d.close();
+
+  const ed = rp.EditableDoc.load(form);
+  const names = ed.fieldNames();
+  assert.ok(names.includes('city'), `field_names: ${names}`);
+  assert.ok(ed.fillTextField('city', 'Lisboa'), 'fill text field');
+  assert.ok(ed.setCheckbox('ok', true), 'set checkbox');
+  assert.ok(ed.setRadio('plan', 'b'), 'set radio');
+  assert.ok(ed.setChoice('country', 'PT'), 'set choice');
+  assert.strictEqual(ed.setCheckbox('missing', true), false, 'missing field not found');
+  ed.flattenForms();
+  const flat = ed.toBytes();
+  assert.ok(flat.length > 0, 'flattened bytes');
+  ed.close();
+  console.log(`form fill + set_* + field_names + flatten ok (${flat.length} bytes)`);
+}
+
+// 12. Watermark (text) + redaction + convert_to_pdfa on an EditableDoc (Tier 1/2).
+{
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'confidential body text');
+  const base = d.toBytes();
+  d.close();
+
+  const ed = rp.EditableDoc.load(base);
+  ed.watermarkText('DRAFT', { size: 60, color: [0.6, 0.6, 0.6], opacity: 0.25, rotationDeg: 45 });
+  assert.strictEqual(ed.redact(0, [[70, 695, 260, 715]]), true, 'redact page 0');
+  assert.strictEqual(ed.redact(99, [[0, 0, 10, 10]]), false, 'redact missing page');
+  const wm = ed.toBytes();
+  assert.ok(wm.length > 0, 'watermarked bytes');
+  ed.close();
+  console.log(`watermark + redact ok (${wm.length} bytes)`);
+
+  // convert_to_pdfa needs embedded fonts only (no standard-14 watermark font).
+  const ced = rp.EditableDoc.load(base);
+  ced.convertToPdfa(rp.PdfaLevel.A2b);
+  const out = ced.toBytes();
+  assert.ok(out.includes(Buffer.from('pdfaid')), 'PDF/A identifier present');
+  ced.close();
+  console.log(`convert_to_pdfa ok (${out.length} bytes)`);
+}
+
+// 13. Sign a doc, then verify the signature with verifySignatures (Tier 2).
+{
+  const fx = path.join(root, 'crates', 'pdf', 'tests', 'fixtures');
+  const key = fs.readFileSync(path.join(fx, 'signer_key.pk8'));
+  const cert = fs.readFileSync(path.join(fx, 'signer_cert.der'));
+
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'to be signed');
+  const doc = d.toBytes();
+  d.close();
+
+  const signed = rp.sign(doc, key, cert, { reason: 'verify' });
+  assert.strictEqual(rp.verifySignatures(doc).length, 0, 'unsigned → empty');
+  const sigs = rp.verifySignatures(signed);
+  assert.strictEqual(sigs.length, 1, `one signature, got ${sigs.length}`);
+  const s = sigs[0];
+  assert.ok('field_name' in s && 'sub_filter' in s && 'is_valid' in s, 'signature record shape');
+  assert.ok(Array.isArray(s.byte_range) && s.byte_range.length === 4, 'byte_range is int[4]');
+  console.log(`verify_signatures ok (valid=${s.is_valid}, covers=${s.covers_whole_document})`);
 }
 
 console.log('OK: full Node binding surface exercised');

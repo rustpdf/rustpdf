@@ -13,6 +13,31 @@
   <description>Java binding for rust-pdf — enterprise PDF (PDF/A, signatures/PAdES, AES-256, accessibility) over the C ABI via JNA.</description>
   <url>https://rustpdf.dev</url>
 
+  <!-- Central Portal requires license, scm and developer metadata on every release. -->
+  <licenses>
+    <license>
+      <name>Proprietary — rust-pdf commercial license</name>
+      <url>https://rustpdf.dev/license</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>rust-pdf</name>
+      <email>support@rustpdf.dev</email>
+      <organization>rust-pdf</organization>
+      <organizationUrl>https://rustpdf.dev</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/rustpdf/rust-pdf.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/rustpdf/rust-pdf.git</developerConnection>
+    <url>https://github.com/rustpdf/rust-pdf</url>
+    <tag>HEAD</tag>
+  </scm>
+
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -42,4 +67,90 @@
       </plugin>
     </plugins>
   </build>
+
+  <!--
+    The `release` profile is activated by the CI publish job (`mvn -Prelease deploy`).
+    It is OFF by default so local `mvn test-compile exec:java` stays fast and needs no
+    GPG key. The release JAR is a single fat artifact: the release-java.yml workflow
+    stages one prebuilt libpdf_ffi per platform under src/main/resources/<RESOURCE_PREFIX>/
+    (e.g. darwin-aarch64/, linux-x86-64/, win32-x86-64/) before packaging, and JNA
+    extracts the matching one from the classpath at runtime — so a single JAR runs on
+    every supported platform (no per-OS classifier artifacts).
+  -->
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <!-- Central requires a -sources jar. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals><goal>jar-no-fork</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Central requires a -javadoc jar. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.6.3</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals><goal>jar</goal></goals>
+              </execution>
+            </executions>
+            <configuration>
+              <!-- JNA mappings are intentionally terse; don't fail the build on them. -->
+              <doclint>none</doclint>
+              <quiet>true</quiet>
+            </configuration>
+          </plugin>
+
+          <!-- Central requires every artifact to be GPG-signed. The key + passphrase
+               are imported by the workflow; loopback lets gpg read the passphrase
+               non-interactively in CI. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.4</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals><goal>sign</goal></goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Publishes to Maven Central via the Sonatype Central Portal (OSSRH is
+               retired). Credentials come from a <server id="central"> entry in the
+               CI settings.xml. autoPublish uploads + releases in one step. -->
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.5.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -213,8 +213,24 @@ int pdf_editable_to_bytes_incremental(PdfEditable *ed, const uint8_t *original, 
 int pdf_editable_save(PdfEditable *ed, const char *path);
 
 int pdf_extract_text(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_extract_images_to_dir(const uint8_t *data, uintptr_t len, const char *dir, uintptr_t *out_count);
 int pdf_sign(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t *key_der, uintptr_t key_len, const uint8_t *cert_der, uintptr_t cert_len, const char *reason, const char *location, const char *name, int pades, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_timestamp(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t *key_der, uintptr_t key_len, const uint8_t *cert_der, uintptr_t cert_len, const char *date, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_add_dss(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t **cert_ptrs, const uintptr_t *cert_lens, uintptr_t cert_count, const uint8_t **crl_ptrs, const uintptr_t *crl_lens, uintptr_t crl_count, uint8_t **out_ptr, uintptr_t *out_len);
+
+int pdf_page_link_uri(PdfDocument *doc, double x0, double y0, double x1, double y1, const char *uri);
+int pdf_page_link_to_page(PdfDocument *doc, double x0, double y0, double x1, double y1, uintptr_t target_page, double top, int has_top);
+int pdf_document_add_bookmarks(PdfDocument *doc, uintptr_t count, const int *levels, const char *const *titles, const uintptr_t *pages, const double *tops, const int *has_tops);
+int pdf_document_facturx(PdfDocument *doc, const uint8_t *xml, uintptr_t len, int profile);
+int pdf_editable_set_checkbox(PdfEditable *ed, const char *name, int checked, int *out_found);
+int pdf_editable_set_radio(PdfEditable *ed, const char *name, const char *export_value, int *out_found);
+int pdf_editable_set_choice(PdfEditable *ed, const char *name, const char *value, int *out_found);
+int pdf_editable_flatten_forms(PdfEditable *ed);
+int pdf_editable_field_names(const PdfEditable *ed, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_editable_watermark_text(PdfEditable *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg);
+int pdf_editable_watermark_image_file(PdfEditable *ed, const char *path, double width, double height, double opacity);
+int pdf_editable_redact(PdfEditable *ed, uintptr_t index, const double *rects, uintptr_t count, int *out_found);
+int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
+int pdf_verify_signatures_json(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
 C;
 }

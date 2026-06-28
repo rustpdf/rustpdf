@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for C# / .NET — PDF/A, PAdES, AES-256, PDF/UA | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in C# / .NET. dotnet add package RustPdf. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>C# PDF Library — Sign, Archive (PDF/A) &amp; Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate, PAdES-sign, AES-256-encrypt and produce PDF/A & accessible PDF/UA natively in C#. No Chromium, no JVM, no AGPL, no per-doc fees. Start free." />
   <link rel="canonical" href="https://rustpdf.dev/dotnet" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/dotnet" />
-  <meta property="og:title" content="Enterprise PDF Library for C# / .NET | rust-pdf" />
-  <meta property="og:description" content="PDF/A, PAdES signatures, AES-256 and PDF/UA accessibility, natively in C# / .NET. dotnet add package RustPdf. Offline, no per-document fees, no AGPL." />
+  <meta property="og:title" content="C# PDF Library for .NET — PDF/A, PAdES, AES-256 | rust-pdf" />
+  <meta property="og:description" content="A C# PDF library for archival PDF/A, PAdES signatures, AES-256 and PDF/UA accessibility. dotnet add package RustPdf. Offline, no per-document fees, no AGPL." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Enterprise PDF Library for C# / .NET | rust-pdf" />
-  <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for .NET. dotnet add package RustPdf. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for C# and .NET" />
+  <meta name="twitter:title" content="C# PDF Library for .NET — PDF/A, PAdES, AES-256 | rust-pdf" />
+  <meta name="twitter:description" content="C# PDF library for PDF/A, PAdES, AES-256 and accessibility. dotnet add package RustPdf. Offline, licensed per feature." />
+  <meta property="og:image:alt" content="rust-pdf — a C# PDF library for .NET" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for C# and .NET" />
+  <meta name="twitter:image:alt" content="rust-pdf — a C# PDF library for .NET" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -41,7 +41,7 @@
         "url": "https://rustpdf.dev/dotnet",
         "softwareRequirements": ".NET 8+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for C# / .NET: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
+        "description": "A C# PDF library for .NET: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
         "featureList": [
           "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
@@ -58,10 +58,71 @@
           "offerCount": "2",
           "url": "https://rustpdf.dev/#pricing"
         }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does this C# PDF library do HTML-to-PDF?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No, and that is deliberate. rust-pdf renders PDFs natively from a C# document model instead of driving a headless Chromium browser. That keeps memory use low, output deterministic, and PDF/A and PDF/UA conformance precise, which a browser print path cannot guarantee." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is the C# PDF library free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it need a browser, JVM or any runtime besides .NET?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. It is a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There is no Chromium process, no Java runtime and nothing to compile, just dotnet add package RustPdf." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it AGPL like iTextSharp / iText?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source." }
+          },
+          {
+            "@type": "Question",
+            "name": "Which .NET versions are supported?",
+            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure." }
+          }
+        ]
       }
     ]
   }
   </script>
+  <style>
+    /* ===== /dotnet landing page (scoped) ===== */
+    .dn-cap { margin-top: 26px; }
+    .dn-cap h2 .kbd { font-size: .8rem; color: var(--muted); font-weight: 600; }
+
+    /* PAdES level definition cards */
+    .dn-defs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 30px; }
+    .dn-def { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+    .dn-def h3 { margin: 0 0 6px; font-size: 1rem; }
+    .dn-def h3 code { color: var(--brand-2); background: none; padding: 0; font-size: 1rem; }
+    .dn-def p { margin: 0; color: var(--muted); font-size: .88rem; }
+    @media (max-width: 720px) { .dn-defs { grid-template-columns: 1fr; } }
+
+    /* comparison + level matrix tables */
+    .dn-matrix { width: 100%; border-collapse: collapse; margin-top: 32px; font-size: .92rem; }
+    .dn-matrix th, .dn-matrix td { border: 1px solid var(--border); padding: 12px 14px; text-align: left; }
+    .dn-matrix th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .dn-matrix td b { color: var(--text); }
+    .dn-matrix .yes { color: var(--green); font-weight: 700; }
+    .dn-matrix .no { color: #fca5a5; font-weight: 700; }
+    .dn-matrix tr-hl { background: var(--panel); }
+    .dn-matrix tbody tr.us td { background: rgba(249,115,22,.06); }
+    .dn-wrap-x { overflow-x: auto; }
+
+    /* nine-languages row */
+    .dn-langs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 28px; }
+    .dn-langs a { background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+      padding: 9px 18px; font-size: .9rem; font-weight: 600; color: #cbd5e1; text-decoration: none;
+      transition: border-color .15s, color .15s; }
+    .dn-langs a:hover { border-color: var(--brand); color: var(--text); }
+  </style>
   <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
@@ -85,13 +146,13 @@
     <section class="hero">
       <div class="wrap">
         <p class="eyebrow">Enterprise PDF for C# / .NET</p>
-        <h1>The enterprise PDF library<br />.NET <span class="grad">deserves</span>.</h1>
+        <h1>The C# PDF library<br />.NET <span class="grad">deserves</span>.</h1>
         <p class="lede">
-          Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
-          with <b>AES-256</b> and produce accessible <b>PDF/UA</b> from idiomatic C#.
-          One memory-safe core, the same behavior as every other binding, running
-          entirely on your servers: no per-document SaaS fees, no data leaving your
-          network, no AGPL strings.
+          rust-pdf is a <b>C# PDF library</b> that generates archival <b>PDF/A</b>,
+          signs documents with <b>PAdES</b>, encrypts with <b>AES-256</b> and produces
+          accessible <b>PDF/UA</b> from idiomatic C#. One memory-safe core, the same
+          behavior as every other binding, running entirely on your servers: no
+          per-document SaaS fees, no data leaving your network, no AGPL strings.
         </p>
         <span class="install-cap">Install from NuGet. The native core ships per-runtime, nothing to compile.</span>
         <div class="install-tabs">
@@ -138,6 +199,184 @@
       </div>
     </section>
 
+    <!-- QUICKSTART -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Create your first PDF in C# in five lines</h2>
+        <p class="center muted narrow">
+          Add the package and you have a working <code>Document</code>. No services to
+          register, no browser to install. Generation is free, forever.
+        </p>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var doc = new Document();
+int font = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(font, 26, 72, 760, "Hello from C#");
+doc.Save("hello.pdf");        // done — a valid PDF on disk</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- PADES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Sign PDFs with PAdES <span class="kbd">B-B · B-LT · B-LTA</span></h2>
+        <p class="center muted narrow">
+          A real PKCS#7/CMS detached signature, applied as an incremental update so the
+          original bytes stay byte-for-byte intact. Build up the long-term validation
+          chain one level at a time.
+        </p>
+        <div class="dn-defs">
+          <div class="dn-def">
+            <h3><code>B-B</code> · baseline</h3>
+            <p>The signature itself: hashes the byte range, embeds the CMS with the signing certificate and the ESS <code>signing-certificate-v2</code> attribute.</p>
+          </div>
+          <div class="dn-def">
+            <h3><code>B-LT</code> · long-term</h3>
+            <p>Adds a Document Security Store (<code>/DSS</code>) carrying the certificates and CRLs needed to validate the signature years later, offline.</p>
+          </div>
+          <div class="dn-def">
+            <h3><code>B-LTA</code> · archival</h3>
+            <p>Adds an RFC 3161 document timestamp (<code>/DocTimeStamp</code>) over the DSS, so the whole package can be re-validated after the certificates expire.</p>
+          </div>
+        </div>
+        <div class="tabs" style="margin-top:30px">
+<pre class="tab-pane active"><code>using RustPdf;
+
+byte[] pdf  = new Document().AddPage().Save();
+byte[] key  = File.ReadAllBytes("signer-key.der");
+byte[] cert = File.ReadAllBytes("signer-cert.der");
+
+// B-B: a PAdES baseline signature
+byte[] signed = Pdf.Sign(pdf, key, cert, reason: "Approved", pades: true);
+
+// B-LT: embed the validation material, then B-LTA: timestamp it
+byte[] lt   = Pdf.AddDss(signed, certs: new[] { cert });
+byte[] lta  = Pdf.Timestamp(lt, tsaKey, tsaCert);
+File.WriteAllBytes("contract.pdf", lta);</code></pre>
+        </div>
+        <p class="center muted narrow" style="margin-top:20px">
+          Every signature is verified in CI with <code>pdfsig</code> and
+          <code>openssl&nbsp;cms</code>. Read the full flow on the
+          <a href="/pades">PAdES page</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- PDF/A -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Archival PDF/A, levels 1b through 3a</h2>
+        <p class="center muted">
+          One call switches a document to an ISO 19005 archival profile: an embedded
+          sRGB ICC profile, an output intent, synchronized XMP metadata and a
+          conformance-correct structure. Pick the level your regulator asks for.
+        </p>
+        <div class="dn-wrap-x">
+        <table class="dn-matrix">
+          <tr><th>Level</th><th>Profile</th><th>Use it when</th></tr>
+          <tr><td><b>1b</b></td><td>PDF/A-1b</td><td>Legacy mandates pinned to PDF 1.4 (forces a <code>/CIDSet</code> per font, no object streams).</td></tr>
+          <tr><td><b>2b</b></td><td>PDF/A-2b</td><td>The modern default for visual archival: object streams, JPEG2000, transparency.</td></tr>
+          <tr><td><b>2a</b></td><td>PDF/A-2a</td><td>Everything in 2b plus a tagged logical structure, so it doubles as PDF/UA.</td></tr>
+          <tr><td><b>3b / 3a</b></td><td>PDF/A-3</td><td>Lets you attach the source file (e.g. the original XML invoice) inside the archive.</td></tr>
+        </table>
+        </div>
+        <div class="tabs" style="margin-top:30px">
+<pre class="tab-pane active"><code>using var doc = new Document();
+doc.Pdfa(PdfaLevel.A2a)               // archival + tagged in one builder
+   .Tagged()
+   .SetInfo(title: "Q3 Report");
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 26, 72, 760, "Annual report", headingLevel: 1);
+byte[] bytes = doc.ToBytes();         // veraPDF-clean PDF/A-2a</code></pre>
+        </div>
+        <p class="center muted" style="margin-top:18px">
+          rust-pdf produces and validates <b>1b, 2b, 2a, 3b and 3a</b>. Read the
+          <a href="/pdf-a">PDF/A page</a> for what each level guarantees.
+        </p>
+      </div>
+    </section>
+
+    <!-- ENCRYPTION -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Encrypt with AES-256 (R6)</h2>
+        <p class="center muted">
+          Apply standard security-handler encryption with a user and/or owner
+          password. The file key and IVs come from the OS CSPRNG, so every output is
+          unique. RC4 and AES-128 are there too for legacy readers.
+        </p>
+        <div class="tabs" style="margin-top:26px">
+<pre class="tab-pane active"><code>using var ed = EditableDoc.Load(bytes);
+ed.Encrypt(owner: "owner-secret", method: Encryption.Aes256);
+ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
+        </div>
+        <p class="center muted" style="margin-top:18px">
+          More on the cipher and key derivation on the <a href="/aes-256">AES-256 page</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- PDF/UA -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Accessible, tagged PDF/UA-1</h2>
+        <p class="center muted">
+          Accessibility isn't a checkbox; it's a real structure tree. rust-pdf builds
+          a nested tree of semantic tags so screen readers and ISO 14289-1 (PDF/UA)
+          validators see a genuine document, not a flat canvas.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:640px">
+          <li><b>Headings H1–H6</b> with a correct reading order and nesting.</li>
+          <li><b>Figures with <code>/Alt</code> text</b>; decorative art marked as <code>/Artifact</code>.</li>
+          <li><b>Tables</b> with header scope and cell-to-header associations.</li>
+          <li><b>Lists</b> (<code>/L</code> · <code>/LI</code> · <code>/LBody</code>) and captions.</li>
+          <li><code>/Lang</code>, <code>/MarkInfo</code> and <code>DisplayDocTitle</code> set for you.</li>
+        </ul>
+        <p class="center muted" style="margin-top:22px">
+          Validated against PDF/UA-1 with veraPDF. See the <a href="/pdf-ua">PDF/UA page</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">No Chromium. No JVM. No AGPL.</h2>
+        <p class="center muted narrow">
+          The big C# PDF libraries make you choose between a heavyweight browser
+          dependency, an open-source license that forces your code open, or a metered
+          bill. rust-pdf is a single native package with a commercial per-app license.
+        </p>
+        <div class="dn-wrap-x">
+        <table class="dn-matrix">
+          <thead>
+            <tr><th>&nbsp;</th><th>rust-pdf</th><th>IronPDF</th><th>iText 7</th><th>QuestPDF</th></tr>
+          </thead>
+          <tbody>
+            <tr class="us"><td><b>Engine</b></td><td>Native Rust core</td><td>Chromium</td><td>Java/.NET</td><td>.NET (SkiaSharp)</td></tr>
+            <tr class="us"><td><b>Heavy runtime dependency</b></td><td class="yes">None</td><td class="no">Chromium</td><td class="no">—</td><td class="yes">None</td></tr>
+            <tr class="us"><td><b>License to ship closed source</b></td><td class="yes">Commercial per-app</td><td>Commercial</td><td class="no">AGPL or paid</td><td>Free &lt;$1M, else paid</td></tr>
+            <tr class="us"><td><b>Per-document / metered fees</b></td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td></tr>
+            <tr class="us"><td><b>Runs fully offline</b></td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+            <tr class="us"><td><b>PDF/A 1b–3a</b></td><td class="yes">Yes</td><td>Partial</td><td class="yes">Yes</td><td class="no">No</td></tr>
+            <tr class="us"><td><b>PAdES B-B/B-LT/B-LTA</b></td><td class="yes">Yes</td><td>Basic</td><td class="yes">Yes</td><td class="no">No</td></tr>
+            <tr class="us"><td><b>PDF/UA tagged structure</b></td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">No</td></tr>
+            <tr class="us"><td><b>Same engine in other languages</b></td><td class="yes">9 bindings</td><td class="no">.NET only</td><td>Java/.NET</td><td class="no">.NET only</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="center muted narrow" style="margin-top:18px">
+          Comparison reflects publicly documented behavior at time of writing; verify
+          against each vendor's current docs for your use case.
+        </p>
+      </div>
+    </section>
+
     <!-- FEATURES -->
     <section class="section">
       <div class="wrap">
@@ -174,30 +413,27 @@
       </div>
     </section>
 
-    <!-- CODE -->
+    <!-- ONE ENGINE -->
     <section class="band">
-      <div class="wrap">
-        <h2 class="center">Author a tagged, signed PDF/A in a few lines of C#</h2>
-        <div class="tabs">
-<pre class="tab-pane active"><code>// dotnet add package RustPdf
-using RustPdf;
-
-using var doc = new Document();
-doc.Pdfa(PdfaLevel.A2a).Tagged().SetInfo(title: "Q3 Report");
-int f = doc.AddFontFile("Roboto-Regular.ttf");
-doc.AddPage();
-doc.ShowText(f, 26, 72, 760, "Annual report", headingLevel: 1);
-byte[] bytes = doc.ToBytes();          // archival-grade, accessible PDF
-
-// Encrypt with AES-256, or sign with PAdES — same offline license:
-using var ed = EditableDoc.Load(bytes);
-ed.Encrypt(owner: "owner-secret", method: Encryption.Aes256);
-ed.Save("secured.pdf");</code></pre>
-        </div>
-        <p class="center muted narrow" style="margin-top:22px">
-          The full .NET reference (fonts, images, forms, manipulation, encryption
-          and signatures) lives in the <a href="/docs/csharp.html">C# / .NET docs</a>.
+      <div class="wrap narrow center">
+        <h2>One engine. Nine languages. Identical bytes.</h2>
+        <p class="muted">
+          The C# package wraps the exact same Rust core as every other binding, so a
+          PDF generated from .NET is <b>byte-identical</b> to one generated from
+          Python, Java or Go. Standardize one document pipeline across your whole
+          stack and license it once.
         </p>
+        <div class="dn-langs">
+          <a href="/python">Python</a>
+          <a href="/java">Java</a>
+          <a href="/golang">Go</a>
+          <a href="/nodejs">Node.js</a>
+          <a href="/php">PHP</a>
+          <a href="/ruby">Ruby</a>
+          <a href="/swift">Swift</a>
+          <a href="/delphi">Delphi</a>
+          <a href="/docs/">All languages</a>
+        </div>
       </div>
     </section>
 
@@ -214,12 +450,31 @@ ed.Save("secured.pdf");</code></pre>
           <a href="/docs/csharp.html" class="btn btn-lg">Read the .NET docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
-        <div class="sibling-langs">
-          <a href="/python">Python</a>
-          <a href="/nodejs">Node.js</a>
-          <a href="/golang">Go</a>
-          <a href="/docs/">All languages</a>
-        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">C# PDF library FAQ</h2>
+        <details><summary>Does this C# PDF library do HTML-to-PDF?</summary>
+          <p>No, and that's deliberate. rust-pdf renders PDFs natively from a C# document model instead of driving a headless Chromium browser. That keeps memory use low, output deterministic, and PDF/A and PDF/UA conformance precise, guarantees a browser print path can't make. If your input is HTML, render it server-side first and place the result; if it's structured data, build it directly with the API.</p>
+        </details>
+        <details><summary>Is the C# PDF library free?</summary>
+          <p>Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility.</p>
+        </details>
+        <details><summary>Does it need a browser, JVM or any runtime besides .NET?</summary>
+          <p>No. It's a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There's no Chromium process, no Java runtime and nothing to compile, just <code>dotnet add package RustPdf</code>.</p>
+        </details>
+        <details><summary>Is it AGPL like iTextSharp / iText?</summary>
+          <p>No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source.</p>
+        </details>
+        <details><summary>Which .NET versions are supported?</summary>
+          <p>rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure.</p>
+        </details>
+        <details><summary>How is the output validated?</summary>
+          <p>Independently: veraPDF (PDF/A 1b–3a and PDF/UA-1), <code>pdfsig</code> and <code>openssl&nbsp;cms</code> for signatures, and qpdf/mutool for structure, all in CI, not "conformance marketing".</p>
+        </details>
       </div>
     </section>
   </main>

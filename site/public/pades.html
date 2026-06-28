@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Is PAdES? PDF Digital Signatures Explained, With Examples | rust-pdf</title>
+  <meta name="description" content="PAdES explained simply: what a PDF digital signature is, how it proves who signed and that nothing changed, the levels (B-B, B-T, B-LT, B-LTA), eIDAS and real examples, and how to sign PDFs in any language with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/pades" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/pades" />
+  <meta property="og:title" content="What Is PAdES? PDF Digital Signatures Explained" />
+  <meta property="og:description" content="How PDF digital signatures and PAdES prove who signed and that nothing changed, the B-B / B-T / B-LT / B-LTA levels, and how to sign in any language." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What Is PAdES? PDF Digital Signatures Explained" />
+  <meta name="twitter:description" content="PAdES and PDF digital signatures explained with analogies, the LTV levels, and how to sign in any language." />
+  <meta property="og:image:alt" content="What is PAdES — PDF digital signatures explained" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="What is PAdES — PDF digital signatures explained" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "What is PAdES?", "item": "https://rustpdf.dev/pades" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "What is PAdES? PDF digital signatures explained",
+        "description": "A plain-language explanation of PDF digital signatures and PAdES: how they prove who signed and that nothing changed, the conformance levels B-B, B-T, B-LT and B-LTA, eIDAS context, and how to sign documents.",
+        "url": "https://rustpdf.dev/pades",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PAdES", "description": "PDF Advanced Electronic Signatures, the ETSI profile of PDF digital signatures used under eIDAS." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is PAdES?",
+            "acceptedAnswer": { "@type": "Answer", "text": "PAdES stands for PDF Advanced Electronic Signatures. It is the ETSI family of standards (EN 319 142) that defines how to embed a legally robust digital signature inside a PDF. A PAdES signature proves who signed the document, that the document has not changed by even a single byte since signing, and optionally when it was signed. It is the profile referenced by the EU eIDAS regulation for electronic signatures." }
+          },
+          {
+            "@type": "Question",
+            "name": "How is a digital signature different from a scanned signature?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A scanned or drawn image of a handwritten signature is just a picture: it can be copied onto any document and proves nothing. A digital signature is cryptographic. The signer's private key produces a mathematical seal over the exact bytes of the document, and anyone can verify it with the matching public certificate. If a single byte changes, verification fails, so it proves both identity and integrity." }
+          },
+          {
+            "@type": "Question",
+            "name": "What do the PAdES levels B-B, B-T, B-LT and B-LTA mean?",
+            "acceptedAnswer": { "@type": "Answer", "text": "They are baseline levels that add longevity. B-B is the basic signature with the signing certificate. B-T adds a trusted timestamp that proves when the document was signed. B-LT (long-term) embeds the validation material, such as certificates and revocation data, so the signature can still be checked years later even if the issuing authority is gone. B-LTA adds an archive timestamp over everything for very long-term integrity." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is a PAdES signature legally valid?",
+            "acceptedAnswer": { "@type": "Answer", "text": "PAdES is the PDF signature profile referenced by the EU eIDAS regulation, and equivalent frameworks exist worldwide. Legal weight depends on the type of certificate used (for example a qualified certificate for a qualified electronic signature). The PAdES format itself provides the technical proof of identity, integrity and time that regulations require." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I sign a PDF with rust-pdf?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Call rustpdf.sign with the PDF bytes, your private key and certificate (DER), and pades=True for a PAdES-B-B signature. The library appends an incremental update so the original bytes are preserved, which keeps earlier signatures valid. add_dss and timestamp then extend it to B-LT and B-LTA. Signatures are checked with pdfsig and openssl cms." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /pades concept page (animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 720px; }
+
+    /* hero: a document being signed + a verified seal */
+    .pd-scene { position: relative; height: 230px; max-width: 340px; margin: 34px auto 0; }
+    .pd-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 184px; height: 196px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.5); }
+    .pd-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .pd-paper .ln.s { width: 55%; }
+    .pd-sig { margin-top: auto; height: 46px; }
+    .pd-sig path { fill: none; stroke: var(--brand-2); stroke-width: 2.4; stroke-linecap: round;
+      stroke-dasharray: 320; stroke-dashoffset: 320; animation: pdDraw 4.6s ease-in-out infinite; }
+    @keyframes pdDraw { 0% { stroke-dashoffset: 320; } 55%,82% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 320; } }
+    .pd-badge { position: absolute; right: -8px; bottom: 8px; width: 56px; height: 56px; border-radius: 50%;
+      display: grid; place-items: center; color: var(--green); background: var(--panel-2);
+      border: 1px solid #1e3a2a; box-shadow: 0 10px 24px -10px rgba(52,211,153,.6);
+      animation: pdSeal 4.6s ease-in-out infinite; }
+    .pd-badge svg { width: 26px; height: 26px; }
+    @keyframes pdSeal { 0%,55% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; }
+      82% { transform: scale(1); opacity: 1; } 92%,100% { opacity: 0; } }
+
+    /* tamper-evidence compare */
+    .pd-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .pd-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .pd-card.bad { border-color: #3a2020; }
+    .pd-card.good { border-color: #1e3a2a; }
+    .pd-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .pd-card .tagline { color: var(--muted); font-size: .85rem; margin: 0 0 16px; }
+    .pd-doc { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; position: relative; }
+    .pd-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .pd-doc .ln.s { width: 55%; }
+    .pd-card.bad .pd-doc .ln.edit { background: linear-gradient(90deg,#7f1d1d,#b91c1c);
+      animation: pdEdit 4s ease-in-out infinite; }
+    @keyframes pdEdit { 0%,40% { width: 55%; } 55%,90% { width: 80%; } 100% { width: 55%; } }
+    .pd-status { display: inline-flex; align-items: center; gap: 7px; font-size: .8rem; font-weight: 700;
+      padding: 5px 11px; border-radius: 999px; margin-top: 16px; }
+    .pd-status svg { width: 15px; height: 15px; flex: none; }
+    .pd-status.err { background: rgba(248,113,113,.12); color: #fca5a5; animation: pdBlink 4s ease-in-out infinite; }
+    .pd-status.ok { background: rgba(52,211,153,.12); color: #34d399; }
+    @keyframes pdBlink { 0%,40%,100% { opacity: .5; } 55%,90% { opacity: 1; } }
+
+    /* hash -> sign -> verify flow */
+    .pd-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 12px;
+      margin-top: 38px; }
+    .pd-node { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 16px;
+      text-align: center; }
+    .pd-node .ic { color: var(--brand-2); height: 26px; }
+    .pd-node .ic svg { width: 26px; height: 26px; }
+    .pd-node h4 { margin: 10px 0 4px; font-size: .96rem; }
+    .pd-node p { margin: 0; color: var(--muted); font-size: .8rem; }
+    .pd-arrow { color: var(--brand); font-weight: 800; font-size: 1.2rem; }
+    .pd-arrow span { display: inline-block; animation: pdPush 2.4s ease-in-out infinite; }
+    @keyframes pdPush { 0%,100% { transform: translateX(0); opacity: .5; } 50% { transform: translateX(3px); opacity: 1; } }
+
+    /* LTV levels: building layers */
+    .pd-levels { max-width: 640px; margin: 36px auto 0; }
+    .pd-level { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 16px;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 12px 0; }
+    .pd-level .tag { font-weight: 800; color: var(--brand-2); font-variant-numeric: tabular-nums; font-size: .92rem; }
+    .pd-level h4 { margin: 0 0 3px; font-size: .98rem; }
+    .pd-level p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+    /* uses */
+    .pd-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .pd-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .pd-use .ic { color: var(--brand-2); height: 28px; }
+    .pd-use .ic svg { width: 28px; height: 28px; }
+    .pd-use h3 { margin: 12px 0 6px; font-size: 1.02rem; }
+    .pd-use p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    @media (max-width: 820px) {
+      .pd-compare, .pd-uses { grid-template-columns: 1fr; }
+      .pd-flow { grid-template-columns: 1fr; }
+      .pd-arrow { transform: rotate(90deg); margin: 2px auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pd-sig path { animation: none; stroke-dashoffset: 0; }
+      .pd-badge { animation: none; opacity: 1; transform: none; }
+      .pd-card.bad .pd-doc .ln.edit, .pd-status.err, .pd-arrow span { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Digital signatures</p>
+        <h1>What is <span class="grad">PAdES</span>,<br />and how do PDF signatures work?</h1>
+        <p class="lede concept-lede">
+          A PAdES signature is a cryptographic seal inside a PDF. It proves three things
+          at once: <b>who</b> signed, that the document has <b>not changed</b> by even a
+          single byte since, and optionally <b>when</b> it was signed. This guide explains
+          digital signatures in plain language, with analogies and examples.
+        </p>
+        <div class="pd-scene" aria-hidden="true">
+          <div class="pd-paper">
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span><span class="ln s"></span>
+            <svg class="pd-sig" viewBox="0 0 200 46"><path d="M8 34 q 12 -30 22 -8 q 6 16 14 4 q 6 -10 12 2 q 5 14 13 -2 q 8 -18 18 0 q 6 14 16 2 q 10 -14 22 -2 q 8 8 20 0 q 10 -8 22 -4"/></svg>
+          </div>
+          <div class="pd-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Sign a PDF with rust-pdf</a>
+          <a href="#levels" class="btn btn-ghost btn-lg">Jump to the levels</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a wax seal on an envelope</h2>
+        <p class="muted">
+          For centuries a wax seal did two jobs at once. The unique stamp showed
+          <b>who</b> sent the letter, and the unbroken wax showed that <b>nobody opened
+          it</b> on the way. Break the seal and it is obvious.
+        </p>
+        <p class="muted">
+          A digital signature is a wax seal made of mathematics. Instead of a stamp, the
+          signer uses a private key that only they hold; instead of wax over the flap, the
+          seal covers <b>every byte</b> of the document. Anyone can check it with the
+          signer's public certificate, and if so much as a comma changes afterward, the
+          seal visibly breaks. PAdES is the agreed-upon way to put that seal inside a PDF.
+        </p>
+      </div>
+    </section>
+
+    <!-- DIGITAL vs SCANNED + TAMPER -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Why a real signature is more than an image</h2>
+        <p class="center muted narrow">
+          A scanned signature is a picture: copy it onto anything and it proves nothing.
+          A digital signature is bound to the exact content. Change a single byte and
+          verification fails, which is what makes it tamper-evident.
+        </p>
+        <div class="pd-compare">
+          <div class="pd-card bad reveal">
+            <h3>If one byte is altered</h3>
+            <p class="tagline">An attacker edits an amount after signing.</p>
+            <div class="pd-doc">
+              <span class="ln"></span><span class="ln edit"></span><span class="ln s"></span>
+            </div>
+            <span class="pd-status err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg> Signature invalid &middot; document altered</span>
+          </div>
+          <div class="pd-card good reveal">
+            <h3>Untouched since signing</h3>
+            <p class="tagline">Every byte matches the sealed original.</p>
+            <div class="pd-doc">
+              <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+            </div>
+            <span class="pd-status ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Signature valid &middot; identity confirmed</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS (flow) -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">How signing and verifying actually work</h2>
+        <p class="center muted narrow">
+          Under the hood it is public-key cryptography. The document is reduced to a
+          fingerprint (a hash), the private key seals that fingerprint, and anyone can
+          confirm the seal with the public certificate.
+        </p>
+        <div class="pd-flow">
+          <div class="pd-node reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 14h8M8 17h5"/></svg></div>
+            <h4>1 &middot; Hash</h4>
+            <p>The exact bytes are reduced to a unique SHA-256 fingerprint.</p>
+          </div>
+          <div class="pd-arrow"><span>&rarr;</span></div>
+          <div class="pd-node reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+            <h4>2 &middot; Sign</h4>
+            <p>The private key seals the fingerprint into a PKCS#7 / CMS structure.</p>
+          </div>
+          <div class="pd-arrow"><span>&rarr;</span></div>
+          <div class="pd-node reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h4>3 &middot; Verify</h4>
+            <p>Anyone re-hashes the file and checks the seal with the public certificate.</p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:24px">
+          rust-pdf signs by appending an <b>incremental update</b>, so the original bytes
+          stay intact. That is what lets multiple people sign the same document without
+          breaking each other's signatures.
+        </p>
+      </div>
+    </section>
+
+    <!-- LEVELS -->
+    <section id="levels" class="section">
+      <div class="wrap">
+        <h2 class="center">The PAdES levels: from basic to long-term</h2>
+        <p class="center muted narrow">
+          PAdES baseline levels stack on top of each other. Each one adds what is needed
+          to keep the signature verifiable further into the future.
+        </p>
+        <div class="pd-levels">
+          <div class="pd-level reveal">
+            <span class="tag">B-B</span>
+            <div><h4>Basic</h4><p>The signature plus a reference to the signing certificate. Proves who signed and that nothing changed.</p></div>
+          </div>
+          <div class="pd-level reveal">
+            <span class="tag">B-T</span>
+            <div><h4>+ Timestamp</h4><p>Adds a trusted RFC 3161 timestamp, proving the document existed and was signed at a specific time.</p></div>
+          </div>
+          <div class="pd-level reveal">
+            <span class="tag">B-LT</span>
+            <div><h4>+ Long-term validation</h4><p>Embeds the certificates and revocation data (a DSS), so the signature still verifies years later even if the authority disappears.</p></div>
+          </div>
+          <div class="pd-level reveal">
+            <span class="tag">B-LTA</span>
+            <div><h4>+ Archive timestamp</h4><p>Adds a document timestamp over everything, protecting the whole package for the very long term.</p></div>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:20px">
+          rust-pdf produces <b>B-B, B-LT and B-LTA</b> offline, with RFC 3161 timestamps,
+          a DSS, visible and multiple signatures, validated by <code>pdfsig</code> and
+          <code>openssl cms</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- USES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Where PAdES signatures are used</h2>
+        <p class="center muted narrow">
+          Anywhere a document must be provably authentic and unaltered, and in much of
+          the world this carries explicit legal weight.
+        </p>
+        <div class="pd-uses">
+          <div class="pd-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></div>
+            <h3>Contracts</h3>
+            <p>Sign agreements with proof of identity, integrity and time, with non-repudiation built in.</p>
+          </div>
+          <div class="pd-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M6 21h12M5 7h14"/><path d="M7 7l-3 6a3 3 0 0 0 6 0z"/><path d="M17 7l3 6a3 3 0 0 1-6 0z"/></svg></div>
+            <h3>eIDAS &amp; public sector</h3>
+            <p>PAdES is the PDF signature profile referenced by EU eIDAS and used across government services.</p>
+          </div>
+          <div class="pd-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg></div>
+            <h3>Invoices &amp; tax</h3>
+            <p>Many e-invoicing regimes require a signed PDF so the tax document cannot be altered after issue.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to sign a PDF with rust-pdf</h2>
+        <p class="center muted narrow">
+          Pass the PDF bytes, your private key and certificate (DER), and a flag for
+          PAdES. The signature is appended as an incremental update, then optionally
+          extended to long-term levels.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+pdf  = open("contract.pdf", "rb").read()
+key  = open("signing-key.pkcs8.der", "rb").read()
+cert = open("signing-cert.der", "rb").read()
+
+signed = rustpdf.sign(pdf, key, cert, reason="Approved", pades=True)   # PAdES-B-B
+lt     = rustpdf.add_dss(signed, certs=[cert], crls=[crl])             # -> B-LT
+lta    = rustpdf.timestamp(lt, tsa_key, tsa_cert)                      # -> B-LTA
+open("contract.signed.pdf", "wb").write(lta)
+# Verify in a shell: pdfsig contract.signed.pdf  ->  "Signature is Valid."</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] signed = Pdf.Sign(pdf, keyDer, certDer, reason: "Approved", pades: true); // B-B
+byte[] lt     = Pdf.AddDss(signed, certs: new[]{ certDer }, crls: new[]{ crl }); // B-LT
+byte[] lta    = Pdf.Timestamp(lt, tsaKeyDer, tsaCertDer);                        // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+signed, _ := rustpdf.Sign(pdf, key, cert, rustpdf.SignOptions{Reason: "Approved", Pades: true})
+lt,  _    := rustpdf.AddDss(signed, [][]byte{cert}, [][]byte{crl})  // B-LT
+lta, _    := rustpdf.Timestamp(lt, tsaKey, tsaCert)                 // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { sign, addDss, timestamp } = require("rustpdf");
+
+const signed = sign(pdf, key, cert, { reason: "Approved", pades: true }); // B-B
+const lt     = addDss(signed, { certs: [cert], crls: [crl] });            // B-LT
+const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-LTA</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Signatures validated by:
+          <span>pdfsig</span><span>openssl&nbsp;cms</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Visible signatures, multiple signers and timestamp details are in the
+          <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PAdES FAQ</h2>
+        <details><summary>What is PAdES?</summary>
+          <p>PAdES stands for PDF Advanced Electronic Signatures. It is the ETSI family of standards (EN 319 142) that defines how to embed a legally robust digital signature inside a PDF. A PAdES signature proves who signed the document, that the document has not changed by even a single byte since signing, and optionally when it was signed. It is the profile referenced by the EU eIDAS regulation for electronic signatures.</p>
+        </details>
+        <details><summary>How is a digital signature different from a scanned signature?</summary>
+          <p>A scanned or drawn image of a handwritten signature is just a picture: it can be copied onto any document and proves nothing. A digital signature is cryptographic. The signer's private key produces a mathematical seal over the exact bytes of the document, and anyone can verify it with the matching public certificate. If a single byte changes, verification fails, so it proves both identity and integrity.</p>
+        </details>
+        <details><summary>What do the PAdES levels B-B, B-T, B-LT and B-LTA mean?</summary>
+          <p>They are baseline levels that add longevity. B-B is the basic signature with the signing certificate. B-T adds a trusted timestamp that proves when the document was signed. B-LT (long-term) embeds the validation material, such as certificates and revocation data, so the signature can still be checked years later even if the issuing authority is gone. B-LTA adds an archive timestamp over everything for very long-term integrity.</p>
+        </details>
+        <details><summary>Is a PAdES signature legally valid?</summary>
+          <p>PAdES is the PDF signature profile referenced by the EU eIDAS regulation, and equivalent frameworks exist worldwide. Legal weight depends on the type of certificate used (for example a qualified certificate for a qualified electronic signature). The PAdES format itself provides the technical proof of identity, integrity and time that regulations require.</p>
+        </details>
+        <details><summary>How do I sign a PDF with rust-pdf?</summary>
+          <p>Call <code>rustpdf.sign</code> with the PDF bytes, your private key and certificate (DER), and <code>pades=True</code> for a PAdES-B-B signature. The library appends an incremental update so the original bytes are preserved, which keeps earlier signatures valid. <code>add_dss</code> and <code>timestamp</code> then extend it to B-LT and B-LTA. Signatures are checked with pdfsig and openssl cms.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Sign PDFs in your language</h2>
+        <p class="muted">
+          One core, the same PAdES signatures across nine languages. Signatures and
+          long-term validation are part of the Enterprise license.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/aes-256">What is AES-256?</a>
+          <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

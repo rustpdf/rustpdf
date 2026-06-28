@@ -52,12 +52,14 @@
         "publisher": { "@id": "https://rustpdf.dev/#org" },
         "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
         "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a) and converting existing PDFs to PDF/A",
+          "Digital signatures and PAdES (B-B, B-LT, B-LTA) plus signature validation",
           "AES-256 encryption",
           "PDF/UA accessibility (Tagged PDF)",
-          "AcroForm fields",
-          "Merge, split, text extraction"
+          "ZUGFeRD / Factur-X electronic invoices",
+          "AcroForm fields: create, fill and flatten",
+          "Redaction, watermarks, hyperlinks and bookmarks",
+          "Merge, split, text and image extraction"
         ],
         "offers": {
           "@type": "AggregateOffer",
@@ -238,6 +240,13 @@
           regulated-grade features (archival, signatures, encryption, accessibility),
           one license unlocks them all, in every language you use.
         </p>
+        <p class="center muted narrow" style="margin-top:-6px">
+          New to these formats? Learn <a href="/pdf-a">PDF/A</a>,
+          <a href="/pades">PAdES signatures</a>,
+          <a href="/pdf-ua">PDF/UA accessibility</a>,
+          <a href="/aes-256">AES-256 encryption</a> and
+          <a href="/zugferd">ZUGFeRD / Factur-X e-invoices</a>.
+        </p>
         <div class="feature-grid">
           <div class="card free reveal">
             <h3>Community <span class="tag">free</span></h3>
@@ -246,16 +255,20 @@
               <li>Embedded/subset fonts, Unicode shaping</li>
               <li>Justified paragraphs &amp; tables</li>
               <li>Images (JPEG/PNG/alpha/16-bit)</li>
-              <li>Merge / split / rotate</li>
-              <li>Text extraction &amp; optimize</li>
+              <li>Hyperlinks, bookmarks &amp; watermarks</li>
+              <li>Form fill &amp; flatten</li>
+              <li>Merge / split / rotate, text &amp; image extraction</li>
             </ul>
           </div>
           <div class="card pro reveal">
             <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
             <ul>
-              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a, plus convert existing PDFs</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
               <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
+              <li><b>Signature validation</b>: verify any signed PDF</li>
+              <li><b>ZUGFeRD / Factur-X</b>: electronic invoices</li>
+              <li><b>Redaction</b>: truly remove page content</li>
               <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
               <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
               <li><b>AcroForm</b>: fields with generated appearances</li>
@@ -435,7 +448,8 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
               <p class="muted">Per application · renews yearly · offline · all nine languages</p>
             </div>
             <ul class="price-features">
-              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a)</li>
+              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a) + convert existing PDFs</li>
+              <li>✓ ZUGFeRD / Factur-X electronic invoices</li>
               <li>✓ Encryption (RC4 / AES-128 / AES-256)</li>
               <li>✓ AcroForm fields with appearances</li>
               <li>✓ All language bindings, no rebuild to activate</li>
@@ -457,6 +471,8 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
               <li>✓ <b>Everything in Pro</b></li>
               <li>✓ Digital signatures &amp; PAdES (B-B / B-LT / B-LTA)</li>
               <li>✓ RFC 3161 timestamps + LTV (DSS)</li>
+              <li>✓ Signature validation</li>
+              <li>✓ True redaction (remove page content)</li>
               <li>✓ Accessibility (Tagged PDF / PDF/UA-1)</li>
               <li>✓ Priority email support</li>
             </ul>
@@ -496,10 +512,10 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
           <p>No. Activation is fully offline, so nothing about your documents or your usage ever leaves your servers. There are no network calls of any kind. Ideal for government, banking and healthcare.</p>
         </details>
         <details><summary>What can the free tier do?</summary>
-          <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, merge/split, text extraction and optimization. Forever free, no license.</p>
+          <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill &amp; flatten, merge/split, text &amp; image extraction and optimization. Forever free, no license.</p>
         </details>
         <details><summary>What's the difference between Pro and Enterprise?</summary>
-          <p><b>Pro</b> unlocks PDF/A archival and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, and PDF/UA accessibility — plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan — <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
+          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs), ZUGFeRD / Factur-X e-invoices, and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
         </details>
         <details><summary>How is this validated?</summary>
           <p>Output is checked by independent tools: veraPDF (PDF/A 1b–3a + PDF/UA-1), pdfsig and <code>openssl cms</code> (signatures), and qpdf/mutool (structure). It isn't "conformance marketing".</p>

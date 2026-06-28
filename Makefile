@@ -4,7 +4,7 @@
 # PATH; allow overriding CARGO. Defaults to plain `cargo`.
 CARGO ?= cargo
 
-.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test go-dist php-test ruby-test node-test java-test delphi-test swift-test delphi-dist delphi-dist-publish swift-dist swift-dist-publish clean ci
+.PHONY: all build test clippy fmt fmt-check deny header ffi examples python-test csharp-test go-test go-dist php-test ruby-test node-test java-test delphi-test swift-test rust-test rust-dist delphi-dist delphi-dist-publish swift-dist swift-dist-publish clean ci
 
 all: build
 
@@ -63,9 +63,13 @@ php-test: ffi
 ruby-test: ffi
 	ruby bindings/ruby/test/run.rb
 
-# Node.js binding smoke test (Koffi FFI; exercises the whole surface).
+# Node.js binding smoke test (Koffi FFI; exercises the whole surface). Points
+# RUSTPDF_LIB at the freshly-built dev cdylib so the local build is tested rather
+# than any (possibly older) published @rustpdf/<platform> package npm pulled in.
 node-test: ffi
-	cd bindings/node && npm install --silent && node test/run.js
+	cd bindings/node && npm install --silent && \
+		RUSTPDF_LIB="$(CURDIR)/target/debug/$$(uname | grep -q Darwin && echo libpdf_ffi.dylib || echo libpdf_ffi.so)" \
+		node test/run.js
 
 # Java binding smoke test (JNA FFI; exercises the whole surface over the C ABI).
 java-test: ffi
@@ -92,6 +96,19 @@ swift-test: ffi
 	else \
 		echo "skip swift-test: no Swift toolchain on PATH" ; \
 	fi
+
+# Rust binding smoke test (libloading runtime FFI; whole surface over the C
+# ABI). The crate lives outside the workspace; the test resolves the debug
+# cdylib built by `ffi` via RUSTPDF_LIB / its CARGO_MANIFEST_DIR fallback.
+rust-test: ffi
+	cd bindings/rust && $(CARGO) test
+
+# Build the dynamic libpdf_ffi for every installed Rust target and stage it
+# (plus a versioned zip) under bindings/rust/dist/ — the runtime libs a consumer
+# ships beside their app. The crate itself is published to the private cargo
+# registry by .github/workflows/release-rust.yml. Best effort, honors $(CARGO).
+rust-dist:
+	CARGO="$(CARGO)" bash bindings/rust/scripts/package.sh
 
 # Assemble a distributable Delphi/FPC archive (RustPdf.pas + native libs + sample)
 # under bindings/delphi/dist/. Builds the cdylib for every installed Rust target.

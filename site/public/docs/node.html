@@ -87,13 +87,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -101,9 +108,10 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
-      <a href="#extract">Text extraction</a>
+      <a href="#extract">Text &amp; image extraction</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -339,6 +347,24 @@ doc.attachFile("invoice.xml", "text/xml", xml,
 doc.save("einvoice.pdf");
 doc.close();</code></pre></div>
 
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>facturx(xml: Buffer, profile?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
+const { Document, FacturxProfile } = require("rustpdf");
+
+const xml = fs.readFileSync("factur-x.xml");      // your Cross-Industry Invoice XML
+const doc = new Document();
+doc.setInfo({ title: "Invoice INV-2026-001" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 18, 72, 760, "Invoice INV-2026-001");
+doc.facturx(xml, FacturxProfile.EN16931);
+doc.save("einvoice.pdf");        // PDF/A-3 + Factur-X; needs a PDF/A license
+doc.close();</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum to Extended).</p>
+
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
       <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>[x0, y0, x1, y1]</code> arrays; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
@@ -361,7 +387,41 @@ doc.radioGroup("billing", 0, [
 ], 1);
 doc.save("form.pdf");
 doc.close();</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc.fillTextField</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>linkUri(rect, uri)</code> &nbsp; <code>linkToPage(rect, pageIndex, top?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const doc = new Document();
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 14, 72, 760, "Visit rustpdf.dev (see page 2)");
+doc.linkUri([72, 756, 320, 776], "https://rustpdf.dev/");   // web link
+doc.linkToPage([330, 756, 430, 776], 1, 800);              // jump to page 2
+doc.addPage();
+doc.save("links.pdf");
+doc.close();</code></pre></div>
+      <p>Rectangles are <code>[x0, y0, x1, y1]</code> in points; <code>pageIndex</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>.child(...)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>new Bookmark(title, page, top?)</code> &nbsp; <code>.child(bookmark)</code> &nbsp; <code>addBookmark(bookmark)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, Bookmark } = require("rustpdf");
+
+const doc = new Document();
+const f = doc.addFontFile("Roboto-Regular.ttf");
+for (let i = 0; i &lt; 3; i++) doc.addPage();
+
+const ch1 = new Bookmark("Chapter 1", 0, 820);
+ch1.child(new Bookmark("Section 1.1", 1));
+ch1.child(new Bookmark("Section 1.2", 2));
+doc.addBookmark(ch1);
+doc.addBookmark(new Bookmark("Chapter 2", 2));
+doc.save("outline.pdf");
+doc.close();</code></pre></div>
+      <p><code>.child(...)</code> returns the child it appended, so you can keep building deeper nesting from it.</p>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -425,6 +485,63 @@ ed.setInfo("Title", "Filled form");
 const found = ed.fillTextField("applicant.name", "Jane Doe");
 console.log("filled:", found, "| title:", ed.getInfo("Title"));
 ed.save("filled.pdf");
+ed.close();</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>fieldNames() → string[]</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>fillTextField(name, value) → boolean</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>setCheckbox(name, checked?) → boolean</code></td><td>Check/uncheck a checkbox (defaults to <code>true</code>).</td></tr>
+        <tr><td><code>setRadio(name, exportValue) → boolean</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>setChoice(name, value) → boolean</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>flattenForms()</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc } = require("rustpdf");
+
+const ed = EditableDoc.loadFile("form.pdf");
+console.log(ed.fieldNames());          // ['applicant.name', 'agree', 'plan', ...]
+ed.fillTextField("applicant.name", "Jane Doe");
+ed.setCheckbox("agree", true);
+ed.setRadio("billing", "annual");
+ed.setChoice("plan", "Pro");
+ed.flattenForms();                     // optional: make it non-editable
+ed.save("filled.pdf");
+ed.close();</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>watermarkText(text, { size?, color?, opacity?, rotationDeg? }?)</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("report.pdf");
+ed.watermarkText("CONFIDENTIAL", { opacity: 0.25, rotationDeg: 45 });
+ed.save("stamped.pdf");
+ed.close();</code></pre></div>
+      <p>Defaults: <code>size: 64</code>, <code>color: [0.5, 0.5, 0.5]</code>, <code>opacity: 0.30</code>, <code>rotationDeg: 45</code>.</p>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>redact(pageIndex, rects) → boolean</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("statement.pdf");
+// rects = array of [x0, y0, x1, y1] on that page
+ed.redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]]);
+ed.save("redacted.pdf");     // throws PdfError without a license granting redaction
+ed.close();</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>extractText</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>convertToPdfa(level?)</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc, PdfaLevel } = require("rustpdf");
+
+const ed = EditableDoc.loadFile("in.pdf");
+ed.convertToPdfa(PdfaLevel.A2b);   // throws PdfError if fonts aren't embedded
+ed.save("archival.pdf");           // veraPDF: PDF/A-2b compliant
 ed.close();</code></pre></div>
 
       <!-- ED OPTIMIZE -->
@@ -500,12 +617,29 @@ const lt = rustpdf.addDss(signed, [certDer], [crlDer]);
 const lta = rustpdf.timestamp(lt, tsaKeyDer, tsaCertDer);
 fs.writeFileSync("contract.lta.pdf", lta);</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>rustpdf.verifySignatures(data: Buffer) → object[]</code></div>
+      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. An empty array means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+
+const data = fs.readFileSync("contract.signed.pdf");
+for (const sig of rustpdf.verifySignatures(data)) {
+  console.log(sig.signer, "valid:", sig.is_valid,
+              "covers whole doc:", sig.covers_whole_document);
+}</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>rustpdf.extractText(data: Buffer) → string</code> <span class="badge free">free</span></div>
+      <div class="api"><code>rustpdf.extractImagesToDir(data: Buffer, outDir: string) → number</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const data = fs.readFileSync("report.pdf");
-console.log(rustpdf.extractText(data));</code></pre></div>
+console.log(rustpdf.extractText(data));
+
+const n = rustpdf.extractImagesToDir(data, "out_images/");   // returns how many were written
+console.log(`wrote ${n} image(s)`);</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -541,6 +675,15 @@ console.log(rustpdf.extractText(data));</code></pre></div>
         <tr><td><code>Encryption.Rc4</code></td><td>RC4 (legacy)</td></tr>
         <tr><td><code>Encryption.Aes128</code></td><td>AES-128</td></tr>
         <tr><td><code>Encryption.Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>FacturxProfile.Minimum</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>FacturxProfile.BasicWL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>FacturxProfile.Basic</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>FacturxProfile.EN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>FacturxProfile.Extended</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -588,11 +731,19 @@ try {
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate signatures</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

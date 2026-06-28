@@ -43,24 +43,43 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   fora de ordem podem sair embaralhados. Falta: ordenação por coordenadas
   (clusterização de blocos), detecção de colunas, e melhor inferência de espaço
   por largura de glifo (hoje usa limiar fixo de `TJ < -100`).
-- 🟡 **6.6 Watermark/overlay.** Hoje aceita bytes de content stream crus sobre a
-  página (`overlay_page`). Faltam conveniências: **texto de marca-d'água**
-  (precisa embutir fonte no doc já existente — a pipeline de fontes não está
-  conectada ao `EditableDoc`) e **carimbar outra página PDF como Form XObject**.
-- ✅ **6.7 AcroForm (autoria).** `Document::text_field`/`checkbox`/`radio_group`/
-  `dropdown` (`form.rs`) criam um `/AcroForm` completo com **appearance streams
-  `/AP` gerados** (Helvetica/ZapfDingbats no `/DR`, sem `NeedAppearances`),
-  **checkbox/radio/choice** além de texto, e **nomes hierárquicos** (`a.b.c` →
-  campos-pai aninhados com `/Kids`+`/Parent`). `qpdf` lê todos os campos com
-  fullname/valor corretos. Pendente: edição de forms **existentes** com geração
-  de `/AP` (hoje `EditableDoc::fill_text_field` ainda usa `NeedAppearances`); list
-  box (só combo); herança de `/DA` por campo.
+- ✅ **6.6 Watermark/overlay (Tier 1).** Além dos bytes crus (`overlay_page`),
+  `EditableDoc::watermark_text` carimba **marca-d'água de texto** diagonal
+  (Helvetica padrão, opacidade via `/ExtGState /ca`+`/CA`, rotação, centralizada,
+  [`WatermarkOptions`]) e `watermark_image` carimba **imagem** (XObject embutido
+  no doc já existente, opacidade) em todas as páginas; merge de recursos é **deep
+  merge** (não sobrescreve fontes/XObjects existentes da página). Validado por
+  `qpdf --check` + `mutool` (extrai/renderiza). Falta: **carimbar outra página
+  PDF como Form XObject** e marca-d'água com fonte embutida não-WinAnsi.
+- ✅ **6.7 AcroForm (autoria + fill + flatten).** Autoria: `Document::text_field`/
+  `checkbox`/`radio_group`/`dropdown` (`form.rs`) com `/AP` gerado e nomes
+  hierárquicos. **Edição de forms existentes (Tier 1, `edit.rs`):**
+  `EditableDoc::field_names` (nomes qualificados), `fill_text_field`/`set_choice`
+  **geram `/AP`** (sem `NeedAppearances`), `set_checkbox`/`set_radio` ajustam
+  `/V`+`/AS` pelo estado de aparência existente, e **`flatten_forms()`** pinta a
+  aparência atual de cada widget no conteúdo da página (Form XObject `Do`),
+  remove widgets do `/Annots` e elimina o `/AcroForm`. `qpdf --check` + `mutool`
+  + `pdftotext` confirmam (valor achatado extraído). Falta: list box (só combo);
+  herança/uso da fonte nomeada no `/DA` (hoje sempre Helvetica na aparência);
+  XFA.
 - ✅ **6.8 Otimização.** Feito: remove objetos não-referenciados + recomprime
   streams sem filtro com `FlateDecode` + renumeração compacta + **object streams
   (`/ObjStm`) e cross-reference stream (`/XRef`) na escrita** (`optimize()` ou
   `EditableDoc::compact(true)`) + **dedupe de objetos byte-idênticos** (fontes/
   recursos repetidos após merge; páginas e catálogo preservados). `qpdf --check`
   valida. Falta: recompressão de imagens / downsampling.
+- ✅ **Hyperlinks (Tier 1, `lib.rs`).** `Page::link_uri` (`/Link` + ação `/URI`,
+  navegação web) e `Page::link_to_page` (`/Link` + `/Dest [page /XYZ null top
+  null]`, navegação interna) na geração; as anotações são resolvidas após o loop
+  de páginas (refs de destino conhecidas) e mescladas no `/Annots` junto dos
+  widgets de form. `qpdf --check` valida. Falta: links em texto fluido/`Report`,
+  bordas/estilos visuais, destinos nomeados.
+- ✅ **Bookmarks/outline (Tier 1, `outline.rs`).** `Document::add_bookmark` com
+  `Bookmark` aninhável (`new`/`at_top`/`child`/`children`) → árvore `/Outlines`
+  completa (`First`/`Last`/`Count`/`Next`/`Prev`/`Parent`/`Dest`) + catálogo com
+  `/PageMode /UseOutlines`. `mutool show … outline` lista a árvore aninhada
+  corretamente. Falta: cor/estilo (negrito/itálico) e estado aberto/fechado
+  (`Count` negativo) por item.
 
 ## Writer / núcleo
 
@@ -78,13 +97,23 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
 
 ## FFI + binding Python
 
-- ✅ **Superfície do C ABI completa** (~60 exports, `crates/ffi/src/{lib,build,
-  editable,signing}.rs`): gráficos vetoriais, **fontes+texto+parágrafos**,
+- ✅ **Superfície do C ABI completa** (~80 exports, `crates/ffi/src/{lib,build,
+  editable,signing,verify}.rs`): gráficos vetoriais, **fontes+texto+parágrafos**,
   **imagens+figura**, **PDF/A 1b–3a**, **tagging/heading**, **anexos**, **forms**
   (texto/checkbox/radio/dropdown), `PdfEditable` (load/merge/split/rotate/reorder/
   delete/info/xmp/overlay/fill/optimize/compact/incremental/encrypt/save),
   **extract_text**, e **assinatura** (`pdf_sign`/`pdf_timestamp`/`pdf_add_dss`).
-  Header `include/pdf.h` regenerado por cbindgen.
+  **Tier 1/2 expostos (2026-06):** hyperlinks (`pdf_page_link_uri`/`link_to_page`),
+  bookmarks (`pdf_document_add_bookmarks`, lista plana com `levels`), ZUGFeRD/
+  Factur-X (`pdf_document_facturx`), fill+flatten de forms existentes
+  (`pdf_editable_set_checkbox`/`set_radio`/`set_choice`/`flatten_forms`/
+  `field_names`), watermark (`pdf_editable_watermark_text`/`watermark_image_file`),
+  redação (`pdf_editable_redact`), conversão PDF→PDF/A
+  (`pdf_editable_convert_to_pdfa`) e validação de assinatura
+  (`pdf_verify_signatures_json`, retorna JSON). Header `include/pdf.h` regenerado
+  por cbindgen. **As 14 novas funções estão em TODOS os 10 bindings** (Python,
+  C#, Go, PHP, Ruby, Node, Java, Delphi, Swift, Rust), cada um com seu smoke test
+  estendido e passando.
 - ✅ **Binding Python completo** (`bindings/python/rustpdf`): wrappers idiomáticos
   `Document`/`EditableDoc` + funções `extract_text`/`sign`/`timestamp`/`add_dss`,
   enums (`PdfaLevel`/`Align`/`AFRelationship`/`Encryption`), empacotamento
@@ -180,6 +209,15 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
   **assinatura visível** (appearance stream Helvetica, sem embed);
   **múltiplas assinaturas** (cada uma um novo update incremental; anteriores
   continuam válidas); **cadeia de certificados** no CMS. `pdfsig` valida todas.
+  **Validação de assinatura (Tier 2, `verify.rs`):** `pdf::verify_signatures`
+  localiza cada dict de assinatura, recomputa o digest do `/ByteRange`, faz parse
+  do CMS e verifica **(a)** a assinatura RSA PKCS#1 v1.5 sobre os signedAttrs com
+  a chave pública do certificado, **(b)** o atributo `messageDigest` == digest dos
+  bytes cobertos, e **(c)** se cobre o documento inteiro (`SignatureReport`). Casa
+  com `pdfsig` ("Signature is Valid") e detecta adulteração. **Licenciada
+  (Enterprise):** gated por `Feature::Signatures`; retorna `BuildError` (mapeado
+  para `PdfStatus::License` no FFI). Pendente: cadeia de confiança/revogação
+  (precisa de infra), ECDSA/RSA-PSS.
   **Ainda pendentes:** validação no **Acrobat** (sem acesso); timestamp/LTV
   (ver 7.2); e o `/M` (data) é fixo por padrão.
 - 🟡 **7.2 PAdES + LTV.** **Feito (offline):** B-B (`ETSI.CAdES.detached` +
@@ -201,8 +239,29 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
   `/CIDSet` no descritor lido do programa de subset, sem object streams),
   **A-2b/2a**, e **A-3b/3a** (anexos via `attach_file` → `/EmbeddedFile` +
   `/AFRelationship` + `/AF` + `/Names /EmbeddedFiles`). **veraPDF valida 1b, 2b,
-  2a, 3b e 3a** (`isCompliant=true`). Pendente: converter um PDF *lido* para
-  PDF/A (hoje só na geração); A-1 com imagens transparentes exigiria flatten.
+  2a, 3b e 3a** (`isCompliant=true`). **Conversão de PDF lido → PDF/A (Tier 2):**
+  `EditableDoc::convert_to_pdfa(PdfaLevel)` adiciona OutputIntent sRGB + XMP
+  `pdfaid` (sincronizado com `/Info`) + `/ID`, força 1.4 em A-1b, e **falha com
+  `ConvertError::FontsNotEmbedded`** se alguma fonte não estiver embutida (PDF/A
+  exige todas embutidas) ou `TaggingRequired` para nível A. **veraPDF valida 2b**
+  no doc convertido (round-trip). Pendente: níveis A (precisa de tags), flatten de
+  transparência para A-1, e embutir fontes faltantes (precisa das fontes).
+- ✅ **Redação real (Tier 2, `redact.rs`).** `EditableDoc::redact(page, rects)`
+  interpreta o content stream (pilha CTM via `q`/`Q`/`cm`, matrizes de texto
+  `Tm`/`Td`/`T*`) e **remove** os operadores de texto/imagem cuja origem cai
+  dentro de um retângulo — o conteúdo some do arquivo (não é extraível), não é só
+  tapado — e pinta retângulos pretos opacos por cima. Decodifica content
+  uncompressed e `FlateDecode`; faz bail (só tapa) com imagens inline. Testes
+  confirmam que o texto redigido some de `extract_text`. **Licenciada (Enterprise):**
+  novo `Feature::Redaction` (bit 4), checado no `to_bytes`/`to_bytes_incremental`
+  via flag `redacted`; tokens Enterprise/OEM incluem; o token dev de teste foi
+  re-emitido (`licctl ... all`). Pendente: redação parcial dentro de um run
+  (granularidade hoje = operador de show), imagens inline, e remoção em `/Annots`.
+- ✅ **ZUGFeRD / Factur-X (Tier 2).** `Document::facturx(xml, FacturxProfile)`
+  marca PDF/A-3b, embute `factur-x.xml` (`/AFRelationship /Alternative`) e injeta
+  a descrição `fx` + **schema de extensão pdfaExtension** no XMP. **veraPDF valida
+  PDF/A-3b**. Pendente: validar o XML contra o esquema CII (semântica da fatura,
+  fora de escopo da lib) e o perfil ZUGFeRD 1.0 legado (`zf`).
 - 🟡 **7.5 Tagged PDF / acessibilidade.** **Feito** (`Document::tagged()` /
   `pdfa_a()`): structure tree **aninhado**, marked content, ParentTree, MarkInfo,
   Lang, ViewerPreferences, XMP `pdfaid`+`pdfuaid`. **Tags semânticas feitas:**

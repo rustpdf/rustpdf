@@ -262,6 +262,9 @@ internal static partial class Native
     internal static partial int pdf_extract_text(byte[] data, nuint len, out IntPtr outPtr, out nuint outLen);
 
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_extract_images_to_dir(byte[] data, nuint len, string dir, out nuint outCount);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_sign(
         byte[] pdf, nuint pdfLen, byte[] keyDer, nuint keyLen, byte[] certDer, nuint certLen,
         string? reason, string? location, string? name, int pades, out IntPtr outPtr, out nuint outLen);
@@ -277,4 +280,66 @@ internal static partial class Native
         IntPtr[] certPtrs, nuint[] certLens, nuint certCount,
         IntPtr[] crlPtrs, nuint[] crlLens, nuint crlCount,
         out IntPtr outPtr, out nuint outLen);
+
+    // ---- Tier 1: hyperlinks + bookmarks (Document) --------------------------
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_page_link_uri(
+        IntPtr doc, double x0, double y0, double x1, double y1, string uri);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_page_link_to_page(
+        IntPtr doc, double x0, double y0, double x1, double y1,
+        nuint targetPage, double top, int hasTop);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_document_add_bookmarks(
+        IntPtr doc, nuint count, int[] levels,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPUTF8Str)] string[] titles,
+        nuint[] pages, double[] tops, int[] hasTops);
+
+    // ---- Tier 2: ZUGFeRD / Factur-X (Document) ------------------------------
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_document_facturx(IntPtr doc, byte[] xml, nuint len, int profile);
+
+    // ---- Tier 1: form fill + flatten + watermark (EditableDoc) --------------
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_set_checkbox(IntPtr ed, string name, int checkedFlag, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_set_radio(IntPtr ed, string name, string exportValue, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_set_choice(IntPtr ed, string name, string value, out int outFound);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_flatten_forms(IntPtr ed);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_field_names(IntPtr ed, out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_watermark_text(
+        IntPtr ed, string text, double size, double r, double g, double b, double opacity, double rotationDeg);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_watermark_image_file(
+        IntPtr ed, string path, double width, double height, double opacity);
+
+    // ---- Tier 2: redaction + PDF/A conversion (EditableDoc) -----------------
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_redact(
+        IntPtr ed, nuint index, double[] rects, nuint count, out int outFound);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_convert_to_pdfa(IntPtr ed, int level);
+
+    // ---- Tier 2: signature validation (module-level) ------------------------
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_verify_signatures_json(
+        byte[] data, nuint len, out IntPtr outPtr, out nuint outLen);
 }
