@@ -35,7 +35,7 @@ runtime. No per-OS classifier, no native build step on the consumer side.
 
 | File | Role |
 |------|------|
-| `FFI.java` | Raw JNA mapping of all 61 C exports + library locator |
+| `FFI.java` | Raw JNA mapping of all 78 C exports + library locator |
 | `Pdf.java` | `version` / `activateLicense` / `extractText` / `sign` / `timestamp` / `addDss` + helpers |
 | `Document.java` | Authoring (graphics, fonts, text, images, PDF/A, tagging, forms) |
 | `EditableDoc.java` | Manipulation (merge, split, encrypt, incremental update) |
