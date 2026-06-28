@@ -20,8 +20,8 @@
   <meta name="twitter:title" content="rust-pdf · enterprise PDF for every language" />
   <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, nine languages, offline, licensed per feature." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
+  <meta property="og:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
+  <meta name="twitter:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -127,8 +127,9 @@
           <a href="#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
-          Validated by independent tools:
-          <span>veraPDF</span><span>pdfsig</span><span>openssl&nbsp;cms</span><span>qpdf</span><span>mutool</span>
+          Validated by independent tools you can run yourself:
+          <a class="vtool" href="https://verapdf.org" target="_blank" rel="noopener">veraPDF</a><a class="vtool" href="https://poppler.freedesktop.org/" target="_blank" rel="noopener">pdfsig</a><a class="vtool" href="https://www.openssl.org/" target="_blank" rel="noopener">openssl&nbsp;cms</a><a class="vtool" href="https://qpdf.sourceforge.io/" target="_blank" rel="noopener">qpdf</a><a class="vtool" href="https://mupdf.com/" target="_blank" rel="noopener">mutool</a>
+          <a class="vverify" href="#verify">→ verify it yourself</a>
         </div>
       </div>
     </section>
@@ -241,27 +242,55 @@
           regulated-grade features (archival, signatures, encryption, accessibility),
           one license unlocks them all, in every language you use.
         </p>
-        <p class="center muted narrow" style="margin-top:-6px">
-          New to the standards? Learn <a href="/pdf-a">PDF/A</a>,
-          <a href="/pades">PAdES signatures</a>,
-          <a href="/eidas">eIDAS</a>,
-          <a href="/pdf-ua">PDF/UA accessibility</a>,
-          <a href="/aes-256">AES-256 encryption</a>,
-          <a href="/zugferd">ZUGFeRD / Factur-X</a> and
-          <a href="/xmp-metadata">XMP metadata</a>.
-        </p>
-        <p class="center muted narrow" style="margin-top:-6px">
-          Or jump to a task: <a href="/pdf-forms">PDF forms</a>,
-          <a href="/merge-pdf">merge &amp; split</a>,
-          <a href="/extract-text">extract text</a>,
-          <a href="/extract-images">extract images</a>,
-          <a href="/render-pdf">render to image</a>,
-          <a href="/compress-pdf">compress</a>,
-          <a href="/encrypt-pdf">encrypt</a>,
-          <a href="/watermark-pdf">watermark</a>,
-          <a href="/pdf-attachments">embed files</a> and
-          <a href="/pdf-timestamp">timestamps &amp; LTV</a>.
-        </p>
+        <div class="explore narrow">
+          <div class="explore-col">
+            <h4>Learn the standards</h4>
+            <div class="explore-links">
+              <a href="/pdf-a">PDF/A</a>
+              <a href="/pades">PAdES signatures</a>
+              <a href="/eidas">eIDAS</a>
+              <a href="/pdf-ua">PDF/UA accessibility</a>
+              <a href="/aes-256">AES-256 encryption</a>
+              <a href="/zugferd">ZUGFeRD / Factur-X</a>
+              <a href="/xmp-metadata">XMP metadata</a>
+            </div>
+          </div>
+          <div class="explore-col">
+            <h4>Jump to a task</h4>
+            <div class="explore-links">
+              <a href="/pdf-forms">PDF forms</a>
+              <a href="/merge-pdf">Merge &amp; split</a>
+              <a href="/extract-text">Extract text</a>
+              <a href="/extract-images">Extract images</a>
+              <a href="/render-pdf">Render to image</a>
+              <a href="/compress-pdf">Compress</a>
+              <a href="/encrypt-pdf">Encrypt</a>
+              <a href="/watermark-pdf">Watermark</a>
+              <a href="/pdf-attachments">Embed files</a>
+              <a href="/pdf-timestamp">Timestamps &amp; LTV</a>
+            </div>
+          </div>
+          <div class="explore-col">
+            <h4>Sign a PDF by language</h4>
+            <div class="explore-links">
+              <a href="/sign-pdf/go">Go</a>
+              <a href="/sign-pdf/php">PHP</a>
+              <a href="/sign-pdf/ruby">Ruby</a>
+              <a href="/sign-pdf/node">Node.js</a>
+              <a href="/sign-pdf/python">Python</a>
+              <a href="/sign-pdf/csharp">C#</a>
+            </div>
+            <h4>More guides, in Go</h4>
+            <div class="explore-links">
+              <a href="/pdf-a/go">PDF/A</a>
+              <a href="/encrypt-pdf/go">Encrypt</a>
+              <a href="/generate-pdf/go">Generate</a>
+              <a href="/merge-pdf/go">Merge</a>
+              <a href="/extract-text/go">Extract text</a>
+              <a href="/pdf-forms/go">Forms</a>
+            </div>
+          </div>
+        </div>
         <div class="feature-grid">
           <div class="card free reveal">
             <h3>Community <span class="tag">free</span></h3>
@@ -445,12 +474,41 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
       </div>
     </section>
 
+    <!-- VERIFY IT YOURSELF -->
+    <section id="verify" class="band">
+      <div class="wrap narrow center">
+        <h2>Don't take our word for it. Run the validators.</h2>
+        <p class="muted">
+          Generate a document, then check it with the same independent tools we
+          gate every release on. No account, no upload: it all runs on your
+          machine, against the bytes rust-pdf produced.
+        </p>
+        <pre class="verify-code"><code><span class="c"># 1 · author an archival, accessible, signed PDF (Rust example shown)</span>
+cargo run --release -p pdf --example report -- out.pdf
+
+<span class="c"># 2 · PDF/A + PDF/UA conformance, reference validator</span>
+verapdf --flavour 2a out.pdf          <span class="c">→ <span class="ok">PASS</span>, isCompliant=true</span>
+
+<span class="c"># 3 · signature + RFC 3161 timestamp</span>
+pdfsig signed.pdf                     <span class="c">→ <span class="ok">Signature is Valid</span></span>
+openssl cms -verify -inform DER ...   <span class="c">→ <span class="ok">CMS Verification successful</span></span>
+
+<span class="c"># 4 · structure</span>
+qpdf --check out.pdf && mutool info out.pdf</code></pre>
+        <p class="muted" style="font-size:0.86rem">
+          Each release is gated on these passing for PDF/A&nbsp;1b–3a, PDF/UA-1 and
+          PAdES&nbsp;B-B/B-LT/B-LTA. More in the <a href="#faq">validation FAQ</a> or
+          your language's <a href="/docs/">reference docs</a>.
+        </p>
+      </div>
+    </section>
+
     <!-- PRICING -->
     <section id="pricing" class="section">
       <div class="wrap">
         <h2 class="center">Pick the plan you need.</h2>
         <p class="center muted narrow">
-          Per-application annual pricing — in every language, with no per-document
+          Per-application annual pricing, in every language, with no per-document
           metering, <b>no per-server fees</b> and no usage caps. Run one application
           on as many servers as you like. Start with <b>Pro</b> for archival and
           encryption; move to <b>Enterprise</b> when you need juridically-valid
@@ -577,6 +635,9 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
         <a href="/legal/privacy.html">Privacy</a>
         <a href="/legal/refund.html">Refunds</a>
         <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="/itext-alternative">vs iText</a>
+        <a href="/aspose-alternative">vs Aspose</a>
+        <a href="/pspdfkit-alternative">vs PSPDFKit</a>
       </nav>
     </div>
   </footer>

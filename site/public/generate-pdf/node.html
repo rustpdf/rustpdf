@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generate a PDF in Node.js | rust-pdf</title>
+  <meta name="description" content="Generate a PDF in Node.js. Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output." />
+  <link rel="canonical" href="https://rustpdf.dev/generate-pdf/node" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/generate-pdf/node" />
+  <meta property="og:title" content="Generate a PDF in Node.js" />
+  <meta property="og:description" content="Generate a PDF in Node.js. Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Generate a PDF in Node.js" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Generate a PDF in Node.js" />
+  <meta name="twitter:description" content="Generate a PDF in Node.js. Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output." />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Generate a PDF in Node.js" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://rustpdf.dev/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Generate a PDF in Node.js",
+          "item": "https://rustpdf.dev/generate-pdf/node"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Generate a PDF in Node.js",
+      "description": "Generate a PDF in Node.js. Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output.",
+      "url": "https://rustpdf.dev/generate-pdf/node",
+      "inLanguage": "en",
+      "proficiencyLevel": "Beginner",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "rust-pdf",
+        "applicationCategory": "DeveloperApplication"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CaseFy Inc.",
+        "url": "https://casefy.io"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is generating PDFs free in Node.js?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever. You only license corporate features such as PDF/A, signatures and encryption when you ship them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it support Unicode and custom fonts?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Fonts are embedded and subset with HarfBuzz-quality shaping and kerning, using Type0 fonts with ToUnicode, so non-Latin scripts render and extract correctly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why a Rust core for Node.js?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "One memory-safe, high-performance Rust core is exposed to Node.js through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+
+  <style>
+    /* ===== task x language spoke (scoped, reduced-motion safe) ===== */
+    .sp-lede { max-width: 720px; }
+    .sp-scene { position: relative; height: 210px; max-width: 340px; margin: 30px auto 0; }
+    .sp-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 150px; height: 184px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.5); animation: spPulse 4.5s ease-in-out infinite; }
+    .sp-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .sp-paper .ln.s { width: 56%; }
+    .sp-badge { position: absolute; top: -12px; left: -12px; background: var(--panel-2);
+      border: 1px solid var(--border); color: #cbd5e1; font-size: .72rem; font-weight: 800;
+      letter-spacing: .03em; padding: 5px 11px; border-radius: 999px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.6); }
+    .sp-seal { position: absolute; bottom: -11px; right: -11px; background: var(--brand); color: #1a0e02;
+      font-size: .62rem; font-weight: 800; letter-spacing: .04em; padding: 5px 10px; border-radius: 999px; }
+    @keyframes spPulse { 0%,100% { box-shadow: 0 30px 60px -30px rgba(249,115,22,.38); }
+      50% { box-shadow: 0 30px 70px -28px rgba(249,115,22,.72); } }
+    .sp-why { display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: start; margin-top: 22px; }
+    .sp-install { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .9rem; }
+    @media (max-width: 820px) { .sp-why { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .sp-paper { animation: none !important; } }
+  </style>
+
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>&middot;</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Authoring &middot; Node.js and TypeScript</p>
+        <h1>Generate a <span class="grad">PDF</span> in Node.js</h1>
+        <p class="lede sp-lede">Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output.</p>
+        <div class="sp-scene" aria-hidden="true">
+          <div class="sp-paper">
+            <span class="sp-badge">Node.js</span>
+            <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span>
+            <span class="sp-seal">PDF</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:32px">
+          <a href="#how" class="btn btn-lg">See the Node.js code</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Documentation, explained</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Why Node.js and TypeScript needs this</h2>
+        <div class="sp-why">
+          <div>
+            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
+          </div>
+          <ul class="check-list">
+            <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
+            <li>Wrapping and justified paragraphs, tables, images (JPEG, PNG, alpha, 16-bit).</li>
+            <li>Deterministic output: identical bytes for identical input, ideal for audits and tests.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">Generate a PDF in Node.js with rust-pdf</h2>
+        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <div class="tabs">
+          <div class="tab-bar"><span class="tab active">Node.js</span></div>
+<pre class="tab-pane active"><code>const { Document } = require("rustpdf");
+
+const doc = new Document();              // A4 by default
+doc.addPage();
+doc.setFillRgb(0.86, 0.20, 0.18);
+doc.rect(72, 640, 200, 120);             // x, y, width, height (points)
+doc.fill();
+doc.save("out.pdf");
+doc.close();</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
+        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Node.js. No license required.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Generation in Node.js: FAQ</h2>
+        <details><summary>Is generating PDFs free in Node.js?</summary>
+          <p>Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever. You only license corporate features such as PDF/A, signatures and encryption when you ship them.</p>
+        </details>
+        <details><summary>Does it support Unicode and custom fonts?</summary>
+          <p>Yes. Fonts are embedded and subset with HarfBuzz-quality shaping and kerning, using Type0 fonts with ToUnicode, so non-Latin scripts render and extract correctly.</p>
+        </details>
+        <details><summary>Why a Rust core for Node.js?</summary>
+          <p>One memory-safe, high-performance Rust core is exposed to Node.js through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Generate a PDF in Node.js</h2>
+        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <div class="cta-row">
+          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/docs/">Documentation</a>
+          <a href="/nodejs">rust-pdf for Node.js</a>
+          <a href="/generate-pdf/go">Generation in Go</a>
+          <a href="/generate-pdf/php">Generation in PHP</a>
+          <a href="/generate-pdf/ruby">Generation in Ruby</a>
+          <a href="/sign-pdf/node">Signing in Node.js</a>
+          <a href="/pdf-a/node">PDF/A in Node.js</a>
+          <a href="/encrypt-pdf/node">Encryption in Node.js</a>
+          <a href="/merge-pdf/node">Merging in Node.js</a>
+          <a href="/extract-text/node">Text extraction in Node.js</a>
+          <a href="/docs/node.html">Node.js docs</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>&middot;</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

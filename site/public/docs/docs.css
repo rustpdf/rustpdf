@@ -31,7 +31,7 @@
 .code .copy { position: absolute; top: 8px; right: 8px; background: #1b2740; color: #9fb0c8; border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; opacity: 0; transition: opacity .15s; }
 .code:hover .copy { opacity: 1; }
 .code .copy:hover { color: #fff; background: #243a5c; }
-.code .lbl { position: absolute; top: 8px; left: 14px; font-size: 0.68rem; color: #5b6b85; text-transform: uppercase; letter-spacing: 0.06em; }
+.code .lbl { position: absolute; top: 8px; left: 14px; font-size: 0.68rem; color: #93a3bd; text-transform: uppercase; letter-spacing: 0.06em; }
 .code.has-label pre { padding-top: 30px; }
 
 /* tables (enum reference) */
@@ -40,10 +40,13 @@
 .docs-main th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .docs-main td code { color: #e6b980; }
 
-/* callouts */
-.note { border-left: 3px solid var(--accent); background: rgba(56,189,248,0.07); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 0.92rem; }
-.note.warn { border-left-color: var(--brand); background: rgba(249,115,22,0.08); }
-.note.pro { border-left-color: var(--green); background: rgba(52,211,153,0.07); }
+/* callouts — full hairline border + leading icon badge (no side-stripe) */
+.note { position: relative; --note-accent: var(--accent); border: 1px solid rgba(56,189,248,0.3); background: rgba(56,189,248,0.06); border-radius: 10px; padding: 13px 16px 13px 46px; margin: 16px 0; font-size: 0.92rem; }
+.note::before { content: "i"; position: absolute; left: 14px; top: 13px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--note-accent); color: #07121f; font-weight: 800; font-size: 0.72rem; font-style: normal; }
+.note.warn { --note-accent: var(--brand); border-color: rgba(249,115,22,0.35); background: rgba(249,115,22,0.07); }
+.note.warn::before { content: "!"; color: #1a0e02; }
+.note.pro { --note-accent: var(--green); border-color: rgba(52,211,153,0.32); background: rgba(52,211,153,0.06); }
+.note.pro::before { content: "\2713"; color: #07211a; }
 .note b { color: var(--text); }
 
 /* method signature chip */
@@ -56,7 +59,7 @@
 /* right TOC */
 .docs-toc { position: sticky; top: 62px; align-self: start; height: calc(100vh - 62px); overflow-y: auto; padding: 36px 0; font-size: 0.82rem; }
 .docs-toc h4 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
-.docs-toc a { display: block; color: #7e8ca3; padding: 3px 0; }
+.docs-toc a { display: block; color: #9aa7bd; padding: 3px 0; }
 .docs-toc a:hover, .docs-toc a.active { color: var(--text); text-decoration: none; }
 
 /* download card */

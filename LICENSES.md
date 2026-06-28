@@ -122,6 +122,11 @@ Google, licensed **Apache-2.0** (redistributable). See
 System fonts (e.g. Hiragino for the CJK test) are referenced in place, never
 bundled.
 
+`site/public/fonts/schibsted-grotesk-latin.woff2` is **Schibsted Grotesk**, ©
+Schibsted, licensed **SIL Open Font License 1.1** (redistributable, self-hosted
+for the marketing site headings — no runtime external font request). Site asset
+only; not part of the library or any binding.
+
 ## Tooling / test-only dependencies
 
 These are pulled in by **build scripts** (`cbindgen`) and **test/dev tooling**

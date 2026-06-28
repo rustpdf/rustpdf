@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Merge PDF Files in PHP | rust-pdf</title>
+  <meta name="description" content="Merge PDF Files in PHP. Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <link rel="canonical" href="https://rustpdf.dev/merge-pdf/php" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/merge-pdf/php" />
+  <meta property="og:title" content="Merge PDF Files in PHP" />
+  <meta property="og:description" content="Merge PDF Files in PHP. Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Merge PDF Files in PHP" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Merge PDF Files in PHP" />
+  <meta name="twitter:description" content="Merge PDF Files in PHP. Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Merge PDF Files in PHP" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Merge & split PDF",
+          "item": "https://rustpdf.dev/merge-pdf"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Merge PDF Files in PHP",
+          "item": "https://rustpdf.dev/merge-pdf/php"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Merge PDF Files in PHP",
+      "description": "Merge PDF Files in PHP. Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.",
+      "url": "https://rustpdf.dev/merge-pdf/php",
+      "inLanguage": "en",
+      "proficiencyLevel": "Beginner",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "rust-pdf",
+        "applicationCategory": "DeveloperApplication"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CaseFy Inc.",
+        "url": "https://casefy.io"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can I merge more than two PDFs in PHP?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Load each document and call merge for each one; pages are appended in order. You can then reorder, rotate or extract any subset before saving."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does merging keep the files valid?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. On merge every object from the other document is renumbered and its references are deep-remapped, and the real page tree is rebuilt on output, so the result passes qpdf and mutool."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is merging free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in PHP. You only need a license for the corporate features such as PDF/A, signatures and encryption."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+
+  <style>
+    /* ===== task x language spoke (scoped, reduced-motion safe) ===== */
+    .sp-lede { max-width: 720px; }
+    .sp-scene { position: relative; height: 210px; max-width: 340px; margin: 30px auto 0; }
+    .sp-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 150px; height: 184px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.5); animation: spPulse 4.5s ease-in-out infinite; }
+    .sp-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .sp-paper .ln.s { width: 56%; }
+    .sp-badge { position: absolute; top: -12px; left: -12px; background: var(--panel-2);
+      border: 1px solid var(--border); color: #cbd5e1; font-size: .72rem; font-weight: 800;
+      letter-spacing: .03em; padding: 5px 11px; border-radius: 999px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.6); }
+    .sp-seal { position: absolute; bottom: -11px; right: -11px; background: var(--brand); color: #1a0e02;
+      font-size: .62rem; font-weight: 800; letter-spacing: .04em; padding: 5px 10px; border-radius: 999px; }
+    @keyframes spPulse { 0%,100% { box-shadow: 0 30px 60px -30px rgba(249,115,22,.38); }
+      50% { box-shadow: 0 30px 70px -28px rgba(249,115,22,.72); } }
+    .sp-why { display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: start; margin-top: 22px; }
+    .sp-install { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .9rem; }
+    @media (max-width: 820px) { .sp-why { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .sp-paper { animation: none !important; } }
+  </style>
+
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>&middot;</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Manipulation &middot; PHP</p>
+        <h1>Merge <span class="grad">PDF</span> files in PHP</h1>
+        <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
+        <div class="sp-scene" aria-hidden="true">
+          <div class="sp-paper">
+            <span class="sp-badge">PHP</span>
+            <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span>
+            <span class="sp-seal">MERGE</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:32px">
+          <a href="#how" class="btn btn-lg">See the PHP code</a>
+          <a href="/merge-pdf" class="btn btn-ghost btn-lg">Merge &amp; split PDF, explained</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Why PHP needs this</h2>
+        <div class="sp-why">
+          <div>
+            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
+            <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
+          </div>
+          <ul class="check-list">
+            <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
+            <li>Objects are renumbered and references deep-remapped, so merged files stay valid.</li>
+            <li>Reads classic and xref streams, object streams and RC4 / AES encrypted input.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">Merge PDFs in PHP with rust-pdf</h2>
+        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <div class="tabs">
+          <div class="tab-bar"><span class="tab active">PHP</span></div>
+<pre class="tab-pane active"><code>$a = EditableDoc::loadFile('a.pdf');
+$b = EditableDoc::loadFile('b.pdf');
+$a-&gt;merge($b);                         // a now has a's pages followed by b's
+$a-&gt;rotatePage(0, 90);
+$a-&gt;reorderPages(array_reverse(range(0, $a-&gt;pageCount() - 1)));
+$a-&gt;save('merged.pdf');
+
+$subset = $a-&gt;extractPages([0, 2]);    // pages 1 and 3
+$subset-&gt;save('subset.pdf');</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
+        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in PHP. No license required.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Merging in PHP: FAQ</h2>
+        <details><summary>Can I merge more than two PDFs in PHP?</summary>
+          <p>Yes. Load each document and call merge for each one; pages are appended in order. You can then reorder, rotate or extract any subset before saving.</p>
+        </details>
+        <details><summary>Does merging keep the files valid?</summary>
+          <p>Yes. On merge every object from the other document is renumbered and its references are deep-remapped, and the real page tree is rebuilt on output, so the result passes qpdf and mutool.</p>
+        </details>
+        <details><summary>Is merging free?</summary>
+          <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in PHP. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Merge PDF Files in PHP</h2>
+        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <div class="cta-row">
+          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/merge-pdf">Merge &amp; split PDF</a>
+          <a href="/php">rust-pdf for PHP</a>
+          <a href="/merge-pdf/go">Merging in Go</a>
+          <a href="/merge-pdf/ruby">Merging in Ruby</a>
+          <a href="/merge-pdf/node">Merging in Node.js</a>
+          <a href="/sign-pdf/php">Signing in PHP</a>
+          <a href="/pdf-a/php">PDF/A in PHP</a>
+          <a href="/encrypt-pdf/php">Encryption in PHP</a>
+          <a href="/extract-text/php">Text extraction in PHP</a>
+          <a href="/compress-pdf/php">Compression in PHP</a>
+          <a href="/docs/php.html">PHP docs</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>&middot;</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>
