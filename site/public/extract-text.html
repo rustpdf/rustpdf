@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extract Text from PDF Programmatically, Explained | rust-pdf</title>
+  <meta name="description" content="How PDF text extraction works: walking content-stream operators, mapping glyph codes to Unicode via ToUnicode CMaps, inferring spaces from TJ adjustments, and how to extract text from any PDF in Python, C#, Go, or Node with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/extract-text" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/extract-text" />
+  <meta property="og:title" content="Extract Text from PDF Programmatically, Explained" />
+  <meta property="og:description" content="How PDF text extraction works: glyph codes, ToUnicode CMaps, Type0/CJK fonts, TJ adjustments, and how to extract text from any PDF in one call with rust-pdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Extract Text from PDF Programmatically, Explained" />
+  <meta name="twitter:description" content="How PDF text extraction works under the hood, why it is not OCR, and how to extract text in Python, C#, Go or Node with one call." />
+  <meta property="og:image:alt" content="Extract text from PDF programmatically -- a clear guide with code examples" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Extract text from PDF programmatically -- a clear guide with code examples" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Extract Text from PDF Programmatically", "item": "https://rustpdf.dev/extract-text" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Extract Text from PDF Programmatically, Explained",
+        "description": "A plain-language explanation of how PDF text extraction works: walking content-stream operators, mapping glyph codes to Unicode via ToUnicode CMaps, inferring spaces from TJ kerning adjustments and line breaks from Tm/T* position changes, and why it is not OCR.",
+        "url": "https://rustpdf.dev/extract-text",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF text extraction", "description": "Reading the text layer of a PDF by mapping glyph codes to Unicode via each font's ToUnicode CMap." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I extract text from a PDF?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pass the PDF bytes to rustpdf.extract_text() in Python, Pdf.ExtractText() in C#, rustpdf.ExtractText() in Go, or extractText() in Node. The library walks every page's content stream, maps each shown glyph code back to Unicode using the font's ToUnicode CMap, infers spaces from large negative TJ adjustments, and infers line breaks from Tm and T* vertical position changes. The result is a plain Unicode string." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work with CJK / Unicode?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf handles Type0 composite fonts with Identity-H encoding, which is the standard encoding for CJK and any Unicode-rich PDF produced by modern tools. Glyph codes in those fonts are two bytes wide, and the ToUnicode CMap maps each pair to one or more Unicode code points. Subset fonts are also handled correctly: the library reads the embedded subset program's CMap, not any external font data." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is this OCR?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. OCR (optical character recognition) analyses a raster image to guess what letters are shown. PDF text extraction reads the actual text that the PDF author encoded in the file. It is exact, instant, and language-agnostic. rust-pdf does not perform OCR and does not attempt to interpret images." }
+          },
+          {
+            "@type": "Question",
+            "name": "What about scanned PDFs?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read -- the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide." }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use it for search or LLM/RAG pipelines?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Extracting text with rust-pdf and feeding the result into a full-text search index or an LLM context window is one of the primary use cases. The extraction is fast enough to process large document collections in bulk. The output is clean Unicode suitable for tokenisation, chunking, and embedding without further normalisation." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /extract-text concept page (scoped tx-, animations respect reduced-motion) ===== */
+    .tx-lede { max-width: 760px; }
+
+    /* hero art: words lifting off a PDF page into clean machine text */
+    .tx-scene { position: relative; height: 260px; max-width: 480px; margin: 34px auto 0; }
+
+    /* the source PDF page */
+    .tx-page { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
+      width: 140px; height: 176px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 13px; display: flex; flex-direction: column; gap: 7px;
+      box-shadow: 0 24px 52px -24px rgba(99,102,241,.45); z-index: 2;
+      animation: txPageGlow 5s ease-in-out infinite; }
+    .tx-page .ln { height: 6px; border-radius: 3px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .tx-page .ln.s { width: 58%; }
+    .tx-page .ln.xs { width: 38%; }
+    .tx-page-label { position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+      font-size: .6rem; font-weight: 800; letter-spacing: .04em; color: var(--muted);
+      background: var(--panel); padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--border); white-space: nowrap; }
+
+    /* rising word tokens */
+    .tx-word { position: absolute; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .76rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+    .tx-word.w1 { left: calc(50% - 88px); bottom: 120px;
+      color: #a5b4fc; background: rgba(165,180,252,.12); border: 1px solid rgba(165,180,252,.3);
+      animation: txRise1 4s ease-in-out 0s infinite; }
+    .tx-word.w2 { left: calc(50% - 14px); bottom: 148px;
+      color: #67e8f9; background: rgba(103,232,249,.10); border: 1px solid rgba(103,232,249,.28);
+      animation: txRise1 4s ease-in-out .7s infinite; }
+    .tx-word.w3 { left: calc(50% + 28px); bottom: 118px;
+      color: #86efac; background: rgba(134,239,172,.10); border: 1px solid rgba(134,239,172,.28);
+      animation: txRise1 4s ease-in-out 1.4s infinite; }
+    .tx-word.w4 { left: calc(50% - 68px); bottom: 166px;
+      color: #fcd34d; background: rgba(252,211,77,.10); border: 1px solid rgba(252,211,77,.25);
+      animation: txRise1 4s ease-in-out 2.1s infinite; }
+
+    /* output text box */
+    .tx-output { position: absolute; right: 0; top: 10px; width: 148px;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .6rem; line-height: 1.7; color: #94a3b8;
+      animation: txFadeIn 3.5s ease-in-out infinite; }
+    .tx-output .hi { color: #a5b4fc; }
+
+    @keyframes txPageGlow {
+      0%,100% { box-shadow: 0 24px 52px -24px rgba(99,102,241,.35); }
+      50% { box-shadow: 0 28px 60px -22px rgba(99,102,241,.70); }
+    }
+    @keyframes txRise1 {
+      0% { opacity: 0; transform: translateY(16px); }
+      20% { opacity: 1; transform: translateY(0); }
+      70% { opacity: 1; transform: translateY(-18px); }
+      100% { opacity: 0; transform: translateY(-26px); }
+    }
+    @keyframes txFadeIn {
+      0%,15% { opacity: .4; }
+      50%,100% { opacity: 1; }
+    }
+
+    /* analogy: two-card split */
+    .tx-analogy { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 38px; }
+    .tx-acard { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
+    .tx-acard.good { border-color: #1e304a; }
+    .tx-acard.bad  { border-color: #2a1e1e; }
+    .tx-acard h3 { margin: 0 0 4px; font-size: 1.15rem; display: flex; align-items: center; gap: 9px; }
+    .tx-acard h3 svg { width: 20px; height: 20px; flex: none; }
+    .tx-acard.good h3 svg { color: #67e8f9; }
+    .tx-acard.bad  h3 svg { color: #fca5a5; }
+    .tx-acard .tagline { color: var(--muted); font-size: .72rem; margin: 0 0 14px; }
+    .tx-acard p { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.65; }
+
+    /* how it works: steps */
+    .tx-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .tx-step { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .tx-step .num { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      display: grid; place-items: center; font-weight: 800; font-size: .72rem; color: #1a0e02; margin-bottom: 12px; }
+    .tx-step h3 { margin: 0 0 6px; font-size: 1.15rem; }
+    .tx-step p { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.6; }
+    .tx-step code { font-size: .72rem; color: #a5b4fc; }
+
+    /* real text vs OCR comparison */
+    .tx-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 38px; }
+    .tx-ccard { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
+    .tx-ccard.ok  { border-color: #1e3a2a; }
+    .tx-ccard.out { border-color: #2a1e1e; }
+    .tx-ccard h3 { margin: 0 0 6px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+    .tx-ccard h3 svg { width: 20px; height: 20px; flex: none; }
+    .tx-ccard.ok  h3 svg { color: #4ade80; }
+    .tx-ccard.out h3 svg { color: #f87171; }
+    .tx-ccard .badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 999px; margin-bottom: 10px; letter-spacing: .04em; }
+    .tx-ccard.ok  .badge { background: rgba(74,222,128,.15); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+    .tx-ccard.out .badge { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+    .tx-ccard ul { margin: 0; padding: 0 0 0 18px; color: var(--muted); font-size: .875rem; line-height: 1.8; }
+    .tx-ccard p { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.65; }
+
+    /* use-cases grid */
+    .tx-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .tx-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .tx-use .ic { color: var(--brand-2); height: 30px; }
+    .tx-use .ic svg { width: 30px; height: 30px; }
+    .tx-use h3 { margin: 12px 0 6px; font-size: 1.15rem; }
+    .tx-use p { margin: 0; color: var(--muted); font-size: .875rem; }
+
+    @media (max-width: 820px) {
+      .tx-analogy, .tx-steps, .tx-compare, .tx-uses { grid-template-columns: 1fr; }
+      .tx-output { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tx-page, .tx-word, .tx-output { animation: none !important; }
+      .tx-word { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Reading PDFs</p>
+        <h1>Extract Text from PDF<br /><span class="grad">Programmatically</span>, Explained</h1>
+        <p class="lede tx-lede">
+          PDF text extraction walks the page's content stream, finds every glyph
+          the author placed, maps each glyph code back to a Unicode character
+          using the font's built-in mapping table, and returns the result as a
+          plain string. One call. No OCR, no guesswork. This guide explains how
+          it works, when it works, and when it does not.
+        </p>
+        <!-- hero scene: words lifting off a page -->
+        <div class="tx-scene" aria-hidden="true">
+          <div class="tx-output">
+            <span class="hi">Annual Report</span><br />
+            Revenue grew 18%<br />
+            in fiscal 2025...<br />
+            <span class="hi">Table of Contents</span>
+          </div>
+          <span class="tx-word w1">Revenue</span>
+          <span class="tx-word w2">Annual</span>
+          <span class="tx-word w3">18%</span>
+          <span class="tx-word w4">Report</span>
+          <div class="tx-page">
+            <span class="ln"></span>
+            <span class="ln s"></span>
+            <span class="ln"></span>
+            <span class="ln xs"></span>
+            <span class="ln"></span>
+            <span class="ln s"></span>
+            <span class="ln"></span>
+            <span class="ln xs"></span>
+            <span class="ln"></span>
+            <span class="page-label">document.pdf</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Extract text with rust-pdf</a>
+          <a href="#how-it-works" class="btn btn-ghost btn-lg">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a typed letter vs a photograph</h2>
+        <p class="muted">
+          Imagine two documents on your desk. The first is a letter someone typed
+          on a computer and printed. You could copy the words off it instantly
+          because you know they are real letters arranged in a known order. The
+          second is a photograph of a different letter. To get the words out you
+          would have to read them by eye, or scan and run them through character
+          recognition software.
+        </p>
+        <p class="muted">
+          A PDF with a text layer is the typed letter: the characters are really
+          there, encoded in the file. A scanned PDF is the photograph: the page
+          is pixels and there are no characters to read, only shapes that look
+          like characters. <b>rust-pdf extracts text from the first kind.</b>
+          For the second kind you would need OCR, which is a different tool
+          entirely.
+        </p>
+        <div class="tx-analogy">
+          <div class="tx-acard good reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>
+              PDF with a text layer
+            </h3>
+            <p class="tagline">Extraction is instant and exact.</p>
+            <p>The author's software encoded every character into the file when the PDF was created. rust-pdf reads that encoding and returns a Unicode string. Works for any language, any font, including CJK.</p>
+          </div>
+          <div class="tx-acard bad reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              Scanned PDF (image only)
+            </h3>
+            <p class="tagline">No text layer, nothing to extract.</p>
+            <p>The page is a raster image. There are no encoded characters, only pixels. rust-pdf will return an empty string. You would need a separate OCR tool to recover the text from the image.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how-it-works" class="section">
+      <div class="wrap">
+        <h2 class="center">How it works: glyphs back to Unicode</h2>
+        <p class="center muted narrow">
+          Every PDF page contains a content stream: a sequence of drawing
+          instructions. Text instructions say which font to use, where to place
+          the cursor, and which glyph codes to paint. Extraction reverses that
+          process in three steps.
+        </p>
+        <div class="tx-steps">
+          <div class="tx-step reveal">
+            <div class="num">1</div>
+            <h3>Walk the content stream</h3>
+            <p>The extractor scans each page's content stream looking for text operators: <code>Tj</code>, <code>TJ</code>, <code>Tf</code>, <code>Tm</code>, <code>T*</code> and their relatives. Each operator is processed in order, the same order the PDF renderer would use.</p>
+          </div>
+          <div class="tx-step reveal">
+            <div class="num">2</div>
+            <h3>Map glyph codes to Unicode</h3>
+            <p>Each font carries a <code>ToUnicode</code> CMap that translates the glyph codes written in the stream into Unicode code points. For Type0 composite fonts (the standard for CJK and modern Unicode PDFs) glyph codes are two bytes wide, giving full Unicode coverage.</p>
+          </div>
+          <div class="tx-step reveal">
+            <div class="num">3</div>
+            <h3>Infer spaces and line breaks</h3>
+            <p>Spaces are inferred from large negative <code>TJ</code> kerning adjustments that represent a gap wider than a normal inter-glyph space. Line breaks are inferred from <code>Tm</code> matrix changes and <code>T*</code> operators that advance the cursor vertically to a new line.</p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          The output is a plain Unicode string. No rendering, no image decoding,
+          no network calls. Extraction speed is proportional to the number of
+          characters in the document, not to the page count or visual complexity.
+        </p>
+      </div>
+    </section>
+
+    <!-- REAL TEXT VS OCR -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Real text vs OCR: what each one can and cannot do</h2>
+        <p class="center muted narrow">
+          Text extraction and OCR solve different problems. Knowing which one you
+          need saves time and avoids surprises.
+        </p>
+        <div class="tx-compare">
+          <div class="tx-ccard ok reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+              Text layer present
+            </h3>
+            <span class="badge">rust-pdf handles this</span>
+            <ul>
+              <li>Exact Unicode output, no character errors</li>
+              <li>Works with any language including CJK</li>
+              <li>Handles subset fonts and Identity-H encoding</li>
+              <li>Fast: milliseconds per megabyte</li>
+              <li>No external dependencies or API calls</li>
+            </ul>
+          </div>
+          <div class="tx-ccard out reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+              Scanned image, no text layer
+            </h3>
+            <span class="badge">Needs OCR -- out of scope</span>
+            <p>The page is pixels. There are no characters in the PDF structure for rust-pdf to read. OCR must analyse the image, recognise letter shapes, and guess at the text. rust-pdf does not do this. You would need a separate OCR library or service.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What people use PDF text extraction for</h2>
+        <p class="center muted narrow">
+          Once the text is out of the file, the possibilities are the same as for
+          any other plain text.
+        </p>
+        <div class="tx-uses">
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            </div>
+            <h3>Full-text search and indexing</h3>
+            <p>Feed extracted text into Elasticsearch, PostgreSQL full-text search, or any search engine to make your document library instantly searchable without storing a separate copy of each file.</p>
+          </div>
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="6" r="4"/><path d="M18 4v2l1.5 1.5"/></svg>
+            </div>
+            <h3>RAG and LLM pipelines</h3>
+            <p>Chunk the extracted text, embed it, and store it in a vector database. Your retrieval-augmented generation pipeline can then answer questions grounded in your PDF corpus without sending the binary file to the model.</p>
+          </div>
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H3"/><path d="M15 5l7 7-7 7"/><path d="M8 5l-5 7 5 7"/></svg>
+            </div>
+            <h3>Data pipelines</h3>
+            <p>Extract structured information such as invoice totals, contract dates, or table values from a batch of PDFs, parse the resulting text, and load it into a database or data warehouse automatically.</p>
+          </div>
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/><path d="M5 22l14-14"/></svg>
+            </div>
+            <h3>Content migration</h3>
+            <p>Move legacy document archives into a CMS, knowledge base, or modern format. Bulk-extract text from thousands of PDFs as the first step in a migration, then clean and restructure as needed.</p>
+          </div>
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3>Compliance and redaction discovery</h3>
+            <p>Scan document text for sensitive patterns such as PII, account numbers, or regulated terms before sharing files externally. Knowing what the text says lets you decide what to redact and where.</p>
+          </div>
+          <div class="tx-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <h3>Classification and summarisation</h3>
+            <p>Route incoming documents to the right team, flag contracts that need legal review, or generate a one-paragraph summary of a long report by running the extracted text through a classifier or language model.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CODE -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">Extract text in one call</h2>
+        <p class="center muted narrow">
+          One call returns the document's text as a Unicode string.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+text = rustpdf.extract_text(open("document.pdf", "rb").read())
+print(text)</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+string text = Pdf.ExtractText(File.ReadAllBytes("document.pdf"));
+Console.WriteLine(text);</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+data, _ := os.ReadFile("document.pdf")
+text, _ := rustpdf.ExtractText(data)
+fmt.Println(text)</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { extractText } = require("rustpdf");
+const fs = require("fs");
+
+const text = extractText(fs.readFileSync("document.pdf"));
+console.log(text);</code></pre>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          The same function is available in all nine language bindings:
+          Python, C#/.NET, Go, Node.js, Java, PHP, Ruby, Delphi and Swift.
+          Full reference in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF text extraction FAQ</h2>
+        <details><summary>How do I extract text from a PDF?</summary>
+          <p>Pass the PDF bytes to <code>rustpdf.extract_text()</code> in Python, <code>Pdf.ExtractText()</code> in C#, <code>rustpdf.ExtractText()</code> in Go, or <code>extractText()</code> in Node. The library walks every page's content stream, maps each shown glyph code back to Unicode using the font's ToUnicode CMap, infers spaces from large negative TJ adjustments, and infers line breaks from Tm and T* vertical position changes. The result is a plain Unicode string.</p>
+        </details>
+        <details><summary>Does it work with CJK / Unicode?</summary>
+          <p>Yes. rust-pdf handles Type0 composite fonts with Identity-H encoding, which is the standard encoding for CJK and any Unicode-rich PDF produced by modern tools. Glyph codes in those fonts are two bytes wide, and the ToUnicode CMap maps each pair to one or more Unicode code points. Subset fonts are also handled correctly: the library reads the embedded subset program's CMap, not any external font data.</p>
+        </details>
+        <details><summary>Is this OCR?</summary>
+          <p>No. OCR (optical character recognition) analyses a raster image to guess what letters are shown. PDF text extraction reads the actual text that the PDF author encoded in the file. It is exact, instant, and language-agnostic. rust-pdf does not perform OCR and does not attempt to interpret images.</p>
+        </details>
+        <details><summary>What about scanned PDFs?</summary>
+          <p>A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read -- the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide.</p>
+        </details>
+        <details><summary>Can I use it for search or LLM/RAG pipelines?</summary>
+          <p>Yes. Extracting text with rust-pdf and feeding the result into a full-text search index or an LLM context window is one of the primary use cases. The extraction is fast enough to process large document collections in bulk. The output is clean Unicode suitable for tokenisation, chunking, and embedding without further normalisation.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Extract PDF text in your language</h2>
+        <p class="muted">
+          One Rust core, nine language bindings, one function call.
+          Prototype for free, license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/extract-images">Extract images</a>
+          <a href="/merge-pdf">Merge &amp; split PDF</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

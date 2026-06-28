@@ -236,6 +236,10 @@ app.get("/cancel", (_req, res) => res.sendFile(path.join(publicDir, "cancel.html
 // French "Factur-X" spelling (the page's <link rel=canonical> points to /zugferd).
 app.get(["/factur-x", "/facturx"], (_req, res) =>
   res.sendFile(path.join(publicDir, "zugferd.html")));
+// /merge-pdf is the canonical page for combine + split; serve it for /split-pdf
+// too (its <link rel=canonical> points to /merge-pdf).
+app.get(["/split-pdf"], (_req, res) =>
+  res.sendFile(path.join(publicDir, "merge-pdf.html")));
 
 // 404 — anything unmatched (HTML pages get the styled page; APIs get JSON).
 app.use((req, res) => {

@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Password-Protect &amp; Encrypt PDF Files in Code, Explained | rust-pdf</title>
+  <meta name="description" content="How to password-protect and encrypt PDF files in code: user vs owner passwords, AES-256 vs AES-128 vs RC4, permission restrictions, and working examples in Python, C#, Go, and Node.js with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/encrypt-pdf" />
+  <meta property="og:title" content="Password-Protect &amp; Encrypt PDF Files in Code, Explained" />
+  <meta property="og:description" content="User vs owner passwords, AES-256 vs AES-128 vs RC4, permission restrictions, and working code examples in Python, C#, Go, and Node.js." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Password-Protect &amp; Encrypt PDF Files in Code, Explained" />
+  <meta name="twitter:description" content="User vs owner passwords, AES-256 vs AES-128 vs RC4, permission restrictions, and working code examples." />
+  <meta property="og:image:alt" content="Password-protect and encrypt PDF files in code with rust-pdf" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Password-protect and encrypt PDF files in code with rust-pdf" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Password-Protect & Encrypt PDF Files in Code", "item": "https://rustpdf.dev/encrypt-pdf" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Password-Protect & Encrypt PDF Files in Code, Explained",
+        "description": "How to password-protect and encrypt PDF files in code: user vs owner passwords, AES-256 vs AES-128 vs RC4, permission restrictions, and working code examples in Python, C#, Go, and Node.js using rust-pdf.",
+        "url": "https://rustpdf.dev/encrypt-pdf",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF Encryption", "description": "PDF standard security handler: user and owner passwords, AES-256 (R6), AES-128, and RC4 encryption methods, permission restrictions." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I password-protect a PDF in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Load the PDF as an EditableDoc, call encrypt with your chosen user and owner passwords and method AES256, then save. With rust-pdf in Python: ed = rustpdf.EditableDoc.load(data); ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256); ed.save('encrypted.pdf'). The same API is available in C#, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between a user and owner password?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The user password (also called the open password) is required to open and view the document. Without it, a reader cannot display the content. The owner password (also called the permissions password) controls what a user who has opened the document is allowed to do, such as printing or copying text. A document can set either password, both, or neither. Setting only an owner password does not encrypt the content, just the permission flags." }
+          },
+          {
+            "@type": "Question",
+            "name": "Which encryption method should I use?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Use AES-256 (R6), the current recommendation. RC4 is a legacy cipher and should be avoided for new documents. AES-128 is adequate but older. AES-256 is validated by qpdf for both user and owner passwords, uses the OS CSPRNG for unique IVs, and implements the full R6 algorithm as defined in the PDF specification." }
+          },
+          {
+            "@type": "Question",
+            "name": "Are owner-only permission restrictions secure?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. If you set an owner password but no user password, the PDF content is not encrypted. Any PDF reader, tool, or script can open and read the file. The permission flags that restrict printing or copying are merely advisory and are widely ignored by tools. For real confidentiality, always set a user password combined with AES-256 encryption. That encrypts the content so it cannot be read without the password." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is each encrypted file unique?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes, for AES-256 (R6). rust-pdf draws the AES initialization vectors and the file key salts from the OS CSPRNG (via getrandom), so encrypting the same document twice produces two byte-distinct outputs even with identical passwords. The output is validated by qpdf for both user and owner passwords. Note that this means encrypted documents are not byte-reproducible across runs, unlike plain documents." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /encrypt-pdf concept page (scoped en-, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* hero art: padlock closing over a document, two keys */
+    .en-scene { position: relative; height: 268px; max-width: 480px; margin: 34px auto 0; }
+
+    /* document base */
+    .en-doc { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      width: 118px; height: 148px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 13px; display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 24px 52px -22px rgba(99,102,241,.55); z-index: 2; }
+    .en-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .en-doc .ln.s { width: 55%; }
+
+    /* padlock: shackle + body */
+    .en-lock { position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+      width: 62px; height: 76px; z-index: 4; animation: enLockBob 4s ease-in-out infinite; }
+    .en-lock-shackle { position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 34px; height: 36px; border: 8px solid var(--brand);
+      border-bottom: none; border-radius: 17px 17px 0 0;
+      animation: enShackle 4s ease-in-out infinite; }
+    .en-lock-body { position: absolute; bottom: 0; left: 0; width: 62px; height: 46px;
+      background: var(--brand); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; }
+    .en-lock-keyhole { width: 10px; height: 16px; border-radius: 5px 5px 3px 3px;
+      background: rgba(0,0,0,.38); }
+    @keyframes enLockBob {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      45%,55% { transform: translateX(-50%) translateY(5px); }
+    }
+    @keyframes enShackle {
+      0%,25% { transform: translateX(-50%) translateY(-12px); }
+      55%,100% { transform: translateX(-50%) translateY(0); }
+    }
+
+    /* two keys: user (open) on left, owner (admin) on right */
+    .en-key { position: absolute; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 7px; }
+    .en-key-icon { width: 54px; height: 54px; border-radius: 14px; background: var(--panel-2);
+      border: 1px solid var(--border); display: grid; place-items: center;
+      box-shadow: 0 10px 24px -12px rgba(0,0,0,.65); }
+    .en-key-icon svg { width: 24px; height: 24px; }
+    .en-key-cap { font-size: .7rem; color: var(--muted); text-align: center; line-height: 1.35; }
+    .en-key.user { left: 10px; animation: enFloat 5s ease-in-out infinite; }
+    .en-key.user .en-key-icon { color: #38bdf8; }
+    .en-key.owner { right: 10px; animation: enFloat 5s ease-in-out 1.7s infinite; }
+    .en-key.owner .en-key-icon { color: var(--brand-2); }
+    @keyframes enFloat {
+      0%,100% { transform: translateY(-50%); }
+      50% { transform: translateY(calc(-50% - 9px)); }
+    }
+
+    /* rays from keys toward lock */
+    .en-ray { position: absolute; top: 36px; height: 2px; z-index: 1; }
+    .en-ray.l { left: 66px; right: calc(50% + 34px);
+      background: linear-gradient(90deg, #38bdf8, transparent);
+      animation: enRay 3s ease-in-out infinite; }
+    .en-ray.r { right: 66px; left: calc(50% + 34px);
+      background: linear-gradient(90deg, transparent, var(--brand-2));
+      animation: enRay 3s ease-in-out .9s infinite; }
+    @keyframes enRay { 0%,100% { opacity: .28; } 50% { opacity: 1; } }
+
+    /* user vs owner two-card grid */
+    .en-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .en-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .en-card.user { border-color: #1a2e44; }
+    .en-card.owner { border-color: #221e3a; }
+    .en-card h3 { margin: 0 0 4px; font-size: 1.1rem; display: flex; align-items: center; gap: 9px; }
+    .en-card h3 svg { width: 18px; height: 18px; flex: none; }
+    .en-card.user h3 svg { color: #38bdf8; }
+    .en-card.owner h3 svg { color: var(--brand-2); }
+    .en-card .en-tagline { color: var(--muted); font-size: .875rem; margin: 0 0 14px; }
+    .en-card ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: .875rem;
+      display: flex; flex-direction: column; gap: 6px; }
+    .en-card ul li b { color: var(--text); }
+
+    /* methods table */
+    .en-table { width: 100%; border-collapse: collapse; margin-top: 36px; }
+    .en-table th, .en-table td { border: 1px solid var(--border); padding: 12px 14px;
+      text-align: left; font-size: .875rem; }
+    .en-table th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .en-table td b { color: var(--text); }
+    .en-tag-bad  { color: #fca5a5; font-size: .7rem; font-weight: 700; }
+    .en-tag-ok   { color: #fbbf24; font-size: .7rem; font-weight: 700; }
+    .en-tag-good { color: #34d399; font-size: .7rem; font-weight: 700; }
+
+    /* permissions callout */
+    .en-callout { background: var(--panel-2); border: 1px solid #2c1e3a;
+      border-radius: var(--radius); padding: 28px 32px;
+      max-width: 700px; margin: 36px auto 0; }
+    .en-callout h3 { margin: 0 0 12px; display: flex; align-items: center; gap: 9px; font-size: 1.1rem; }
+    .en-callout h3 svg { width: 20px; height: 20px; color: #fbbf24; flex: none; }
+    .en-callout p { margin: 0; color: var(--muted); font-size: .875rem; }
+    .en-callout p + p { margin-top: 10px; }
+
+    /* use cases */
+    .en-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .en-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .en-use .ic { color: var(--brand-2); height: 30px; }
+    .en-use .ic svg { width: 30px; height: 30px; }
+    .en-use h3 { margin: 12px 0 6px; font-size: 1.1rem; }
+    .en-use p { margin: 0; color: var(--muted); font-size: .875rem; }
+
+    @media (max-width: 820px) {
+      .en-cards, .en-uses { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .en-lock, .en-lock-shackle,
+      .en-key.user, .en-key.owner,
+      .en-ray.l, .en-ray.r { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Encryption</p>
+        <h1>Password-Protect &amp; <span class="grad">Encrypt PDF Files</span><br />in Code, Explained</h1>
+        <p class="lede concept-lede">
+          PDF's standard security handler supports two passwords: a <b>user
+          password</b> that genuinely encrypts the content so only the right
+          recipient can open it, and an <b>owner password</b> that controls
+          permissions such as printing and editing. This guide explains the
+          difference, covers AES-256 versus AES-128 versus the legacy RC4 cipher,
+          and shows you how to apply all of it in code. For a deep dive into the
+          cipher itself, see <a href="/aes-256">What is AES-256?</a>
+        </p>
+        <div class="en-scene" aria-hidden="true">
+          <span class="en-ray l"></span>
+          <span class="en-ray r"></span>
+          <div class="en-key user">
+            <div class="en-key-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l2 2M18 5l2 2"/></svg>
+            </div>
+            <span class="en-key-cap">User key<br />(open)</span>
+          </div>
+          <div class="en-lock">
+            <div class="en-lock-shackle"></div>
+            <div class="en-lock-body">
+              <div class="en-lock-keyhole"></div>
+            </div>
+          </div>
+          <div class="en-key owner">
+            <div class="en-key-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l2 2M18 5l2 2"/><path d="M5.5 17.5l1-1"/></svg>
+            </div>
+            <span class="en-key-cap">Owner key<br />(admin)</span>
+          </div>
+          <div class="en-doc">
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Encrypt a PDF in code</a>
+          <a href="/aes-256" class="btn btn-ghost btn-lg">How AES-256 works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a safe with two keys</h2>
+        <p class="muted">
+          Think of an encrypted PDF as a physical safe. The <b>user key</b> is the
+          combination you give to whoever should open the door. Without it, the
+          contents are sealed and unreadable. The <b>owner key</b> is the master key
+          held by the administrator: it can open the safe and also change the rules
+          inside, for example deciding that a document can be viewed but not printed
+          or copied.
+        </p>
+        <p class="muted">
+          A file can carry either key, both, or neither. The important point is that
+          only the <b>user password</b> triggers real encryption of the content.
+          Setting an owner password without a user password leaves the safe unlocked
+          for anyone; it just places an advisory sign on the door about what is
+          allowed inside. For genuine confidentiality, combine a strong user password
+          with AES-256.
+        </p>
+      </div>
+    </section>
+
+    <!-- USER vs OWNER -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">User password vs owner password</h2>
+        <p class="center muted narrow">
+          PDF's standard security handler supports two distinct passwords. They do
+          different jobs, and understanding the difference matters for security.
+        </p>
+        <div class="en-cards">
+          <div class="en-card user reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l2 2"/></svg>
+              User password
+            </h3>
+            <p class="en-tagline">Also called the open password. Required to open the file.</p>
+            <ul>
+              <li><b>Encrypts the content.</b> Without the password the PDF body is ciphertext, unreadable.</li>
+              <li><b>Shown to the reader</b> as a password prompt when opening the file.</li>
+              <li><b>Needed for real confidentiality.</b> This is the key your recipient must have.</li>
+              <li>Can be set alone, without an owner password.</li>
+            </ul>
+          </div>
+          <div class="en-card owner reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l2 2M18 5l2 2"/></svg>
+              Owner password
+            </h3>
+            <p class="en-tagline">Also called the permissions password. Controls what users can do.</p>
+            <ul>
+              <li><b>Controls permission flags</b> such as printing, copying, and editing.</li>
+              <li><b>Does not encrypt the content</b> on its own; the file is still readable without it.</li>
+              <li><b>Advisory only</b> when set without a user password. Many tools ignore the flags.</li>
+              <li>Typically kept by the document author or administrator.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENCRYPTION METHODS -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Encryption methods: RC4, AES-128, and AES-256</h2>
+        <p class="center muted narrow">
+          PDF supports three encryption methods through its standard security handler.
+          Only AES-256 is recommended for new documents. See
+          <a href="/aes-256">What is AES-256?</a> for a detailed look at how the
+          cipher works.
+        </p>
+        <table class="en-table">
+          <tr>
+            <th>Method</th>
+            <th>Key length</th>
+            <th>PDF revision</th>
+            <th>Status</th>
+            <th>Notes</th>
+          </tr>
+          <tr>
+            <td><b>RC4</b></td>
+            <td>40 or 128 bit</td>
+            <td>R2 / R3</td>
+            <td><span class="en-tag-bad">Avoid</span></td>
+            <td>Legacy stream cipher with known weaknesses. Present in older PDF readers but unsafe for new content.</td>
+          </tr>
+          <tr>
+            <td><b>AES-128</b></td>
+            <td>128 bit</td>
+            <td>R4</td>
+            <td><span class="en-tag-ok">Acceptable</span></td>
+            <td>Adequate for many use cases. Validated by qpdf. Supported by all modern PDF readers.</td>
+          </tr>
+          <tr>
+            <td><b>AES-256</b></td>
+            <td>256 bit</td>
+            <td>R6</td>
+            <td><span class="en-tag-good">Recommended</span></td>
+            <td>Current best practice. rust-pdf uses the OS CSPRNG for IVs and file-key salts (<code>getrandom</code>), validated by qpdf for both user and owner passwords.</td>
+          </tr>
+        </table>
+        <p class="center muted narrow" style="margin-top:20px">
+          rust-pdf implements all three: <code>Encryption.RC4</code>,
+          <code>Encryption.AES128</code>, and <code>Encryption.AES256</code>.
+          Key derivation and per-object encryption follow the PDF specification
+          exactly, then qpdf verifies the output for both passwords.
+        </p>
+      </div>
+    </section>
+
+    <!-- PERMISSIONS NOTE -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">A note on permissions vs real protection</h2>
+        <p class="center muted">
+          Permission flags are a courtesy signal to cooperative software, not a
+          security boundary. Here is what they actually do and what they do not.
+        </p>
+        <div class="en-callout">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Owner-only restrictions are widely ignorable
+          </h3>
+          <p>
+            If you set an owner password but no user password, the PDF content itself
+            is not encrypted. Any reader, command-line tool, or script can open the
+            file and access the full text and images, regardless of the permission
+            flags. Tools that respect the flags do so voluntarily; many do not.
+          </p>
+          <p>
+            The flags (printing allowed, copying allowed, and similar) are meaningful
+            only as a signal to cooperative software. They are not a substitute for
+            real encryption. If your goal is to prevent someone from reading the
+            document, you need a <b>user password and AES-256</b>.
+          </p>
+        </div>
+        <p class="center muted narrow" style="margin-top:24px">
+          rust-pdf also exposes a <code>read_only</code> flag (Python) or fourth
+          boolean parameter (Go) that sets the standard read-only permission bits
+          alongside the encryption, for readers that honour them.
+        </p>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">When to encrypt a PDF</h2>
+        <p class="center muted narrow">
+          Any document that should reach only specific eyes benefits from a user
+          password and AES-256 encryption applied before delivery.
+        </p>
+        <div class="en-uses">
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div>
+            <h3>Confidential reports</h3>
+            <p>Board packs, financial results, or analyst reports that must reach only specific recipients.</p>
+          </div>
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <h3>HR and payroll</h3>
+            <p>Pay slips, offer letters, and performance reviews delivered per-employee with individual passwords.</p>
+          </div>
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+            <h3>Medical records</h3>
+            <p>Patient summaries, test results, and referrals where confidentiality is a regulatory requirement.</p>
+          </div>
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h3>Read-only distribution</h3>
+            <p>Published price lists, contracts, or certificates where editing should be discouraged and content protected.</p>
+          </div>
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M4 9h16"/><path d="M6 9v9M10 9v9M14 9v9M18 9v9"/><path d="M3 21h18"/></svg></div>
+            <h3>Account statements</h3>
+            <p>Bank statements, invoices, and billing summaries generated per-customer and encrypted before delivery.</p>
+          </div>
+          <div class="en-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <h3>Secure file delivery</h3>
+            <p>Any automated pipeline that must ensure a document is readable only by the intended party, not by anyone who intercepts it in transit.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to encrypt a PDF with rust-pdf</h2>
+        <p class="center muted narrow">
+          Load, set passwords and method, save. AES-256 is recommended. The same
+          API works across all nine language bindings.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+ed = rustpdf.EditableDoc.load(open("document.pdf", "rb").read())
+ed.encrypt(user="open-me", owner="full-control",
+           method=rustpdf.Encryption.AES256)
+ed.save("encrypted.pdf")</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var ed = EditableDoc.Load(File.ReadAllBytes("document.pdf"));
+ed.Encrypt(user: "open-me", owner: "full-control", method: Encryption.Aes256);
+ed.Save("encrypted.pdf");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+ed, _ := rustpdf.Load(mustRead("document.pdf"))
+defer ed.Close()
+ed.Encrypt(rustpdf.AES256, "open-me", "full-control", false)  // method, user, owner, readOnly
+ed.Save("encrypted.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { EditableDoc, Encryption } = require("rustpdf");
+const fs = require("fs");
+
+const ed = EditableDoc.load(fs.readFileSync("document.pdf"));
+ed.encrypt({ method: Encryption.Aes256, user: "open-me", owner: "full-control" });
+ed.save("encrypted.pdf");</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>qpdf</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          rust-pdf derives the file key and the <code>/O</code> and <code>/U</code>
+          entries, encrypts every object's strings and streams, and writes the
+          <code>/Encrypt</code> dict after (the dict itself is never encrypted). For
+          AES-256/R6 the OS CSPRNG makes each encryption unique. Full details in the
+          <a href="/docs/">documentation</a> and in
+          <a href="/aes-256">What is AES-256?</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF encryption FAQ</h2>
+        <details><summary>How do I password-protect a PDF in code?</summary>
+          <p>Load the PDF as an <code>EditableDoc</code>, call <code>encrypt</code> with your chosen user and owner passwords and method <code>AES256</code>, then save. With rust-pdf in Python: <code>ed = rustpdf.EditableDoc.load(data)</code>; <code>ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256)</code>; <code>ed.save('encrypted.pdf')</code>. The same API is available in C#, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift.</p>
+        </details>
+        <details><summary>What is the difference between a user and owner password?</summary>
+          <p>The user password (also called the open password) is required to open and view the document. Without it, a reader cannot display the content. The owner password (also called the permissions password) controls what a user who has opened the document is allowed to do, such as printing or copying text. A document can set either password, both, or neither. Setting only an owner password does not encrypt the content, just the permission flags.</p>
+        </details>
+        <details><summary>Which encryption method should I use?</summary>
+          <p>Use AES-256 (R6), the current recommendation. RC4 is a legacy cipher and should be avoided for new documents. AES-128 is adequate but older. AES-256 is validated by qpdf for both user and owner passwords, uses the OS CSPRNG for unique IVs, and implements the full R6 algorithm as defined in the PDF specification. See <a href="/aes-256">What is AES-256?</a> for how the cipher works.</p>
+        </details>
+        <details><summary>Are owner-only permission restrictions secure?</summary>
+          <p>No. If you set an owner password but no user password, the PDF content is not encrypted. Any PDF reader, tool, or script can open and read the file. The permission flags that restrict printing or copying are merely advisory and are widely ignored by tools. For real confidentiality, always set a user password combined with AES-256 encryption. That encrypts the content so it cannot be read without the password.</p>
+        </details>
+        <details><summary>Is each encrypted file unique?</summary>
+          <p>Yes, for AES-256 (R6). rust-pdf draws the AES initialization vectors and the file key salts from the OS CSPRNG (via <code>getrandom</code>), so encrypting the same document twice produces two byte-distinct outputs even with identical passwords. The output is validated by qpdf for both user and owner passwords. Note that this means encrypted documents are not byte-reproducible across runs, unlike plain documents.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Encrypt PDF files in your language</h2>
+        <p class="muted">
+          One Rust core, AES-256 encryption across nine languages: Python, C#/.NET,
+          Go, Node.js, Java, PHP, Ruby, Delphi, and Swift. Prototype for free,
+          license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/aes-256">What is AES-256?</a>
+          <a href="/pades">What is PAdES?</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/merge-pdf">Merge &amp; split PDF</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

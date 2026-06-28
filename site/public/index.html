@@ -64,7 +64,7 @@
         "offers": {
           "@type": "AggregateOffer",
           "priceCurrency": "USD",
-          "lowPrice": "1490",
+          "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
           "url": "https://rustpdf.dev/#pricing",
@@ -72,7 +72,7 @@
             {
               "@type": "Offer",
               "name": "Pro",
-              "price": "1490",
+              "price": "1500",
               "priceCurrency": "USD",
               "category": "Annual license",
               "url": "https://rustpdf.dev/#pricing"
@@ -241,11 +241,24 @@
           one license unlocks them all, in every language you use.
         </p>
         <p class="center muted narrow" style="margin-top:-6px">
-          New to these formats? Learn <a href="/pdf-a">PDF/A</a>,
+          New to the standards? Learn <a href="/pdf-a">PDF/A</a>,
           <a href="/pades">PAdES signatures</a>,
+          <a href="/eidas">eIDAS</a>,
           <a href="/pdf-ua">PDF/UA accessibility</a>,
-          <a href="/aes-256">AES-256 encryption</a> and
-          <a href="/zugferd">ZUGFeRD / Factur-X e-invoices</a>.
+          <a href="/aes-256">AES-256 encryption</a>,
+          <a href="/zugferd">ZUGFeRD / Factur-X</a> and
+          <a href="/xmp-metadata">XMP metadata</a>.
+        </p>
+        <p class="center muted narrow" style="margin-top:-6px">
+          Or jump to a task: <a href="/pdf-forms">PDF forms</a>,
+          <a href="/merge-pdf">merge &amp; split</a>,
+          <a href="/extract-text">extract text</a>,
+          <a href="/extract-images">extract images</a>,
+          <a href="/compress-pdf">compress</a>,
+          <a href="/encrypt-pdf">encrypt</a>,
+          <a href="/watermark-pdf">watermark</a>,
+          <a href="/pdf-attachments">embed files</a> and
+          <a href="/pdf-timestamp">timestamps &amp; LTV</a>.
         </p>
         <div class="feature-grid">
           <div class="card free reveal">
@@ -434,17 +447,18 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
       <div class="wrap">
         <h2 class="center">Pick the plan you need.</h2>
         <p class="center muted narrow">
-          Per-application annual pricing, in every language, with no per-document
-          metering or usage caps. Start with <b>Pro</b> for archival and encryption;
-          move to <b>Enterprise</b> when you need juridically-valid signatures and
-          accessibility.
+          Per-application annual pricing — in every language, with no per-document
+          metering, <b>no per-server fees</b> and no usage caps. Run one application
+          on as many servers as you like. Start with <b>Pro</b> for archival and
+          encryption; move to <b>Enterprise</b> when you need juridically-valid
+          signatures and accessibility. <a href="#faq">What counts as an application?</a>
         </p>
         <div class="pricing">
           <!-- PRO -->
           <div class="price-card reveal">
             <div class="price-head">
               <h3>Pro</h3>
-              <p class="price-amount"><span id="price-amount-pro">$1,490</span><span class="per" id="price-interval-pro">/year</span></p>
+              <p class="price-amount"><span id="price-amount-pro">$1,500</span><span class="per" id="price-interval-pro">/year</span></p>
               <p class="muted">Per application · renews yearly · offline · all nine languages</p>
             </div>
             <ul class="price-features">
@@ -455,7 +469,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
               <li>✓ All language bindings, no rebuild to activate</li>
               <li>✓ Token emailed instantly after checkout</li>
             </ul>
-            <button class="btn btn-lg btn-block buy-btn" data-tier="pro">Buy Pro · <span class="buy-price" data-tier="pro">$1,490/yr</span></button>
+            <button class="btn btn-lg btn-block buy-btn" data-tier="pro">Buy Pro · <span class="buy-price" data-tier="pro">$1,500/yr</span></button>
             <p class="fineprint buy-error" data-tier="pro" hidden></p>
           </div>
 
@@ -480,21 +494,21 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
             <p class="fineprint buy-error" data-tier="enterprise" hidden></p>
           </div>
 
-          <!-- OEM (sales-led) -->
+          <!-- OEM & SITE (sales-led) -->
           <div class="price-card reveal">
             <div class="price-head">
-              <h3>OEM</h3>
+              <h3>OEM &amp; Site</h3>
               <p class="price-amount"><span>Custom</span></p>
-              <p class="muted">Redistribute rust-pdf inside your own product · volume &amp; POs</p>
+              <p class="muted">Unlimited applications org-wide, or redistribute rust-pdf inside your own product</p>
             </div>
             <ul class="price-features">
               <li>✓ <b>Everything in Enterprise</b></li>
-              <li>✓ Redistribution rights for your product</li>
-              <li>✓ Volume &amp; multi-application licensing</li>
-              <li>✓ Purchase orders &amp; invoicing</li>
-              <li>✓ SLA &amp; onboarding support</li>
+              <li>✓ <b>Site license:</b> unlimited applications across your organization</li>
+              <li>✓ <b>OEM:</b> redistribution rights in the product you ship</li>
+              <li>✓ Volume licensing, purchase orders &amp; invoicing</li>
+              <li>✓ SLA, onboarding &amp; security-review support</li>
             </ul>
-            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@casefy.io?subject=rust-pdf%20OEM%20licensing">Talk to sales</a>
+            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@casefy.io?subject=rust-pdf%20OEM%20%26%20Site%20licensing">Talk to sales</a>
           </div>
         </div>
         <p class="center fineprint">Secure checkout by Stripe · cancel anytime · activates offline in seconds. Questions? <a href="mailto:sales@casefy.io">Talk to sales</a>.</p>
@@ -516,6 +530,27 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
         </details>
         <details><summary>What's the difference between Pro and Enterprise?</summary>
           <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs), ZUGFeRD / Factur-X e-invoices, and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
+        </details>
+        <details><summary>What counts as an application?</summary>
+          <p>An application is one product or system you build and operate, defined by
+          what it does for your business, not by how it's deployed. A few specifics:</p>
+          <ul class="faq-list">
+            <li><b>Microservices count as one.</b> All the services and workers that make up a single product are one application.</li>
+            <li><b>Scaling is free.</b> Run it on as many servers, containers or replicas as you like, with no per-server fees.</li>
+            <li><b>Non-production doesn't count.</b> Development, staging, test and CI environments are free; only production counts.</li>
+            <li><b>A multi-tenant SaaS is one application</b>, no matter how many of your customers use it.</li>
+            <li><b>Separate products are separate applications.</b> A billing system and an HR portal are two, or cover both with one Site license.</li>
+          </ul>
+          <p>Need unlimited applications across your organization? That's a <b>Site license</b>:
+          <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
+        </details>
+        <details><summary>Do you license per server or per developer?</summary>
+          <p>Neither. You license <b>per application, per year</b>, so scaling out
+          across more servers, containers or developers never costs more. There's no
+          per-document metering and no per-server fees, and none of the AGPL strings
+          of iText or Aspose. Need unlimited applications across your whole
+          organization? That's a <b>Site license</b>:
+          <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
         </details>
         <details><summary>How is this validated?</summary>
           <p>Output is checked by independent tools: veraPDF (PDF/A 1b–3a + PDF/UA-1), pdfsig and <code>openssl cms</code> (signatures), and qpdf/mutool (structure). It isn't "conformance marketing".</p>

@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Is XMP Metadata in PDF? A Clear Guide | rust-pdf</title>
+  <meta name="description" content="XMP metadata in PDF explained simply: what an XML metadata packet is, how it differs from the /Info dictionary, why PDF/A requires it, and how conformance standards like PDF/A, ZUGFeRD, and PDF/UA declare themselves through XMP." />
+  <link rel="canonical" href="https://rustpdf.dev/xmp-metadata" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/xmp-metadata" />
+  <meta property="og:title" content="What Is XMP Metadata in PDF? A Clear Guide" />
+  <meta property="og:description" content="What XMP metadata is, how it differs from the older /Info dictionary, why PDF/A requires it, and how standards like ZUGFeRD and PDF/UA use XMP to declare conformance." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What Is XMP Metadata in PDF? A Clear Guide" />
+  <meta name="twitter:description" content="XMP metadata explained with analogies and examples. Plus how to set and embed it in any language." />
+  <meta property="og:image:alt" content="What is XMP metadata in PDF — a clear guide" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="What is XMP metadata in PDF — a clear guide" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "What is XMP Metadata in PDF?", "item": "https://rustpdf.dev/xmp-metadata" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "What is XMP Metadata in PDF? A clear guide",
+        "description": "A plain-language explanation of XMP metadata in PDF: what it is, how it differs from the /Info dictionary, why PDF/A requires it, and how conformance standards like PDF/A, ZUGFeRD, and PDF/UA use XMP to declare conformance.",
+        "url": "https://rustpdf.dev/xmp-metadata",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "XMP Metadata in PDF", "description": "An XML metadata packet embedded inside a PDF that describes the document and declares conformance to standards such as PDF/A, ZUGFeRD, and PDF/UA." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is XMP metadata?",
+            "acceptedAnswer": { "@type": "Answer", "text": "XMP (Extensible Metadata Platform) is an XML metadata packet embedded directly inside a PDF file. It describes the document in a machine-readable way: title, author, creation and modification dates, subject, keywords, and arbitrary custom schemas. Because it is embedded in the file itself, the metadata travels with the document and can be read by any conforming PDF reader or document management system without opening the page content." }
+          },
+          {
+            "@type": "Question",
+            "name": "How is XMP different from the Info dictionary?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The /Info dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A requires both to be present and to agree with each other. rust-pdf builds both from a single source so they are always in sync." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does PDF/A require XMP?",
+            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The pdfaid conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. PDF/A section 6.7.3 also requires the XMP and /Info dictionary to be kept in sync so there is no ambiguity." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do XMP and standards like ZUGFeRD / PDF/UA relate?",
+            "acceptedAnswer": { "@type": "Answer", "text": "XMP is the declaration layer that every modern PDF standard uses to announce its conformance. PDF/A writes the pdfaid identifier, ZUGFeRD and Factur-X add the fx schema with document type, version and profile, and PDF/UA adds the pdfuaid identifier. Any validator (veraPDF, Acrobat, a DMS) checks XMP first to know which rules to apply." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I set PDF metadata in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "With rust-pdf, call set_info on an EditableDoc to set individual fields like Title or Author, or call set_xmp with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all nine supported languages: Python, C#/.NET, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /xmp-metadata concept page (scoped xm-, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* hero art: a PDF document with an XMP metadata panel attached */
+    .xm-scene { position: relative; height: 260px; max-width: 520px; margin: 36px auto 0; }
+
+    /* the central PDF document */
+    .xm-doc {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-72%, -50%);
+      width: 136px;
+      height: 176px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 14px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 24px 48px -24px rgba(99,102,241,.45);
+      animation: xmDocPulse 4.5s ease-in-out infinite;
+      z-index: 2;
+    }
+    .xm-doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .53rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #818cf8;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(99,102,241,.3);
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-bottom: 2px;
+    }
+    .xm-doc .ln { height: 6px; border-radius: 4px; background: linear-gradient(90deg, #243049, #2c3a57); }
+    .xm-doc .ln.s { width: 55%; }
+    .xm-doc .ln.m { width: 72%; }
+
+    /* connecting bridge */
+    .xm-bridge {
+      position: absolute;
+      top: 50%;
+      left: calc(50% - 4px);
+      width: 44px;
+      height: 2px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, rgba(99,102,241,.5), rgba(52,211,153,.6));
+      animation: xmBridgePulse 3s ease-in-out infinite;
+      z-index: 1;
+    }
+    .xm-bridge::before, .xm-bridge::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .xm-bridge::before { left: -3px; background: rgba(99,102,241,.8); }
+    .xm-bridge::after  { right: -3px; background: rgba(52,211,153,.8); }
+
+    /* the XMP metadata panel */
+    .xm-panel {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 188px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: xmPanelFloat 5s ease-in-out 0.8s infinite;
+      z-index: 2;
+    }
+    .xm-panel-head {
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .62rem;
+      font-weight: 800;
+      letter-spacing: .05em;
+      color: #34d399;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      border-bottom: 1px solid rgba(52,211,153,.2);
+      padding-bottom: 6px;
+    }
+    .xm-field { display: flex; flex-direction: column; gap: 1px; }
+    .xm-key {
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .46rem;
+      color: var(--muted);
+      letter-spacing: .02em;
+    }
+    .xm-val {
+      font-size: .72rem;
+      color: #e2e8f0;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .xm-val.xm-conformance { color: #fb923c; }
+
+    @keyframes xmDocPulse {
+      0%, 100% { box-shadow: 0 24px 48px -24px rgba(99,102,241,.35); }
+      50% { box-shadow: 0 28px 56px -22px rgba(99,102,241,.65); }
+    }
+    @keyframes xmPanelFloat {
+      0%, 100% { transform: translateY(-50%); }
+      50% { transform: translateY(calc(-50% - 8px)); }
+    }
+    @keyframes xmBridgePulse {
+      0%, 100% { opacity: .4; }
+      50% { opacity: 1; }
+    }
+
+    /* /Info vs XMP two-card */
+    .xm-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .xm-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px 24px;
+    }
+    .xm-card.legacy { border-color: #2d2a1e; }
+    .xm-card.modern { border-color: #1e3a2a; }
+    .xm-card h3 { margin: 0 0 6px; font-size: 1.05rem; display: flex; align-items: center; gap: 9px; }
+    .xm-card h3 svg { width: 18px; height: 18px; flex: none; }
+    .xm-card.legacy h3 svg { color: #fbbf24; }
+    .xm-card.modern h3 svg { color: #34d399; }
+    .xm-card .tagline { color: var(--muted); font-size: .85rem; margin: 0 0 18px; }
+    .xm-props {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 14px 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .xm-prop { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .85rem; }
+    .xm-prop .pk { color: var(--muted); }
+    .xm-prop .pv { color: #e2e8f0; font-weight: 600; text-align: right; }
+    .xm-xml-snippet {
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .73rem;
+      line-height: 1.65;
+      color: #9fb4cf;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .xm-xml-snippet .t { color: #38bdf8; }
+    .xm-xml-snippet .n { color: #34d399; }
+    .xm-xml-snippet .v { color: #fb923c; }
+
+    /* "Where XMP is required" grid */
+    .xm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .xm-tile {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+    .xm-tile .ic { height: 28px; margin-bottom: 12px; }
+    .xm-tile .ic svg { width: 28px; height: 28px; color: var(--brand-2); }
+    .xm-tile h3 { margin: 0 0 4px; font-size: 1rem; }
+    .xm-tile .schema-tag {
+      display: inline-block;
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .62rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    .xm-tile .schema-tag.pdfa { background: rgba(99,102,241,.18); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
+    .xm-tile .schema-tag.fx   { background: rgba(249,115,22,.15); color: #fb923c; border: 1px solid rgba(249,115,22,.3); }
+    .xm-tile .schema-tag.ua   { background: rgba(52,211,153,.14); color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+    .xm-tile .schema-tag.dms  { background: rgba(56,189,248,.14); color: #38bdf8; border: 1px solid rgba(56,189,248,.3); }
+    .xm-tile p { margin: 0; color: var(--muted); font-size: .9rem; }
+    .xm-tile a { color: var(--brand-2); text-decoration: none; }
+    .xm-tile a:hover { text-decoration: underline; }
+
+    /* sync note */
+    .xm-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      margin-top: 36px;
+    }
+    .xm-note-icon { flex: none; color: var(--brand); margin-top: 2px; }
+    .xm-note-icon svg { width: 22px; height: 22px; }
+    .xm-note-body { }
+    .xm-note-body strong { color: var(--text); display: block; margin-bottom: 6px; font-size: 1rem; }
+    .xm-note-body p { margin: 0; color: var(--muted); font-size: .92rem; }
+
+    @media (max-width: 820px) {
+      .xm-compare, .xm-grid { grid-template-columns: 1fr; }
+      .xm-bridge { display: none; }
+      .xm-doc { position: relative; transform: none; margin: 0 auto 18px; left: auto; top: auto; }
+      .xm-panel { position: relative; transform: none; right: auto; top: auto; margin: 0 auto; }
+      .xm-scene { height: auto; display: flex; flex-direction: column; align-items: center; gap: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .xm-doc, .xm-panel, .xm-bridge { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Metadata</p>
+        <h1>What is <span class="grad">XMP metadata</span><br />in PDF?</h1>
+        <p class="lede concept-lede">
+          XMP (Extensible Metadata Platform) is an <b>XML packet embedded
+          inside the PDF file itself</b>, describing the document: title,
+          author, dates, rights, and arbitrary custom schemas. It is
+          standardised and machine-readable, so any document management
+          system, validator, or archiving tool can read it without parsing
+          the page content. This guide explains what XMP is, why it matters,
+          and how it underpins standards like PDF/A, ZUGFeRD, and PDF/UA.
+        </p>
+        <!-- hero illustration: PDF document with an attached XMP metadata panel -->
+        <div class="xm-scene" aria-hidden="true">
+          <div class="xm-doc">
+            <span class="xm-doc-badge">PDF</span>
+            <span class="ln m"></span>
+            <span class="ln s"></span>
+            <span class="ln m"></span>
+            <span class="ln s"></span>
+            <span class="ln"></span>
+          </div>
+          <span class="xm-bridge"></span>
+          <div class="xm-panel">
+            <div class="xm-panel-head">&lt;x:xmpmeta&gt;</div>
+            <div class="xm-field">
+              <span class="xm-key">dc:title</span>
+              <span class="xm-val">Annual Report 2026</span>
+            </div>
+            <div class="xm-field">
+              <span class="xm-key">dc:creator</span>
+              <span class="xm-val">Finance Team</span>
+            </div>
+            <div class="xm-field">
+              <span class="xm-key">xmp:CreateDate</span>
+              <span class="xm-val">2026-01-15T09:00:00</span>
+            </div>
+            <div class="xm-field">
+              <span class="xm-key">pdfaid:conformance</span>
+              <span class="xm-val xm-conformance">B (part 2)</span>
+            </div>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:36px">
+          <a href="#how" class="btn btn-lg">Set metadata with rust-pdf</a>
+          <a href="#where-required" class="btn btn-ghost btn-lg">Where XMP is required</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a catalog card inside the book</h2>
+        <p class="muted">
+          Think of a library catalog card: it records the title, author, subject,
+          call number, and publication date so the librarian can find and classify
+          the book without opening every page. In a traditional library the card
+          lives in a separate drawer and can get lost or fall out of date.
+        </p>
+        <p class="muted">
+          XMP metadata is that catalog card, but <b>stored inside the book's own
+          cover so it can never be separated</b>. When you send a PDF, the metadata
+          travels with it. Any tool that receives the file, whether a DMS, a
+          validator, an archiving system, or a search engine crawler, can read
+          the title, the author, the creation date, and the conformance identifiers
+          without rendering a single page.
+        </p>
+      </div>
+    </section>
+
+    <!-- /Info vs XMP -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">The /Info dictionary and XMP: old and new</h2>
+        <p class="center muted narrow">
+          PDFs have always had a place for metadata. The older mechanism is the
+          <code>/Info</code> dictionary. The modern, extensible mechanism is XMP.
+          Both can be present in the same file, and for archival PDFs they must be.
+        </p>
+        <div class="xm-compare">
+          <div class="xm-card legacy reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              The /Info dictionary
+            </h3>
+            <p class="tagline">A flat key-value store in the PDF trailer. Defined in PDF 1.0, still supported everywhere.</p>
+            <div class="xm-props">
+              <div class="xm-prop"><span class="pk">/Title</span><span class="pv">Annual Report 2026</span></div>
+              <div class="xm-prop"><span class="pk">/Author</span><span class="pv">Finance Team</span></div>
+              <div class="xm-prop"><span class="pk">/CreationDate</span><span class="pv">D:20260115...</span></div>
+              <div class="xm-prop"><span class="pk">/Producer</span><span class="pv">rust-pdf</span></div>
+            </div>
+            <p style="margin:16px 0 0; color:var(--muted); font-size:.87rem;">
+              Fixed schema, no namespaces, no custom fields. Cannot hold conformance identifiers for PDF/A, ZUGFeRD, or PDF/UA.
+            </p>
+          </div>
+          <div class="xm-card modern reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l2 2 4-4"/></svg>
+              XMP metadata
+            </h3>
+            <p class="tagline">A full XML packet embedded as a stream. Standardised by ISO 16684, extensible by design.</p>
+            <div class="xm-props">
+<div class="xm-xml-snippet"><span class="t">&lt;dc:title&gt;</span>Annual Report 2026<span class="t">&lt;/&gt;</span>
+<span class="t">&lt;dc:creator&gt;</span>Finance Team<span class="t">&lt;/&gt;</span>
+<span class="t">&lt;pdfaid:part&gt;</span><span class="v">2</span><span class="t">&lt;/&gt;</span>
+<span class="t">&lt;pdfaid:conformance&gt;</span><span class="n">B</span><span class="t">&lt;/&gt;</span></div>
+            </div>
+            <p style="margin:16px 0 0; color:var(--muted); font-size:.87rem;">
+              Open, extensible namespaces (Dublin Core, PDF/A, ZUGFeRD, PDF/UA, and your own). Machine-readable by any XML tooling.
+            </p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          Modern PDFs use XMP. PDF/A requires <b>both</b> to be present and
+          consistent: the same title and author must appear in both places, and
+          neither may contradict the other.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHERE XMP IS REQUIRED -->
+    <section id="where-required" class="band">
+      <div class="wrap">
+        <h2 class="center">Where XMP carries conformance identifiers</h2>
+        <p class="center muted narrow">
+          XMP is how a PDF announces which standard it follows. Validators check
+          the XMP schemas first. If the identifier is missing or wrong, the file
+          fails conformance regardless of how its content is structured.
+        </p>
+        <div class="xm-grid">
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h3>PDF/A</h3>
+            <span class="schema-tag pdfa">pdfaid:part / pdfaid:conformance</span>
+            <p>The <code>pdfaid</code> namespace tells validators the conformance level (1b, 2b, 2a, 3b, 3a). Without it, a PDF that follows every other rule still fails PDF/A. See <a href="/pdf-a">What is PDF/A?</a></p>
+          </div>
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></div>
+            <h3>ZUGFeRD / Factur-X</h3>
+            <span class="schema-tag fx">fx: DocumentType / ConformanceLevel</span>
+            <p>The Factur-X <code>fx</code> schema records the document type, version, and profile (MINIMUM through EXTENDED). Accounting systems read this to know how to parse the embedded XML. See <a href="/zugferd">What is ZUGFeRD / Factur-X?</a></p>
+          </div>
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+            <h3>PDF/UA</h3>
+            <span class="schema-tag ua">pdfuaid:part</span>
+            <p>The <code>pdfuaid</code> identifier declares accessibility conformance (PDF/UA-1). Assistive technologies and validators use it to confirm the file's structure tree and tagging requirements. See <a href="/pdf-ua">What is PDF/UA?</a></p>
+          </div>
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+            <h3>Document management</h3>
+            <span class="schema-tag dms">dc: / xmp: namespaces</span>
+            <p>DMS platforms index XMP fields (title, author, subject, keywords, dates) to power full-text search, filtering, and classification without parsing page content.</p>
+          </div>
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></div>
+            <h3>Digital preservation</h3>
+            <span class="schema-tag dms">xmpMM: / xmpRights:</span>
+            <p>Archiving systems record provenance, rights, and modification history in XMP so a document's origin and lineage remain readable for decades, independent of the application that created it.</p>
+          </div>
+          <div class="xm-tile reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg></div>
+            <h3>Custom schemas</h3>
+            <span class="schema-tag dms">any namespace</span>
+            <p>XMP is open by design. Any organisation can define a namespace for its own metadata, from workflow status to approval signatures, and embed it in a standard-compliant packet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KEEPING IT IN SYNC -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Keeping /Info and XMP in sync</h2>
+        <p class="muted">
+          PDF/A section 6.7.3 is strict: every field that appears in both the
+          <code>/Info</code> dictionary and the XMP must carry the same value.
+          If the title in <code>/Info</code> says "Draft" and the XMP says
+          "Final", the file fails conformance. This is a common authoring mistake
+          when metadata is set in two separate places by two separate code paths.
+        </p>
+        <div class="xm-note">
+          <span class="xm-note-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          </span>
+          <div class="xm-note-body">
+            <strong>rust-pdf builds both from a single source</strong>
+            <p>
+              Every call to <code>set_info</code> updates a shared entry list.
+              When <code>to_bytes</code> runs, rust-pdf generates both the
+              <code>/Info</code> dictionary and the XMP packet from that one list.
+              They are guaranteed to agree. There is no separate "XMP step" that
+              can drift from the PDF trailer metadata.
+            </p>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:22px">
+          For cases where you supply a fully custom XMP packet via
+          <code>set_xmp</code>, you take responsibility for keeping the
+          namespaces and values consistent with any <code>/Info</code> fields you
+          also set. The veraPDF validator will catch any mismatch.
+        </p>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to set XMP metadata with rust-pdf</h2>
+        <p class="center muted narrow">
+          Set standard fields, or embed a full custom XMP packet.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+ed = rustpdf.EditableDoc.load(open("document.pdf", "rb").read())
+ed.set_info("Title", "Annual Report 2026")
+ed.set_info("Author", "Finance Team")
+ed.set_xmp(open("metadata.xmp", "rb").read())   # full custom XMP packet
+ed.save("document_meta.pdf")</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var ed = EditableDoc.Load(File.ReadAllBytes("document.pdf"));
+ed.SetInfo("Title", "Annual Report 2026");
+ed.SetInfo("Author", "Finance Team");
+ed.SetXmp(File.ReadAllBytes("metadata.xmp"));
+ed.Save("document_meta.pdf");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+ed, _ := rustpdf.Load(mustRead("document.pdf"))
+defer ed.Close()
+ed.SetInfo("Title", "Annual Report 2026")
+ed.SetInfo("Author", "Finance Team")
+ed.SetXMP(mustRead("metadata.xmp"))
+ed.Save("document_meta.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { EditableDoc } = require("rustpdf");
+const fs = require("fs");
+
+const ed = EditableDoc.load(fs.readFileSync("document.pdf"));
+ed.setInfo("Title", "Annual Report 2026");
+ed.setInfo("Author", "Finance Team");
+ed.setXmp(fs.readFileSync("metadata.xmp"));
+ed.save("document_meta.pdf");</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>veraPDF</span><span>qpdf</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          When you also enable PDF/A via <code>pdfa()</code>, rust-pdf
+          automatically generates both the <code>/Info</code> dictionary and the
+          XMP conformance block from the same entry list, so they are always in
+          sync. Full details in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">XMP metadata FAQ</h2>
+        <details><summary>What is XMP metadata?</summary>
+          <p>XMP (Extensible Metadata Platform) is an XML metadata packet embedded directly inside a PDF file. It describes the document in a machine-readable way: title, author, creation and modification dates, subject, keywords, and arbitrary custom schemas. Because it is embedded in the file itself, the metadata travels with the document and can be read by any conforming PDF reader or document management system without opening the page content.</p>
+        </details>
+        <details><summary>How is XMP different from the Info dictionary?</summary>
+          <p>The <code>/Info</code> dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A requires both to be present and to agree with each other. rust-pdf builds both from a single source so they are always in sync and can never disagree.</p>
+        </details>
+        <details><summary>Why does PDF/A require XMP?</summary>
+          <p>PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The <code>pdfaid</code> conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. PDF/A section 6.7.3 also requires the XMP and <code>/Info</code> dictionary to be kept in sync so there is no ambiguity between the two metadata sources.</p>
+        </details>
+        <details><summary>How do XMP and standards like ZUGFeRD / PDF/UA relate?</summary>
+          <p>XMP is the declaration layer that every modern PDF standard uses to announce its conformance. PDF/A writes the <code>pdfaid</code> identifier, ZUGFeRD and Factur-X add the <code>fx</code> schema with document type, version and profile, and PDF/UA adds the <code>pdfuaid</code> identifier. Any validator (veraPDF, Acrobat, a DMS) checks XMP first to know which rules to apply. Without the correct XMP identifiers, a file fails conformance even if all the structural rules are met.</p>
+        </details>
+        <details><summary>How do I set PDF metadata in code?</summary>
+          <p>With rust-pdf, call <code>set_info</code> on an <code>EditableDoc</code> to set individual fields like Title or Author, or call <code>set_xmp</code> with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all nine supported languages: Python, C#/.NET, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Set and embed XMP metadata in your language</h2>
+        <p class="muted">
+          One Rust core, nine language bindings, and a single source of truth for
+          your metadata. Prototype for free, license the corporate features when
+          you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/pdf-attachments">Embedded files</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

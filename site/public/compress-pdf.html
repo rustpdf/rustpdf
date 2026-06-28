@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compress and Optimize PDF Files in Code, Explained | rust-pdf</title>
+  <meta name="description" content="How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift." />
+  <link rel="canonical" href="https://rustpdf.dev/compress-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/compress-pdf" />
+  <meta property="og:title" content="Compress and Optimize PDF Files in Code, Explained" />
+  <meta property="og:description" content="What optimize() and compact() do, why the compression is purely lossless, and how to shrink PDF files in any language with rust-pdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Compress and Optimize PDF Files in Code, Explained" />
+  <meta name="twitter:description" content="What optimize() and compact() do, why it is lossless, and code examples in nine languages." />
+  <meta property="og:image:alt" content="Compress and optimize PDF files in code — explained" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Compress and optimize PDF files in code — explained" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Compress and optimize PDF files in code", "item": "https://rustpdf.dev/compress-pdf" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Compress and optimize PDF files in code, explained",
+        "description": "How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift.",
+        "url": "https://rustpdf.dev/compress-pdf",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF optimization", "description": "Lossless structural compression of PDF files: dropping unused objects, deduplicating identical objects, Flate-compressing streams, and packing into object streams." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I compress a PDF in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a /ObjStm and emit a /XRef stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is the compression lossless?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. optimize() and compact() are purely structural operations. Text, vector graphics, and every pixel of embedded images come out identical to the original. The library does not perform image down-sampling, colour-depth reduction, or quality reduction of any kind." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between optimize and compact?",
+            "acceptedAnswer": { "@type": "Answer", "text": "optimize() removes unused objects, deduplicates byte-identical objects by remapping references to one canonical copy, and Flate-compresses uncompressed streams. compact(true) packs every eligible object into an object stream (/ObjStm) and emits a cross-reference stream (/XRef) instead of a classic cross-reference table, which is the denser file structure introduced in PDF 1.5. The two operations are independent and can be combined for maximum reduction." }
+          },
+          {
+            "@type": "Question",
+            "name": "Will it shrink images?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Structurally, yes: images benefit from the same unused-object and deduplication passes as any other content. However, the pixel data inside each image is not altered. JPEG images are kept verbatim (their DCT stream is not re-encoded, so there is no quality loss). PNG-sourced images are already Flate-compressed inside the PDF. The library does not perform lossy down-sampling or quality reduction." }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I compress and encrypt at once?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Not in the same pass. When encryption is enabled, object streams and cross-reference streams are automatically disabled because they do not mix in this implementation. The recommended approach is to run optimize() and compact() first, save the result, and then apply encryption in a separate step." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /compress-pdf concept page (scoped prefix cp-, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* hero scene: heavy PDF -> slim PDF */
+    .cp-scene {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 36px;
+      max-width: 520px;
+      margin: 36px auto 0;
+    }
+    .cp-doc {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .cp-badge {
+      font-size: .64rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 4px 11px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .cp-page {
+      width: 90px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--panel);
+      padding: 10px 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .cp-page .ln { height: 6px; border-radius: 3px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .cp-page .ln.s { width: 55%; }
+
+    /* fat doc: multiple stacked page-edge shadows = heavyweight */
+    .cp-fat-wrap {
+      position: relative;
+      padding-bottom: 36px;
+    }
+    .cp-fat-wrap .cp-page {
+      position: relative;
+      z-index: 4;
+      animation: cpFatPulse 3.8s ease-in-out infinite;
+    }
+    .cp-fat-wrap::before {
+      content: "";
+      position: absolute;
+      left: 5px; right: 5px; bottom: -10px;
+      height: 28px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--panel-2);
+      z-index: 3;
+    }
+    .cp-fat-wrap::after {
+      content: "";
+      position: absolute;
+      left: 10px; right: 10px; bottom: -20px;
+      height: 26px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--panel-2);
+      z-index: 2;
+    }
+    .cp-fat-layer {
+      position: absolute;
+      left: 15px; right: 15px; bottom: -29px;
+      height: 24px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--panel-2);
+      z-index: 1;
+    }
+
+    /* slim doc: single shadow, brand glow */
+    .cp-slim-wrap {
+      position: relative;
+      padding-bottom: 14px;
+    }
+    .cp-slim-wrap .cp-page {
+      border-color: rgba(249,115,22,.45);
+      animation: cpSlimGlow 3.8s ease-in-out infinite;
+    }
+    .cp-slim-wrap::after {
+      content: "";
+      position: absolute;
+      left: 6px; right: 6px; bottom: -9px;
+      height: 24px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(249,115,22,.25);
+      background: var(--panel);
+      z-index: 0;
+    }
+
+    .cp-label {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* compress arrow */
+    .cp-arrow-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      flex: none;
+      padding-top: 30px;
+    }
+    .cp-arrow-wrap svg {
+      width: 34px;
+      height: 34px;
+      color: var(--brand-2);
+      animation: cpArrowPulse 1.9s ease-in-out infinite;
+    }
+    .cp-arrow-cap {
+      font-size: .64rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    @keyframes cpFatPulse {
+      0%, 100% { box-shadow: 0 20px 44px -18px rgba(100,100,140,.4); }
+      50%       { box-shadow: 0 24px 54px -16px rgba(100,100,140,.62); }
+    }
+    @keyframes cpSlimGlow {
+      0%, 100% { box-shadow: 0 18px 40px -18px rgba(249,115,22,.45); }
+      50%       { box-shadow: 0 22px 52px -16px rgba(249,115,22,.82); }
+    }
+    @keyframes cpArrowPulse {
+      0%, 100% { opacity: .45; transform: scale(1)   translateX(0); }
+      50%       { opacity: 1;   transform: scale(1.1) translateX(3px); }
+    }
+
+    /* 3-step grid: what optimize() does */
+    .cp-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 36px;
+    }
+    .cp-step {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .cp-step .ic { color: var(--brand-2); }
+    .cp-step .ic svg { width: 28px; height: 28px; }
+    .cp-step h3 { margin: 12px 0 6px; font-size: 1.15rem; }
+    .cp-step p  { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    /* compact block */
+    .cp-compact-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      max-width: 680px;
+      margin: 32px auto 0;
+    }
+    .cp-compact-box h3 { margin: 0 0 10px; font-size: 1.15rem; }
+    .cp-compact-box p  { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+    .cp-compact-box p:last-child { margin: 0; }
+
+    /* lossless callout */
+    .cp-lossless {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      background: var(--panel-2);
+      border: 1px solid rgba(52,211,153,.28);
+      border-radius: 12px;
+      padding: 26px 28px;
+      max-width: 680px;
+      margin: 32px auto 0;
+    }
+    .cp-lossless .ic { color: #34d399; flex: none; }
+    .cp-lossless .ic svg { width: 26px; height: 26px; margin-top: 2px; }
+    .cp-lossless-body p { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+    .cp-lossless-body p:last-child { margin: 0; }
+    .cp-lossless-body strong { color: var(--text); }
+
+    /* use cases */
+    .cp-uses {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 38px;
+    }
+    .cp-use {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+    .cp-use .ic { color: var(--brand-2); }
+    .cp-use .ic svg { width: 28px; height: 28px; }
+    .cp-use h3 { margin: 12px 0 6px; font-size: 1.15rem; }
+    .cp-use p  { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    @media (max-width: 820px) {
+      .cp-steps, .cp-uses { grid-template-columns: 1fr; }
+      .cp-scene {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      .cp-arrow-wrap {
+        padding-top: 0;
+        flex-direction: row;
+        gap: 10px;
+      }
+      .cp-arrow-wrap svg { transform: rotate(90deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cp-fat-wrap .cp-page,
+      .cp-slim-wrap .cp-page,
+      .cp-arrow-wrap svg { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Optimization</p>
+        <h1>Compress and <span class="grad">optimize PDF files</span><br />in code</h1>
+        <p class="lede concept-lede">
+          A generated PDF often carries dead weight: objects nothing references, redundant
+          copies of identical data, and streams left uncompressed. <b>optimize()</b> sweeps
+          all three away without touching a single character or pixel. <b>compact()</b> then
+          packs what remains into the modern, denser file structure. Same document. Less
+          space. Nothing thrown away.
+        </p>
+
+        <!-- hero scene: fat PDF shrinking to slim PDF -->
+        <div class="cp-scene" aria-hidden="true">
+
+          <!-- before: fat doc -->
+          <div class="cp-doc">
+            <span class="cp-badge" style="background:rgba(148,163,184,.13);border:1px solid rgba(148,163,184,.28);color:#94a3b8">4.2 MB</span>
+            <div class="cp-fat-wrap">
+              <div class="cp-fat-layer"></div>
+              <div class="cp-page">
+                <span class="ln"></span>
+                <span class="ln s"></span>
+                <span class="ln"></span>
+                <span class="ln s"></span>
+              </div>
+            </div>
+            <span class="cp-label">Before</span>
+          </div>
+
+          <!-- compress arrow -->
+          <div class="cp-arrow-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>
+            <span class="cp-arrow-cap">optimize<br />compact</span>
+          </div>
+
+          <!-- after: slim doc -->
+          <div class="cp-doc">
+            <span class="cp-badge" style="background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.42);color:var(--brand)">920 KB</span>
+            <div class="cp-slim-wrap">
+              <div class="cp-page">
+                <span class="ln"></span>
+                <span class="ln s"></span>
+                <span class="ln"></span>
+                <span class="ln s"></span>
+              </div>
+            </div>
+            <span class="cp-label">After</span>
+          </div>
+
+        </div>
+
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">See the code</a>
+          <a href="#what-optimize-does" class="btn btn-ghost btn-lg">What optimize() does</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: vacuum-packing luggage</h2>
+        <p class="muted">
+          Think of a PDF as a suitcase. Over time it accumulates items packed in "just in
+          case" that were never used, duplicate copies of the same shirt folded twice, and
+          air gaps between everything. optimize() is the vacuum bag: it removes what was
+          never needed, collapses identical things into one, and compresses out the air.
+          The clothes (your content) come out exactly the same. The bag just takes up less
+          space.
+        </p>
+        <p class="muted">
+          compact() is swapping the rigid hard-shell case for a compressed carry-on. Same
+          clothes, structurally more efficient container. Nothing is thrown away. Nothing is
+          changed. Just less volume, less weight.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHAT OPTIMIZE DOES -->
+    <section id="what-optimize-does" class="section">
+      <div class="wrap">
+        <h2 class="center">What optimize() does</h2>
+        <p class="center muted narrow">
+          Three lossless passes, applied in order. Each is independent but they compound.
+        </p>
+        <div class="cp-steps">
+          <div class="cp-step reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+              </svg>
+            </div>
+            <h3>Drop unused objects</h3>
+            <p>
+              Any object that nothing references is removed: fonts from deleted pages, images
+              from merged documents, leftover form fields. If no other object points to it,
+              it is gone.
+            </p>
+          </div>
+          <div class="cp-step reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </div>
+            <h3>Deduplicate identical objects</h3>
+            <p>
+              Every pair of byte-identical objects (the same embedded font, the same color
+              profile, the same resource dictionary) is collapsed to one canonical copy. All
+              references are remapped automatically.
+            </p>
+          </div>
+          <div class="cp-step reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <h3>Flate-compress streams</h3>
+            <p>
+              Content streams and other data that arrived uncompressed are wrapped in
+              <code>FlateDecode</code> (zlib). Already-compressed streams (JPEG data, PNG
+              data) are left untouched.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPACT -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">compact(): object streams and cross-reference streams</h2>
+        <p class="center muted narrow">
+          optimize() shrinks what is inside the objects. compact() changes how the objects
+          themselves are stored on disk.
+        </p>
+        <div class="cp-compact-box reveal">
+          <h3>The modern PDF file structure</h3>
+          <p>
+            PDF 1.5 introduced <b>object streams</b> (<code>/ObjStm</code>): a way to pack
+            many non-stream objects into a single compressed stream. Instead of each
+            dictionary being written individually with its own header, they are concatenated
+            inside one <code>FlateDecode</code> stream. That compresses far better because
+            repeated keys (<code>/Type</code>, <code>/Font</code>, <code>/Subtype</code>)
+            appear together and the compressor can exploit the repetition.
+          </p>
+          <p>
+            Alongside it comes the <b>cross-reference stream</b> (<code>/XRef</code>), which
+            replaces the classic plain-text cross-reference table with a compact binary
+            stream. Together they reduce the per-file overhead of the structural skeleton.
+            <code>compact(true)</code> enables both; <code>compact(false)</code> switches
+            back to the classic layout.
+          </p>
+          <p>
+            Note: object streams and encryption do not mix in this implementation, so
+            <code>compact()</code> is automatically disabled when encryption is active.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOSSLESS BY DESIGN -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Lossless, by design</h2>
+        <p class="center muted narrow">
+          This is not the kind of compression that asks "reduce image quality to 72 dpi".
+          Everything that matters stays intact.
+        </p>
+        <div class="cp-lossless reveal">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div class="cp-lossless-body">
+            <p>
+              <strong>Text and vector graphics</strong> are not altered. The content streams
+              that draw your text and shapes go through the Flate pass only if they were
+              uncompressed to begin with; their operators and coordinates are never changed.
+            </p>
+            <p>
+              <strong>Embedded JPEGs are kept verbatim.</strong> A JPEG is already a
+              compressed image. Wrapping it in another layer would add complexity without
+              meaningful savings, and re-encoding it would degrade quality. rust-pdf passes
+              the raw DCT stream straight through, byte for byte, untouched.
+            </p>
+            <p>
+              <strong>PNG-sourced images</strong> are stored with Flate compression inside
+              the PDF already, so the Flate pass does not reprocess them.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">When to use it</h2>
+        <p class="center muted narrow">
+          Any pipeline that produces or processes PDFs benefits from a structural
+          optimization pass before the file leaves the system.
+        </p>
+        <div class="cp-uses">
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>
+              </svg>
+            </div>
+            <h3>Generated reports</h3>
+            <p>Reports assembled from many sub-documents often share fonts and resources. Deduplication alone can cut the size significantly.</p>
+          </div>
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8M12 17v4"/>
+              </svg>
+            </div>
+            <h3>Email and upload limits</h3>
+            <p>Trim a PDF before attaching it to an email or uploading to a portal with a file-size cap, without losing a single word.</p>
+          </div>
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16v16H4z"/><path d="M9 9l6 6M15 9l-6 6"/>
+              </svg>
+            </div>
+            <h3>Normalizing third-party PDFs</h3>
+            <p>PDFs from external tools, scanners, or automated systems often leave data uncompressed or include stale unreferenced objects. Optimize cleans them up.</p>
+          </div>
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>
+                <path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>
+              </svg>
+            </div>
+            <h3>Storage at scale</h3>
+            <p>When you store millions of PDFs, structural optimization compounds fast. Smaller files transfer faster and cost less in cloud egress and storage fees.</p>
+          </div>
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+            <h3>Bandwidth reduction</h3>
+            <p>PDFs served over HTTP load faster and consume less bandwidth when they start life as compact as possible, improving experience at every percentile.</p>
+          </div>
+          <div class="cp-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <h3>Merge pipelines</h3>
+            <p>After merging multiple PDFs, shared resources are often duplicated across the combined result. optimize() collapses them to a single copy automatically.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CODE -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to compress a PDF in code</h2>
+        <p class="center muted narrow">
+          Load, optimize, optionally compact, save.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+ed = rustpdf.EditableDoc.load(open("big.pdf", "rb").read())
+ed.optimize()          # drop unused + dedupe + Flate-compress streams
+ed.compact(True)       # pack into object + xref streams
+ed.save("small.pdf")</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var ed = EditableDoc.Load(File.ReadAllBytes("big.pdf"));
+ed.Optimize().Compact(true);
+ed.Save("small.pdf");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+ed, _ := rustpdf.Load(mustRead("big.pdf"))
+defer ed.Close()
+ed.Optimize()
+ed.Compact(true)
+ed.Save("small.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { EditableDoc } = require("rustpdf");
+const fs = require("fs");
+
+const ed = EditableDoc.load(fs.readFileSync("big.pdf"));
+ed.optimize().compact(true);
+ed.save("small.pdf");</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Output validated by:
+          <span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          rust-pdf covers nine language bindings from one Rust core: Python, C#/.NET, Go,
+          Node.js, Java, PHP, Ruby, Delphi, and Swift. Full details in the
+          <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF compression FAQ</h2>
+        <details><summary>How do I compress a PDF in code?</summary>
+          <p>Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a <code>/ObjStm</code> and emit a <code>/XRef</code> stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift.</p>
+        </details>
+        <details><summary>Is the compression lossless?</summary>
+          <p>Yes. optimize() and compact() are purely structural operations. Text, vector graphics, and every pixel of embedded images come out identical to the original. The library does not perform image down-sampling, colour-depth reduction, or quality reduction of any kind.</p>
+        </details>
+        <details><summary>What is the difference between optimize and compact?</summary>
+          <p>optimize() removes unused objects, deduplicates byte-identical objects by remapping references to one canonical copy, and Flate-compresses uncompressed streams. compact(true) packs every eligible object into an object stream (<code>/ObjStm</code>) and emits a cross-reference stream (<code>/XRef</code>) instead of a classic cross-reference table, which is the denser file structure introduced in PDF 1.5. The two operations are independent and can be combined for maximum reduction.</p>
+        </details>
+        <details><summary>Will it shrink images?</summary>
+          <p>Structurally, yes: images benefit from the same unused-object and deduplication passes as any other content. However, the pixel data inside each image is not altered. JPEG images are kept verbatim (their DCT stream is not re-encoded, so there is no quality loss). PNG-sourced images are already Flate-compressed inside the PDF. The library does not perform lossy down-sampling or quality reduction.</p>
+        </details>
+        <details><summary>Can I compress and encrypt at once?</summary>
+          <p>Not in the same pass. When encryption is enabled, object streams and cross-reference streams are automatically disabled because they do not mix in this implementation. The recommended approach is to run optimize() and compact() first, save the result, and then apply encryption in a separate step.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Compress PDF files in your language</h2>
+        <p class="muted">
+          One Rust core. Nine language bindings. Lossless structural optimization in every
+          one. Prototype for free; license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/merge-pdf">Merge &amp; split PDF</a>
+          <a href="/extract-images">Extract images</a>
+          <a href="/encrypt-pdf">Encrypt PDF</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>
