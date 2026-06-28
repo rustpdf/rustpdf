@@ -28,11 +28,27 @@ pub fn extract_text(bytes: impl AsRef<[u8]>) -> Result<String, parser::PdfError>
 
 /// Extract the text of a single page dictionary.
 pub fn page_text(reader: &PdfReader, page: &Dict) -> String {
-    let fonts = page_fonts(reader, page);
-    let content = page_content(reader, page);
-
     let mut out = String::new();
-    let mut lex = Lexer::new(&content);
+    let resources = page
+        .get("Resources")
+        .and_then(|o| reader.resolve_dict(o))
+        .cloned()
+        .unwrap_or_default();
+    let content = page_content(reader, page);
+    run_content(reader, &content, &resources, &mut out, 0);
+    append_annotations(reader, page, &mut out);
+    out
+}
+
+/// Decode one content stream, recursing into Form XObjects drawn with `Do`
+/// (so text baked into XObjects — e.g. flattened form fields — is extracted).
+/// `depth` guards against XObject reference cycles.
+fn run_content(reader: &PdfReader, content: &[u8], resources: &Dict, out: &mut String, depth: u32) {
+    if depth > 12 {
+        return;
+    }
+    let fonts = fonts_from_resources(reader, resources);
+    let mut lex = Lexer::new(content);
     let mut operands: Vec<Operand> = Vec::new();
     let mut current: Option<&FontInfo> = None;
     let mut text_y: Option<f64> = None;
@@ -85,7 +101,7 @@ pub fn page_text(reader: &PdfReader, page: &Dict) -> String {
                     }
                     b"Tj" => {
                         if let Some(Operand::Str(s)) = nth_from_end(&operands, 0) {
-                            show(s, current, &mut out);
+                            show(s, current, out);
                             wrote_on_line = true;
                         }
                     }
@@ -93,7 +109,7 @@ pub fn page_text(reader: &PdfReader, page: &Dict) -> String {
                         if let Some(Operand::Array(items)) = nth_from_end(&operands, 0) {
                             for el in items {
                                 match el {
-                                    Operand::Str(s) => show(s, current, &mut out),
+                                    Operand::Str(s) => show(s, current, out),
                                     // A large negative adjustment is a word gap.
                                     Operand::Num(n) if *n < -100.0 => out.push(' '),
                                     _ => {}
@@ -102,13 +118,17 @@ pub fn page_text(reader: &PdfReader, page: &Dict) -> String {
                             wrote_on_line = true;
                         }
                     }
+                    b"Do" => {
+                        if let Some(Operand::Name(name)) = nth_from_end(&operands, 0) {
+                            do_xobject(reader, name, resources, out, depth);
+                        }
+                    }
                     _ => {}
                 }
                 operands.clear();
             }
         }
     }
-    out
 }
 
 #[derive(Debug, Clone)]
@@ -152,11 +172,8 @@ fn show(bytes: &[u8], font: Option<&FontInfo>, out: &mut String) {
 }
 
 /// Build the page's `name -> FontInfo` table from its `/Resources /Font`.
-fn page_fonts(reader: &PdfReader, page: &Dict) -> BTreeMap<Vec<u8>, FontInfo> {
+fn fonts_from_resources(reader: &PdfReader, resources: &Dict) -> BTreeMap<Vec<u8>, FontInfo> {
     let mut map = BTreeMap::new();
-    let Some(resources) = page.get("Resources").and_then(|o| reader.resolve_dict(o)) else {
-        return map;
-    };
     let Some(fonts) = resources.get("Font").and_then(|o| reader.resolve_dict(o)) else {
         return map;
     };
@@ -183,6 +200,85 @@ fn page_fonts(reader: &PdfReader, page: &Dict) -> BTreeMap<Vec<u8>, FontInfo> {
         );
     }
     map
+}
+
+/// Recurse into a Form XObject drawn with `Do`, decoding its text with the
+/// form's own `/Resources` (falling back to the parent's).
+fn do_xobject(reader: &PdfReader, name: &[u8], resources: &Dict, out: &mut String, depth: u32) {
+    let Some(xobjs) = resources
+        .get("XObject")
+        .and_then(|o| reader.resolve_dict(o))
+    else {
+        return;
+    };
+    let Ok(key) = std::str::from_utf8(name) else {
+        return;
+    };
+    let Some(Object::Stream(s)) = xobjs.get(key).map(|o| reader.resolve(o)) else {
+        return;
+    };
+    if s.dict.get("Subtype").and_then(name_str).as_deref() != Some("Form") {
+        return;
+    }
+    let sub_res = s
+        .dict
+        .get("Resources")
+        .and_then(|o| reader.resolve_dict(o))
+        .cloned()
+        .unwrap_or_else(|| resources.clone());
+    if let Ok(data) = reader.stream_data(s) {
+        out.push(' ');
+        run_content(reader, &data, &sub_res, out, depth + 1);
+    }
+}
+
+/// Extract text from each annotation's normal appearance (`/AP /N`). Form-field
+/// widgets (text/choice fields) render their value into this appearance stream,
+/// so this recovers filled, not-yet-flattened form values.
+fn append_annotations(reader: &PdfReader, page: &Dict, out: &mut String) {
+    let Some(Object::Array(annots)) = page.get("Annots").map(|o| reader.resolve(o)) else {
+        return;
+    };
+    for a in annots {
+        let Some(annot) = reader.resolve_dict(a) else {
+            continue;
+        };
+        let Some(ap) = annot.get("AP").and_then(|o| reader.resolve_dict(o)) else {
+            continue;
+        };
+        let Some(n) = ap.get("N").map(|o| reader.resolve(o)) else {
+            continue;
+        };
+        let stream = match n {
+            Object::Stream(s) => Some(s.clone()),
+            // Appearance subdictionary keyed by state; /AS selects the current.
+            Object::Dict(states) => {
+                let chosen = annot
+                    .get("AS")
+                    .and_then(name_str)
+                    .and_then(|k| states.get(k.as_str()).cloned())
+                    .or_else(|| states.iter().next().map(|(_, v)| v.clone()));
+                match chosen.map(|o| reader.resolve(&o).clone()) {
+                    Some(Object::Stream(s)) => Some(s),
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        let Some(s) = stream else {
+            continue;
+        };
+        let sub_res = s
+            .dict
+            .get("Resources")
+            .and_then(|o| reader.resolve_dict(o))
+            .cloned()
+            .unwrap_or_default();
+        if let Ok(data) = reader.stream_data(&s) {
+            out.push(' ');
+            run_content(reader, &data, &sub_res, out, 1);
+        }
+    }
 }
 
 /// Concatenate and decode a page's content stream(s).
