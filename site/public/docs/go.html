@@ -230,7 +230,7 @@ wg.Wait()</code></pre></div>
         <tr><td><code>AddPage() error</code></td><td>Append a page at the default size.</td></tr>
         <tr><td><code>AddPageSized(w, h float64) error</code></td><td>Append a page with an explicit size in points.</td></tr>
         <tr><td><code>SetDefaultSize(w, h float64) error</code></td><td>Default size for subsequently added pages.</td></tr>
-        <tr><td><code>SetVersion(v int) error</code></td><td>Set the PDF header version (e.g. <code>14</code> → PDF 1.4, <code>17</code> → 1.7).</td></tr>
+        <tr><td><code>SetVersion(v int) error</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
         <tr><td><code>PageCount() int</code></td><td>Number of pages so far.</td></tr>
         <tr><td><code>ToBytes() ([]byte, error)</code></td><td>Render the document to bytes.</td></tr>
         <tr><td><code>Save(path string) error</code></td><td>Render and write to a file.</td></tr>
@@ -313,7 +313,7 @@ _ = doc.Save("with_image.pdf")</code></pre></div>
 
       <!-- PDF/A -->
       <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
-      <p>Produce archival-grade output. <code>Pdfa()</code> defaults to A-2b; <code>PdfaLevel(level)</code> selects a specific <a href="#enums"><code>PdfaLevel</code></a>. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <p>Produce archival-grade output. <code>Pdfa()</code> defaults to A-2b; <code>PdfaLevel(level)</code> selects a specific <a href="#enums"><code>PdfaLevel</code></a>. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>Pdfa() error</code> &nbsp; <code>PdfaLevel(level PdfaLevel) error</code></div>
       <div class="code has-label"><span class="lbl">go</span><pre><code>doc, _ := rustpdf.New()
 defer doc.Close()
@@ -688,6 +688,9 @@ os.WriteFile("page1.png", png, 0o644)</code></pre></div>
         <tr><td><code>rustpdf.A2a</code></td><td>PDF/A-2a (accessible: pair with <code>Tagged()</code>)</td></tr>
         <tr><td><code>rustpdf.A3b</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
         <tr><td><code>rustpdf.A3a</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>rustpdf.A4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>rustpdf.A4e</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>rustpdf.A4f</code></td><td>PDF/A-4f (allows attachments)</td></tr>
       </table>
       <h3>Align</h3>
       <table>

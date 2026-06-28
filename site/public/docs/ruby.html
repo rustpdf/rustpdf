@@ -198,7 +198,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
         <tr><th>Method</th><th>Description</th></tr>
         <tr><td><code>add_page(width:, height:)</code></td><td>Append a page. <code>width</code>/<code>height</code> are optional keyword points; omit for the default size.</td></tr>
         <tr><td><code>default_size(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
-        <tr><td><code>version = v</code></td><td>Set the PDF header version (e.g. <code>14</code> → PDF 1.4, <code>17</code> → 1.7).</td></tr>
+        <tr><td><code>version = v</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
         <tr><td><code>page_count</code></td><td>Number of pages so far.</td></tr>
         <tr><td><code>to_bytes</code></td><td>Render the document to a binary <code>String</code>.</td></tr>
         <tr><td><code>save(path)</code></td><td>Render and write to a file.</td></tr>
@@ -278,7 +278,7 @@ doc.close</code></pre></div>
 
       <!-- PDF/A -->
       <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
-      <p>Produce archival-grade output. <code>pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>Pdfa</code></a> level for a specific one. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <p>Produce archival-grade output. <code>pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>Pdfa</code></a> level for a specific one. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>pdfa(level = nil)</code></div>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>doc = RustPdf::Document.new
 doc.pdfa(RustPdf::Pdfa::A2B).info(title: "Q3 Report", author: "Acme Inc.")
@@ -605,6 +605,9 @@ File.binwrite("page1.png", RustPdf.render_page_to_png(data, 0, 150.0))</code></p
         <tr><td><code>RustPdf::Pdfa::A2A</code></td><td>PDF/A-2a (accessible: pair with <code>tagged</code>)</td></tr>
         <tr><td><code>RustPdf::Pdfa::A3B</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
         <tr><td><code>RustPdf::Pdfa::A3A</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>RustPdf::Pdfa::A4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>RustPdf::Pdfa::A4E</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>RustPdf::Pdfa::A4F</code></td><td>PDF/A-4f (allows attachments)</td></tr>
       </table>
       <h3>Align</h3>
       <table>

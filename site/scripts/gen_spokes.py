@@ -79,14 +79,14 @@ TASKS = {
         gated=True,
         validators=["veraPDF", "qpdf", "mutool"],
         lede="Generate archival-grade PDF/A from %L with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.",
-        why_p="PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b and 3a.",
+        why_p="PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.",
         bullets=[
-            "Levels A-1b, A-2b, A-2a, A-3b and A-3a, with the accessible a-levels building a full tagged structure tree.",
+            "Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.",
             "Fonts embedded and subset automatically, ICC profile and output intent added for you.",
             "XMP metadata kept in sync with the document info, validated by veraPDF.",
         ],
         faq=[
-            ("Which PDF/A levels are supported in %L?", "rust-pdf creates PDF/A-1b, 2b, 2a, 3b and 3a. Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML."),
+            ("Which PDF/A levels are supported in %L?", "rust-pdf creates PDF/A-1b, 2b, 2a, 3b, 3a and 4 (the PDF 2.0-based part, including 4e and 4f). Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML."),
             ("How is conformance verified?", "Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives."),
             ("Do I need a license to create PDF/A in %L?", "PDF/A is a corporate feature and requires an active license token. Basic generation in %L is free. One offline token unlocks PDF/A in every supported language."),
         ],

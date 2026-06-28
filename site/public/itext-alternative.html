@@ -63,7 +63,7 @@
           {
             "@type": "Question",
             "name": "Is rust-pdf really compliant, or just marketing?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Output is checked by independent open-source tools, not by self-declaration. veraPDF validates PDF/A (1b to 3a) and PDF/UA-1, pdfsig and openssl cms validate the PAdES signatures, and qpdf and mutool check structure. The same engine produces byte-identical output every run, so files are auditable and diffable." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Output is checked by independent open-source tools, not by self-declaration. veraPDF validates PDF/A (1b to 4) and PDF/UA-1, pdfsig and openssl cms validate the PAdES signatures, and qpdf and mutool check structure. The same engine produces byte-identical output every run, so files are auditable and diffable." }
           },
           {
             "@type": "Question",
@@ -73,7 +73,7 @@
           {
             "@type": "Question",
             "name": "Where is iText still ahead of rust-pdf?",
-            "acceptedAnswer": { "@type": "Answer", "text": "iText reaches PDF/A-4 and PDF/UA-2, while rust-pdf currently targets PDF/A up to 3a and PDF/UA-1. iText also has more than two decades of add-ons such as HTML to PDF, OCR and redaction tooling. If you only ship Java or .NET and need those exact ceilings today, iText has the deeper standards ceiling." }
+            "acceptedAnswer": { "@type": "Answer", "text": "iText reaches PDF/UA-2, while rust-pdf targets PDF/A up to 4 (the latest part) and PDF/UA-1. iText also has more than two decades of add-ons such as HTML to PDF, OCR and redaction tooling. If you only ship Java or .NET and need those exact ceilings today, iText has the deeper standards ceiling." }
           }
         ]
       }
@@ -207,7 +207,7 @@
         <h2 class="center">The honest short version</h2>
         <p class="muted">
           iText is excellent software with a quarter century of depth, and on the
-          very latest standards (PDF/A-4 and PDF/UA-2) its ceiling is higher than
+          very latest standard (PDF/UA-2) its ceiling is higher than
           ours. If you only ship Java or .NET and need those exact levels today,
           iText is a strong choice and we will say so.
         </p>
@@ -268,7 +268,7 @@
           </thead>
           <tbody>
             <tr><td>Languages</td><td>Java, .NET</td><td><b>Python, C#, Go, PHP, Ruby, Node, Java, Delphi, Swift</b></td></tr>
-            <tr><td>PDF/A levels</td><td><b>1, 2, 3 and 4</b> (all)</td><td>1b, 2b, 2a, 3b, 3a</td></tr>
+            <tr><td>PDF/A levels</td><td><b>1, 2, 3 and 4</b> (all)</td><td>1b, 2b, 2a, 3b, 3a, 4</td></tr>
             <tr><td>PAdES signatures</td><td>B-B, B-T, B-LT, B-LTA</td><td><span class="y">B-B, B-LT, B-LTA</span> + RFC 3161 + LTV</td></tr>
             <tr><td>PDF/UA accessibility</td><td><b>UA-1 and UA-2</b></td><td>UA-1</td></tr>
             <tr><td>Encryption</td><td>RC4, AES-128, AES-256, certificate</td><td>RC4, AES-128, AES-256</td></tr>
@@ -280,7 +280,7 @@
           </tbody>
         </table>
         <p class="center muted narrow" style="margin-top:18px">
-          Where iText leads honestly: it reaches <b>PDF/A-4</b> and <b>PDF/UA-2</b>,
+          Where iText leads honestly: it reaches <b>PDF/UA-2</b>,
           which rust-pdf does not yet target, and it carries more than two decades of
           add-ons. Everywhere else the trade favours breadth of language, licensing
           clarity and predictable cost.
@@ -323,7 +323,7 @@
         <div class="ix-fair">
           <h3>Pick iText if any of these is true</h3>
           <p>
-            You ship only on Java or .NET and need <b>PDF/A-4</b> or <b>PDF/UA-2</b>
+            You ship only on Java or .NET and need <b>PDF/UA-2</b>
             today, you rely on its mature add-ons such as HTML to PDF, OCR or
             redaction, or you already hold a commercial iText licence you are happy
             with. In those cases iText has the deeper standards ceiling and the longer
@@ -336,7 +336,7 @@
             You work in Python, Go, PHP, Ruby, Node, Delphi or Swift as well as
             Java and .NET, the AGPL is a non-starter, you want a flat published price
             with no document meter, or you need fully offline, deterministic output
-            that is validated by independent tools. PDF/A up to 3a, PAdES through
+            that is validated by independent tools. PDF/A up to 4, PAdES through
             B-LTA, AES-256 and PDF/UA-1 cover the large majority of regulated work.
           </p>
         </div>
@@ -415,13 +415,13 @@ const lta     = timestamp(lt, tsaKey, tsaCert);                           // B-L
           <p>iText ships for Java and .NET. rust-pdf adds Python, Go, PHP, Ruby, Node and TypeScript, Delphi and Swift on top of Java and .NET, nine bindings in total, all over one shared Rust core with identical behaviour.</p>
         </details>
         <details><summary>Is rust-pdf really compliant, or just marketing?</summary>
-          <p>Output is checked by independent open-source tools, not by self-declaration. veraPDF validates PDF/A (1b to 3a) and PDF/UA-1, pdfsig and openssl cms validate the PAdES signatures, and qpdf and mutool check structure. The same engine produces byte-identical output every run, so files are auditable and diffable.</p>
+          <p>Output is checked by independent open-source tools, not by self-declaration. veraPDF validates PDF/A (1b to 4) and PDF/UA-1, pdfsig and openssl cms validate the PAdES signatures, and qpdf and mutool check structure. The same engine produces byte-identical output every run, so files are auditable and diffable.</p>
         </details>
         <details><summary>How does rust-pdf pricing compare to iText?</summary>
           <p>rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, and OEM or Site licensing for redistribution and org-wide use. There is no per-document meter. iText commercial pricing is quote-only and has historically been metered by the volume of documents processed.</p>
         </details>
         <details><summary>Where is iText still ahead of rust-pdf?</summary>
-          <p>iText reaches PDF/A-4 and PDF/UA-2, while rust-pdf currently targets PDF/A up to 3a and PDF/UA-1. iText also has more than two decades of add-ons such as HTML to PDF, OCR and redaction tooling. If you only ship Java or .NET and need those exact ceilings today, iText has the deeper standards ceiling.</p>
+          <p>iText reaches PDF/UA-2, while rust-pdf targets PDF/A up to 4 (the latest part) and PDF/UA-1. iText also has more than two decades of add-ons such as HTML to PDF, OCR and redaction tooling. If you only ship Java or .NET and need those exact ceilings today, iText has the deeper standards ceiling.</p>
         </details>
       </div>
     </section>
