@@ -206,7 +206,7 @@ with ThreadPoolExecutor(max_workers=8) as pool:
         <tr><th>Method</th><th>Description</th></tr>
         <tr><td><code>add_page(size=None)</code></td><td>Append a page. <code>size</code> is an optional <code>(width, height)</code> tuple in points.</td></tr>
         <tr><td><code>set_default_size(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
-        <tr><td><code>set_version(v)</code></td><td>Set the PDF header version (e.g. <code>14</code> → PDF 1.4, <code>17</code> → 1.7).</td></tr>
+        <tr><td><code>set_version(v)</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
         <tr><td><code>page_count</code></td><td>Property: number of pages so far.</td></tr>
         <tr><td><code>to_bytes()</code></td><td>Render the document to <code>bytes</code>.</td></tr>
         <tr><td><code>save(path)</code></td><td>Render and write to a file.</td></tr>
@@ -283,7 +283,7 @@ with Document() as doc:
 
       <!-- PDF/A -->
       <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
-      <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>pdfa(level=None)</code></div>
       <div class="code has-label"><span class="lbl">python</span><pre><code>from rustpdf import Document, PdfaLevel
 
@@ -615,6 +615,9 @@ open("page1.png", "wb").write(png)</code></pre></div>
         <tr><td><code>PdfaLevel.A2A</code></td><td>PDF/A-2a (accessible: pair with <code>tagged()</code>)</td></tr>
         <tr><td><code>PdfaLevel.A3B</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
         <tr><td><code>PdfaLevel.A3A</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>PdfaLevel.A4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>PdfaLevel.A4E</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>PdfaLevel.A4F</code></td><td>PDF/A-4f (allows attachments)</td></tr>
       </table>
       <h3>Align</h3>
       <table>

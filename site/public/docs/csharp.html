@@ -202,7 +202,7 @@ byte[][] pdfs = await Task.WhenAll(jobs);</code></pre></div>
         <tr><th>Member</th><th>Description</th></tr>
         <tr><td><code>AddPage((w, h)?)</code></td><td>Append a page. Optional size tuple in points.</td></tr>
         <tr><td><code>SetDefaultSize(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
-        <tr><td><code>SetVersion(v)</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7).</td></tr>
+        <tr><td><code>SetVersion(v)</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
         <tr><td><code>PageCount</code></td><td>Property: number of pages so far.</td></tr>
         <tr><td><code>ToBytes()</code></td><td>Render the document to a <code>byte[]</code>.</td></tr>
         <tr><td><code>Save(path)</code></td><td>Render and write to a file.</td></tr>
@@ -281,7 +281,7 @@ doc.Save("with_image.pdf");</code></pre></div>
 
       <!-- PDF/A -->
       <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
-      <p>Produce archival-grade output. <code>Pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <p>Produce archival-grade output. <code>Pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>Pdfa(PdfaLevel? level = null)</code></div>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
 
@@ -621,6 +621,9 @@ File.WriteAllBytes("page1.png", png);</code></pre></div>
         <tr><td><code>PdfaLevel.A2a</code></td><td>PDF/A-2a (accessible: pair with <code>Tagged()</code>)</td></tr>
         <tr><td><code>PdfaLevel.A3b</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
         <tr><td><code>PdfaLevel.A3a</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>PdfaLevel.A4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>PdfaLevel.A4e</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>PdfaLevel.A4f</code></td><td>PDF/A-4f (allows attachments)</td></tr>
       </table>
       <h3>Align</h3>
       <table>

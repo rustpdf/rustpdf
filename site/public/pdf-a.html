@@ -68,7 +68,7 @@
           {
             "@type": "Question",
             "name": "How do I create a valid PDF/A file?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example doc.pdfa(PdfaLevel.A2B), in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b and 3a." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example doc.pdfa(PdfaLevel.A2B), in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b, 3a and 4." }
           }
         ]
       }
@@ -412,7 +412,7 @@
           <tr><td><b>a</b></td><td>Accessible</td><td>Everything in <b>u</b>, plus a tagged logical structure (headings, lists, tables, alt text) for assistive technology and PDF/UA.</td></tr>
         </table>
         <p class="center muted narrow" style="margin-top:20px">
-          rust-pdf produces and validates <b>PDF/A-1b, 2b, 2a, 3b and 3a</b>, with the
+          rust-pdf produces and validates <b>PDF/A-1b, 2b, 2a, 3b, 3a and 4</b>, with the
           accessible <b>a</b> levels building a full tagged structure tree.
         </p>
       </div>
@@ -560,7 +560,7 @@ const bytes = doc.toBytes();                         // PDF/A-2b</code></pre>
           <p>Level b (basic) guarantees the document looks the same everywhere. Level a (accessible) adds a tagged logical structure and Unicode mapping, so the document is also accessible to assistive technology and reliably searchable. Level u guarantees Unicode mapping for all text without requiring full tagging. So PDF/A-2b is visually faithful, while PDF/A-2a is visually faithful and accessible.</p>
         </details>
         <details><summary>How do I create a valid PDF/A file?</summary>
-          <p>Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example <code>doc.pdfa(PdfaLevel.A2B)</code>, in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b and 3a.</p>
+          <p>Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example <code>doc.pdfa(PdfaLevel.A2B)</code>, in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b, 3a and 4.</p>
         </details>
       </div>
     </section>

@@ -75,7 +75,7 @@
           "name": "Which PDF/A levels are supported in Node.js?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "rust-pdf creates PDF/A-1b, 2b, 2a, 3b and 3a. Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML."
+            "text": "rust-pdf creates PDF/A-1b, 2b, 2a, 3b, 3a and 4 (the PDF 2.0-based part, including 4e and 4f). Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML."
           }
         },
         {
@@ -168,10 +168,10 @@
         <div class="sp-why">
           <div>
             <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
-            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b and 3a.</p>
+            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
           </div>
           <ul class="check-list">
-            <li>Levels A-1b, A-2b, A-2a, A-3b and A-3a, with the accessible a-levels building a full tagged structure tree.</li>
+            <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
             <li>Fonts embedded and subset automatically, ICC profile and output intent added for you.</li>
             <li>XMP metadata kept in sync with the document info, validated by veraPDF.</li>
           </ul>
@@ -205,7 +205,7 @@ doc.close();</code></pre>
       <div class="wrap narrow">
         <h2 class="center">PDF/A in Node.js: FAQ</h2>
         <details><summary>Which PDF/A levels are supported in Node.js?</summary>
-          <p>rust-pdf creates PDF/A-1b, 2b, 2a, 3b and 3a. Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML.</p>
+          <p>rust-pdf creates PDF/A-1b, 2b, 2a, 3b, 3a and 4 (the PDF 2.0-based part, including 4e and 4f). Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML.</p>
         </details>
         <details><summary>How is conformance verified?</summary>
           <p>Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives.</p>

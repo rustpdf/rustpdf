@@ -251,7 +251,7 @@ end;</code></pre></div>
         <tr><td><code>AddPage</code></td><td>Append a page using the default size.</td></tr>
         <tr><td><code>AddPage(Width, Height)</code></td><td>Append a page with an explicit size in points.</td></tr>
         <tr><td><code>DefaultSize(W, H)</code></td><td>Default size for subsequently added pages.</td></tr>
-        <tr><td><code>SetVersion(V)</code></td><td>PDF header version: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7.</td></tr>
+        <tr><td><code>SetVersion(V)</code></td><td>PDF header version: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0.</td></tr>
         <tr><td><code>PageCount</code></td><td>Number of pages so far.</td></tr>
         <tr><td><code>ToBytes</code></td><td>Render the document to <code>TBytes</code>.</td></tr>
         <tr><td><code>SaveToFile(Path)</code></td><td>Render and write to a file.</td></tr>
@@ -322,7 +322,7 @@ Doc.SaveToFile('with_image.pdf');</code></pre></div>
 
       <!-- PDF/A -->
       <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
-      <p>Produce archival-grade output. <code>Pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>TPdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>.</p>
+      <p>Produce archival-grade output. <code>Pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>TPdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>Pdfa</code> &nbsp; <code>Pdfa(Level: TPdfaLevel)</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.Pdfa(palA2B).SetInfo('Q3 Report', 'Acme Inc.', '', '', '');
 F := Doc.AddFontFile('Roboto-Regular.ttf');
@@ -680,6 +680,9 @@ WriteBytes('page1.png', Png);</code></pre></div>
         <tr><td><code>palA2A</code></td><td>PDF/A-2a (accessible: pair with <code>Tagged</code>)</td></tr>
         <tr><td><code>palA3B</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
         <tr><td><code>palA3A</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>palA4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>palA4E</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>palA4F</code></td><td>PDF/A-4f (allows attachments)</td></tr>
       </table>
       <h3>TPdfAlign</h3>
       <table>
