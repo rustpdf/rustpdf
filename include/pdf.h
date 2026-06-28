@@ -811,6 +811,29 @@ PdfStatus pdf_extract_images_to_dir(const uint8_t *data,
                                     uintptr_t *out_count);
 
 /**
+ * Render page `page_index` (0-based) of the PDF in `data`/`len` to a PNG image
+ * at `dpi` dots-per-inch. The PNG bytes are returned in `out_ptr`/`out_len`,
+ * to be released with [`pdf_buffer_free`].
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable, non-aliasing.
+ */
+PdfStatus pdf_render_page_to_png(const uint8_t *data,
+                                 uintptr_t len,
+                                 uintptr_t page_index,
+                                 double dpi,
+                                 unsigned char **out_ptr,
+                                 uintptr_t *out_len);
+
+/**
+ * Number of pages in the PDF in `data`/`len`, written to `out_count`.
+ *
+ * # Safety
+ * `data`/`len` readable; `out_count` writable.
+ */
+PdfStatus pdf_page_count(const uint8_t *data, uintptr_t len, uintptr_t *out_count);
+
+/**
  * Sign `pdf` with a PKCS#8 DER private key + DER certificate, producing a new
  * PDF (incremental update) in `out_ptr`/`out_len`. `reason`/`location`/`name`
  * may be NULL; `pades` != 0 selects PAdES-B-B.

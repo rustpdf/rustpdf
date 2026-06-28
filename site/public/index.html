@@ -55,6 +55,7 @@
           "PDF/A archival (1b, 2b, 2a, 3b, 3a) and converting existing PDFs to PDF/A",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA) plus signature validation",
           "AES-256 encryption",
+          "Page rendering: render a PDF page to a PNG image",
           "PDF/UA accessibility (Tagged PDF)",
           "ZUGFeRD / Factur-X electronic invoices",
           "AcroForm fields: create, fill and flatten",
@@ -261,6 +262,7 @@
               <a href="/merge-pdf">Merge &amp; split</a>
               <a href="/extract-text">Extract text</a>
               <a href="/extract-images">Extract images</a>
+              <a href="/render-pdf">Render to image</a>
               <a href="/compress-pdf">Compress</a>
               <a href="/encrypt-pdf">Encrypt</a>
               <a href="/watermark-pdf">Watermark</a>
@@ -312,6 +314,7 @@
               <li><b>ZUGFeRD / Factur-X</b>: electronic invoices</li>
               <li><b>Redaction</b>: truly remove page content</li>
               <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
+              <li><b>Page rendering</b>: render a page to a PNG image</li>
               <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
               <li><b>AcroForm</b>: fields with generated appearances</li>
             </ul>
@@ -523,6 +526,7 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
               <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a) + convert existing PDFs</li>
               <li>✓ ZUGFeRD / Factur-X electronic invoices</li>
               <li>✓ Encryption (RC4 / AES-128 / AES-256)</li>
+              <li>✓ Page rendering (PDF page to PNG image)</li>
               <li>✓ AcroForm fields with appearances</li>
               <li>✓ All language bindings, no rebuild to activate</li>
               <li>✓ Token emailed instantly after checkout</li>
@@ -587,7 +591,7 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
           <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill &amp; flatten, merge/split, text &amp; image extraction and optimization. Forever free, no license.</p>
         </details>
         <details><summary>What's the difference between Pro and Enterprise?</summary>
-          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs), ZUGFeRD / Factur-X e-invoices, and encryption (RC4 / AES-128 / AES-256). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
+          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs), ZUGFeRD / Factur-X e-invoices, encryption (RC4 / AES-128 / AES-256), and page rendering (rasterizing a PDF page to a PNG image). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
         </details>
         <details><summary>What counts as an application?</summary>
           <p>An application is one product or system you build and operate, defined by

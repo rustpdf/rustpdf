@@ -58,6 +58,12 @@ const text = rp.extractText(pdfa);
 assert.ok(text.includes('Título'), `extracted text: ${text}`);
 console.log(`built PDF/A-2a (${pdfa.length} bytes); extracted ok`);
 
+// Page rendering (Pro feature; license already active).
+assert.strictEqual(rp.pageCount(pdfa), 1, 'page count');
+const png = rp.renderPageToPng(pdfa, 0, 72.0);
+assert.ok(png.length > 8 && png[1] === 0x50 && png[2] === 0x4e && png[3] === 0x47, 'PNG header');
+console.log(`rendered page 0 → ${png.length} byte PNG`);
+
 // 3. Incremental update preserves the original prefix.
 {
   const ed = rp.EditableDoc.load(pdfa);

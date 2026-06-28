@@ -208,6 +208,22 @@ Tier explicitamente "escopo leve, vai mudar" no `project.md`. Entregue o que é
   e `-f ua1` (PDF/UA-1)** no doc básico, rico, fino e com span inline.
 - [ ] **7.7** HTML/CSS→PDF — "produto à parte" (motor de layout de browser).
   Fora de escopo; pendente.
+- [x] **7.8** **Rasterização de página** (renderizar página → imagem). Novo crate
+  **`render`**: interpretador de content stream nativo sobre `tiny-skia`
+  (BSD-3, puro Rust). Cobre vetores (preencher/traçar/clip, nonzero/even-odd,
+  dash/cap/join), **texto com outlines reais** (Type0/Identity-H + fontes
+  simples WinAnsi/Differences; fallback Roboto p/ não-embutidas via
+  `ttf-parser`), **imagens** (XObject + inline: amostras cruas por colorspace+
+  bits, JPEG via `jpeg-decoder`, `/SMask`, `/ImageMask`, `/Decode`), **espaços
+  de cor** (Gray/RGB/CMYK/ICCBased-por-N/Indexed/Separation/DeviceN com
+  funções tipo 0/2/3/4), **Form XObjects** (Matrix+BBox+recursão), **ExtGState**
+  (`ca`/`CA`/`BM`), **sombreamentos** axial (tipo 2) e radial (tipo 3), e
+  `/Rotate`/`/CropBox`. API: `pdf::render_page_to_png`/`render_page_rgba`(`_with`)
+  + FFI `pdf_render_page_to_png`/`pdf_page_count`. Testado ponta-a-ponta
+  (vetores posicionados, glifos, imagem RGB, CMYK) + unit tests do avaliador de
+  funções. **Licenciado como feature Pro** (`Feature::Rendering`; gate no wrapper
+  `pdf::render_page_*`). Lacunas conhecidas (mesh shadings 4–7, tiling patterns,
+  CCITT/JPX/JBIG2, soft mask por luminosidade, FontFile Type1) em `PENDING.md`.
 
 ---
 

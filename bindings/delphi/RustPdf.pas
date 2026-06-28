@@ -231,6 +231,12 @@ type
     class procedure ActivateLicense(const Token: string); static;
     class function ExtractText(const PdfBytes: TBytes): string; static;
     class function ExtractImagesToDir(const PdfBytes: TBytes; const Dir: string): NativeUInt; static;
+    { Render page PageIndex (0-based) of PdfBytes to a PNG at Dpi dots-per-inch.
+      Page rendering is a licensed Pro feature: raises ERustPdf unless a license
+      granting it is active. }
+    class function RenderPageToPng(const PdfBytes: TBytes; PageIndex: NativeUInt; Dpi: Double): TBytes; static;
+    { Number of pages in PdfBytes (free — no license required). }
+    class function PageCount(const PdfBytes: TBytes): NativeUInt; static;
     { Validate every signature in PdfBytes and return the raw JSON array string
       (one object per signature with fields field_name, sub_filter, signer,
       covers_whole_document, digest_valid, signature_valid, is_valid, byte_range).
@@ -382,6 +388,8 @@ type
 
   Tpdf_extract_text         = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_extract_images_to_dir = function(data: PByte; len: NativeUInt; dir: PAnsiChar; out out_count: NativeUInt): Integer; cdecl;
+  Tpdf_render_page_to_png   = function(data: PByte; len: NativeUInt; page_index: NativeUInt; dpi: Double; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_page_count           = function(data: PByte; len: NativeUInt; out out_count: NativeUInt): Integer; cdecl;
   Tpdf_sign                 = function(pdf: PByte; pdf_len: NativeUInt; key: PByte; key_len: NativeUInt; cert: PByte; cert_len: NativeUInt; reason, location, name: PAnsiChar; pades: Integer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_timestamp            = function(pdf: PByte; pdf_len: NativeUInt; key: PByte; key_len: NativeUInt; cert: PByte; cert_len: NativeUInt; date: PAnsiChar; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_add_dss              = function(pdf: PByte; pdf_len: NativeUInt; cert_ptrs: Pointer; cert_lens: Pointer; cert_count: NativeUInt; crl_ptrs: Pointer; crl_lens: Pointer; crl_count: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
@@ -465,6 +473,8 @@ var
   Fpdf_editable_convert_to_pdfa: Tpdf_editable_convert_to_pdfa;
   Fpdf_extract_text: Tpdf_extract_text;
   Fpdf_extract_images_to_dir: Tpdf_extract_images_to_dir;
+  Fpdf_render_page_to_png: Tpdf_render_page_to_png;
+  Fpdf_page_count: Tpdf_page_count;
   Fpdf_sign: Tpdf_sign;
   Fpdf_timestamp: Tpdf_timestamp;
   Fpdf_add_dss: Tpdf_add_dss;
@@ -647,6 +657,8 @@ begin
   Fpdf_editable_convert_to_pdfa := Tpdf_editable_convert_to_pdfa(Bind('pdf_editable_convert_to_pdfa'));
   Fpdf_extract_text := Tpdf_extract_text(Bind('pdf_extract_text'));
   Fpdf_extract_images_to_dir := Tpdf_extract_images_to_dir(Bind('pdf_extract_images_to_dir'));
+  Fpdf_render_page_to_png := Tpdf_render_page_to_png(Bind('pdf_render_page_to_png'));
+  Fpdf_page_count := Tpdf_page_count(Bind('pdf_page_count'));
   Fpdf_sign := Tpdf_sign(Bind('pdf_sign'));
   Fpdf_timestamp := Tpdf_timestamp(Bind('pdf_timestamp'));
   Fpdf_add_dss := Tpdf_add_dss(Bind('pdf_add_dss'));
@@ -1559,6 +1571,26 @@ begin
   ud := U8(Dir);
   Count := 0;
   Check(Fpdf_extract_images_to_dir(BytePtr(PdfBytes), Length(PdfBytes), PAnsiChar(ud), Count));
+  Result := Count;
+end;
+
+class function Pdf.RenderPageToPng(const PdfBytes: TBytes; PageIndex: NativeUInt; Dpi: Double): TBytes;
+var
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_render_page_to_png(BytePtr(PdfBytes), Length(PdfBytes), PageIndex, Dpi, P, Len));
+  Result := TakeBuffer(P, Len);
+end;
+
+class function Pdf.PageCount(const PdfBytes: TBytes): NativeUInt;
+var
+  Count: NativeUInt;
+begin
+  EnsureLoaded;
+  Count := 0;
+  Check(Fpdf_page_count(BytePtr(PdfBytes), Length(PdfBytes), Count));
   Result := Count;
 end;
 

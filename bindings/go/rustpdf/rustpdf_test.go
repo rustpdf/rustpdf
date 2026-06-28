@@ -110,6 +110,15 @@ func TestFullSurface(t *testing.T) {
 		t.Fatalf("extract: %q err=%v", text, err)
 	}
 
+	// 3b. Page rendering (Pro feature; license already active).
+	if n, err := PageCount(pdfa); err != nil || n != 1 {
+		t.Fatalf("page count: %d err=%v", n, err)
+	}
+	png, err := RenderPageToPng(pdfa, 0, 72.0)
+	if err != nil || len(png) < 8 || string(png[1:4]) != "PNG" {
+		t.Fatalf("render: %d bytes err=%v", len(png), err)
+	}
+
 	// 4. Incremental update preserves the original prefix.
 	{
 		ed, err := Load(pdfa)

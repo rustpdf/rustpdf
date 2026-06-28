@@ -81,6 +81,46 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   corretamente. Falta: cor/estilo (negrito/itálico) e estado aberto/fechado
   (`Count` negativo) por item.
 
+## Rasterização de página (crate `render`, 7.8)
+
+> Renderizar uma página → imagem (o inverso do writer). Implementado sobre
+> `tiny-skia` (puro Rust, BSD-3). Cobre o grosso do conteúdo real; as lacunas
+> abaixo são best-effort/adiadas.
+
+- ✅ **Vetores** — preencher/traçar/clip (nonzero + even-odd), `cm`/`q`/`Q`,
+  todos os operadores de path (`m`/`l`/`c`/`v`/`y`/`re`/`h`), dash/cap/join/
+  miter, largura zero → ~1px. **Texto** com outlines reais (`ttf-parser`):
+  Type0/Identity-H (caminho do próprio writer, mais sólido) + fontes simples
+  (WinAnsi/Standard/MacRoman + `/Differences`, AGL subset), render modes
+  (fill/stroke/invisible/clip). **Imagens** XObject + inline (amostras cruas
+  1/2/4/8/16-bit por colorspace, JPEG via `jpeg-decoder`, `/SMask`,
+  `/ImageMask`, `/Decode`). **Cores** Gray/RGB/CMYK/ICCBased(por `/N`)/Indexed/
+  Separation/DeviceN com funções tipo 0/2/3/**4 (calculadora PostScript)**.
+  **Form XObjects** (Matrix+BBox+recursão), **ExtGState** (`ca`/`CA`/`BM`),
+  **sombreamentos** axial (tipo 2) e radial (tipo 3), `/Rotate` + `/CropBox`.
+- 🟡 **Fallback de fonte não-embutida** usa **Roboto** (sans) para todas as
+  standard-14 → métrica/forma aproximada para Times/Courier (serif/mono). Sem
+  acesso a fontes do sistema. Aceitável; documentado.
+- ⏳ **Mesh shadings** (tipos 4–7: free-form/lattice Gouraud, Coons, tensor) —
+  não renderizados (`sh`/pattern com esses tipos não pinta). Só axial/radial.
+- ⏳ **Tiling patterns** (PatternType 1) e **shading patterns** via `scn`/`SCN`
+  — `sh` (axial/radial direto) funciona; preencher um path *com* um pattern
+  nomeado ainda não. Hoje cai no `default_rgb` do espaço Pattern (preto).
+- ⏳ **Soft mask por luminosidade/alpha do ExtGState `/SMask`** (grupos de
+  transparência) — só o alfa constante `ca`/`CA` é aplicado. Blend modes
+  separáveis mapeiam para os do tiny-skia; não-separáveis (Hue/Saturation/
+  Color/Luminosity) caem em Normal.
+- ⏳ **Codecs de imagem opacos**: `CCITTFaxDecode`, `JPXDecode` (JPEG2000),
+  `JBIG2Decode` — pulados (não pintam), como na extração. Predictors de Flate
+  já são tratados pelo `parser`.
+- ⏳ **FontFile (Type1 PFB)** — `ttf-parser` não parseia Type1; cai no fallback
+  Roboto. FontFile2 (TrueType) e FontFile3 (CFF/OpenType) funcionam.
+- ⏳ **CMaps nomeados** em Type0 além de Identity-H/V (ex.: cmaps CJK
+  predefinidos) — tratados como identidade 2-byte (best-effort).
+- Nota: a saída raster é **determinística** (tiny-skia é determinístico, sem
+  timestamps), mas o invariante de "PDF byte-idêntico" não se aplica aqui —
+  `render` produz imagens, não PDFs, e não toca o grafo de objetos `Send`.
+
 ## Writer / núcleo
 
 - ✅ **Object streams e cross-reference streams na escrita** (`crates/writer`).

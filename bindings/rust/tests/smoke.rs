@@ -118,6 +118,11 @@ fn full_surface() {
     let _count =
         rustpdf::extract_images_to_dir(&bytes, img_dir.to_str().unwrap()).expect("extract images");
 
+    // Page rendering (Pro feature; license already active).
+    assert_eq!(rustpdf::page_count(&bytes).expect("page count"), 1);
+    let png = rustpdf::render_page_to_png(&bytes, 0, 72.0).expect("render page");
+    assert!(png.len() > 8 && &png[1..4] == b"PNG", "expected a PNG header");
+
     // --- encryption path ---
     let mut enc = EditableDoc::load(&bytes).expect("load for encrypt");
     enc.encrypt(Encryption::Aes256, "user", "owner", false)

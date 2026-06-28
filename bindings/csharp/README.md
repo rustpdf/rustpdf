@@ -6,8 +6,9 @@ full product surface: vector graphics, embedded/subsetted fonts and text,
 wrapping paragraphs, images, **PDF/A** (levels 1b–3a), **tagged/accessible**
 output, embedded-file attachments, **AcroForm** fields, manipulation
 (merge/split/rotate/optimize/incremental update), **text extraction**,
-**encryption** (RC4 / AES-128 / AES-256) and **digital signatures** (PKCS#7 /
-PAdES) — plus **feature licensing**.
+**page rendering** (page to PNG image), **encryption** (RC4 / AES-128 /
+AES-256) and **digital signatures** (PKCS#7 / PAdES) — plus **feature
+licensing**.
 
 Layout:
 
@@ -82,8 +83,9 @@ using (var doc = new Document())
 }
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility) require a license;
-without one they throw `PdfException`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Corporate features (PDF/A, signing, encryption, accessibility, page rendering)
+require a license; without one they throw `PdfException`. Page rendering is a
+**Pro** feature. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
 
 ## Build & run the sample
 

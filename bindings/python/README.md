@@ -5,8 +5,8 @@ product surface: vector graphics, embedded/subsetted fonts and text, wrapping
 paragraphs, images, **PDF/A** (levels 1b–3a), **tagged/accessible** output,
 embedded file attachments, **AcroForm** fields, manipulation
 (merge/split/rotate/optimize/incremental update), **text extraction**,
-**encryption** (RC4 / AES-128 / AES-256) and **digital signatures** (PKCS#7 /
-PAdES).
+**page rendering** (page to PNG image), **encryption** (RC4 / AES-128 /
+AES-256) and **digital signatures** (PKCS#7 / PAdES).
 
 Two layers, per the project's porting strategy:
 
@@ -23,8 +23,9 @@ pip install rustpdf
 Platform wheels (macOS arm64, manylinux_2_28 x86_64/aarch64, Windows x64)
 bundle the native `libpdf_ffi` library — no Rust toolchain needed to install.
 Basic PDF generation is free; corporate features (PDF/A, accessibility,
-encryption, signatures) unlock with a license token via the `RUSTPDF_LICENSE`
-env var. See <https://rustpdf.dev>.
+encryption, signatures, page rendering) unlock with a license token via the
+`RUSTPDF_LICENSE` env var. Page rendering is a **Pro** feature. See
+<https://rustpdf.dev>.
 
 ## Loading the native library
 
@@ -52,6 +53,11 @@ with rustpdf.Document() as doc:
     data = doc.to_bytes()
 
 print(rustpdf.extract_text(data))
+
+# Render a page to a PNG image (Pro feature).
+print(f"{rustpdf.page_count(data)} page(s)")
+png = rustpdf.render_page_to_png(data, page=0, dpi=150.0)
+open("page1.png", "wb").write(png)
 
 # Manipulate an existing file (non-destructive incremental update).
 with rustpdf.EditableDoc.load(data) as ed:

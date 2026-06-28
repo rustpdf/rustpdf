@@ -2,7 +2,7 @@
 //!
 //! `PdfEditable` is its own opaque handle, freed with [`pdf_editable_free`].
 
-use std::ffi::{c_char, c_int, c_uchar};
+use std::ffi::{c_char, c_double, c_int, c_uchar};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use pdf::{ConvertError, EditableDoc, Encryption, Image, PdfaLevel, Permissions, WatermarkOptions};
@@ -793,4 +793,61 @@ pub unsafe extern "C" fn pdf_extract_images_to_dir(
         clear_last_error();
         PdfStatus::Ok
     })
+}
+
+/// Render page `page_index` (0-based) of the PDF in `data`/`len` to a PNG image
+/// at `dpi` dots-per-inch. The PNG bytes are returned in `out_ptr`/`out_len`,
+/// to be released with [`pdf_buffer_free`].
+///
+/// # Safety
+/// `data`/`len` readable; `out_ptr`/`out_len` writable, non-aliasing.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_render_page_to_png(
+    data: *const u8,
+    len: usize,
+    page_index: usize,
+    dpi: c_double,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(
+        || match pdf::render_page_to_png(unsafe { bytes(data, len) }, page_index, dpi as f32) {
+            Ok(png) => unsafe { emit_buffer(png, out_ptr, out_len) },
+            Err(pdf::PageRenderError::License(_)) => {
+                set_last_error("render_page_to_png requires a license (Pro feature)");
+                PdfStatus::License
+            }
+            Err(e) => {
+                set_last_error(format!("render_page_to_png failed: {e}"));
+                PdfStatus::Parse
+            }
+        },
+    )
+}
+
+/// Number of pages in the PDF in `data`/`len`, written to `out_count`.
+///
+/// # Safety
+/// `data`/`len` readable; `out_count` writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_page_count(
+    data: *const u8,
+    len: usize,
+    out_count: *mut usize,
+) -> PdfStatus {
+    guard(
+        || match pdf::render_page_count(unsafe { bytes(data, len) }) {
+            Ok(count) => {
+                if !out_count.is_null() {
+                    unsafe { *out_count = count };
+                }
+                clear_last_error();
+                PdfStatus::Ok
+            }
+            Err(e) => {
+                set_last_error(format!("page_count failed: {e}"));
+                PdfStatus::Parse
+            }
+        },
+    )
 }

@@ -6,9 +6,10 @@ compilation, no node-gyp). It covers the whole product surface: vector graphics,
 embedded/subsetted fonts and text, wrapping paragraphs, images, **PDF/A**
 (levels 1b–3a), **tagged/accessible** output, embedded-file attachments,
 **AcroForm** fields, manipulation (merge/split/rotate/optimize/incremental
-update), **text extraction**, **encryption** (RC4 / AES-128 / AES-256) and
-**digital signatures** (PKCS#7 / PAdES) — plus **feature licensing**. Ships with
-TypeScript types (`lib/index.d.ts`).
+update), **text extraction**, **page rendering** (page to PNG image),
+**encryption** (RC4 / AES-128 / AES-256) and **digital signatures** (PKCS#7 /
+PAdES) — plus **feature licensing**. Ships with TypeScript types
+(`lib/index.d.ts`).
 
 ## Install
 
@@ -62,7 +63,7 @@ ed.close();
 const signed = rp.sign(data, keyDer, certDer, { pades: true });
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility) require a license;
+Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
 without one they throw `PdfError`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
 
 ## Test

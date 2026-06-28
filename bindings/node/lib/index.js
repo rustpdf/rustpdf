@@ -198,6 +198,8 @@ const f = {
 
   extractText: lib.func('int pdf_extract_text(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
   extractImagesToDir: lib.func('int pdf_extract_images_to_dir(const uint8_t *data, size_t len, const char *dir, _Out_ size_t *out_count)'),
+  renderPageToPng: lib.func('int pdf_render_page_to_png(const uint8_t *data, size_t len, size_t page_index, double dpi, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+  pageCount: lib.func('int pdf_page_count(const uint8_t *data, size_t len, _Out_ size_t *out_count)'),
   sign: lib.func('int pdf_sign(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *reason, const char *location, const char *name, int pades, _Out_ uint8_t **out, _Out_ size_t *len)'),
   timestamp: lib.func('int pdf_timestamp(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *date, _Out_ uint8_t **out, _Out_ size_t *len)'),
   addDss: lib.func('int pdf_add_dss(const uint8_t *pdf, size_t pl, const uint8_t **cp, const size_t *cl, size_t cc, const uint8_t **rp, const size_t *rl, size_t rc, _Out_ uint8_t **out, _Out_ size_t *len)'),
@@ -249,6 +251,18 @@ function extractImagesToDir(pdf, dir) {
   const b = asBuf(pdf);
   const count = [0n];
   check(f.extractImagesToDir(b, b.length, dir, count));
+  return Number(count[0]);
+}
+
+function renderPageToPng(pdf, page = 0, dpi = 150.0) {
+  const b = asBuf(pdf);
+  return takeBytes((o, n) => f.renderPageToPng(b, b.length, page, dpi, o, n));
+}
+
+function pageCount(pdf) {
+  const b = asBuf(pdf);
+  const count = [0n];
+  check(f.pageCount(b, b.length, count));
   return Number(count[0]);
 }
 
@@ -528,6 +542,8 @@ module.exports = {
   activateLicense,
   extractText,
   extractImagesToDir,
+  renderPageToPng,
+  pageCount,
   verifySignatures,
   sign,
   timestamp,

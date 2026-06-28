@@ -88,7 +88,8 @@ fn main() -> rustpdf::Result<()> {
 ```
 
 Corporate features (PDF/A, tagged/accessible output, encryption, digital
-signatures) are gated behind a license — activate it once per process:
+signatures, page rendering — a **Pro** feature) are gated behind a license —
+activate it once per process:
 
 ```rust
 rustpdf::activate_license(&std::fs::read_to_string("license.txt")?)?;

@@ -264,6 +264,13 @@ internal static partial class Native
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_extract_images_to_dir(byte[] data, nuint len, string dir, out nuint outCount);
 
+    [LibraryImport(Lib)]
+    internal static partial int pdf_render_page_to_png(
+        byte[] data, nuint len, nuint pageIndex, double dpi, out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_page_count(byte[] data, nuint len, out nuint outCount);
+
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_sign(
         byte[] pdf, nuint pdfLen, byte[] keyDer, nuint keyLen, byte[] certDer, nuint certLen,

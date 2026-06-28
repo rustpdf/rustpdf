@@ -1,0 +1,26 @@
+[package]
+name = "render"
+description = "Native PDF page rasterizer (content-stream interpreter onto a pixmap)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+cos.workspace = true
+parser.workspace = true
+fonts.workspace = true
+images.workspace = true
+tiny-skia = "0.11"
+ttf-parser = "0.25"
+png = "0.18"
+jpeg-decoder = "0.3"
+
+[dev-dependencies]
+pdf.workspace = true
+png = "0.18"
+
+[lints]
+workspace = true

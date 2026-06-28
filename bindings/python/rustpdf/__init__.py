@@ -47,6 +47,8 @@ __all__ = [
     "activate_license",
     "extract_text",
     "extract_images_to_dir",
+    "render_page_to_png",
+    "page_count",
     "verify_signatures",
     "sign",
     "timestamp",
@@ -274,6 +276,10 @@ _extract_text = _bind("pdf_extract_text", c_int, [_U8, c_size_t, *_OUTBUF])
 _extract_images_to_dir = _bind(
     "pdf_extract_images_to_dir", c_int, [_U8, c_size_t, c_char_p, POINTER(c_size_t)]
 )
+_render_page_to_png = _bind(
+    "pdf_render_page_to_png", c_int, [_U8, c_size_t, c_size_t, c_double, *_OUTBUF]
+)
+_render_page_count = _bind("pdf_page_count", c_int, [_U8, c_size_t, POINTER(c_size_t)])
 _sign = _bind(
     "pdf_sign",
     c_int,
@@ -811,6 +817,24 @@ def extract_images_to_dir(data: bytes, out_dir: str) -> int:
     ptr, n, _keep = _as_u8(bytes(data))
     count = c_size_t(0)
     _check(_extract_images_to_dir(ptr, n, _enc(str(out_dir)), byref(count)))
+    return count.value
+
+
+def render_page_to_png(data: bytes, page: int = 0, dpi: float = 150.0) -> bytes:
+    """Render page ``page`` (0-based) of ``data`` to a PNG image at ``dpi``.
+
+    Page rendering is a licensed **Pro** feature: raises :class:`PdfError`
+    (``PdfStatus.License``) unless a license granting it is active.
+    """
+    ptr, n, _keep = _as_u8(bytes(data))
+    return _take(lambda p, ln: _render_page_to_png(ptr, n, page, float(dpi), p, ln))
+
+
+def page_count(data: bytes) -> int:
+    """Number of pages in ``data`` (free — no license required)."""
+    ptr, n, _keep = _as_u8(bytes(data))
+    count = c_size_t(0)
+    _check(_render_page_count(ptr, n, byref(count)))
     return count.value
 
 
