@@ -113,6 +113,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -595,6 +596,15 @@ print(rustpdf.extract_text(data))
 n = rustpdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
 print(f"wrote {n} image(s)")</code></pre></div>
 
+      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
+      <div class="api"><code>rustpdf.render_page_to_png(data: bytes, page: int = 0, dpi: float = 150.0) → bytes</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>rustpdf.page_count(data: bytes) → int</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("report.pdf", "rb").read()
+print(f"{rustpdf.page_count(data)} page(s)")
+png = rustpdf.render_page_to_png(data, page=0, dpi=150.0)
+open("page1.png", "wb").write(png)</code></pre></div>
+
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
       <h3>PdfaLevel</h3>
@@ -694,6 +704,7 @@ except PdfError as e:
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>
   </div>

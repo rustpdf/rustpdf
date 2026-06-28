@@ -113,6 +113,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -601,6 +602,15 @@ Console.WriteLine(Pdf.ExtractText(data));
 int n = Pdf.ExtractImagesToDir(data, "out_images/");   // returns how many were written
 Console.WriteLine($"wrote {n} image(s)");</code></pre></div>
 
+      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
+      <div class="api"><code>byte[] Pdf.RenderPageToPng(byte[] pdf, int pageIndex = 0, double dpi = 150.0)</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>int Pdf.PageCount(byte[] pdf)</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("report.pdf");
+Console.WriteLine($"{Pdf.PageCount(data)} page(s)");
+byte[] png = Pdf.RenderPageToPng(data, pageIndex: 0, dpi: 150.0);
+File.WriteAllBytes("page1.png", png);</code></pre></div>
+
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
       <h3>PdfaLevel</h3>
@@ -704,6 +714,7 @@ catch (PdfException e)
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>
   </div>

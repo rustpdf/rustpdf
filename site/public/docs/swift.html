@@ -114,6 +114,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -587,6 +588,15 @@ print(try Pdf.extractText(data))
 let n = try Pdf.extractImagesToDir(data, "out_images/")   // returns how many were written
 print("wrote \(n) image(s)")</code></pre></div>
 
+      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
+      <div class="api"><code>Pdf.renderPageToPng(_ pdf: [UInt8], page: Int = 0, dpi: Double = 150.0) throws → [UInt8]</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>Pdf.pageCount(_ pdf: [UInt8]) throws → Int</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = [UInt8](try Data(contentsOf: URL(fileURLWithPath: "report.pdf")))
+print("\(try Pdf.pageCount(data)) page(s)")
+let png = try Pdf.renderPageToPng(data, page: 0, dpi: 150.0)
+try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
+
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
       <h3>PdfaLevel</h3>
@@ -684,6 +694,7 @@ print("wrote \(n) image(s)")</code></pre></div>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>
   </div>

@@ -137,7 +137,7 @@ product. Embarcadero's **GetIt** is also an option but requires partner approval
 **One command does the whole release** — see [`RELEASING.md`](RELEASING.md):
 
 ```sh
-scripts/release-delphi.sh 0.2.0     # bump → tag → CI release → deploy → verify
+scripts/release-delphi.sh 0.3.0     # bump → tag → CI release → deploy → verify
 ```
 
 The zip is a build artifact (never committed). The full chain it automates:

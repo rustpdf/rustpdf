@@ -1,6 +1,6 @@
 {
   "name": "@rustpdf/linux-x64-gnu",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Prebuilt rust-pdf native library (libpdf_ffi) for Linux x64 (glibc). Installed automatically as an optional dependency of `rustpdf`.",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://rustpdf.dev",
