@@ -11,10 +11,23 @@ use writer::Document as WriterDoc;
 
 /// A small, public-domain (CC0) sRGB v2 ICC profile, bundled as the
 /// `DestOutputProfile`. See `assets/icc/LICENSE.txt`.
-const SRGB_ICC: &[u8] = include_bytes!(concat!(
+pub(crate) const SRGB_ICC: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/icc/sRGB.icc"
 ));
+
+/// ZUGFeRD / Factur-X identification, embedded into the XMP as the `fx` schema.
+#[derive(Debug, Clone)]
+pub(crate) struct ZugferdXmp {
+    /// The embedded XML file name (e.g. `factur-x.xml`).
+    pub filename: String,
+    /// The document type (`INVOICE`).
+    pub document_type: String,
+    /// The Factur-X version (`1.0`).
+    pub version: String,
+    /// The conformance level / profile (e.g. `EN 16931`, `BASIC`).
+    pub conformance: String,
+}
 
 /// Add the PDF/A objects, mutate `catalog`, and set the document `/ID`.
 /// `part` is the PDF/A part (1, 2 or 3); `conformance` is 'A'
@@ -25,6 +38,7 @@ pub(crate) fn apply(
     info: &[(&str, String)],
     part: u8,
     conformance: char,
+    zugferd: Option<&ZugferdXmp>,
 ) {
     // 1. Embedded sRGB ICC profile (N = 3 components).
     let icc_dict = Dict::new().with("N", 3);
@@ -48,7 +62,7 @@ pub(crate) fn apply(
 
     // 3. XMP metadata (uncompressed) with the PDF/A identifier, kept in sync
     //    with the Info dictionary.
-    let xmp = build_xmp(info, part, conformance);
+    let xmp = build_xmp(info, part, conformance, zugferd);
     let meta_dict = Dict::new()
         .with("Type", Object::name("Metadata"))
         .with("Subtype", Object::name("XML"));
@@ -62,7 +76,12 @@ pub(crate) fn apply(
 
 /// Build the XMP packet, mirroring the Info entries (PDF/A requires equality
 /// between Info and XMP where both are present).
-fn build_xmp(info: &[(&str, String)], part: u8, conformance: char) -> String {
+pub(crate) fn build_xmp(
+    info: &[(&str, String)],
+    part: u8,
+    conformance: char,
+    zugferd: Option<&ZugferdXmp>,
+) -> String {
     let get = |k: &str| {
         info.iter()
             .find(|(key, _)| *key == k)
@@ -126,6 +145,41 @@ fn build_xmp(info: &[(&str, String)], part: u8, conformance: char) -> String {
         ""
     };
 
+    // ZUGFeRD / Factur-X: the `fx` identification description plus the
+    // pdfaExtension schema declaring its (non-predefined) namespace, which
+    // PDF/A validators require for the embedded invoice to be conforming.
+    let fx = match zugferd {
+        Some(z) => format!(
+            "<rdf:Description rdf:about=\"\" \
+             xmlns:fx=\"urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#\">\
+             <fx:DocumentType>{dt}</fx:DocumentType>\
+             <fx:DocumentFileName>{fname}</fx:DocumentFileName>\
+             <fx:Version>{ver}</fx:Version>\
+             <fx:ConformanceLevel>{conf}</fx:ConformanceLevel></rdf:Description>\n\
+             <rdf:Description rdf:about=\"\" \
+             xmlns:pdfaExtension=\"http://www.aiim.org/pdfa/ns/extension/\" \
+             xmlns:pdfaSchema=\"http://www.aiim.org/pdfa/ns/schema#\" \
+             xmlns:pdfaProperty=\"http://www.aiim.org/pdfa/ns/property#\">\
+             <pdfaExtension:schemas><rdf:Bag><rdf:li rdf:parseType=\"Resource\">\
+             <pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>\
+             <pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI>\
+             <pdfaSchema:prefix>fx</pdfaSchema:prefix>\
+             <pdfaSchema:property><rdf:Seq>\
+             {prop_dt}{prop_fn}{prop_ver}{prop_conf}\
+             </rdf:Seq></pdfaSchema:property></rdf:li></rdf:Bag></pdfaExtension:schemas>\
+             </rdf:Description>\n",
+            dt = xml(&z.document_type),
+            fname = xml(&z.filename),
+            ver = xml(&z.version),
+            conf = xml(&z.conformance),
+            prop_dt = fx_property("DocumentType"),
+            prop_fn = fx_property("DocumentFileName"),
+            prop_ver = fx_property("Version"),
+            prop_conf = fx_property("ConformanceLevel"),
+        ),
+        None => String::new(),
+    };
+
     format!(
         "<?xpacket begin=\"\u{feff}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n\
          <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n\
@@ -135,12 +189,23 @@ fn build_xmp(info: &[(&str, String)], part: u8, conformance: char) -> String {
          <rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">{dc}</rdf:Description>\n\
          <rdf:Description rdf:about=\"\" xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">{pdf_ns}</rdf:Description>\n\
          <rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">{xmp_ns}</rdf:Description>\n\
-         {ua}\
+         {fx}{ua}\
          </rdf:RDF>\n</x:xmpmeta>\n<?xpacket end=\"w\"?>"
     )
 }
 
-fn document_id(info: &[(&str, String)]) -> Vec<u8> {
+/// One pdfaProperty entry declaring an `fx` schema field (all internal Text).
+fn fx_property(name: &str) -> String {
+    format!(
+        "<rdf:li rdf:parseType=\"Resource\">\
+         <pdfaProperty:name>{name}</pdfaProperty:name>\
+         <pdfaProperty:valueType>Text</pdfaProperty:valueType>\
+         <pdfaProperty:category>external</pdfaProperty:category>\
+         <pdfaProperty:description>{name}</pdfaProperty:description></rdf:li>"
+    )
+}
+
+pub(crate) fn document_id(info: &[(&str, String)]) -> Vec<u8> {
     let mut h = Md5::new();
     h.update(b"rust-pdf-pdfa");
     for (k, v) in info {
@@ -171,7 +236,7 @@ mod tests {
 
     #[test]
     fn xmp_contains_pdfa_identifier() {
-        let xmp = build_xmp(&[("Producer", "rust-pdf 0.1.0".into())], 2, 'B');
+        let xmp = build_xmp(&[("Producer", "rust-pdf 0.1.0".into())], 2, 'B', None);
         assert!(xmp.contains("<pdfaid:part>2</pdfaid:part>"));
         assert!(xmp.contains("<pdfaid:conformance>B</pdfaid:conformance>"));
         assert!(xmp.contains("<pdf:Producer>rust-pdf 0.1.0</pdf:Producer>"));

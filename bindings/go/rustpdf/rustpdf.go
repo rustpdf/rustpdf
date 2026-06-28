@@ -21,6 +21,7 @@ package rustpdf
 import "C"
 
 import (
+	"encoding/json"
 	"runtime"
 	"unsafe"
 )
@@ -66,6 +67,17 @@ const (
 	RC4    Encryption = 0
 	AES128 Encryption = 1
 	AES256 Encryption = 2
+)
+
+// FacturxProfile is a ZUGFeRD / Factur-X conformance profile.
+type FacturxProfile int
+
+const (
+	FacturxMinimum  FacturxProfile = 0
+	FacturxBasicWL  FacturxProfile = 1
+	FacturxBasic    FacturxProfile = 2
+	FacturxEN16931  FacturxProfile = 3
+	FacturxExtended FacturxProfile = 4
 )
 
 // ---- errors ----------------------------------------------------------------
@@ -175,6 +187,55 @@ func ExtractText(pdf []byte) (string, error) {
 	return string(b), err
 }
 
+// ExtractImagesToDir extracts every raster image from a PDF and writes each
+// into the directory dir (which must already exist): JPEG images verbatim as
+// .jpg, everything else re-encoded as .png, named page{N}_{name}.{ext}. It
+// returns the number of files written.
+func ExtractImagesToDir(data []byte, dir string) (int, error) {
+	cdir := C.CString(dir)
+	defer C.free(unsafe.Pointer(cdir))
+	var count C.uintptr_t
+	st := C.pdf_extract_images_to_dir(uptr(data), C.uintptr_t(len(data)), cdir, &count)
+	runtime.KeepAlive(data)
+	if err := check(st); err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// SignatureReport is the validation result for one signature in a document.
+type SignatureReport struct {
+	FieldName           *string `json:"field_name"`
+	SubFilter           string  `json:"sub_filter"`
+	Signer              *string `json:"signer"`
+	CoversWholeDocument bool    `json:"covers_whole_document"`
+	DigestValid         bool    `json:"digest_valid"`
+	SignatureValid      bool    `json:"signature_valid"`
+	IsValid             bool    `json:"is_valid"`
+	ByteRange           []int   `json:"byte_range"`
+}
+
+// VerifySignatures validates every signature in a PDF. It returns one report per
+// signature (an empty slice means the document is unsigned).
+func VerifySignatures(pdf []byte) ([]SignatureReport, error) {
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_verify_signatures_json(uptr(pdf), C.uintptr_t(len(pdf)), out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 {
+		return []SignatureReport{}, nil
+	}
+	var reports []SignatureReport
+	if err := json.Unmarshal(b, &reports); err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
 // SignOptions configures Sign. Empty strings are treated as absent.
 type SignOptions struct {
 	Reason   string
@@ -228,8 +289,10 @@ func Timestamp(pdf, tsaKeyDER, tsaCertDER []byte, date string) ([]byte, error) {
 
 // AddDss appends a Document Security Store (/DSS, PAdES-B-LT).
 func AddDss(pdf []byte, certs, crls [][]byte) ([]byte, error) {
-	certPtrs, certLens := pinAll(certs)
-	crlPtrs, crlLens := pinAll(crls)
+	var pinner runtime.Pinner
+	defer pinner.Unpin()
+	certPtrs, certLens := pinAll(&pinner, certs)
+	crlPtrs, crlLens := pinAll(&pinner, crls)
 	return takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
 		st := C.pdf_add_dss(
 			uptr(pdf), C.uintptr_t(len(pdf)),
@@ -241,15 +304,25 @@ func AddDss(pdf []byte, certs, crls [][]byte) ([]byte, error) {
 		runtime.KeepAlive(crls)
 		runtime.KeepAlive(certPtrs)
 		runtime.KeepAlive(crlPtrs)
+		runtime.KeepAlive(certLens)
+		runtime.KeepAlive(crlLens)
 		return st
 	})
 }
 
-func pinAll(items [][]byte) ([]*C.uint8_t, []C.uintptr_t) {
+// pinAll builds parallel C pointer/length slices for a list of byte slices. Each
+// element points into Go-allocated memory, so the C pointer array would otherwise
+// hold "Go pointers to unpinned Go pointers" — illegal to pass across cgo. Pin
+// each element's backing array (via the caller's Pinner, unpinned after the call)
+// so the pointer array is safe to hand to C under the default cgo pointer checks.
+func pinAll(pinner *runtime.Pinner, items [][]byte) ([]*C.uint8_t, []C.uintptr_t) {
 	ptrs := make([]*C.uint8_t, len(items))
 	lens := make([]C.uintptr_t, len(items))
 	for i, it := range items {
-		ptrs[i] = uptr(it)
+		if len(it) > 0 {
+			pinner.Pin(&it[0])
+			ptrs[i] = (*C.uint8_t)(unsafe.Pointer(&it[0]))
+		}
 		lens[i] = C.uintptr_t(len(it))
 	}
 	return ptrs, lens

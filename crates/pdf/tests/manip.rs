@@ -151,7 +151,7 @@ fn optimize_drops_unused_and_shrinks() {
 }
 
 #[test]
-fn fill_text_field_sets_value_and_needappearances() {
+fn fill_text_field_sets_value_and_generates_appearance() {
     // Hand-build a minimal AcroForm with one text field via the writer.
     let form = build_form_pdf();
     let mut doc = EditableDoc::load(&form).unwrap();
@@ -160,7 +160,10 @@ fn fill_text_field_sets_value_and_needappearances() {
     let bytes = doc.to_bytes().unwrap();
     let text = String::from_utf8_lossy(&bytes);
     assert!(text.contains("(Ada Lovelace)"), "field value not set");
-    assert!(text.contains("/NeedAppearances true"));
+    // The fill now generates a `/AP` appearance stream, so viewers need not
+    // regenerate one (`NeedAppearances` stays off).
+    assert!(text.contains("/Subtype /Form"));
+    assert!(!text.contains("/NeedAppearances true"));
 }
 
 /// A tiny one-page PDF with a single AcroForm text field named "name".

@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"runtime"
+	"strings"
 	"unsafe"
 )
 
@@ -129,6 +130,119 @@ func (e *EditableDoc) FillTextField(name, value string) (bool, error) {
 		return false, err
 	}
 	return found != 0, nil
+}
+
+// SetCheckbox checks or unchecks a checkbox field by name; returns whether it
+// existed.
+func (e *EditableDoc) SetCheckbox(name string, checked bool) (bool, error) {
+	cn := C.CString(name)
+	defer C.free(unsafe.Pointer(cn))
+	cb := C.int(0)
+	if checked {
+		cb = 1
+	}
+	var found C.int
+	if err := check(C.pdf_editable_set_checkbox(e.h, cn, cb, &found)); err != nil {
+		return false, err
+	}
+	return found != 0, nil
+}
+
+// SetRadio selects a radio button by its export value; returns whether it
+// existed.
+func (e *EditableDoc) SetRadio(name, exportValue string) (bool, error) {
+	cn := C.CString(name)
+	cv := C.CString(exportValue)
+	defer C.free(unsafe.Pointer(cn))
+	defer C.free(unsafe.Pointer(cv))
+	var found C.int
+	if err := check(C.pdf_editable_set_radio(e.h, cn, cv, &found)); err != nil {
+		return false, err
+	}
+	return found != 0, nil
+}
+
+// SetChoice sets a choice (dropdown/list) field value; returns whether it
+// existed.
+func (e *EditableDoc) SetChoice(name, value string) (bool, error) {
+	cn := C.CString(name)
+	cv := C.CString(value)
+	defer C.free(unsafe.Pointer(cn))
+	defer C.free(unsafe.Pointer(cv))
+	var found C.int
+	if err := check(C.pdf_editable_set_choice(e.h, cn, cv, &found)); err != nil {
+		return false, err
+	}
+	return found != 0, nil
+}
+
+// FlattenForms flattens all interactive form fields into static page content.
+func (e *EditableDoc) FlattenForms() error { return check(C.pdf_editable_flatten_forms(e.h)) }
+
+// FieldNames returns the document's terminal AcroForm field names.
+func (e *EditableDoc) FieldNames() ([]string, error) {
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		return C.pdf_editable_field_names(e.h, out, n)
+	})
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, s := range strings.Split(string(b), "\n") {
+		if s != "" {
+			names = append(names, s)
+		}
+	}
+	return names, nil
+}
+
+// WatermarkText stamps a diagonal text watermark across every page (standard
+// Helvetica). rotationDeg is counter-clockwise; opacity in 0..=1.
+func (e *EditableDoc) WatermarkText(text string, size, r, g, b, opacity, rotationDeg float64) error {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	return check(C.pdf_editable_watermark_text(
+		e.h, c, C.double(size), C.double(r), C.double(g), C.double(b),
+		C.double(opacity), C.double(rotationDeg)))
+}
+
+// WatermarkImageFile stamps an image (JPEG/PNG file at path) centered on every
+// page at width×height points, at opacity.
+func (e *EditableDoc) WatermarkImageFile(path string, width, height, opacity float64) error {
+	c := C.CString(path)
+	defer C.free(unsafe.Pointer(c))
+	return check(C.pdf_editable_watermark_image_file(
+		e.h, c, C.double(width), C.double(height), C.double(opacity)))
+}
+
+// Redact removes content under the given rectangles on page index (drawing a
+// black box over each) and returns whether the page existed. Each rect is
+// [x0,y0,x1,y1].
+func (e *EditableDoc) Redact(index int, rects [][4]float64) (bool, error) {
+	flat := make([]C.double, len(rects)*4)
+	for i, r := range rects {
+		flat[i*4] = C.double(r[0])
+		flat[i*4+1] = C.double(r[1])
+		flat[i*4+2] = C.double(r[2])
+		flat[i*4+3] = C.double(r[3])
+	}
+	var head *C.double
+	if len(flat) > 0 {
+		head = &flat[0]
+	}
+	var found C.int
+	st := C.pdf_editable_redact(e.h, C.uintptr_t(index), head, C.uintptr_t(len(rects)), &found)
+	runtime.KeepAlive(flat)
+	if err := check(st); err != nil {
+		return false, err
+	}
+	return found != 0, nil
+}
+
+// ConvertToPdfa converts the loaded document to PDF/A at the given level
+// (only B-levels A1b/A2b/A3b are valid). Requires a license.
+func (e *EditableDoc) ConvertToPdfa(level PdfaLevel) error {
+	return check(C.pdf_editable_convert_to_pdfa(e.h, C.int(level)))
 }
 
 func (e *EditableDoc) Optimize() error { return check(C.pdf_editable_optimize(e.h)) }

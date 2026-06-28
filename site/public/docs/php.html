@@ -87,13 +87,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -101,6 +108,7 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
       <a href="#extract">Text extraction</a>
@@ -332,6 +340,22 @@ $doc-&gt;addPage()
                  AFRelationship::Source, 'Structured invoice data')
     -&gt;save('einvoice.pdf');</code></pre></div>
 
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>facturx(xml: string, profile = FacturxProfile::EN16931): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, FacturxProfile};
+
+$xml = file_get_contents('factur-x.xml');         // your Cross-Industry Invoice XML
+$doc = new Document();
+$doc-&gt;setInfo(title: 'Invoice INV-2026-001');
+$f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;showText($f, 18, 72, 760, 'Invoice INV-2026-001');
+$doc-&gt;facturx($xml, FacturxProfile::EN16931);
+$doc-&gt;save('einvoice.pdf');        // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum … Extended).</p>
+
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
       <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>[x0, y0, x1, y1]</code> arrays; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
@@ -353,7 +377,39 @@ $doc-&gt;addPage()
         [[140, 580, 156, 596], 'annual'],
     ], 1)
     -&gt;save('form.pdf');</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc::fillTextField</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>linkUri(rect, uri): self</code> &nbsp; <code>linkToPage(rect, pageIndex, ?top = null): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$doc = new Document();
+$f   = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+$doc-&gt;addPage()
+    -&gt;showText($f, 14, 72, 760, 'Visit rustpdf.dev (see page 2)')
+    -&gt;linkUri([72, 756, 320, 776], 'https://rustpdf.dev/')   // web link
+    -&gt;linkToPage([330, 756, 430, 776], 1, 800)               // jump to page 2
+    -&gt;addPage()
+    -&gt;save('links.pdf');</code></pre></div>
+      <p>Rectangles are <code>[x0, y0, x1, y1]</code> arrays in points; <code>pageIndex</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>-&gt;child(...)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>new Bookmark(title, page, ?top = null)</code> &nbsp; <code>-&gt;child(bookmark)</code> &nbsp; <code>addBookmark(bookmark): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, Bookmark};
+
+$doc = new Document();
+$f   = $doc-&gt;addFontFile('Roboto-Regular.ttf');
+for ($i = 0; $i &lt; 3; $i++) {
+    $doc-&gt;addPage();
+}
+$doc-&gt;addBookmark(
+    (new Bookmark('Chapter 1', 0, 820))
+        -&gt;child(new Bookmark('Section 1.1', 1))
+        -&gt;child(new Bookmark('Section 1.2', 2)));
+$doc-&gt;addBookmark(new Bookmark('Chapter 2', 2));
+$doc-&gt;save('outline.pdf');</code></pre></div>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -417,6 +473,58 @@ $ed-&gt;setInfo('Title', 'Filled form');
 $found = $ed-&gt;fillTextField('applicant.name', 'Jane Doe');
 printf("filled: %s | title: %s\n", $found ? 'yes' : 'no', $ed-&gt;getInfo('Title'));
 $ed-&gt;save('filled.pdf');</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>fieldNames(): array</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>fillTextField(name, value): bool</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>setCheckbox(name, checked = true): bool</code></td><td>Check/uncheck a checkbox.</td></tr>
+        <tr><td><code>setRadio(name, exportValue): bool</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>setChoice(name, value): bool</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>flattenForms(): self</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\EditableDoc;
+
+$ed = EditableDoc::loadFile('form.pdf');
+print_r($ed-&gt;fieldNames());          // ['applicant.name', 'agree', 'plan', ...]
+$ed-&gt;fillTextField('applicant.name', 'Jane Doe');
+$ed-&gt;setCheckbox('agree', true);
+$ed-&gt;setRadio('billing', 'annual');
+$ed-&gt;setChoice('plan', 'Pro');
+$ed-&gt;flattenForms();                 // optional: make it non-editable
+$ed-&gt;save('filled.pdf');</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>watermarkText(text, size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0): self</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity = 0.30): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('report.pdf');
+$ed-&gt;watermarkText('CONFIDENTIAL', opacity: 0.25, rotationDeg: 45.0)
+   -&gt;save('stamped.pdf');</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>redact(pageIndex, rects): bool</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('statement.pdf');
+// rects = array of [x0, y0, x1, y1] on that page
+$ed-&gt;redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]]);
+$ed-&gt;save('redacted.pdf');     // throws PdfException without a redaction license</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf::extractText</code> on the output no longer returns it. <code>redact</code> returns <code>false</code> if the page index does not exist.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>convertToPdfa(level = PdfaLevel::A2b): self</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{EditableDoc, PdfaLevel};
+
+$ed = EditableDoc::loadFile('in.pdf');
+$ed-&gt;convertToPdfa(PdfaLevel::A2b)   // throws PdfException if fonts aren't embedded
+   -&gt;save('archival.pdf');           // veraPDF: PDF/A-2b compliant</code></pre></div>
 
       <!-- ED OPTIMIZE -->
       <h2 id="ed-optimize">Optimize &amp; compact</h2>
@@ -483,12 +591,33 @@ $lt = Pdf::addDss($signed, [$certDer], [$crlDer]);
 $lta = Pdf::timestamp($lt, $tsaKeyDer, $tsaCertDer);
 file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>Pdf::verifySignatures(data: string): array</code></div>
+      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. An empty array means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
+
+$data = file_get_contents('contract.signed.pdf');
+foreach (Pdf::verifySignatures($data) as $sig) {
+    printf("%s valid: %s | covers whole doc: %s\n",
+        $sig['signer'],
+        $sig['is_valid'] ? 'yes' : 'no',
+        $sig['covers_whole_document'] ? 'yes' : 'no');
+}</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>Pdf::extractText(pdf: string): string</code> <span class="badge free">free</span></div>
-      <div class="code has-label"><span class="lbl">php</span><pre><code>$data = file_get_contents('report.pdf');
-echo RustPdf\Pdf::extractText($data);</code></pre></div>
+      <div class="api"><code>Pdf::extractImagesToDir(pdf: string, dir: string): int</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
+
+$data = file_get_contents('report.pdf');
+echo Pdf::extractText($data);
+
+$n = Pdf::extractImagesToDir($data, 'out_images/');   // returns how many were written
+echo "wrote $n image(s)\n";</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -525,6 +654,15 @@ echo RustPdf\Pdf::extractText($data);</code></pre></div>
         <tr><td><code>Encryption::Rc4</code></td><td>RC4 (legacy)</td></tr>
         <tr><td><code>Encryption::Aes128</code></td><td>AES-128</td></tr>
         <tr><td><code>Encryption::Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>FacturxProfile::Minimum</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>FacturxProfile::BasicWL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>FacturxProfile::Basic</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>FacturxProfile::EN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>FacturxProfile::Extended</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -567,11 +705,19 @@ try {
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

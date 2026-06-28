@@ -160,6 +160,44 @@ module RustPdf
       self
     end
 
+    # ---- hyperlinks + bookmarks (Tier 1) ------------------------------------
+
+    # rect = [x0, y0, x1, y1]; link to an external URI.
+    def link_uri(rect, uri)
+      RustPdf.check(Native.call("pdf_page_link_uri", ptr, rect[0], rect[1], rect[2], rect[3], uri))
+      self
+    end
+
+    # rect = [x0, y0, x1, y1]; link to another page (optional +top+ y-offset).
+    def link_to_page(rect, page_index, top: nil)
+      RustPdf.check(Native.call("pdf_page_link_to_page", ptr, rect[0], rect[1], rect[2], rect[3],
+                                page_index, top || 0.0, top.nil? ? 0 : 1))
+      self
+    end
+
+    # Append one outline tree (a RustPdf::Bookmark). Pre-order flattened into
+    # parallel arrays and emitted in a single native call.
+    def add_bookmark(bookmark)
+      entries = bookmark.flatten_into(0, [])
+      n = entries.size
+      levels = entries.map { |e| e[0] }.pack("i!*")
+      pages  = entries.map { |e| e[2] }.pack("J*")
+      tops   = entries.map { |e| e[3] || 0.0 }.pack("d*")
+      has    = entries.map { |e| e[3].nil? ? 0 : 1 }.pack("i!*")
+      cstrs  = entries.map { |e| Fiddle::Pointer[e[1].to_s] }
+      titles = cstrs.map(&:to_i).pack("J*")
+      RustPdf.check(Native.call("pdf_document_add_bookmarks", ptr, n, levels, titles, pages, tops, has))
+      cstrs.clear # released after the call returned
+      self
+    end
+
+    # ---- ZUGFeRD / Factur-X (Tier 2) ----------------------------------------
+
+    def facturx(xml, profile: FacturxProfile::EN16931)
+      RustPdf.check(Native.call("pdf_document_facturx", ptr, xml, xml.bytesize, profile))
+      self
+    end
+
     # ---- output -------------------------------------------------------------
 
     def page_count

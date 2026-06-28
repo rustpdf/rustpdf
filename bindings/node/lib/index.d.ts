@@ -14,9 +14,39 @@ export const AFRelationship: {
   readonly Source: 0; readonly Data: 1; readonly Alternative: 2; readonly Supplement: 3; readonly Unspecified: 4;
 };
 export const Encryption: { readonly Rc4: 0; readonly Aes128: 1; readonly Aes256: 2 };
+export const FacturxProfile: {
+  readonly Minimum: 0; readonly BasicWL: 1; readonly Basic: 2; readonly EN16931: 3; readonly Extended: 4;
+};
 
 export type Rect = [number, number, number, number];
 export type Bytes = Buffer | Uint8Array;
+
+export class Bookmark {
+  title: string;
+  page: number;
+  top: number | null;
+  children: Bookmark[];
+  constructor(title: string, page: number, top?: number | null, children?: Bookmark[]);
+  child(bookmark: Bookmark): Bookmark;
+}
+
+export interface WatermarkTextOptions {
+  size?: number;
+  color?: [number, number, number];
+  opacity?: number;
+  rotationDeg?: number;
+}
+
+export interface SignatureInfo {
+  field_name: string | null;
+  sub_filter: string;
+  signer: string | null;
+  covers_whole_document: boolean;
+  digest_valid: boolean;
+  signature_valid: boolean;
+  is_valid: boolean;
+  byte_range: [number, number, number, number];
+}
 
 export interface Info {
   title?: string | null;
@@ -74,6 +104,10 @@ export class Document {
   checkbox(name: string, page: number, rect: Rect, checked: boolean): this;
   dropdown(name: string, page: number, rect: Rect, options: string[], selected?: number | null, size?: number): this;
   radioGroup(name: string, page: number, buttons: RadioButton[], selected?: number | null): this;
+  linkUri(rect: Rect, uri: string): this;
+  linkToPage(rect: Rect, pageIndex: number, top?: number | null): this;
+  addBookmark(bookmark: Bookmark): this;
+  facturx(xml: Bytes, profile?: number): this;
   readonly pageCount: number;
   toBytes(): Buffer;
   save(path: string): void;
@@ -94,6 +128,15 @@ export class EditableDoc {
   setXmp(xml: Bytes): this;
   overlayPage(index: number, content: Bytes): this;
   fillTextField(name: string, value: string): boolean;
+  setCheckbox(name: string, checked?: boolean): boolean;
+  setRadio(name: string, exportValue: string): boolean;
+  setChoice(name: string, value: string): boolean;
+  flattenForms(): this;
+  fieldNames(): string[];
+  watermarkText(text: string, opts?: WatermarkTextOptions): this;
+  watermarkImageFile(path: string, width: number, height: number, opacity?: number): this;
+  redact(pageIndex: number, rects: Rect[]): boolean;
+  convertToPdfa(level?: number): this;
   optimize(): this;
   compact(on?: boolean): this;
   encrypt(opts?: EncryptOptions): this;
@@ -105,6 +148,8 @@ export class EditableDoc {
 export function version(): string;
 export function activateLicense(token: string): void;
 export function extractText(pdf: Bytes): string;
+export function extractImagesToDir(pdf: Bytes, dir: string): number;
+export function verifySignatures(pdf: Bytes): SignatureInfo[];
 export function sign(pdf: Bytes, keyDer: Bytes, certDer: Bytes, opts?: SignOptions): Buffer;
 export function timestamp(pdf: Bytes, tsaKeyDer: Bytes, tsaCertDer: Bytes, date?: string | null): Buffer;
 export function addDss(pdf: Bytes, certs?: Bytes[], crls?: Bytes[]): Buffer;

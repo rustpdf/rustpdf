@@ -132,6 +132,87 @@ public final class EditableDoc implements AutoCloseable {
         return found.getValue() != 0;
     }
 
+    /** Set an AcroForm checkbox checked/unchecked; returns whether it existed. */
+    public boolean setCheckbox(String name, boolean checked) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_set_checkbox(h(), name, checked ? 1 : 0, found));
+        return found.getValue() != 0;
+    }
+
+    /** Select a radio-button group's value by export value; returns whether it existed. */
+    public boolean setRadio(String name, String exportValue) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_set_radio(h(), name, exportValue, found));
+        return found.getValue() != 0;
+    }
+
+    /** Set a choice (dropdown/list) field's value; returns whether it existed. */
+    public boolean setChoice(String name, String value) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_set_choice(h(), name, value, found));
+        return found.getValue() != 0;
+    }
+
+    /** Flatten all AcroForm fields into static page content (drops interactivity). */
+    public EditableDoc flattenForms() {
+        Pdf.check(FFI.C.pdf_editable_flatten_forms(h()));
+        return this;
+    }
+
+    /** Return every AcroForm field name. */
+    public List<String> fieldNames() {
+        byte[] bytes = Pdf.takeBuffer((p, n) -> FFI.C.pdf_editable_field_names(h(), p, n));
+        String joined = new String(bytes, StandardCharsets.UTF_8);
+        List<String> names = new java.util.ArrayList<>();
+        for (String s : joined.split("\n")) {
+            if (!s.isEmpty()) {
+                names.add(s);
+            }
+        }
+        return names;
+    }
+
+    /** Stamp a diagonal text watermark on every page (sensible defaults). */
+    public EditableDoc watermarkText(String text) {
+        return watermarkText(text, 64.0, 0.5, 0.5, 0.5, 0.30, 45.0);
+    }
+
+    /** Stamp a text watermark on every page. {@code rotationDeg} is the rotation in degrees. */
+    public EditableDoc watermarkText(String text, double size, double r, double g, double b,
+                                     double opacity, double rotationDeg) {
+        Pdf.check(FFI.C.pdf_editable_watermark_text(h(), text, size, r, g, b, opacity, rotationDeg));
+        return this;
+    }
+
+    /** Stamp an image watermark (from a file) on every page. */
+    public EditableDoc watermarkImageFile(String path, double width, double height, double opacity) {
+        Pdf.check(FFI.C.pdf_editable_watermark_image_file(h(), path, width, height, opacity));
+        return this;
+    }
+
+    /**
+     * Redact the given rectangles on page {@code pageIndex}; each {@code rect} =
+     * {x0, y0, x1, y1}. Returns whether the page existed.
+     */
+    public boolean redact(int pageIndex, double[][] rects) {
+        double[] flat = new double[rects.length * 4];
+        for (int i = 0; i < rects.length; i++) {
+            flat[i * 4] = rects[i][0];
+            flat[i * 4 + 1] = rects[i][1];
+            flat[i * 4 + 2] = rects[i][2];
+            flat[i * 4 + 3] = rects[i][3];
+        }
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_redact(h(), pageIndex, flat, rects.length, found));
+        return found.getValue() != 0;
+    }
+
+    /** Convert the loaded document to PDF/A. Only B-levels (A1B/A2B/A3B) are valid. Requires a license. */
+    public EditableDoc convertToPdfa(PdfaLevel level) {
+        Pdf.check(FFI.C.pdf_editable_convert_to_pdfa(h(), level.code));
+        return this;
+    }
+
     public EditableDoc optimize() {
         Pdf.check(FFI.C.pdf_editable_optimize(h()));
         return this;

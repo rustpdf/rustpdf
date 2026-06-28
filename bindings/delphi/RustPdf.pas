@@ -53,7 +53,14 @@ type
   { Encryption cipher (TPdfEditable.Encrypt). }
   TEncryption = (encRC4_128, encAES128, encAES256);
 
-  { Axis-aligned rectangle [x0,y0,x1,y1] for AcroForm widgets. }
+  { ZUGFeRD / Factur-X conformance profile (TPdfDocument.Facturx). }
+  TFacturxProfile = (fxMinimum, fxBasicWL, fxBasic, fxEN16931, fxExtended);
+
+  { Dynamic array of strings (TPdfEditable.FieldNames). Declared locally so the
+    unit stays self-contained across Delphi/FPC RTL versions. }
+  TPdfStringArray = array of string;
+
+  { Axis-aligned rectangle [x0,y0,x1,y1] for AcroForm widgets and redaction. }
   TPdfRect = record
     X0, Y0, X1, Y1: Double;
   end;
@@ -64,6 +71,28 @@ type
     ExportValue: string;
   end;
   TRadioButtons = array of TRadioButton;
+
+  { A document outline (bookmark) entry. Build a tree with Child, then pass the
+    root to TPdfDocument.AddBookmark, which pre-order flattens it. The object
+    owns its children: freeing the root frees the whole tree. }
+  TPdfBookmark = class(TObject)
+  private
+    FTitle: string;
+    FPage: NativeUInt;
+    FTop: Double;
+    FHasTop: Boolean;
+    FChildren: array of TPdfBookmark;
+  public
+    constructor Create(const ATitle: string; APage: NativeUInt); overload;
+    constructor Create(const ATitle: string; APage: NativeUInt; ATop: Double); overload;
+    destructor Destroy; override;
+    { Append a child and return Self, so calls can be chained. }
+    function Child(BM: TPdfBookmark): TPdfBookmark;
+    property Title: string read FTitle;
+    property Page: NativeUInt read FPage;
+    property Top: Double read FTop;
+    property HasTop: Boolean read FHasTop;
+  end;
 
   { Raised when a native call returns a non-zero PdfStatus, or when the library
     cannot be located/loaded. }
@@ -133,6 +162,13 @@ type
     function RadioGroup(const Name: string; Page: NativeUInt;
                         const Buttons: TRadioButtons; Selected: Integer = -1): TPdfDocument;
 
+    { ---- hyperlinks, bookmarks, Factur-X ---- }
+    function LinkUri(const R: TPdfRect; const Uri: string): TPdfDocument;
+    function LinkToPage(const R: TPdfRect; PageIndex: NativeUInt): TPdfDocument; overload;
+    function LinkToPage(const R: TPdfRect; PageIndex: NativeUInt; Top: Double): TPdfDocument; overload;
+    function AddBookmark(BM: TPdfBookmark): TPdfDocument;
+    function Facturx(const Xml: TBytes; Profile: TFacturxProfile = fxEN16931): TPdfDocument;
+
     { ---- output ---- }
     function PageCount: Integer;
     function ToBytes: TBytes;
@@ -165,6 +201,18 @@ type
     function SetXmp(const Xml: TBytes): TPdfEditable;
     function OverlayPage(Index: NativeUInt; const Content: TBytes): TPdfEditable;
     function FillTextField(const Name, Value: string): Boolean;
+    function SetCheckbox(const Name: string; Checked: Boolean = True): Boolean;
+    function SetRadio(const Name, ExportValue: string): Boolean;
+    function SetChoice(const Name, Value: string): Boolean;
+    function FlattenForms: TPdfEditable;
+    function FieldNames: TPdfStringArray;
+    function WatermarkText(const Text: string; Size: Double = 64.0;
+                           R: Double = 0.5; G: Double = 0.5; B: Double = 0.5;
+                           Opacity: Double = 0.30; RotationDeg: Double = 45.0): TPdfEditable;
+    function WatermarkImageFile(const Path: string; Width, Height: Double;
+                                Opacity: Double = 0.30): TPdfEditable;
+    function Redact(PageIndex: NativeUInt; const Rects: array of TPdfRect): Boolean;
+    function ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable;
     function Optimize: TPdfEditable;
     function Compact(On: Boolean = True): TPdfEditable;
     function Encrypt(Method: TEncryption = encAES256; const User: string = '';
@@ -182,6 +230,13 @@ type
     class function Version: string; static;
     class procedure ActivateLicense(const Token: string); static;
     class function ExtractText(const PdfBytes: TBytes): string; static;
+    class function ExtractImagesToDir(const PdfBytes: TBytes; const Dir: string): NativeUInt; static;
+    { Validate every signature in PdfBytes and return the raw JSON array string
+      (one object per signature with fields field_name, sub_filter, signer,
+      covers_whole_document, digest_valid, signature_valid, is_valid, byte_range).
+      Object Pascal has no bundled JSON parser, so this returns the JSON text
+      verbatim; parse it with your preferred JSON unit. "[]" means unsigned. }
+    class function VerifySignaturesJson(const PdfBytes: TBytes): UTF8String; static;
     class function Sign(const PdfBytes, KeyDer, CertDer: TBytes;
                         const Reason: string = ''; const Location: string = '';
                         const Name: string = ''; Pades: Boolean = False): TBytes; static;
@@ -290,6 +345,10 @@ type
   Tpdf_document_checkbox    = function(doc: Pointer; name: PAnsiChar; page: NativeUInt; x0, y0, x1, y1: Double; checked: Integer): Integer; cdecl;
   Tpdf_document_dropdown    = function(doc: Pointer; name: PAnsiChar; page: NativeUInt; x0, y0, x1, y1: Double; options: PAnsiChar; selected: Integer; size: Double): Integer; cdecl;
   Tpdf_document_radio_group = function(doc: Pointer; name: PAnsiChar; page, count: NativeUInt; rects: Pointer; exportsArr: Pointer; selected: Integer): Integer; cdecl;
+  Tpdf_page_link_uri        = function(doc: Pointer; x0, y0, x1, y1: Double; uri: PAnsiChar): Integer; cdecl;
+  Tpdf_page_link_to_page    = function(doc: Pointer; x0, y0, x1, y1: Double; target_page: NativeUInt; top: Double; has_top: Integer): Integer; cdecl;
+  Tpdf_document_add_bookmarks = function(doc: Pointer; count: NativeUInt; levels: Pointer; titles: Pointer; pages: Pointer; tops: Pointer; has_tops: Pointer): Integer; cdecl;
+  Tpdf_document_facturx     = function(doc: Pointer; xml: PByte; len: NativeUInt; profile: Integer): Integer; cdecl;
 
   Tpdf_editable_load        = function(data: PByte; len: NativeUInt): Pointer; cdecl;
   Tpdf_editable_load_password = function(data: PByte; len: NativeUInt; password: PAnsiChar): Pointer; cdecl;
@@ -311,11 +370,22 @@ type
   Tpdf_editable_to_bytes    = function(ed: Pointer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_editable_to_bytes_incremental = function(ed: Pointer; original: PByte; original_len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_editable_save        = function(ed: Pointer; path: PAnsiChar): Integer; cdecl;
+  Tpdf_editable_set_checkbox = function(ed: Pointer; name: PAnsiChar; checked: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_set_radio   = function(ed: Pointer; name, export_value: PAnsiChar; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_set_choice  = function(ed: Pointer; name, value: PAnsiChar; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_flatten_forms = function(ed: Pointer): Integer; cdecl;
+  Tpdf_editable_field_names = function(ed: Pointer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_editable_watermark_text = function(ed: Pointer; text: PAnsiChar; size, r, g, b, opacity, rotation_deg: Double): Integer; cdecl;
+  Tpdf_editable_watermark_image_file = function(ed: Pointer; path: PAnsiChar; width, height, opacity: Double): Integer; cdecl;
+  Tpdf_editable_redact      = function(ed: Pointer; index: NativeUInt; rects: Pointer; count: NativeUInt; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_convert_to_pdfa = function(ed: Pointer; level: Integer): Integer; cdecl;
 
   Tpdf_extract_text         = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_extract_images_to_dir = function(data: PByte; len: NativeUInt; dir: PAnsiChar; out out_count: NativeUInt): Integer; cdecl;
   Tpdf_sign                 = function(pdf: PByte; pdf_len: NativeUInt; key: PByte; key_len: NativeUInt; cert: PByte; cert_len: NativeUInt; reason, location, name: PAnsiChar; pades: Integer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_timestamp            = function(pdf: PByte; pdf_len: NativeUInt; key: PByte; key_len: NativeUInt; cert: PByte; cert_len: NativeUInt; date: PAnsiChar; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_add_dss              = function(pdf: PByte; pdf_len: NativeUInt; cert_ptrs: Pointer; cert_lens: Pointer; cert_count: NativeUInt; crl_ptrs: Pointer; crl_lens: Pointer; crl_count: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_verify_signatures_json = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
 
 { ===================== bound function table ============================= }
 
@@ -360,6 +430,10 @@ var
   Fpdf_document_checkbox: Tpdf_document_checkbox;
   Fpdf_document_dropdown: Tpdf_document_dropdown;
   Fpdf_document_radio_group: Tpdf_document_radio_group;
+  Fpdf_page_link_uri: Tpdf_page_link_uri;
+  Fpdf_page_link_to_page: Tpdf_page_link_to_page;
+  Fpdf_document_add_bookmarks: Tpdf_document_add_bookmarks;
+  Fpdf_document_facturx: Tpdf_document_facturx;
   Fpdf_editable_load: Tpdf_editable_load;
   Fpdf_editable_load_password: Tpdf_editable_load_password;
   Fpdf_editable_free: Tpdf_editable_free;
@@ -380,10 +454,21 @@ var
   Fpdf_editable_to_bytes: Tpdf_editable_to_bytes;
   Fpdf_editable_to_bytes_incremental: Tpdf_editable_to_bytes_incremental;
   Fpdf_editable_save: Tpdf_editable_save;
+  Fpdf_editable_set_checkbox: Tpdf_editable_set_checkbox;
+  Fpdf_editable_set_radio: Tpdf_editable_set_radio;
+  Fpdf_editable_set_choice: Tpdf_editable_set_choice;
+  Fpdf_editable_flatten_forms: Tpdf_editable_flatten_forms;
+  Fpdf_editable_field_names: Tpdf_editable_field_names;
+  Fpdf_editable_watermark_text: Tpdf_editable_watermark_text;
+  Fpdf_editable_watermark_image_file: Tpdf_editable_watermark_image_file;
+  Fpdf_editable_redact: Tpdf_editable_redact;
+  Fpdf_editable_convert_to_pdfa: Tpdf_editable_convert_to_pdfa;
   Fpdf_extract_text: Tpdf_extract_text;
+  Fpdf_extract_images_to_dir: Tpdf_extract_images_to_dir;
   Fpdf_sign: Tpdf_sign;
   Fpdf_timestamp: Tpdf_timestamp;
   Fpdf_add_dss: Tpdf_add_dss;
+  Fpdf_verify_signatures_json: Tpdf_verify_signatures_json;
 
 { ===================== loader ========================================== }
 
@@ -527,6 +612,10 @@ begin
   Fpdf_document_checkbox := Tpdf_document_checkbox(Bind('pdf_document_checkbox'));
   Fpdf_document_dropdown := Tpdf_document_dropdown(Bind('pdf_document_dropdown'));
   Fpdf_document_radio_group := Tpdf_document_radio_group(Bind('pdf_document_radio_group'));
+  Fpdf_page_link_uri := Tpdf_page_link_uri(Bind('pdf_page_link_uri'));
+  Fpdf_page_link_to_page := Tpdf_page_link_to_page(Bind('pdf_page_link_to_page'));
+  Fpdf_document_add_bookmarks := Tpdf_document_add_bookmarks(Bind('pdf_document_add_bookmarks'));
+  Fpdf_document_facturx := Tpdf_document_facturx(Bind('pdf_document_facturx'));
   Fpdf_editable_load := Tpdf_editable_load(Bind('pdf_editable_load'));
   Fpdf_editable_load_password := Tpdf_editable_load_password(Bind('pdf_editable_load_password'));
   Fpdf_editable_free := Tpdf_editable_free(Bind('pdf_editable_free'));
@@ -547,10 +636,21 @@ begin
   Fpdf_editable_to_bytes := Tpdf_editable_to_bytes(Bind('pdf_editable_to_bytes'));
   Fpdf_editable_to_bytes_incremental := Tpdf_editable_to_bytes_incremental(Bind('pdf_editable_to_bytes_incremental'));
   Fpdf_editable_save := Tpdf_editable_save(Bind('pdf_editable_save'));
+  Fpdf_editable_set_checkbox := Tpdf_editable_set_checkbox(Bind('pdf_editable_set_checkbox'));
+  Fpdf_editable_set_radio := Tpdf_editable_set_radio(Bind('pdf_editable_set_radio'));
+  Fpdf_editable_set_choice := Tpdf_editable_set_choice(Bind('pdf_editable_set_choice'));
+  Fpdf_editable_flatten_forms := Tpdf_editable_flatten_forms(Bind('pdf_editable_flatten_forms'));
+  Fpdf_editable_field_names := Tpdf_editable_field_names(Bind('pdf_editable_field_names'));
+  Fpdf_editable_watermark_text := Tpdf_editable_watermark_text(Bind('pdf_editable_watermark_text'));
+  Fpdf_editable_watermark_image_file := Tpdf_editable_watermark_image_file(Bind('pdf_editable_watermark_image_file'));
+  Fpdf_editable_redact := Tpdf_editable_redact(Bind('pdf_editable_redact'));
+  Fpdf_editable_convert_to_pdfa := Tpdf_editable_convert_to_pdfa(Bind('pdf_editable_convert_to_pdfa'));
   Fpdf_extract_text := Tpdf_extract_text(Bind('pdf_extract_text'));
+  Fpdf_extract_images_to_dir := Tpdf_extract_images_to_dir(Bind('pdf_extract_images_to_dir'));
   Fpdf_sign := Tpdf_sign(Bind('pdf_sign'));
   Fpdf_timestamp := Tpdf_timestamp(Bind('pdf_timestamp'));
   Fpdf_add_dss := Tpdf_add_dss(Bind('pdf_add_dss'));
+  Fpdf_verify_signatures_json := Tpdf_verify_signatures_json(Bind('pdf_verify_signatures_json'));
 
   GLoaded := True;
 end;
@@ -689,6 +789,43 @@ begin
   Result.Y0 := Y0;
   Result.X1 := X1;
   Result.Y1 := Y1;
+end;
+
+{ ===================== TPdfBookmark =================================== }
+
+constructor TPdfBookmark.Create(const ATitle: string; APage: NativeUInt);
+begin
+  inherited Create;
+  FTitle := ATitle;
+  FPage := APage;
+  FTop := 0.0;
+  FHasTop := False;
+end;
+
+constructor TPdfBookmark.Create(const ATitle: string; APage: NativeUInt; ATop: Double);
+begin
+  inherited Create;
+  FTitle := ATitle;
+  FPage := APage;
+  FTop := ATop;
+  FHasTop := True;
+end;
+
+destructor TPdfBookmark.Destroy;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FChildren) do
+    FChildren[I].Free;
+  FChildren := nil;
+  inherited Destroy;
+end;
+
+function TPdfBookmark.Child(BM: TPdfBookmark): TPdfBookmark;
+begin
+  SetLength(FChildren, Length(FChildren) + 1);
+  FChildren[High(FChildren)] := BM;
+  Result := Self;
 end;
 
 { ===================== TPdfDocument ==================================== }
@@ -968,6 +1105,89 @@ begin
   Result := Self;
 end;
 
+function TPdfDocument.LinkUri(const R: TPdfRect; const Uri: string): TPdfDocument;
+var
+  uu: UTF8String;
+begin
+  uu := U8(Uri);
+  Check(Fpdf_page_link_uri(H, R.X0, R.Y0, R.X1, R.Y1, PAnsiChar(uu)));
+  Result := Self;
+end;
+
+function TPdfDocument.LinkToPage(const R: TPdfRect; PageIndex: NativeUInt): TPdfDocument;
+begin
+  Check(Fpdf_page_link_to_page(H, R.X0, R.Y0, R.X1, R.Y1, PageIndex, 0.0, 0));
+  Result := Self;
+end;
+
+function TPdfDocument.LinkToPage(const R: TPdfRect; PageIndex: NativeUInt; Top: Double): TPdfDocument;
+begin
+  Check(Fpdf_page_link_to_page(H, R.X0, R.Y0, R.X1, R.Y1, PageIndex, Top, 1));
+  Result := Self;
+end;
+
+function TPdfDocument.AddBookmark(BM: TPdfBookmark): TPdfDocument;
+var
+  levels: array of Integer;
+  pages: array of NativeUInt;
+  tops: array of Double;
+  hasTops: array of Integer;
+  titlesU8: array of UTF8String;
+  titlePtrs: array of PAnsiChar;
+  N, I: Integer;
+
+  { Pre-order flatten: append the node, then recurse into children, with the
+    child level one deeper (root = level 0). }
+  procedure Walk(Node: TPdfBookmark; Level: Integer);
+  var
+    J: Integer;
+  begin
+    SetLength(levels, N + 1);
+    SetLength(pages, N + 1);
+    SetLength(tops, N + 1);
+    SetLength(hasTops, N + 1);
+    SetLength(titlesU8, N + 1);
+    levels[N] := Level;
+    pages[N] := Node.FPage;
+    titlesU8[N] := U8(Node.FTitle);
+    if Node.FHasTop then
+    begin
+      tops[N] := Node.FTop;
+      hasTops[N] := 1;
+    end
+    else
+    begin
+      tops[N] := 0.0;
+      hasTops[N] := 0;
+    end;
+    Inc(N);
+    for J := 0 to High(Node.FChildren) do
+      Walk(Node.FChildren[J], Level + 1);
+  end;
+
+begin
+  if BM = nil then
+  begin
+    Result := Self;
+    Exit;
+  end;
+  N := 0;
+  Walk(BM, 0);
+  SetLength(titlePtrs, N);
+  for I := 0 to N - 1 do
+    titlePtrs[I] := PAnsiChar(titlesU8[I]);
+  Check(Fpdf_document_add_bookmarks(H, N,
+        @levels[0], StrPtr(titlePtrs), SzPtr(pages),
+        DblPtr(tops), @hasTops[0]));
+  Result := Self;
+end;
+
+function TPdfDocument.Facturx(const Xml: TBytes; Profile: TFacturxProfile): TPdfDocument;
+begin
+  Check(Fpdf_document_facturx(H, BytePtr(Xml), Length(Xml), Ord(Profile)));
+  Result := Self;
+end;
+
 function TPdfDocument.PageCount: Integer;
 begin
   Result := Fpdf_document_page_count(H);
@@ -1143,6 +1363,117 @@ begin
   Result := found <> 0;
 end;
 
+function TPdfEditable.SetCheckbox(const Name: string; Checked: Boolean): Boolean;
+var
+  un: UTF8String;
+  found: Integer;
+begin
+  un := U8(Name);
+  found := 0;
+  Check(Fpdf_editable_set_checkbox(H, PAnsiChar(un), Ord(Checked), found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.SetRadio(const Name, ExportValue: string): Boolean;
+var
+  un, uv: UTF8String;
+  found: Integer;
+begin
+  un := U8(Name); uv := U8(ExportValue);
+  found := 0;
+  Check(Fpdf_editable_set_radio(H, PAnsiChar(un), PAnsiChar(uv), found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.SetChoice(const Name, Value: string): Boolean;
+var
+  un, uv: UTF8String;
+  found: Integer;
+begin
+  un := U8(Name); uv := U8(Value);
+  found := 0;
+  Check(Fpdf_editable_set_choice(H, PAnsiChar(un), PAnsiChar(uv), found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.FlattenForms: TPdfEditable;
+begin
+  Check(Fpdf_editable_flatten_forms(H));
+  Result := Self;
+end;
+
+function TPdfEditable.FieldNames: TPdfStringArray;
+var
+  P: PByte;
+  Len: NativeUInt;
+  Joined: string;
+  Lines: TStringList;
+  I: Integer;
+begin
+  Check(Fpdf_editable_field_names(H, P, Len));
+  Joined := Utf8BytesToString(TakeBuffer(P, Len));
+  Lines := TStringList.Create;
+  try
+    { Split on newline; skip empty lines (trailing newline / blank names). }
+    Lines.Text := Joined;
+    SetLength(Result, 0);
+    for I := 0 to Lines.Count - 1 do
+      if Lines[I] <> '' then
+      begin
+        SetLength(Result, Length(Result) + 1);
+        Result[High(Result)] := Lines[I];
+      end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+function TPdfEditable.WatermarkText(const Text: string; Size, R, G, B,
+  Opacity, RotationDeg: Double): TPdfEditable;
+var
+  ut: UTF8String;
+begin
+  ut := U8(Text);
+  Check(Fpdf_editable_watermark_text(H, PAnsiChar(ut), Size, R, G, B, Opacity, RotationDeg));
+  Result := Self;
+end;
+
+function TPdfEditable.WatermarkImageFile(const Path: string; Width, Height,
+  Opacity: Double): TPdfEditable;
+var
+  up: UTF8String;
+begin
+  up := U8(Path);
+  Check(Fpdf_editable_watermark_image_file(H, PAnsiChar(up), Width, Height, Opacity));
+  Result := Self;
+end;
+
+function TPdfEditable.Redact(PageIndex: NativeUInt; const Rects: array of TPdfRect): Boolean;
+var
+  flat: array of Double;
+  N, I: Integer;
+  found: Integer;
+begin
+  N := Length(Rects);
+  SetLength(flat, N * 4);
+  for I := 0 to N - 1 do
+  begin
+    flat[I * 4 + 0] := Rects[I].X0;
+    flat[I * 4 + 1] := Rects[I].Y0;
+    flat[I * 4 + 2] := Rects[I].X1;
+    flat[I * 4 + 3] := Rects[I].Y1;
+  end;
+  found := 0;
+  Check(Fpdf_editable_redact(H, PageIndex, DblPtr(flat), N, found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.ConvertToPdfa(Level: TPdfaLevel): TPdfEditable;
+begin
+  Check(Fpdf_editable_convert_to_pdfa(H, Ord(Level)));
+  Result := Self;
+end;
+
 function TPdfEditable.Optimize: TPdfEditable;
 begin
   Check(Fpdf_editable_optimize(H));
@@ -1217,6 +1548,32 @@ begin
   EnsureLoaded;
   Check(Fpdf_extract_text(BytePtr(PdfBytes), Length(PdfBytes), P, Len));
   Result := Utf8BytesToString(TakeBuffer(P, Len));
+end;
+
+class function Pdf.ExtractImagesToDir(const PdfBytes: TBytes; const Dir: string): NativeUInt;
+var
+  ud: UTF8String;
+  Count: NativeUInt;
+begin
+  EnsureLoaded;
+  ud := U8(Dir);
+  Count := 0;
+  Check(Fpdf_extract_images_to_dir(BytePtr(PdfBytes), Length(PdfBytes), PAnsiChar(ud), Count));
+  Result := Count;
+end;
+
+class function Pdf.VerifySignaturesJson(const PdfBytes: TBytes): UTF8String;
+var
+  P: PByte;
+  Len: NativeUInt;
+  Raw: TBytes;
+begin
+  EnsureLoaded;
+  Check(Fpdf_verify_signatures_json(BytePtr(PdfBytes), Length(PdfBytes), P, Len));
+  Raw := TakeBuffer(P, Len);
+  SetLength(Result, Length(Raw));
+  if Length(Raw) > 0 then
+    Move(Raw[0], Result[1], Length(Raw));
 end;
 
 class function Pdf.Sign(const PdfBytes, KeyDer, CertDer: TBytes;

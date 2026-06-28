@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enterprise PDF Library for Delphi &amp; Free Pascal — PDF/A, PAdES, AES-256 | rust-pdf</title>
+  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Delphi and Free Pascal. A single source unit, no native build. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <link rel="canonical" href="https://rustpdf.dev/delphi" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/delphi" />
+  <meta property="og:title" content="Enterprise PDF Library for Delphi &amp; Free Pascal | rust-pdf" />
+  <meta property="og:description" content="PDF/A, PAdES signatures, AES-256 and PDF/UA accessibility, natively in Delphi and Free Pascal. A single source unit, no native build. Offline, no per-document fees, no AGPL." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Enterprise PDF Library for Delphi &amp; Free Pascal | rust-pdf" />
+  <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Delphi / FPC. A single source unit, no native build. Offline, licensed per feature." />
+  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Delphi and Free Pascal" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Delphi and Free Pascal" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Delphi / Free Pascal", "item": "https://rustpdf.dev/delphi" }
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "rust-pdf for Delphi & Free Pascal",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, macOS, Windows",
+        "url": "https://rustpdf.dev/delphi",
+        "softwareRequirements": "Delphi 10.x+ or Free Pascal 3.2+",
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
+        "description": "An enterprise PDF library for Delphi and Free Pascal: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, used through a single source unit that loads the shared library at run time, running entirely on your own servers.",
+        "featureList": [
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+          "AES-256 encryption",
+          "PDF/UA accessibility (Tagged PDF)",
+          "AcroForm fields",
+          "Merge, split, text extraction"
+        ],
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "USD",
+          "lowPrice": "1490",
+          "highPrice": "3000",
+          "offerCount": "2",
+          "url": "https://rustpdf.dev/#pricing"
+        }
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/delphi.html">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Enterprise PDF for Delphi &amp; Free Pascal</p>
+        <h1>The enterprise PDF library<br />Delphi <span class="grad">doesn't have</span>.</h1>
+        <p class="lede">
+          Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
+          with <b>AES-256</b> and produce accessible <b>PDF/UA</b> from Delphi or Free
+          Pascal. One memory-safe core, the same behavior as every other binding,
+          running entirely on your servers: no per-document SaaS fees, no data leaving
+          your network, no AGPL strings.
+        </p>
+        <span class="install-cap">A single source unit, RustPdf.pas. No headers, no native build step.</span>
+        <div class="install-tabs">
+          <div class="tabs"><pre class="tab-pane active"><code>uses RustPdf;   // download from rustpdf.dev/docs/delphi, add to your search path</code></pre></div>
+        </div>
+        <div class="cta-row">
+          <a href="/docs/delphi.html" class="btn btn-lg">Read the Delphi docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="validators">
+          Validated by independent tools:
+          <span>veraPDF</span><span>pdfsig</span><span>openssl&nbsp;cms</span><span>qpdf</span><span>mutool</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHY -->
+    <section class="band">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Why Delphi teams pick rust-pdf</h2>
+          <p class="muted">
+            Delphi and Free Pascal keep long-lived line-of-business and desktop apps
+            running for decades, often in regulated sectors that now demand PDF/A
+            archival, qualified signatures, AES-256 and PDF/UA. Native options are
+            scarce and mostly commercial, with no modern PAdES or PDF/A path.
+          </p>
+          <p class="muted">
+            rust-pdf is a single source unit, <code>RustPdf.pas</code>, that loads the
+            shared library at run time. It compiles under Delphi 10.x+ and FPC 3.2+,
+            needs no native build step, and a single offline license unlocks the
+            corporate features. Deployment is just dropping the library beside your
+            app.
+          </p>
+        </div>
+        <ul class="check-list">
+          <li><b>One source unit</b>: no headers, no JNI, no native build on your machines.</li>
+          <li><b>Delphi and FPC</b>: the same unit compiles on both, Windows / Linux / macOS.</li>
+          <li><b>Runs on your servers</b>: documents never leave your network and nothing phones home, ideal for LGPD/GDPR, fintech and health.</li>
+          <li><b>No AGPL trap</b>: a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose.</li>
+          <li><b>Free to build with</b>: everyday PDF generation is free forever; you only license the regulated-grade features.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Free to build with. Licensed when you ship.</h2>
+        <p class="center muted narrow">
+          Prototype and generate everyday PDFs for free. When you need archival,
+          signatures, encryption or accessibility, one license unlocks them all in
+          Delphi and every other binding.
+        </p>
+        <div class="feature-grid">
+          <div class="card free reveal">
+            <h3>Community <span class="tag">free</span></h3>
+            <ul>
+              <li>Pages &amp; vector graphics</li>
+              <li>Embedded/subset fonts, Unicode shaping</li>
+              <li>Justified paragraphs &amp; tables</li>
+              <li>Images (JPEG/PNG/alpha/16-bit)</li>
+              <li>Merge / split / rotate</li>
+              <li>Text extraction &amp; optimize</li>
+            </ul>
+          </div>
+          <div class="card pro reveal">
+            <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
+            <ul>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
+              <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
+              <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
+              <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
+              <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
+              <li><b>AcroForm</b>: fields with generated appearances</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CODE -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Author a tagged PDF/A in a few lines of Object Pascal</h2>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// add RustPdf.pas to your unit search path (rustpdf.dev/docs/delphi)
+Doc := TPdfDocument.Create;
+try
+  Doc.Pdfa(palA2A).Tagged.SetInfo('Q3 Report', '', '', '', '');
+  F := Doc.AddFontFile('Roboto-Regular.ttf');
+  Doc.AddPage.ShowText(F, 26, 72, 760, 'Annual report', 1);   // heading level 1 = H1
+  Bytes := Doc.ToBytes;            // archival-grade, accessible PDF
+finally
+  Doc.Free;
+end;</code></pre>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          The full Delphi / Free Pascal reference (fonts, images, forms, manipulation,
+          encryption and signatures) lives in the <a href="/docs/delphi.html">Delphi docs</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Start building in Delphi</h2>
+        <p class="muted">
+          Add <code>RustPdf.pas</code> to your search path and ship your first archival
+          PDF today. Free for everyday generation; license the corporate features when
+          you go to production.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/delphi.html" class="btn btn-lg">Read the Delphi docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/swift">Swift</a>
+          <a href="/java">Java</a>
+          <a href="/dotnet">C# / .NET</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/delphi.html">Delphi docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

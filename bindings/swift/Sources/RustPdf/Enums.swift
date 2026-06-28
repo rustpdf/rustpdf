@@ -39,6 +39,15 @@ public enum Encryption: Int32, Sendable {
     case aes256 = 2
 }
 
+/// ZUGFeRD / Factur-X invoice profile (argument to ``Document/facturx(_:profile:)``).
+public enum FacturxProfile: Int32, Sendable {
+    case minimum  = 0
+    case basicWL  = 1
+    case basic    = 2
+    case en16931  = 3
+    case extended = 4
+}
+
 /// The PDF version written in the header (argument to ``Document/setVersion(_:)``).
 public enum PdfVersion: Int32, Sendable {
     case v14 = 0

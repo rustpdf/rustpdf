@@ -9,9 +9,11 @@ require __DIR__ . '/../autoload.php';
 
 use RustPdf\AFRelationship;
 use RustPdf\Align;
+use RustPdf\Bookmark;
 use RustPdf\Document;
 use RustPdf\EditableDoc;
 use RustPdf\Encryption;
+use RustPdf\FacturxProfile;
 use RustPdf\Pdf;
 use RustPdf\PdfaLevel;
 use RustPdf\PdfException;
@@ -130,5 +132,95 @@ $a3->attachFile('data.csv', 'text/csv', "a,b\n1,2\n", AFRelationship::Source, 's
     ->addPage()->showText($a3f, 12, 72, 700, 'anexo');
 check(str_contains($a3->toBytes(), '/EmbeddedFile'), 'attachment present');
 echo "attachment ok\n";
+
+// 9. Extract raster images to a directory.
+$imgDir = sys_get_temp_dir() . '/rustpdf-images-' . bin2hex(random_bytes(8));
+check(mkdir($imgDir, 0777, true), 'mkdir image dir');
+$imgCount = Pdf::extractImagesToDir($pdfa, $imgDir);
+check($imgCount >= 0, 'image count');
+echo "extracted $imgCount image(s) to $imgDir\n";
+
+// 10. Tier 1: links + bookmarks on an authored document.
+$navDoc = new Document();
+$navFont = $navDoc->addFontFile($font);
+$navDoc->addPage()->showText($navFont, 14, 72, 700, 'home');
+$navDoc->addPage()->showText($navFont, 14, 72, 700, 'chapter');
+$navDoc->linkUri([72, 680, 200, 700], 'https://example.com')
+    ->linkToPage([72, 660, 200, 678], 0, 700.0)
+    ->addBookmark(
+        (new Bookmark('Home', 0))->child(new Bookmark('Chapter', 1, 700.0))
+    );
+$navPdf = $navDoc->toBytes();
+check(str_contains($navPdf, '/Link'), 'link annotation present');
+check(str_contains($navPdf, '/Outlines'), 'outline present');
+echo "links + bookmarks ok\n";
+
+// 11. Tier 2: Factur-X (ZUGFeRD) invoice embedding.
+$fxXml = '<?xml version="1.0" encoding="UTF-8"?><rsm:CrossIndustryInvoice '
+    . 'xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">'
+    . '<test/></rsm:CrossIndustryInvoice>';
+$facturxDoc = (new Document())->pdfa(PdfaLevel::A3b);
+$facturxFont = $facturxDoc->addFontFile($font);
+$facturxDoc->addPage()->showText($facturxFont, 12, 72, 700, 'invoice');
+$facturxDoc->facturx($fxXml, FacturxProfile::EN16931);
+$facturxPdf = $facturxDoc->toBytes();
+check(str_contains($facturxPdf, '/EmbeddedFile'), 'factur-x embedded file');
+echo 'factur-x ok (' . strlen($facturxPdf) . " bytes)\n";
+
+// 12. Tier 1: form fill (checkbox/radio/choice) + field names + flatten.
+$formBytes = (new Document())
+    ->addPage()
+    ->textField('city', 0, [120, 700, 300, 720], '', 12)
+    ->checkbox('ok', 0, [120, 670, 138, 688], false)
+    ->radioGroup('plan', 0, [[[120, 640, 138, 658], 'a'], [[160, 640, 178, 658], 'b']], null)
+    ->dropdown('country', 0, [120, 610, 300, 630], ['BR', 'PT'], null, 12)
+    ->toBytes();
+$formEd = EditableDoc::load($formBytes);
+$names = $formEd->fieldNames();
+check(in_array('city', $names, true), 'field_names contains city: ' . implode(',', $names));
+check($formEd->fillTextField('city', 'Lisboa'), 'fill text field found');
+check($formEd->setCheckbox('ok', true), 'set_checkbox found');
+check($formEd->setRadio('plan', 'b'), 'set_radio found');
+check($formEd->setChoice('country', 'PT'), 'set_choice found');
+check(!$formEd->setCheckbox('missing'), 'set_checkbox missing returns false');
+$formEd->flattenForms();
+$flat = $formEd->toBytes();
+check(strlen($flat) > 0, 'flattened bytes');
+echo "form fill + flatten + field_names ok\n";
+
+// 13. Tier 1/2: watermark + redact + convert_to_pdfa on a loaded doc.
+$wmEd = EditableDoc::load($pdfa);
+$wmEd->watermarkText('CONFIDENTIAL', size: 48.0, color: [0.8, 0.1, 0.1], opacity: 0.2, rotationDeg: 30.0);
+$watermarked = $wmEd->toBytes();
+check(strlen($watermarked) > strlen($pdfa) - 1, 'watermarked bytes produced');
+echo "watermark text ok\n";
+
+$redEd = EditableDoc::load($pdfa);
+check($redEd->redact(0, [[72, 750, 200, 770]]), 'redact page 0 existed');
+check(!$redEd->redact(99, [[0, 0, 10, 10]]), 'redact missing page returns false');
+$redacted = $redEd->toBytes();
+check(strlen($redacted) > 0, 'redacted bytes');
+echo "redact ok\n";
+
+$plainForPdfa = (new Document());
+$pfp = $plainForPdfa->addFontFile($font);
+$plainForPdfa->addPage()->showText($pfp, 12, 72, 700, 'convert me');
+$convEd = EditableDoc::load($plainForPdfa->toBytes());
+$convEd->convertToPdfa(PdfaLevel::A2b);
+$converted = $convEd->toBytes();
+check(str_contains($converted, 'pdfaid'), 'converted to PDF/A (pdfaid present)');
+echo "convert_to_pdfa ok\n";
+
+// 14. Module-level: verify signatures on a freshly-signed document.
+$sigs = Pdf::verifySignatures($signed);
+check(count($sigs) >= 1, 'verify_signatures found a signature');
+$first = $sigs[0];
+check(array_key_exists('field_name', $first), 'sig has field_name');
+check(array_key_exists('sub_filter', $first), 'sig has sub_filter');
+check(array_key_exists('covers_whole_document', $first), 'sig has covers_whole_document');
+check(array_key_exists('is_valid', $first), 'sig has is_valid');
+check(is_array($first['byte_range']) && count($first['byte_range']) === 4, 'sig byte_range[4]');
+check(Pdf::verifySignatures($plain) === [], 'unsigned doc has no signatures');
+echo 'verify_signatures ok (' . count($sigs) . " signature(s))\n";
 
 echo "OK: full PHP binding surface exercised\n";

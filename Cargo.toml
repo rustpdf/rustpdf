@@ -13,9 +13,13 @@ members = [
     "crates/ffi",
     "crates/testkit",
 ]
+# The Rust binding (bindings/rust) is a standalone, publishable crate that links
+# the precompiled libpdf_ffi at runtime — it must NOT pull in the internal
+# crates' source, so it lives outside the workspace.
+exclude = ["bindings/rust"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.82"
 license = "LicenseRef-Proprietary"

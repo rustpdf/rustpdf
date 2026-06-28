@@ -20,3 +20,11 @@ bindings/python/*.egg-info/
 bindings/python/rustpdf/*.so
 bindings/python/rustpdf/*.dylib
 bindings/python/rustpdf/*.dll
+# Native libs staged into the Java JAR as JNA classpath resources at release time
+# (one per platform under <RESOURCE_PREFIX>/, bundled into the fat JAR, never committed)
+bindings/java/src/main/resources/darwin-*/
+bindings/java/src/main/resources/linux-*/
+bindings/java/src/main/resources/win32-*/
+
+# Agent scratch
+.agents/

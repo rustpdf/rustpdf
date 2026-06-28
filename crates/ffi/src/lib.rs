@@ -22,6 +22,7 @@ use pdf::Document;
 mod build;
 mod editable;
 mod signing;
+mod verify;
 
 /// Status code returned by every fallible export.
 #[repr(C)]

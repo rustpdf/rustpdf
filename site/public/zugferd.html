@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Is ZUGFeRD / Factur-X? A Clear Guide to Hybrid E-Invoices, With Examples | rust-pdf</title>
+  <meta name="description" content="ZUGFeRD and Factur-X explained simply: what a hybrid e-invoice is, why one PDF carries both a human-readable invoice and machine-readable XML, the profiles (MINIMUM to EXTENDED / EN 16931), the German and French mandates, and how to generate valid Factur-X in any language with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/zugferd" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/zugferd" />
+  <meta property="og:title" content="What Is ZUGFeRD / Factur-X? A Clear Guide to Hybrid E-Invoices" />
+  <meta property="og:description" content="What ZUGFeRD and Factur-X are, why a single PDF is both human- and machine-readable, the profiles, the EU mandates, and how to generate valid Factur-X in any language." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What Is ZUGFeRD / Factur-X? A Clear Guide to Hybrid E-Invoices" />
+  <meta name="twitter:description" content="ZUGFeRD and Factur-X explained with analogies, examples and the profiles. Plus how to create it in any language." />
+  <meta property="og:image:alt" content="What is ZUGFeRD / Factur-X — a clear guide to hybrid e-invoices" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="What is ZUGFeRD / Factur-X — a clear guide to hybrid e-invoices" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "What is ZUGFeRD / Factur-X?", "item": "https://rustpdf.dev/zugferd" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "What is ZUGFeRD / Factur-X? A clear guide to hybrid e-invoices",
+        "description": "A plain-language explanation of ZUGFeRD and Factur-X: what a hybrid e-invoice is, why one file is both human- and machine-readable, the conformance profiles, the German and French mandates, and how to create valid Factur-X.",
+        "url": "https://rustpdf.dev/zugferd",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "ZUGFeRD / Factur-X", "description": "Hybrid e-invoice standard: a PDF/A-3 carrying an embedded EN 16931 Cross-Industry Invoice XML." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is ZUGFeRD / Factur-X?",
+            "acceptedAnswer": { "@type": "Answer", "text": "ZUGFeRD (Germany) and Factur-X (France) are the same hybrid e-invoice standard under two names. A hybrid e-invoice is a single PDF/A-3 file that is both human-readable, the visible invoice page a person can read and print, and machine-readable, an XML file embedded inside it that an accounting system can import automatically. One file satisfies both the person and the software, with no separate XML to send or risk losing." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between ZUGFeRD and Factur-X?",
+            "acceptedAnswer": { "@type": "Answer", "text": "There is no technical difference at the interoperable level. ZUGFeRD is the German name and Factur-X is the French name for the same specification, developed jointly by FNFE-MPE in France and FeRD in Germany. Since ZUGFeRD 2.1, the two are aligned: the embedded file is named factur-x.xml in both, and both implement the European semantic standard EN 16931. A file produced as Factur-X is valid ZUGFeRD and vice versa." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does an invoice need to be both PDF and XML?",
+            "acceptedAnswer": { "@type": "Answer", "text": "People need to read, check and archive an invoice, which a PDF does well. Accounting and ERP systems need structured data they can post automatically without retyping or OCR, which XML does well. A plain PDF forces the recipient to key the numbers in by hand, which is slow and error-prone. A hybrid e-invoice carries both inside one file, so the same document serves the human and the machine and the two can never disagree." }
+          },
+          {
+            "@type": "Question",
+            "name": "What are the ZUGFeRD / Factur-X profiles?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Profiles describe how much structured data the XML carries. MINIMUM and BASIC WL hold only header totals, with no line items. BASIC adds line items. EN 16931 (also called Comfort) is the full European semantic core and is the common interoperable level for B2B. EXTENDED adds further fields for complex or cross-border cases. You pick the profile that matches what your recipient and your jurisdiction require." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I create a valid ZUGFeRD / Factur-X file?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as factur-x.xml with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example doc.facturx(xml, FacturxProfile.EN16931), in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /zugferd concept page (scoped, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* hero art: one file, two readers (human + machine) */
+    .zf-scene { position: relative; height: 250px; max-width: 460px; margin: 34px auto 0; }
+    .zf-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 152px; height: 192px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 15px; display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.55); animation: zfPulse 4.5s ease-in-out infinite; z-index: 2; }
+    .zf-paper .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .zf-paper .ln.s { width: 56%; }
+    .zf-paper .amt { margin-top: auto; height: 14px; width: 64%; align-self: flex-end; border-radius: 4px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
+    .zf-seal { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--brand);
+      color: #1a0e02; font-size: .58rem; font-weight: 800; letter-spacing: .03em; padding: 4px 10px;
+      border-radius: 999px; white-space: nowrap; z-index: 3; }
+    /* embedded xml chip riding inside the paper */
+    .zf-xml { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 6px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .62rem; font-weight: 700; color: #34d399; background: rgba(52,211,153,.12);
+      border: 1px solid rgba(52,211,153,.4); padding: 3px 8px; border-radius: 7px; z-index: 3; }
+    .zf-reader { position: absolute; top: 50%; transform: translateY(-50%); width: 78px; text-align: center;
+      color: #cbd5e1; }
+    .zf-reader .face { width: 56px; height: 56px; margin: 0 auto 8px; border-radius: 14px; display: grid;
+      place-items: center; background: var(--panel-2); border: 1px solid var(--border);
+      box-shadow: 0 10px 24px -12px rgba(0,0,0,.6); }
+    .zf-reader .face svg { width: 26px; height: 26px; }
+    .zf-reader .cap { font-size: .68rem; color: var(--muted); }
+    .zf-reader.human { left: 0; animation: zfFloat 5s ease-in-out infinite; }
+    .zf-reader.human .face { color: #38bdf8; }
+    .zf-reader.machine { right: 0; animation: zfFloat 5s ease-in-out 1.4s infinite; }
+    .zf-reader.machine .face { color: #34d399; }
+    /* link rays from file to each reader */
+    .zf-ray { position: absolute; top: 50%; height: 2px; background: linear-gradient(90deg, transparent, var(--brand-2));
+      z-index: 1; }
+    .zf-ray.l { left: 78px; right: calc(50% + 76px); transform: translateY(-50%) scaleX(1);
+      background: linear-gradient(90deg, #38bdf8, transparent); animation: zfRay 3s ease-in-out infinite; }
+    .zf-ray.r { right: 78px; left: calc(50% + 76px); transform: translateY(-50%);
+      background: linear-gradient(90deg, transparent, #34d399); animation: zfRay 3s ease-in-out .6s infinite; }
+    @keyframes zfFloat { 0%,100% { transform: translateY(-50%); } 50% { transform: translateY(calc(-50% - 9px)); } }
+    @keyframes zfPulse { 0%,100% { box-shadow: 0 30px 60px -30px rgba(249,115,22,.40); }
+      50% { box-shadow: 0 30px 70px -28px rgba(249,115,22,.75); } }
+    @keyframes zfRay { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+
+    /* split: human side vs machine side */
+    .zf-split { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .zf-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .zf-card.human { border-color: #1e304a; }
+    .zf-card.machine { border-color: #1e3a2a; }
+    .zf-card h3 { margin: 0 0 4px; font-size: 1.05rem; display: flex; align-items: center; gap: 9px; }
+    .zf-card h3 svg { width: 19px; height: 19px; flex: none; }
+    .zf-card.human h3 svg { color: #38bdf8; }
+    .zf-card.machine h3 svg { color: #34d399; }
+    .zf-card .tagline { color: var(--muted); font-size: .85rem; margin: 0 0 16px; }
+    .zf-doc { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 8px; min-height: 132px; }
+    .zf-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .zf-doc .ln.s { width: 52%; }
+    .zf-doc .row { display: flex; justify-content: space-between; align-items: center; }
+    .zf-doc .row b { color: #e6edf6; font-size: .9rem; }
+    .zf-doc .row .v { color: var(--brand-2); font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; }
+    .zf-xmlcode { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: .76rem; line-height: 1.6;
+      color: #9fb4cf; white-space: pre; overflow-x: auto; }
+    .zf-xmlcode .t { color: #38bdf8; }
+    .zf-xmlcode .n { color: #34d399; }
+
+    /* problem: re-keying a plain PDF */
+    .zf-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 12px;
+      max-width: 720px; margin: 38px auto 0; }
+    .zf-node { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 14px;
+      text-align: center; color: #cbd5e1; }
+    .zf-node svg { width: 26px; height: 26px; color: var(--brand-2); }
+    .zf-node .t { font-size: .82rem; margin-top: 8px; }
+    .zf-node.err { border-color: #3a2020; }
+    .zf-node.err svg { color: #fca5a5; }
+    .zf-arrow { color: var(--muted); font-size: 1.3rem; }
+    @media (max-width: 720px) { .zf-flow { grid-template-columns: 1fr; } .zf-arrow { transform: rotate(90deg); justify-self: center; } }
+
+    /* names: ZUGFeRD = Factur-X */
+    .zf-names { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px;
+      max-width: 720px; margin: 34px auto 0; }
+    .zf-name { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px 24px;
+      text-align: center; }
+    .zf-name .flag { font-size: 1.7rem; }
+    .zf-name h3 { margin: 8px 0 2px; }
+    .zf-name p { margin: 0; color: var(--muted); font-size: .86rem; }
+    .zf-eq { font-size: 1.8rem; font-weight: 800; color: var(--brand); }
+    @media (max-width: 620px) { .zf-names { grid-template-columns: 1fr; } .zf-eq { transform: rotate(90deg); } }
+
+    /* what makes it: ingredients */
+    .zf-make { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .zf-ing { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .zf-ing .ic { color: var(--brand-2); height: 28px; }
+    .zf-ing .ic svg { width: 28px; height: 28px; }
+    .zf-ing h3 { margin: 12px 0 6px; font-size: 1rem; }
+    .zf-ing p { margin: 0; color: var(--muted); font-size: .89rem; }
+
+    /* profiles table + matrix (shared) */
+    .zf-matrix { width: 100%; border-collapse: collapse; margin-top: 36px; }
+    .zf-matrix th, .zf-matrix td { border: 1px solid var(--border); padding: 12px 14px; text-align: left; font-size: .92rem; }
+    .zf-matrix th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .zf-matrix td b { color: var(--text); }
+
+    /* mandates */
+    .zf-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .zf-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .zf-use .ic { color: var(--brand-2); height: 30px; }
+    .zf-use .ic svg { width: 30px; height: 30px; }
+    .zf-use h3 { margin: 12px 0 6px; font-size: 1.02rem; }
+    .zf-use p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    @media (max-width: 820px) {
+      .zf-split, .zf-make, .zf-uses { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .zf-paper, .zf-reader.human, .zf-reader.machine, .zf-ray.l, .zf-ray.r { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Hybrid e-invoicing</p>
+        <h1>What is <span class="grad">ZUGFeRD / Factur-X</span>,<br />and why does it matter?</h1>
+        <p class="lede concept-lede">
+          ZUGFeRD and Factur-X are two names for the same thing: a <b>hybrid
+          electronic invoice</b>. It is a single PDF that a person can read and
+          print like any invoice, while a structured XML twin sits sealed inside
+          the very same file so accounting software can import it automatically,
+          no retyping, no scanning. One document, two readers. This guide explains
+          it in plain language, with examples.
+        </p>
+        <div class="zf-scene" aria-hidden="true">
+          <span class="zf-ray l"></span>
+          <span class="zf-ray r"></span>
+          <div class="zf-reader human">
+            <div class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+            <span class="cap">Human reads<br />the invoice</span>
+          </div>
+          <div class="zf-paper">
+            <span class="zf-seal">ZUGFeRD &middot; Factur-X</span>
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="amt"></span>
+            <span class="zf-xml">&lt;/&gt; factur-x.xml</span>
+          </div>
+          <div class="zf-reader machine">
+            <div class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v2M15 1v2M9 21v2M15 21v2M1 9h2M1 15h2M21 9h2M21 15h2"/></svg></div>
+            <span class="cap">Software reads<br />the XML</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Create one with rust-pdf</a>
+          <a href="#profiles" class="btn btn-ghost btn-lg">Jump to the profiles</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a letter with a barcode</h2>
+        <p class="muted">
+          Imagine a posted invoice that a colleague can read at a glance, and in
+          the corner a barcode that a scanner reads in an instant. Today those are
+          two separate things: a paper (or PDF) invoice for people, and, if you are
+          lucky, a separate data file for the computer, sent alongside and easily
+          lost or mismatched.
+        </p>
+        <p class="muted">
+          ZUGFeRD / Factur-X puts <b>both into one file that can never drift
+          apart</b>. The page you see and the data the machine reads are the same
+          invoice, bound together. The human never has to type the numbers into the
+          accounting system, and the machine never has to guess at a scan. It is the
+          difference between handing someone a photo of a form and handing them a
+          form that also fills itself in.
+        </p>
+      </div>
+    </section>
+
+    <!-- THE PROBLEM (re-keying) -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What goes wrong with an ordinary PDF invoice</h2>
+        <p class="center muted narrow">
+          A plain PDF is just a picture of an invoice to a computer. To get the
+          numbers into an ERP, someone has to read them and type them in, or run
+          fragile OCR. Every hop is slow and a chance to introduce an error in a
+          figure that has to be exactly right.
+        </p>
+        <div class="zf-flow" aria-hidden="true">
+          <div class="zf-node">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <div class="t">Plain PDF invoice</div>
+          </div>
+          <span class="zf-arrow">&rarr;</span>
+          <div class="zf-node err">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/><circle cx="12" cy="12" r="10"/></svg>
+            <div class="t">Manual re-keying / OCR</div>
+          </div>
+          <span class="zf-arrow">&rarr;</span>
+          <div class="zf-node">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+            <div class="t">Accounting / ERP</div>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          With ZUGFeRD / Factur-X the middle step disappears: the ERP reads the
+          embedded XML directly from the same file the person already received.
+        </p>
+      </div>
+    </section>
+
+    <!-- HUMAN vs MACHINE -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">One file, two faces</h2>
+        <p class="center muted narrow">
+          The visible PDF page and the embedded XML describe the same invoice. The
+          person reads the page; the software reads the data. Because they live in
+          one file, they are guaranteed to match.
+        </p>
+        <div class="zf-split">
+          <div class="zf-card human reveal">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg> The page a person sees</h3>
+            <p class="tagline">A normal, printable invoice layout.</p>
+            <div class="zf-doc">
+              <div class="row"><b>Invoice INV-2026-0042</b></div>
+              <span class="ln"></span><span class="ln s"></span>
+              <div class="row"><b>Total due</b><span class="v">&euro; 1,240.00</span></div>
+            </div>
+          </div>
+          <div class="zf-card machine reveal">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg> The XML a machine reads</h3>
+            <p class="tagline">factur-x.xml, embedded in the same file.</p>
+            <div class="zf-doc">
+<div class="zf-xmlcode"><span class="t">&lt;ram:ID&gt;</span>INV-2026-0042<span class="t">&lt;/ram:ID&gt;</span>
+<span class="t">&lt;ram:GrandTotal</span>
+   <span class="t">currencyID=</span><span class="n">"EUR"</span><span class="t">&gt;</span>1240.00<span class="t">&lt;/&gt;</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TWO NAMES, ONE STANDARD -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">ZUGFeRD or Factur-X? Same standard, two names</h2>
+        <p class="center muted narrow">
+          They are developed jointly and are technically aligned. ZUGFeRD is the
+          German name, Factur-X is the French one. Since ZUGFeRD 2.1 they share the
+          same embedded file name (<code>factur-x.xml</code>) and both implement the
+          European semantic standard <b>EN 16931</b>. A file produced as one is
+          valid as the other.
+        </p>
+        <div class="zf-names">
+          <div class="zf-name reveal">
+            <div class="flag">🇩🇪</div>
+            <h3>ZUGFeRD</h3>
+            <p>Germany &middot; FeRD</p>
+          </div>
+          <div class="zf-eq">=</div>
+          <div class="zf-name reveal">
+            <div class="flag">🇫🇷</div>
+            <h3>Factur-X</h3>
+            <p>France &middot; FNFE-MPE</p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:24px">
+          Both are built on <a href="/pdf-a">PDF/A-3</a>, the archival PDF that is
+          allowed to embed arbitrary files. That is what lets a long-lived,
+          self-contained invoice also carry its structured data inside.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHAT MAKES IT -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">What turns a PDF into a ZUGFeRD / Factur-X invoice</h2>
+        <p class="center muted narrow">
+          Three things are added on top of a normal, well-formed invoice page.
+        </p>
+        <div class="zf-make">
+          <div class="zf-ing reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h3>A PDF/A-3 base</h3>
+            <p>The page is rendered as archival PDF/A-3, the level that permits embedding other files and guarantees long-term fidelity.</p>
+          </div>
+          <div class="zf-ing reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></div>
+            <h3>The embedded XML</h3>
+            <p>The Cross-Industry Invoice is attached as <code>factur-x.xml</code> with the correct relationship, marking it the data twin of the page.</p>
+          </div>
+          <div class="zf-ing reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+            <h3>Factur-X XMP metadata</h3>
+            <p>An <code>fx</code> identification block in the XMP records the document type, version and profile so any reader can detect it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILES -->
+    <section id="profiles" class="section">
+      <div class="wrap">
+        <h2 class="center">The profiles: from MINIMUM to EXTENDED</h2>
+        <p class="center muted narrow">
+          A <b>profile</b> says how much structured data the XML carries. You pick
+          the one your recipient and your jurisdiction require. <code>EN 16931</code>
+          (also called Comfort) is the common interoperable level for B2B.
+        </p>
+        <table class="zf-matrix">
+          <tr><th>Profile</th><th>Line items?</th><th>What it carries</th></tr>
+          <tr><td><b>MINIMUM</b></td><td>No</td><td>Header totals only. Often used for booking aids, not a full legal invoice on its own.</td></tr>
+          <tr><td><b>BASIC WL</b></td><td>No</td><td>Header and document-level data without line items ("without lines").</td></tr>
+          <tr><td><b>BASIC</b></td><td>Yes</td><td>Adds invoice line items on top of BASIC WL.</td></tr>
+          <tr><td><b>EN 16931</b></td><td>Yes</td><td>The full European semantic core. The recommended, widely interoperable level for B2B.</td></tr>
+          <tr><td><b>EXTENDED</b></td><td>Yes</td><td>EN 16931 plus extra fields for complex, sector-specific or cross-border cases.</td></tr>
+        </table>
+        <p class="center muted narrow" style="margin-top:20px">
+          rust-pdf writes all five profiles into the Factur-X XMP, and the output
+          validates as <b>PDF/A-3 + Factur-X</b> under veraPDF.
+        </p>
+      </div>
+    </section>
+
+    <!-- MANDATES / WHERE USED -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Where it is used, and increasingly required</h2>
+        <p class="center muted narrow">
+          Structured e-invoicing is moving from optional to mandatory across Europe,
+          and the hybrid PDF format is a natural fit because it satisfies people and
+          systems at once.
+        </p>
+        <div class="zf-uses">
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div>
+            <h3>Germany</h3>
+            <p>Businesses must be able to receive structured B2B e-invoices, with sending obligations phasing in. ZUGFeRD is a recognised format.</p>
+          </div>
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg></div>
+            <h3>France</h3>
+            <p>The national e-invoicing reform is rolling out a mandate for structured invoices, with Factur-X among the accepted formats.</p>
+          </div>
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></svg></div>
+            <h3>EU / EN 16931</h3>
+            <p>The European semantic standard underpins both formats and the EU's ViDA ("VAT in the Digital Age") direction of travel.</p>
+          </div>
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M4 10v8M9 10v8M15 10v8M20 10v8"/><path d="M3 21h18"/></svg></div>
+            <h3>Public sector</h3>
+            <p>Administrations increasingly accept or require structured invoices for supplier payments, where a hybrid file eases adoption.</p>
+          </div>
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M4 9h16"/><path d="M6 9v9M10 9v9M14 9v9M18 9v9"/><path d="M3 21h18"/></svg></div>
+            <h3>Enterprise AP/AR</h3>
+            <p>Accounts-payable teams post incoming hybrid invoices automatically, cutting re-keying, OCR cost and disputes.</p>
+          </div>
+          <div class="zf-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg></div>
+            <h3>Long-term archiving</h3>
+            <p>Because the base is PDF/A-3, the invoice is also an archival record that stays readable and self-contained for decades.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Plain PDF vs ZUGFeRD / Factur-X at a glance</h2>
+        <table class="zf-matrix">
+          <tr><th>&nbsp;</th><th>Plain PDF invoice</th><th>ZUGFeRD / Factur-X</th></tr>
+          <tr><td>Human-readable</td><td>Yes</td><td><b>Yes</b></td></tr>
+          <tr><td>Machine-readable</td><td>Only via OCR</td><td><b>Yes, embedded XML</b></td></tr>
+          <tr><td>Posting to ERP</td><td>Manual re-keying</td><td><b>Automatic</b></td></tr>
+          <tr><td>Data &amp; page can mismatch</td><td>Yes (separate files)</td><td><b>No, one file</b></td></tr>
+          <tr><td>Satisfies EU e-invoice mandates</td><td>No</td><td><b>Yes (EN 16931)</b></td></tr>
+          <tr><td>Long-term archival</td><td>Not guaranteed</td><td><b>PDF/A-3 by design</b></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to create a valid ZUGFeRD / Factur-X file with rust-pdf</h2>
+        <p class="center muted narrow">
+          Render the visible invoice page as usual, then one call embeds the
+          Cross-Industry Invoice XML as <code>factur-x.xml</code>, switches the
+          document to <b>PDF/A-3</b>, and writes the Factur-X identification into the
+          XMP at your chosen profile. The output is checked by <b>veraPDF</b>.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+xml = open("invoice.xml", "rb").read()    # EN 16931 Cross-Industry Invoice
+with rustpdf.Document() as doc:
+    doc.facturx(xml, rustpdf.FacturxProfile.EN16931)   # -&gt; PDF/A-3 + Factur-X
+    doc.set_info(title="Invoice INV-2026-0042")
+    f = doc.add_font_file("Roboto-Regular.ttf")
+    doc.add_page()
+    doc.show_text(f, 22, 72, 760, "Invoice INV-2026-0042")
+    doc.save("invoice_facturx.pdf")        # veraPDF-valid hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] xml = File.ReadAllBytes("invoice.xml");   // EN 16931 CII
+using var doc = new Document();
+doc.Facturx(xml, FacturxProfile.En16931)         // -&gt; PDF/A-3 + Factur-X
+   .SetInfo(title: "Invoice INV-2026-0042");
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 22, 72, 760, "Invoice INV-2026-0042");
+byte[] bytes = doc.ToBytes();                     // hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+xml, _ := os.ReadFile("invoice.xml")            // EN 16931 CII
+doc, _ := rustpdf.New()
+defer doc.Close()
+doc.Facturx(xml, rustpdf.FacturxEN16931)        // -&gt; PDF/A-3 + Factur-X
+doc.SetInfo(rustpdf.Info{Title: "Invoice INV-2026-0042"})
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+doc.AddPage()
+doc.ShowText(f, 22, 72, 760, "Invoice INV-2026-0042", 0)
+data, _ := doc.ToBytes()                         // hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document, FacturxProfile } = require("rustpdf");
+const fs = require("fs");
+
+const xml = fs.readFileSync("invoice.xml");      // EN 16931 CII
+const doc = new Document();
+doc.facturx(xml, FacturxProfile.EN16931)         // -&gt; PDF/A-3 + Factur-X
+   .setInfo({ title: "Invoice INV-2026-0042" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 22, 72, 760, "Invoice INV-2026-0042");
+const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>veraPDF</span><span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          You supply the EN 16931 invoice XML (from your accounting system or an
+          invoice library); rust-pdf handles the PDF/A-3 packaging, the embedding
+          and the metadata. Full details in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">ZUGFeRD / Factur-X FAQ</h2>
+        <details><summary>What is ZUGFeRD / Factur-X?</summary>
+          <p>ZUGFeRD (Germany) and Factur-X (France) are the same hybrid e-invoice standard under two names. A hybrid e-invoice is a single PDF/A-3 file that is both human-readable, the visible invoice page a person can read and print, and machine-readable, an XML file embedded inside it that an accounting system can import automatically. One file satisfies both the person and the software, with no separate XML to send or risk losing.</p>
+        </details>
+        <details><summary>What is the difference between ZUGFeRD and Factur-X?</summary>
+          <p>There is no technical difference at the interoperable level. ZUGFeRD is the German name and Factur-X is the French name for the same specification, developed jointly by FNFE-MPE in France and FeRD in Germany. Since ZUGFeRD 2.1, the two are aligned: the embedded file is named <code>factur-x.xml</code> in both, and both implement the European semantic standard EN 16931. A file produced as Factur-X is valid ZUGFeRD and vice versa.</p>
+        </details>
+        <details><summary>Why does an invoice need to be both PDF and XML?</summary>
+          <p>People need to read, check and archive an invoice, which a PDF does well. Accounting and ERP systems need structured data they can post automatically without retyping or OCR, which XML does well. A plain PDF forces the recipient to key the numbers in by hand, which is slow and error-prone. A hybrid e-invoice carries both inside one file, so the same document serves the human and the machine and the two can never disagree.</p>
+        </details>
+        <details><summary>What are the ZUGFeRD / Factur-X profiles?</summary>
+          <p>Profiles describe how much structured data the XML carries. MINIMUM and BASIC WL hold only header totals, with no line items. BASIC adds line items. EN 16931 (also called Comfort) is the full European semantic core and is the common interoperable level for B2B. EXTENDED adds further fields for complex or cross-border cases. You pick the profile that matches what your recipient and your jurisdiction require.</p>
+        </details>
+        <details><summary>How do I create a valid ZUGFeRD / Factur-X file?</summary>
+          <p>Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as <code>factur-x.xml</code> with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example <code>doc.facturx(xml, FacturxProfile.EN16931)</code>, in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Generate ZUGFeRD / Factur-X invoices in your language</h2>
+        <p class="muted">
+          One core, the same hybrid e-invoice output across nine languages.
+          Prototype for free, license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/pades">What is PAdES?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/aes-256">What is AES-256?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

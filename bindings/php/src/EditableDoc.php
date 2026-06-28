@@ -131,6 +131,112 @@ final class EditableDoc
         return $found->cdata !== 0;
     }
 
+    /** Set an AcroForm checkbox on/off; returns whether it existed. */
+    public function setCheckbox(string $name, bool $checked = true): bool
+    {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_set_checkbox($this->h(), $name, $checked ? 1 : 0, \FFI::addr($found)));
+        return $found->cdata !== 0;
+    }
+
+    /** Select a radio button by its export value; returns whether it existed. */
+    public function setRadio(string $name, string $exportValue): bool
+    {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_set_radio($this->h(), $name, $exportValue, \FFI::addr($found)));
+        return $found->cdata !== 0;
+    }
+
+    /** Set a choice (dropdown/list) field value; returns whether it existed. */
+    public function setChoice(string $name, string $value): bool
+    {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_set_choice($this->h(), $name, $value, \FFI::addr($found)));
+        return $found->cdata !== 0;
+    }
+
+    /** Flatten all AcroForm fields into static page content. */
+    public function flattenForms(): self
+    {
+        Ffi::check($this->ffi->pdf_editable_flatten_forms($this->h()));
+        return $this;
+    }
+
+    /**
+     * List every AcroForm field name.
+     *
+     * @return list<string>
+     */
+    public function fieldNames(): array
+    {
+        $h = $this->h();
+        $joined = Ffi::takeBytes(fn ($ffi, $o, $n) => $ffi->pdf_editable_field_names($h, $o, $n));
+        if ($joined === '') {
+            return [];
+        }
+        return array_values(array_filter(explode("\n", $joined), static fn ($s) => $s !== ''));
+    }
+
+    /**
+     * Stamp a diagonal text watermark across every page.
+     *
+     * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
+     */
+    public function watermarkText(
+        string $text,
+        float $size = 64.0,
+        array $color = [0.5, 0.5, 0.5],
+        float $opacity = 0.30,
+        float $rotationDeg = 45.0,
+    ): self {
+        Ffi::check($this->ffi->pdf_editable_watermark_text(
+            $this->h(),
+            $text,
+            $size,
+            $color[0],
+            $color[1],
+            $color[2],
+            $opacity,
+            $rotationDeg,
+        ));
+        return $this;
+    }
+
+    /** Stamp an image watermark (from a file) across every page. */
+    public function watermarkImageFile(string $path, float $width, float $height, float $opacity = 0.30): self
+    {
+        Ffi::check($this->ffi->pdf_editable_watermark_image_file($this->h(), $path, $width, $height, $opacity));
+        return $this;
+    }
+
+    /**
+     * Redact rectangular regions on a page (content removed + black boxes).
+     *
+     * @param list<array{0: float, 1: float, 2: float, 3: float}> $rects
+     * @return bool whether the page existed
+     */
+    public function redact(int $pageIndex, array $rects): bool
+    {
+        $count = \count($rects);
+        $flat = $this->ffi->new('double[' . ($count * 4) . ']');
+        foreach (array_values($rects) as $i => $r) {
+            $flat[$i * 4] = $r[0];
+            $flat[$i * 4 + 1] = $r[1];
+            $flat[$i * 4 + 2] = $r[2];
+            $flat[$i * 4 + 3] = $r[3];
+        }
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_redact($this->h(), $pageIndex, $flat, $count, \FFI::addr($found)));
+        return $found->cdata !== 0;
+    }
+
+    /** Convert the document to PDF/A (only B-levels A1b/A2b/A3b; requires a license). */
+    public function convertToPdfa(PdfaLevel $level = PdfaLevel::A2b): self
+    {
+        Ffi::check($this->ffi->pdf_editable_convert_to_pdfa($this->h(), $level->value));
+        return $this;
+    }
+
     public function optimize(): self
     {
         Ffi::check($this->ffi->pdf_editable_optimize($this->h()));

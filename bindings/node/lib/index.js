@@ -21,6 +21,31 @@ const PdfaLevel = Object.freeze({ A1b: 0, A2b: 1, A2a: 2, A3b: 3, A3a: 4 });
 const Align = Object.freeze({ Left: 0, Right: 1, Center: 2, Justify: 3 });
 const AFRelationship = Object.freeze({ Source: 0, Data: 1, Alternative: 2, Supplement: 3, Unspecified: 4 });
 const Encryption = Object.freeze({ Rc4: 0, Aes128: 1, Aes256: 2 });
+const FacturxProfile = Object.freeze({ Minimum: 0, BasicWL: 1, Basic: 2, EN16931: 3, Extended: 4 });
+
+// ---- Bookmark (document outline tree) --------------------------------------
+
+class Bookmark {
+  // top is optional; children is an array of Bookmark.
+  constructor(title, page, top = null, children = []) {
+    this.title = title;
+    this.page = page;
+    this.top = top;
+    this.children = Array.from(children);
+  }
+
+  // Append a child bookmark; returns the child (for chaining nested builds).
+  child(bookmark) {
+    this.children.push(bookmark);
+    return bookmark;
+  }
+
+  // Pre-order flatten into the parallel-array shape the C API expects.
+  _flatten(level, out) {
+    out.push({ level, title: this.title, page: this.page, top: this.top });
+    for (const c of this.children) c._flatten(level + 1, out);
+  }
+}
 
 // ---- locate + load the native library --------------------------------------
 
@@ -149,7 +174,30 @@ const f = {
   edIncremental: lib.func('int pdf_editable_to_bytes_incremental(void *ed, const uint8_t *original, size_t olen, _Out_ uint8_t **out, _Out_ size_t *len)'),
   edSave: lib.func('int pdf_editable_save(void *ed, const char *path)'),
 
+  // Tier 1: hyperlinks + bookmarks + Factur-X (Document)
+  linkUri: lib.func('int pdf_page_link_uri(void *doc, double x0, double y0, double x1, double y1, const char *uri)'),
+  linkToPage: lib.func('int pdf_page_link_to_page(void *doc, double x0, double y0, double x1, double y1, size_t target_page, double top, int has_top)'),
+  addBookmarks: lib.func('int pdf_document_add_bookmarks(void *doc, size_t count, const int *levels, const char **titles, const size_t *pages, const double *tops, const int *has_tops)'),
+  facturx: lib.func('int pdf_document_facturx(void *doc, const uint8_t *xml, size_t len, int profile)'),
+
+  // Tier 1: form fill + flatten + field names + watermark (EditableDoc)
+  edSetCheckbox: lib.func('int pdf_editable_set_checkbox(void *ed, const char *name, int checked, _Out_ int *found)'),
+  edSetRadio: lib.func('int pdf_editable_set_radio(void *ed, const char *name, const char *export_value, _Out_ int *found)'),
+  edSetChoice: lib.func('int pdf_editable_set_choice(void *ed, const char *name, const char *value, _Out_ int *found)'),
+  edFlatten: lib.func('int pdf_editable_flatten_forms(void *ed)'),
+  edFieldNames: lib.func('int pdf_editable_field_names(void *ed, _Out_ uint8_t **out, _Out_ size_t *len)'),
+  edWatermarkText: lib.func('int pdf_editable_watermark_text(void *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg)'),
+  edWatermarkImage: lib.func('int pdf_editable_watermark_image_file(void *ed, const char *path, double width, double height, double opacity)'),
+
+  // Tier 2: redaction + PDF/A conversion (EditableDoc)
+  edRedact: lib.func('int pdf_editable_redact(void *ed, size_t index, const double *rects, size_t count, _Out_ int *found)'),
+  edConvertPdfa: lib.func('int pdf_editable_convert_to_pdfa(void *ed, int level)'),
+
+  // Tier 2: signature verification (module-level)
+  verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+
   extractText: lib.func('int pdf_extract_text(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+  extractImagesToDir: lib.func('int pdf_extract_images_to_dir(const uint8_t *data, size_t len, const char *dir, _Out_ size_t *out_count)'),
   sign: lib.func('int pdf_sign(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *reason, const char *location, const char *name, int pades, _Out_ uint8_t **out, _Out_ size_t *len)'),
   timestamp: lib.func('int pdf_timestamp(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *date, _Out_ uint8_t **out, _Out_ size_t *len)'),
   addDss: lib.func('int pdf_add_dss(const uint8_t *pdf, size_t pl, const uint8_t **cp, const size_t *cl, size_t cc, const uint8_t **rp, const size_t *rl, size_t rc, _Out_ uint8_t **out, _Out_ size_t *len)'),
@@ -195,6 +243,22 @@ function activateLicense(token) {
 function extractText(pdf) {
   const b = asBuf(pdf);
   return takeBytes((o, n) => f.extractText(b, b.length, o, n)).toString('utf8');
+}
+
+function extractImagesToDir(pdf, dir) {
+  const b = asBuf(pdf);
+  const count = [0n];
+  check(f.extractImagesToDir(b, b.length, dir, count));
+  return Number(count[0]);
+}
+
+// Validate every signature; returns one record object per signature (empty when
+// the document is unsigned). Fields: field_name, sub_filter, signer,
+// covers_whole_document, digest_valid, signature_valid, is_valid, byte_range.
+function verifySignatures(pdf) {
+  const b = asBuf(pdf);
+  const js = takeBytes((o, n) => f.verifySignatures(b, b.length, o, n)).toString('utf8');
+  return js ? JSON.parse(js) : [];
 }
 
 function sign(pdf, keyDer, certDer, opts = {}) {
@@ -308,6 +372,44 @@ class Document {
     return this;
   }
 
+  // hyperlinks (Tier 1)
+  linkUri(rect, uri) {
+    check(f.linkUri(this._ptr, rect[0], rect[1], rect[2], rect[3], uri));
+    return this;
+  }
+  linkToPage(rect, pageIndex, top = null) {
+    check(f.linkToPage(this._ptr, rect[0], rect[1], rect[2], rect[3], pageIndex,
+      top == null ? 0.0 : top, top == null ? 0 : 1));
+    return this;
+  }
+
+  // bookmarks / outline (Tier 1) — one root tree per call, pre-order flattened.
+  addBookmark(bookmark) {
+    const entries = [];
+    bookmark._flatten(0, entries);
+    const n = entries.length;
+    const levels = new Int32Array(n);
+    const pages = new Array(n);
+    const titles = new Array(n);
+    const tops = new Float64Array(n);
+    const hasTops = new Int32Array(n);
+    entries.forEach((e, i) => {
+      levels[i] = e.level;
+      pages[i] = e.page;
+      titles[i] = e.title;
+      if (e.top == null) { hasTops[i] = 0; tops[i] = 0.0; } else { hasTops[i] = 1; tops[i] = e.top; }
+    });
+    check(f.addBookmarks(this._ptr, n, levels, titles, pages, tops, hasTops));
+    return this;
+  }
+
+  // ZUGFeRD / Factur-X (Tier 2)
+  facturx(xml, profile = FacturxProfile.EN16931) {
+    const b = asBuf(xml);
+    check(f.facturx(this._ptr, b, b.length, profile));
+    return this;
+  }
+
   get pageCount() { return f.pageCount(this._ptr); }
   toBytes() { const h = this._ptr; return takeBytes((o, n) => f.write(h, o, n)); }
   save(path) { check(f.save(this._ptr, path)); }
@@ -351,6 +453,52 @@ class EditableDoc {
   setXmp(xml) { const b = asBuf(xml); check(f.edSetXmp(this._ptr, b, b.length)); return this; }
   overlayPage(index, content) { const b = asBuf(content); check(f.edOverlay(this._ptr, index, b, b.length)); return this; }
   fillTextField(name, value) { const found = [0]; check(f.edFill(this._ptr, name, value, found)); return found[0] !== 0; }
+
+  // form fill + flatten + field names (Tier 1)
+  setCheckbox(name, checked = true) {
+    const found = [0];
+    check(f.edSetCheckbox(this._ptr, name, checked ? 1 : 0, found));
+    return found[0] !== 0;
+  }
+  setRadio(name, exportValue) {
+    const found = [0];
+    check(f.edSetRadio(this._ptr, name, exportValue, found));
+    return found[0] !== 0;
+  }
+  setChoice(name, value) {
+    const found = [0];
+    check(f.edSetChoice(this._ptr, name, value, found));
+    return found[0] !== 0;
+  }
+  flattenForms() { check(f.edFlatten(this._ptr)); return this; }
+  fieldNames() {
+    const h = this._ptr;
+    const text = takeBytes((o, n) => f.edFieldNames(h, o, n)).toString('utf8');
+    return text.split('\n').filter((s) => s.length > 0);
+  }
+
+  // watermarks (Tier 1)
+  watermarkText(text, { size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0 } = {}) {
+    const [r, g, b] = color;
+    check(f.edWatermarkText(this._ptr, text, size, r, g, b, opacity, rotationDeg));
+    return this;
+  }
+  watermarkImageFile(path, width, height, opacity = 0.30) {
+    check(f.edWatermarkImage(this._ptr, path, width, height, opacity));
+    return this;
+  }
+
+  // redaction + PDF/A conversion (Tier 2)
+  redact(pageIndex, rects) {
+    const n = rects.length;
+    const flat = new Float64Array(n * 4);
+    rects.forEach((r, i) => flat.set(r, i * 4));
+    const found = [0];
+    check(f.edRedact(this._ptr, pageIndex, flat, n, found));
+    return found[0] !== 0;
+  }
+  convertToPdfa(level = PdfaLevel.A2b) { check(f.edConvertPdfa(this._ptr, level)); return this; }
+
   optimize() { check(f.edOptimize(this._ptr)); return this; }
   compact(on = true) { check(f.edCompact(this._ptr, on ? 1 : 0)); return this; }
   encrypt({ method = Encryption.Aes256, user = '', owner = '', readOnly = false } = {}) {
@@ -372,11 +520,15 @@ module.exports = {
   Align,
   AFRelationship,
   Encryption,
+  FacturxProfile,
+  Bookmark,
   Document,
   EditableDoc,
   version,
   activateLicense,
   extractText,
+  extractImagesToDir,
+  verifySignatures,
   sign,
   timestamp,
   addDss,

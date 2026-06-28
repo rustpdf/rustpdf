@@ -36,6 +36,20 @@ final class Pdf
     }
 
     /**
+     * Extract every raster image from `$pdf` into directory `$dir` (JPEGs are
+     * written verbatim as .jpg, everything else as .png; files are named
+     * page{N}_{name}.{ext}). Returns the number of images written.
+     */
+    public static function extractImagesToDir(string $pdf, string $dir): int
+    {
+        $ffi = Ffi::get();
+        [$b, $l] = Ffi::bytes($pdf);
+        $count = $ffi->new('uintptr_t');
+        Ffi::check($ffi->pdf_extract_images_to_dir($b, $l, $dir, \FFI::addr($count)));
+        return (int) $count->cdata;
+    }
+
+    /**
      * Sign a PDF (PKCS#7 detached, incremental update). `$pades` selects
      * PAdES-B-B. Requires a license.
      */
@@ -84,5 +98,26 @@ final class Pdf
             unset($k1, $k2);
             return $st;
         });
+    }
+
+    /**
+     * Validate every signature in `$data`. Returns one associative array per
+     * signature with keys `field_name`, `sub_filter`, `signer`,
+     * `covers_whole_document`, `digest_valid`, `signature_valid`, `is_valid`
+     * and `byte_range`. An empty array means the document is unsigned.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function verifySignatures(string $data): array
+    {
+        $json = Ffi::takeBytes(function ($ffi, $o, $n) use ($data) {
+            [$b, $l] = Ffi::bytes($data);
+            return $ffi->pdf_verify_signatures_json($b, $l, $o, $n);
+        });
+        if ($json === '') {
+            return [];
+        }
+        $decoded = json_decode($json, true);
+        return \is_array($decoded) ? $decoded : [];
     }
 }

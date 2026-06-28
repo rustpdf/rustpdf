@@ -68,6 +68,17 @@ typealias HFillFieldFn  = (OpaquePointer?, UnsafePointer<CChar>?, UnsafePointer<
 typealias HEncryptFn    = (OpaquePointer?, Int32, UnsafePointer<CChar>?, UnsafePointer<CChar>?, Int32) -> Int32
 typealias HIncrFn       = (OpaquePointer?, UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
 typealias ExtractTextFn = (UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
+typealias HLinkUriFn    = (OpaquePointer?, Double, Double, Double, Double, UnsafePointer<CChar>?) -> Int32
+typealias HLinkPageFn   = (OpaquePointer?, Double, Double, Double, Double, UInt, Double, Int32) -> Int32
+typealias HBookmarksFn  = (OpaquePointer?, UInt, UnsafePointer<Int32>?, UnsafePointer<UnsafePointer<CChar>?>?,
+                           UnsafePointer<UInt>?, UnsafePointer<Double>?, UnsafePointer<Int32>?) -> Int32
+typealias HFacturxFn    = (OpaquePointer?, UnsafePointer<UInt8>?, UInt, Int32) -> Int32
+typealias HSetCheckFn   = (OpaquePointer?, UnsafePointer<CChar>?, Int32, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HWmTextFn     = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double, Double, Double) -> Int32
+typealias HWmImageFn    = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double) -> Int32
+typealias HRedactFn     = (OpaquePointer?, UInt, UnsafePointer<Double>?, UInt, UnsafeMutablePointer<Int32>?) -> Int32
+typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
+                             UnsafeMutablePointer<UInt>?) -> Int32
 typealias SignFn        = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
                            UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?, UnsafePointer<CChar>?,
                            UnsafePointer<CChar>?, Int32, OutBuf, OutLen) -> Int32
@@ -138,6 +149,12 @@ final class Native {
     let pdf_document_dropdown: HDropdownFn = CRustPdf.pdf_document_dropdown
     let pdf_document_radio_group: HRadioFn = CRustPdf.pdf_document_radio_group
 
+    // ---- links + bookmarks + factur-x ---------------------------------------
+    let pdf_page_link_uri: HLinkUriFn = CRustPdf.pdf_page_link_uri
+    let pdf_page_link_to_page: HLinkPageFn = CRustPdf.pdf_page_link_to_page
+    let pdf_document_add_bookmarks: HBookmarksFn = CRustPdf.pdf_document_add_bookmarks
+    let pdf_document_facturx: HFacturxFn = CRustPdf.pdf_document_facturx
+
     // ---- editable -----------------------------------------------------------
     let pdf_editable_load: LoadFn = CRustPdf.pdf_editable_load
     let pdf_editable_load_password: LoadPwFn = CRustPdf.pdf_editable_load_password
@@ -160,11 +177,24 @@ final class Native {
     let pdf_editable_to_bytes_incremental: HIncrFn = CRustPdf.pdf_editable_to_bytes_incremental
     let pdf_editable_save: HCStrFn = CRustPdf.pdf_editable_save
 
+    // ---- editable: forms + watermarks + redaction + pdfa conversion ---------
+    let pdf_editable_set_checkbox: HSetCheckFn = CRustPdf.pdf_editable_set_checkbox
+    let pdf_editable_set_radio: HFillFieldFn = CRustPdf.pdf_editable_set_radio
+    let pdf_editable_set_choice: HFillFieldFn = CRustPdf.pdf_editable_set_choice
+    let pdf_editable_flatten_forms: HFn = CRustPdf.pdf_editable_flatten_forms
+    let pdf_editable_field_names: HOutFn = CRustPdf.pdf_editable_field_names
+    let pdf_editable_watermark_text: HWmTextFn = CRustPdf.pdf_editable_watermark_text
+    let pdf_editable_watermark_image_file: HWmImageFn = CRustPdf.pdf_editable_watermark_image_file
+    let pdf_editable_redact: HRedactFn = CRustPdf.pdf_editable_redact
+    let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
+
     // ---- text extraction + signing ------------------------------------------
     let pdf_extract_text: ExtractTextFn = CRustPdf.pdf_extract_text
+    let pdf_extract_images_to_dir: ExtractImagesFn = CRustPdf.pdf_extract_images_to_dir
     let pdf_sign: SignFn = CRustPdf.pdf_sign
     let pdf_timestamp: TimestampFn = CRustPdf.pdf_timestamp
     let pdf_add_dss: AddDssFn = CRustPdf.pdf_add_dss
+    let pdf_verify_signatures_json: ExtractTextFn = CRustPdf.pdf_verify_signatures_json
 
     private init() {}
 }

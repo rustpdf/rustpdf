@@ -86,13 +86,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -100,9 +107,10 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
-      <a href="#extract">Text extraction</a>
+      <a href="#extract">Text &amp; image extraction</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -315,6 +323,22 @@ doc.AttachFile("invoice.xml", "text/xml", xml,
                AFRelationship.Source, "Structured invoice data");
 doc.Save("einvoice.pdf");</code></pre></div>
 
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>Facturx(byte[] xml, FacturxProfile profile = FacturxProfile.En16931)</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+byte[] xml = File.ReadAllBytes("factur-x.xml");   // your Cross-Industry Invoice XML
+using var doc = new Document();
+doc.SetInfo(title: "Invoice INV-2026-001");
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 18, 72, 760, "Invoice INV-2026-001");
+doc.Facturx(xml, FacturxProfile.En16931);
+doc.Save("einvoice.pdf");        // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum to Extended).</p>
+
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
       <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>(x0, y0, x1, y1)</code> tuples; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
@@ -337,7 +361,38 @@ doc.RadioGroup("billing", 0, new[]
     ((140.0, 580.0, 156.0, 596.0), "annual"),
 }, selected: 1);
 doc.Save("form.pdf");</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc.FillTextField</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>LinkUri(rect, uri)</code> &nbsp; <code>LinkToPage(rect, pageIndex, top = null)</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var doc = new Document();
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 14, 72, 760, "Visit rustpdf.dev (see page 2)");
+doc.LinkUri((72, 756, 320, 776), "https://rustpdf.dev/");   // web link
+doc.LinkToPage((330, 756, 430, 776), 1, top: 800);         // jump to page 2
+doc.AddPage();
+doc.Save("links.pdf");</code></pre></div>
+      <p>Rectangles are <code>(x0, y0, x1, y1)</code> tuples in points; <code>pageIndex</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>.Child(...)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>new Bookmark(title, page, top = null)</code> &nbsp; <code>.Child(bookmark)</code> &nbsp; <code>AddBookmark(bookmark)</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+using var doc = new Document();
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+for (int i = 0; i &lt; 3; i++)
+    doc.AddPage();
+doc.AddBookmark(
+    new Bookmark("Chapter 1", 0, top: 820)
+        .Child(new Bookmark("Section 1.1", 1))
+        .Child(new Bookmark("Section 1.2", 2)));
+doc.AddBookmark(new Bookmark("Chapter 2", 2));
+doc.Save("outline.pdf");</code></pre></div>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -396,6 +451,63 @@ ed.SetInfo("Title", "Filled form");
 bool found = ed.FillTextField("applicant.name", "Jane Doe");
 Console.WriteLine($"filled: {found} | title: {ed.GetInfo("Title")}");
 ed.Save("filled.pdf");</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>FieldNames() → IReadOnlyList&lt;string&gt;</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>FillTextField(name, value) → bool</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>SetCheckbox(name, checkedFlag = true) → bool</code></td><td>Check/uncheck a checkbox.</td></tr>
+        <tr><td><code>SetRadio(name, exportValue) → bool</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>SetChoice(name, value) → bool</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>FlattenForms()</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+using var ed = EditableDoc.LoadFile("form.pdf");
+Console.WriteLine(string.Join(", ", ed.FieldNames()));   // applicant.name, agree, plan, ...
+ed.FillTextField("applicant.name", "Jane Doe");
+ed.SetCheckbox("agree", true);
+ed.SetRadio("billing", "annual");
+ed.SetChoice("plan", "Pro");
+ed.FlattenForms();                  // optional: make it non-editable
+ed.Save("filled.pdf");</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>WatermarkText(text, size = 64.0, color = null, opacity = 0.30, rotationDeg = 45.0)</code></div>
+      <div class="api"><code>WatermarkImageFile(path, width, height, opacity = 0.30)</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("report.pdf");
+ed.WatermarkText("CONFIDENTIAL", color: (0.7, 0.1, 0.1),
+                 opacity: 0.25, rotationDeg: 45);
+ed.Save("stamped.pdf");</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>Redact(pageIndex, rects) → bool</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("statement.pdf");
+// rects = list of (x0, y0, x1, y1) tuples on that page
+ed.Redact(0, new[]
+{
+    (60.0, 590.0, 400.0, 620.0),
+    (60.0, 540.0, 400.0, 570.0),
+});
+ed.Save("redacted.pdf");     // throws PdfException without a license granting redaction</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf.ExtractText</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>ConvertToPdfa(PdfaLevel level = PdfaLevel.A2b)</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+using var ed = EditableDoc.LoadFile("in.pdf");
+ed.ConvertToPdfa(PdfaLevel.A2b);    // throws PdfException if fonts aren't embedded
+ed.Save("archival.pdf");            // veraPDF: PDF/A-2b compliant</code></pre></div>
 
       <!-- ED OPTIMIZE -->
       <h2 id="ed-optimize">Optimize &amp; compact</h2>
@@ -464,12 +576,28 @@ byte[] lt = Pdf.AddDss(signed, new[] { certDer }, new[] { crlDer });
 byte[] lta = Pdf.Timestamp(lt, tsaKeyDer, tsaCertDer);
 File.WriteAllBytes("contract.lta.pdf", lta);</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>Pdf.VerifySignatures(byte[] pdf) → IReadOnlyList&lt;SignatureInfo&gt;</code></div>
+      <p>Each <code>SignatureInfo</code> has <code>FieldName</code>, <code>SubFilter</code>, <code>Signer</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. An empty list means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+byte[] data = File.ReadAllBytes("contract.signed.pdf");
+foreach (SignatureInfo sig in Pdf.VerifySignatures(data))
+    Console.WriteLine($"{sig.Signer} valid: {sig.IsValid} " +
+                      $"covers whole doc: {sig.CoversWholeDocument}");</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>Pdf.ExtractText(byte[] data) → string</code> <span class="badge free">free</span></div>
+      <div class="api"><code>Pdf.ExtractImagesToDir(byte[] data, string outDir) → int</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("report.pdf");
-Console.WriteLine(Pdf.ExtractText(data));</code></pre></div>
+Console.WriteLine(Pdf.ExtractText(data));
+
+int n = Pdf.ExtractImagesToDir(data, "out_images/");   // returns how many were written
+Console.WriteLine($"wrote {n} image(s)");</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -505,6 +633,15 @@ Console.WriteLine(Pdf.ExtractText(data));</code></pre></div>
         <tr><td><code>Encryption.Rc4</code></td><td>RC4 (legacy)</td></tr>
         <tr><td><code>Encryption.Aes128</code></td><td>AES-128</td></tr>
         <tr><td><code>Encryption.Aes256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>FacturxProfile.Minimum</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>FacturxProfile.BasicWL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>FacturxProfile.Basic</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>FacturxProfile.En16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>FacturxProfile.Extended</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -551,11 +688,19 @@ catch (PdfException e)
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

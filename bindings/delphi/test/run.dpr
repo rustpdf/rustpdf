@@ -106,6 +106,24 @@ begin
   end;
 end;
 
+{ A tiny 8x8 RGBA PNG, generated once and embedded so the image-extraction
+  test has a real raster to embed and pull back out. }
+function TinyPng: TBytes;
+const
+  Bytes: array[0..74] of Byte = (
+    $89, $50, $4E, $47, $0D, $0A, $1A, $0A, $00, $00, $00, $0D, $49, $48, $44,
+    $52, $00, $00, $00, $08, $00, $00, $00, $08, $08, $06, $00, $00, $00, $C4,
+    $0F, $BE, $8B, $00, $00, $00, $12, $49, $44, $41, $54, $78, $DA, $63, $38,
+    $A1, $A1, $F1, $1F, $1F, $66, $18, $19, $0A, $00, $E7, $64, $85, $C1, $96,
+    $82, $7B, $C4, $00, $00, $00, $00, $49, $45, $4E, $44, $AE, $42, $60, $82);
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(Bytes));
+  for I := 0 to High(Bytes) do
+    Result[I] := Bytes[I];
+end;
+
 var
   Root, Font, DevLicense, Fx: string;
   Doc, Form, Plain: TPdfDocument;
@@ -115,6 +133,23 @@ var
   Buttons: TRadioButtons;
   Blocked: Boolean;
   Key, Cert, TsaKey, TsaCert: TBytes;
+  ImgDoc: TPdfDocument;
+  ImgId: Integer;
+  ImgBytes: TBytes;
+  ImgDir: string;
+  ImgCount: NativeUInt;
+  LinkDoc: TPdfDocument;
+  LinkBytes, ConvBytes, WmBytes: TBytes;
+  Root1, Sub: TPdfBookmark;
+  FxBytes: TBytes;
+  FieldsEd: TPdfEditable;
+  Names: TPdfStringArray;
+  HasCity: Boolean;
+  I: Integer;
+  PngPath: string;
+  PngStream: TFileStream;
+  PngBytes: TBytes;
+  SigJson: UTF8String;
 begin
   Root := RepoRoot;
   Font := IncludeTrailingPathDelimiter(Root) + 'assets/fonts/Roboto-Regular.ttf';
@@ -162,6 +197,26 @@ begin
   Assert(Length(Pdfa) > 0, 'pdfa bytes');
   Assert(TextContains(Pdf.ExtractText(Pdfa), 'Título'), 'extracted text');
   Writeln(Format('built PDF/A-2a (%d bytes); extracted ok', [Length(Pdfa)]));
+
+  { 2b. Embed a raster image, then extract every image to a temp directory. }
+  ImgDoc := TPdfDocument.Create;
+  try
+    ImgId := ImgDoc.AddImagePng(TinyPng);
+    ImgDoc.AddPage.DrawImage(ImgId, 72, 600, 144, 144);
+    ImgBytes := ImgDoc.ToBytes;
+  finally
+    ImgDoc.Free;
+  end;
+  ImgDir := GetEnvironmentVariable('TMPDIR');
+  if ImgDir = '' then ImgDir := GetEnvironmentVariable('TEMP');
+  if ImgDir = '' then ImgDir := GetEnvironmentVariable('TMP');
+  if ImgDir = '' then ImgDir := PathDelim + 'tmp';
+  ImgDir := IncludeTrailingPathDelimiter(ImgDir) +
+    'rustpdf_imgs_' + FormatDateTime('hhnnsszzz', Now);
+  ForceDirectories(ImgDir);
+  ImgCount := Pdf.ExtractImagesToDir(ImgBytes, ImgDir);
+  Assert(ImgCount >= 1, 'at least one image extracted');
+  Writeln(Format('extracted %d image(s) to %s', [Int64(ImgCount), ImgDir]));
 
   { 3. Incremental update preserves the original prefix. }
   Ed := TPdfEditable.Load(Pdfa);
@@ -214,7 +269,69 @@ begin
   Assert(Contains(Fb, '/AcroForm'), 'AcroForm present');
   Writeln('forms + graphics ok');
 
-  { 6. Encryption (AES-256) round-trips. }
+  { 5b. Hyperlinks + nested bookmarks (Tier 1). }
+  LinkDoc := TPdfDocument.Create;
+  try
+    F := LinkDoc.AddFontFile(Font);
+    LinkDoc.AddPage.ShowText(F, 14, 72, 700, 'page one');
+    LinkDoc.AddPage.ShowText(F, 14, 72, 700, 'page two');
+    LinkDoc.LinkUri(PdfRect(72, 690, 200, 710), 'https://example.com')
+           .LinkToPage(PdfRect(72, 660, 200, 680), 1, 740);
+    Root1 := TPdfBookmark.Create('Chapter 1', 0);
+    try
+      Sub := TPdfBookmark.Create('Section 1.1', 0, 600);
+      Root1.Child(Sub).Child(TPdfBookmark.Create('Chapter 2', 1));
+      LinkDoc.AddBookmark(Root1);
+    finally
+      Root1.Free;  { frees the whole tree }
+    end;
+    LinkBytes := LinkDoc.ToBytes;
+  finally
+    LinkDoc.Free;
+  end;
+  Assert(Contains(LinkBytes, '/Link'), 'link annotation present');
+  Assert(Contains(LinkBytes, '/Outlines'), 'outline (bookmarks) present');
+  Writeln('links + bookmarks ok');
+
+  { 5c. Factur-X / ZUGFeRD: attach an invoice XML to a PDF/A-3. }
+  Doc := TPdfDocument.Create;
+  try
+    F := Doc.AddFontFile(Font);
+    Doc.Pdfa(palA3B);
+    Doc.AddPage.ShowText(F, 12, 72, 700, 'Invoice 2026-001');
+    Doc.Facturx(TEncoding.UTF8.GetBytes(
+      '<?xml version="1.0" encoding="UTF-8"?><CrossIndustryInvoice/>'),
+      fxEN16931);
+    FxBytes := Doc.ToBytes;
+  finally
+    Doc.Free;
+  end;
+  Assert(Contains(FxBytes, 'factur-x.xml'), 'Factur-X attachment present');
+  Writeln(Format('Factur-X ok (%d bytes)', [Length(FxBytes)]));
+
+  { 5d. Form manipulation: set field values, list names, flatten. }
+  FieldsEd := TPdfEditable.Load(Fb);
+  try
+    Names := FieldsEd.FieldNames;
+    HasCity := False;
+    for I := 0 to High(Names) do
+      if Names[I] = 'city' then
+        HasCity := True;
+    Assert(Length(Names) >= 4, 'field_names returns the form fields');
+    Assert(HasCity, 'field_names includes "city"');
+    Assert(FieldsEd.SetCheckbox('ok', False), 'set_checkbox found "ok"');
+    Assert(FieldsEd.SetChoice('country', 'PT'), 'set_choice found "country"');
+    Assert(FieldsEd.SetRadio('plan', 'a'), 'set_radio found "plan"');
+    Assert(not FieldsEd.SetCheckbox('nope'), 'set_checkbox missing field -> false');
+    FieldsEd.FlattenForms;
+    Fb := FieldsEd.ToBytes;
+  finally
+    FieldsEd.Free;
+  end;
+  Writeln(Format('form fields set + flattened (%d names)', [Length(Names)]));
+
+  { 5e. Watermark (text + image), redaction, convert-to-PDF/A. }
+  { A plain document with an embedded font, reused by sections 6 and 7. }
   Plain := TPdfDocument.Create;
   try
     PF := Plain.AddFontFile(Font);
@@ -223,6 +340,41 @@ begin
   finally
     Plain.Free;
   end;
+
+  { Write the embedded PNG to a file so watermark_image_file has a real path. }
+  PngBytes := TinyPng;
+  PngPath := IncludeTrailingPathDelimiter(ImgDir) + 'wm.png';
+  PngStream := TFileStream.Create(PngPath, fmCreate);
+  try
+    PngStream.WriteBuffer(PngBytes[0], Length(PngBytes));
+  finally
+    PngStream.Free;
+  end;
+
+  FieldsEd := TPdfEditable.Load(PlainBytes);
+  try
+    FieldsEd.WatermarkText('CONFIDENTIAL')
+            .WatermarkImageFile(PngPath, 64, 64, 0.2);
+    Assert(FieldsEd.Redact(0, [PdfRect(70, 695, 200, 715)]), 'redact page 0');
+    Assert(not FieldsEd.Redact(99, [PdfRect(0, 0, 10, 10)]), 'redact missing page -> false');
+    WmBytes := FieldsEd.ToBytes;
+  finally
+    FieldsEd.Free;
+  end;
+  Assert(Length(WmBytes) > 0, 'watermark + redact output');
+  Writeln('watermark + redaction ok');
+
+  FieldsEd := TPdfEditable.Load(PlainBytes);
+  try
+    FieldsEd.ConvertToPdfa(palA2B);
+    ConvBytes := FieldsEd.ToBytes;
+  finally
+    FieldsEd.Free;
+  end;
+  Assert(Contains(ConvBytes, '/OutputIntent'), 'convert_to_pdfa adds OutputIntent');
+  Writeln(Format('convert_to_pdfa ok (%d bytes)', [Length(ConvBytes)]));
+
+  { 6. Encryption (AES-256) round-trips. PlainBytes built in section 5e. }
   EncEd := TPdfEditable.Load(PlainBytes);
   try
     EncEd.Encrypt(encAES256, '', 'owner');
@@ -240,6 +392,14 @@ begin
   Signed := Pdf.Sign(PlainBytes, Key, Cert, 'Aprovado', '', '', True);
   Assert(Contains(Signed, '/ByteRange'), 'signature ByteRange');
   Writeln(Format('signed ok (%d bytes)', [Length(Signed)]));
+
+  { 7b. Verify signatures -> raw JSON (no bundled JSON parser in Object Pascal). }
+  SigJson := Pdf.VerifySignaturesJson(Signed);
+  Assert(TextContains(string(SigJson), '"sub_filter"'), 'verify JSON has sub_filter');
+  Assert(TextContains(string(SigJson), '"byte_range"'), 'verify JSON has byte_range');
+  Assert(TextContains(string(SigJson), '"is_valid"'), 'verify JSON has is_valid');
+  Assert(Pdf.VerifySignaturesJson(PlainBytes) = '[]', 'unsigned doc -> empty JSON array');
+  Writeln('verify_signatures (JSON) ok');
 
   { 8. Document timestamp (/DocTimeStamp) + DSS (/DSS), PAdES-B-LT(A). }
   TsaKey := ReadBytes(Fx + 'tsa_key.pk8');

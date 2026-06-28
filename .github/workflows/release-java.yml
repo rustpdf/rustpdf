@@ -1,0 +1,170 @@
+name: release-java
+
+# Publishes the Java binding to Maven Central (via the Sonatype Central Portal)
+# as a single **fat JAR**: one prebuilt libpdf_ffi per platform is bundled as a
+# JNA classpath resource under <Platform.RESOURCE_PREFIX>/ (darwin-aarch64/,
+# linux-x86-64/, linux-aarch64/, win32-x86-64/), and JNA extracts the matching
+# one at runtime — so a single `dev.rustpdf:rustpdf` artifact runs everywhere
+# (no per-OS classifier jars). This mirrors the cross-platform "one artifact"
+# shape of the Swift xcframework rather than the per-platform Python wheels.
+#
+# Matrix jobs build the cdylib (Linux inside manylinux_2_28 for old-glibc compat,
+# mac/win natively) and upload each lib as an artifact named native-<prefix>.
+# The `publish` job downloads them all, lays them out under
+# src/main/resources/<prefix>/, runs a free-surface smoke against the bundled
+# resource, then `mvn -Prelease deploy` packages + GPG-signs + uploads.
+#
+# Trigger by pushing a tag like `java-v0.1.0`, or run manually (build/smoke only —
+# the deploy step is gated on the tag). The artifact version is the single source
+# of truth in bindings/java/pom.xml.
+
+on:
+  push:
+    tags: ["java-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
+# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
+# token. Same secret the Python/Node/Delphi release pipelines use.
+env:
+  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---- Linux natives: built inside manylinux_2_28 (glibc 2.28) ----------------
+  # Keeps the .so compatible with old glibc (matches the Python wheels / Node .so).
+  linux:
+    name: native-${{ matrix.prefix }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prefix: linux-x86-64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64
+          - prefix: linux-aarch64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/java-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - name: install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release
+      - name: stage native lib
+        run: cp target/release/libpdf_ffi.so libpdf_ffi.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.prefix }}
+          path: libpdf_ffi.so
+          if-no-files-found: error
+
+  # ---- macOS / Windows natives: native build on the host runner ---------------
+  native:
+    name: native-${{ matrix.prefix }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS arm64 only — matches the Node/Python matrix (Intel runners
+          # retired). Add darwin-x86-64 here if Intel-Mac demand appears.
+          - prefix: darwin-aarch64
+            lib: libpdf_ffi.dylib
+            runner: macos-14
+            target: aarch64-apple-darwin
+          - prefix: win32-x86-64
+            lib: pdf_ffi.dll
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    # Pin the macOS floor so the cdylib installs on machines older than the runner.
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: require production license pubkey on release
+        if: startsWith(github.ref, 'refs/tags/java-v')
+        run: |
+          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
+            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
+            exit 1
+          }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: build cdylib
+        run: cargo build -p pdf-ffi --release --target ${{ matrix.target }}
+      - name: stage native lib
+        run: cp "target/${{ matrix.target }}/release/${{ matrix.lib }}" "${{ matrix.lib }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.prefix }}
+          path: ${{ matrix.lib }}
+          if-no-files-found: error
+
+  # ---- assemble the fat JAR + publish -----------------------------------------
+  publish:
+    name: publish dev.rustpdf:rustpdf
+    needs: [linux, native]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: lay out natives as JNA classpath resources
+        # Each artifact is named native-<prefix> and holds one lib file; drop it at
+        # src/main/resources/<prefix>/<lib> so it lands in the JAR root under that
+        # prefix (where JNA's Platform.RESOURCE_PREFIX extraction looks).
+        run: |
+          set -euo pipefail
+          for d in dl/native-*; do
+            prefix="${d#dl/native-}"
+            mkdir -p "bindings/java/src/main/resources/${prefix}"
+            cp "${d}"/* "bindings/java/src/main/resources/${prefix}/"
+          done
+          echo "bundled resources:"
+          find bindings/java/src/main/resources -type f
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          server-id: central
+          server-username: MAVEN_CENTRAL_USERNAME
+          server-password: MAVEN_CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: free-surface smoke (loads the bundled linux-x86-64 native)
+        # Validates the fat-jar wiring end-to-end on the host platform: the native
+        # is loaded from the classpath resource (RUSTPDF_LIB unset), and the prod
+        # key gate is confirmed live. The full SmokeTest can't run here — the
+        # prod-key lib rejects the dev license token.
+        working-directory: bindings/java
+        env:
+          RUSTPDF_LIB: ""
+        run: mvn -q -e test-compile exec:java -Dexec.mainClass=dev.rustpdf.ReleaseSmoke
+      - name: deploy to Maven Central
+        if: startsWith(github.ref, 'refs/tags/java-v')
+        working-directory: bindings/java
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -q -e -Prelease -DskipTests deploy

@@ -7,7 +7,28 @@ and Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output,
 attachments, AcroForm fields, manipulation (merge/split/rotate/optimize/
 incremental update), text extraction, encryption and digital signatures.
 
-Requires Java 17+ and the native library (`libpdf_ffi.{so,dylib,dll}`).
+Requires Java 17+. The published artifact is a **fat JAR** — it bundles the
+native library for every supported platform, so there is nothing else to install.
+
+## Install (Maven Central)
+
+```xml
+<dependency>
+  <groupId>dev.rustpdf</groupId>
+  <artifactId>rustpdf</artifactId>
+  <version>0.2.0</version>
+</dependency>
+```
+
+```gradle
+implementation("dev.rustpdf:rustpdf:0.1.0")
+```
+
+A single artifact runs on every supported platform: each prebuilt
+`libpdf_ffi` is bundled as a JNA classpath resource under its
+`Platform.RESOURCE_PREFIX` directory (`darwin-aarch64/`, `linux-x86-64/`,
+`linux-aarch64/`, `win32-x86-64/`), and JNA extracts the matching one at
+runtime. No per-OS classifier, no native build step on the consumer side.
 
 ## Layout
 
@@ -22,12 +43,29 @@ Requires Java 17+ and the native library (`libpdf_ffi.{so,dylib,dll}`).
 
 ## Locating the native library
 
-The loader searches, in order:
+The loader searches, in order (`FFI.java`):
 
-1. `RUSTPDF_LIB` (an absolute path to the shared library), else
-2. `target/debug/` then `target/release/` walking up from the working directory.
+1. `RUSTPDF_LIB` (an absolute path to the shared library) — explicit override;
+2. `target/debug/` then `target/release/` walking up from the working directory —
+   the dev tree (run `cargo build -p pdf-ffi` from the repo root first);
+3. the bundled JNA classpath resource — how the published fat JAR loads, with no
+   build step.
 
-Build the library first: `cargo build -p pdf-ffi` (from the repo root).
+## Distribution
+
+Published to Maven Central via the Sonatype **Central Portal**. The release is
+automated in `.github/workflows/release-java.yml`: push a tag `java-v<version>`
+(matching the `<version>` in `pom.xml`). The workflow builds `libpdf_ffi` for
+each target (Linux inside `manylinux_2_28` for old-glibc compat, mac/win
+natively, all with the **production** license pubkey), lays them out under
+`src/main/resources/<prefix>/`, runs a free-surface smoke against the bundled
+native, then `mvn -Prelease deploy` packages the fat JAR + `-sources` + `-javadoc`,
+GPG-signs everything, and uploads.
+
+Required repository secrets: `RUSTPDF_LICENSE_PUBKEY` (prod Ed25519 pubkey),
+`MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` (Central Portal token),
+`MAVEN_GPG_PRIVATE_KEY` / `MAVEN_GPG_PASSPHRASE` (signing key). The `release`
+Maven profile is off by default, so local `make java-test` needs no GPG key.
 
 ## Usage
 

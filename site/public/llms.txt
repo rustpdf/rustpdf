@@ -10,16 +10,24 @@
 
 ## What it does
 
-- **PDF/A** archival output: levels 1b, 2b, 2a, 3b, 3a (validated with veraPDF).
+- **PDF/A** archival output: levels 1b, 2b, 2a, 3b, 3a (validated with veraPDF),
+  plus converting an existing PDF to PDF/A (basic profiles).
+- **ZUGFeRD / Factur-X**: embed a Cross-Industry Invoice XML and mark the file
+  PDF/A-3 with the Factur-X XMP (validated as PDF/A-3 with veraPDF).
 - **Digital signatures**: PKCS#7 detached, visible and multiple signatures, plus
   **PAdES** B-B, B-LT and B-LTA with RFC 3161 timestamps (validated with pdfsig and openssl).
+- **Signature validation**: verify any signed PDF (ByteRange digest, CMS check, whole-document coverage).
 - **Encryption**: RC4, AES-128 and AES-256 (V5/R6).
 - **Accessibility**: Tagged PDF / PDF/UA-1.
-- **AcroForm** fields with generated appearance streams.
+- **AcroForm** fields with generated appearance streams; fill and flatten existing forms.
+- **Redaction**: truly remove page content within rectangles, not just a black box.
+- **Watermarks**: diagonal text and image watermarks.
+- **Navigation**: hyperlinks (web and intra-document) and bookmarks / outline.
 - **Manipulation**: merge, split, rotate, optimize, incremental update.
-- **Text extraction** with Unicode mapping.
+- **Text and image extraction** with Unicode mapping.
 - Free tier: pages, vector graphics, embedded/subset fonts, Unicode text,
-  paragraphs, tables, images, merge/split, text extraction.
+  paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill and
+  flatten, merge/split, and text and image extraction.
 
 ## Languages
 
@@ -31,10 +39,11 @@ static xcframework for macOS and iOS).
 ## Pricing & licensing
 
 - Sold as an **annual per-application license** in three tiers:
-  - **Pro** — PDF/A archival + encryption (RC4 / AES-128 / AES-256). ~USD 1,490/year.
+  - **Pro** — PDF/A archival (incl. converting existing PDFs), ZUGFeRD / Factur-X
+    e-invoices, and encryption (RC4 / AES-128 / AES-256). ~USD 1,490/year.
   - **Enterprise** — everything in Pro plus digital signatures/PAdES (B-B/B-LT/B-LTA)
-    with RFC 3161 timestamps + LTV, and PDF/UA accessibility, plus priority support.
-    ~USD 3,000/year.
+    with RFC 3161 timestamps + LTV, signature validation, true redaction, and
+    PDF/UA accessibility, plus priority support. ~USD 3,000/year.
   - **OEM** — Enterprise capabilities plus redistribution rights to embed rust-pdf
     inside your own product; volume and purchase orders. Custom pricing via sales.
 - The same offline Ed25519 token gates the features for every language; the tier
@@ -47,6 +56,19 @@ static xcframework for macOS and iOS).
 ## Key pages
 
 - Home: https://rustpdf.dev/
+- Python landing page: https://rustpdf.dev/python
+- C# / .NET landing page: https://rustpdf.dev/dotnet
+- Node.js / TypeScript landing page: https://rustpdf.dev/nodejs
+- Go landing page: https://rustpdf.dev/golang
+- PHP landing page: https://rustpdf.dev/php
+- Ruby landing page: https://rustpdf.dev/ruby
+- Java landing page: https://rustpdf.dev/java
+- Delphi / Free Pascal landing page: https://rustpdf.dev/delphi
+- Swift landing page: https://rustpdf.dev/swift
+- What is PDF/A? (concept guide): https://rustpdf.dev/pdf-a
+- What is PAdES? (digital signatures guide): https://rustpdf.dev/pades
+- What is PDF/UA? (accessibility guide): https://rustpdf.dev/pdf-ua
+- What is AES-256? (encryption guide): https://rustpdf.dev/aes-256
 - Documentation (per language): https://rustpdf.dev/docs/
 - Python reference: https://rustpdf.dev/docs/python.html
 - Delphi / Free Pascal reference: https://rustpdf.dev/docs/delphi.html

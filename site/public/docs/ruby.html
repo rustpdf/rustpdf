@@ -86,13 +86,20 @@
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility (PDF/UA)</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
       <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
       <a href="#metadata">Metadata</a>
 
       <h4>Manipulation: EditableDoc</h4>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
@@ -100,9 +107,10 @@
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
-      <a href="#extract">Text extraction</a>
+      <a href="#extract">Text &amp; image extraction</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
       <a href="#utils">Utilities</a>
@@ -308,6 +316,20 @@ doc.attach_file("invoice.xml", "text/xml", xml,
 doc.save("einvoice.pdf")
 doc.close</code></pre></div>
 
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>facturx(xml, profile: RustPdf::FacturxProfile::EN16931)</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>xml = File.binread("factur-x.xml")         # your Cross-Industry Invoice XML
+doc = RustPdf::Document.new
+doc.info(title: "Invoice INV-2026-001")
+f = doc.add_font_file("Roboto-Regular.ttf")
+doc.add_page.show_text(f, 18, 72, 760, "Invoice INV-2026-001")
+doc.facturx(xml, profile: RustPdf::FacturxProfile::EN16931)
+doc.save("einvoice.pdf")        # PDF/A-3 + Factur-X; needs a PDF/A license
+doc.close</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (MINIMUM to EXTENDED).</p>
+
       <!-- FORMS -->
       <h2 id="forms">AcroForm fields</h2>
       <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>[x0, y0, x1, y1]</code> arrays; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
@@ -330,7 +352,36 @@ doc.add_page
    ], selected: 1)
 doc.save("form.pdf")
 doc.close</code></pre></div>
-      <p>Fill fields later with <a href="#ed-meta"><code>EditableDoc#fill_text_field</code></a>.</p>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>link_uri(rect, uri)</code> &nbsp; <code>link_to_page(rect, page_index, top: nil)</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>doc = RustPdf::Document.new
+f = doc.add_font_file("Roboto-Regular.ttf")
+doc.add_page.show_text(f, 14, 72, 760, "Visit rustpdf.dev (see page 2)")
+doc.link_uri([72, 756, 320, 776], "https://rustpdf.dev/")   # web link
+doc.link_to_page([330, 756, 430, 776], 1, top: 800)         # jump to page 2
+doc.add_page
+doc.save("links.pdf")
+doc.close</code></pre></div>
+      <p>Rectangles are <code>[x0, y0, x1, y1]</code> in points; <code>page_index</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>.child(...)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>RustPdf::Bookmark.new(title, page, top: nil)</code> &nbsp; <code>.child(bookmark)</code> &nbsp; <code>add_bookmark(bookmark)</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>doc = RustPdf::Document.new
+f = doc.add_font_file("Roboto-Regular.ttf")
+3.times { doc.add_page }
+doc.add_bookmark(
+  RustPdf::Bookmark.new("Chapter 1", 0, top: 820)
+    .child(RustPdf::Bookmark.new("Section 1.1", 1))
+    .child(RustPdf::Bookmark.new("Section 1.2", 2)))
+doc.add_bookmark(RustPdf::Bookmark.new("Chapter 2", 2))
+doc.save("outline.pdf")
+doc.close</code></pre></div>
 
       <!-- METADATA -->
       <h2 id="metadata">Metadata</h2>
@@ -392,6 +443,58 @@ ed.set_info("Title", "Filled form")
 found = ed.fill_text_field("applicant.name", "Jane Doe")
 puts "filled: #{found} | title: #{ed.get_info('Title')}"
 ed.save("filled.pdf")
+ed.close</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>field_names → Array&lt;String&gt;</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>fill_text_field(name, value) → Boolean</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>set_checkbox(name, checked = true) → Boolean</code></td><td>Check/uncheck a checkbox.</td></tr>
+        <tr><td><code>set_radio(name, export_value) → Boolean</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>set_choice(name, value) → Boolean</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>flatten_forms</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("form.pdf")
+p ed.field_names                    # ["applicant.name", "agree", "plan", ...]
+ed.fill_text_field("applicant.name", "Jane Doe")
+ed.set_checkbox("agree", true)
+ed.set_radio("billing", "annual")
+ed.set_choice("plan", "Pro")
+ed.flatten_forms                    # optional: make it non-editable
+ed.save("filled.pdf")
+ed.close</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>watermark_text(text, size: 64.0, color: [0.5, 0.5, 0.5], opacity: 0.30, rotation_deg: 45.0)</code></div>
+      <div class="api"><code>watermark_image_file(path, width, height, opacity: 0.30)</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("report.pdf")
+ed.watermark_text("CONFIDENTIAL", opacity: 0.25, rotation_deg: 45)
+ed.save("stamped.pdf")
+ed.close</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>redact(page_index, rects) → Boolean</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("statement.pdf")
+# rects = array of [x0, y0, x1, y1] on that page
+ed.redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]])
+ed.save("redacted.pdf")     # raises RustPdf::Error without a license granting redaction
+ed.close</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>RustPdf.extract_text</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>convert_to_pdfa(level = RustPdf::Pdfa::A2B)</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("in.pdf")
+ed.convert_to_pdfa(RustPdf::Pdfa::A2B)   # raises RustPdf::Error if fonts aren't embedded
+ed.save("archival.pdf")                  # veraPDF: PDF/A-2b compliant
 ed.close</code></pre></div>
 
       <!-- ED OPTIMIZE -->
@@ -459,12 +562,27 @@ lt = RustPdf.add_dss(signed, certs: [cert_der], crls: [crl_der])
 lta = RustPdf.timestamp(lt, tsa_key_der, tsa_cert_der)
 File.binwrite("contract.lta.pdf", lta)</code></pre></div>
 
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>RustPdf.verify_signatures(data) → Array&lt;Hash&gt;</code></div>
+      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code>, <code>"sub_filter"</code>, <code>"signer"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("contract.signed.pdf")
+RustPdf.verify_signatures(data).each do |sig|
+  puts "#{sig['signer']} valid: #{sig['is_valid']} " \
+       "covers whole doc: #{sig['covers_whole_document']}"
+end</code></pre></div>
+
       <!-- EXTRACT -->
-      <h2 id="extract">Text extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference.</p>
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>.</p>
       <div class="api"><code>RustPdf.extract_text(data) → String</code> <span class="badge free">free</span></div>
+      <div class="api"><code>RustPdf.extract_images_to_dir(data, dir) → Integer</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("report.pdf")
-puts RustPdf.extract_text(data)</code></pre></div>
+puts RustPdf.extract_text(data)
+
+n = RustPdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
+puts "wrote #{n} image(s)"</code></pre></div>
 
       <!-- ENUMS -->
       <h2 id="enums">Enums</h2>
@@ -500,6 +618,15 @@ puts RustPdf.extract_text(data)</code></pre></div>
         <tr><td><code>RustPdf::Cipher::RC4</code></td><td>RC4 (legacy)</td></tr>
         <tr><td><code>RustPdf::Cipher::AES128</code></td><td>AES-128</td></tr>
         <tr><td><code>RustPdf::Cipher::AES256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>RustPdf::FacturxProfile::MINIMUM</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>RustPdf::FacturxProfile::BASIC_WL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>RustPdf::FacturxProfile::BASIC</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>RustPdf::FacturxProfile::EN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>RustPdf::FacturxProfile::EXTENDED</code></td><td>EN 16931 plus extensions</td></tr>
       </table>
 
       <!-- ERRORS -->
@@ -542,11 +669,19 @@ end</code></pre></div>
       <a href="#pdfa">PDF/A</a>
       <a href="#tagged">Accessibility</a>
       <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
       <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
       <a href="#ed-load">Load</a>
       <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#enums">Enums</a>
     </nav>

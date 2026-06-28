@@ -1,0 +1,22 @@
+[package]
+name = "rustpdf"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.82"
+license = "LicenseRef-Proprietary"
+description = "Safe Rust bindings for the rust-pdf engine. Loads the precompiled libpdf_ffi cdylib at runtime — the engine source is never shipped."
+keywords = ["pdf", "pdfa", "signatures", "ffi"]
+categories = ["api-bindings"]
+# Publishing: this crate is distributed through a PRIVATE cargo registry, not
+# crates.io. Restrict accidental `cargo publish` to the configured registry
+# (set the registry name to match your `~/.cargo/config.toml [registries]`).
+# Until that's wired, keep it false to avoid an accidental crates.io push.
+publish = false
+repository = ""
+
+[lib]
+name = "rustpdf"
+
+[dependencies]
+# Pure-FFI runtime loader — no build script, no link-time dependency on the lib.
+libloading = "0.8"

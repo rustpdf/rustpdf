@@ -13,6 +13,7 @@
 //! This crate produces a neutral description; the `pdf` crate turns it into the
 //! Image XObject dictionary and content-stream `Do` invocation.
 
+pub mod export;
 mod jpeg;
 mod png_decode;
 
@@ -131,4 +132,14 @@ pub fn flate_encode(data: &[u8]) -> Vec<u8> {
         .write_all(data)
         .expect("zlib write to Vec is infallible");
     encoder.finish().expect("zlib finish")
+}
+
+/// zlib-decompress a byte slice (PDF `FlateDecode`). Returns `None` on malformed
+/// input. Used by the `pdf` crate to read content streams for redaction.
+pub fn flate_decode(data: &[u8]) -> Option<Vec<u8>> {
+    use flate2::read::ZlibDecoder;
+    use std::io::Read;
+    let mut out = Vec::new();
+    ZlibDecoder::new(data).read_to_end(&mut out).ok()?;
+    Some(out)
 }

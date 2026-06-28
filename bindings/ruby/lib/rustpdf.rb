@@ -1,4 +1,5 @@
 require "fiddle"
+require "json"
 require_relative "rustpdf/native"
 
 # Idiomatic Ruby binding for the rust-pdf core over its C ABI (libpdf_ffi),
@@ -50,6 +51,42 @@ module RustPdf
     AES256 = 2
   end
 
+  # ZUGFeRD / Factur-X conformance profiles.
+  module FacturxProfile
+    MINIMUM = 0
+    BASIC_WL = 1
+    BASIC = 2
+    EN16931 = 3
+    EXTENDED = 4
+  end
+
+  # A document outline (bookmark) entry. Nest with #child to build a tree.
+  # Each #add_bookmark call on a Document appends one root tree (pre-order
+  # flattened into parallel arrays).
+  class Bookmark
+    attr_accessor :title, :page, :top, :children
+
+    def initialize(title, page, top: nil, children: nil)
+      @title = title
+      @page = page
+      @top = top
+      @children = children || []
+    end
+
+    # Append a child bookmark; returns self for chaining.
+    def child(bookmark)
+      @children << bookmark
+      self
+    end
+
+    # Pre-order flatten into +out+ as [level, title, page, top] tuples.
+    def flatten_into(level, out)
+      out << [level, title, page, top]
+      children.each { |c| c.flatten_into(level + 1, out) }
+      out
+    end
+  end
+
   module_function
 
   # Native library version string.
@@ -68,6 +105,24 @@ module RustPdf
   def extract_text(pdf)
     take_bytes { |pp, pn| Native.call("pdf_extract_text", pdf, pdf.bytesize, pp, pn) }
       .force_encoding(Encoding::UTF_8)
+  end
+
+  # Extract every raster image into +dir+ (JPEG verbatim as .jpg, others as
+  # .png; files named page{N}_{name}.{ext}). Returns the number written.
+  def extract_images_to_dir(pdf, dir)
+    count = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    check(Native.call("pdf_extract_images_to_dir", pdf, pdf.bytesize, dir, count))
+    count[0, Native::SIZEOF_SZ].unpack1("J")
+  end
+
+  # Validate every signature in +pdf+. Returns one Hash per signature with keys
+  # "field_name", "sub_filter", "signer", "covers_whole_document",
+  # "digest_valid", "signature_valid", "is_valid" and "byte_range". An empty
+  # array means the document is unsigned.
+  def verify_signatures(pdf)
+    js = take_bytes { |pp, pn| Native.call("pdf_verify_signatures_json", pdf, pdf.bytesize, pp, pn) }
+         .force_encoding(Encoding::UTF_8)
+    js.empty? ? [] : JSON.parse(js)
   end
 
   # Sign a PDF (PKCS#7 detached, incremental update). Requires a license.

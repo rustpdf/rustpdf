@@ -44,6 +44,37 @@ public struct RadioButton: Sendable {
     }
 }
 
+/// A document-outline entry. Nest entries with ``child(_:)`` to build a tree;
+/// ``Document/addBookmark(_:)`` flattens one root tree in pre-order.
+public struct Bookmark: Sendable {
+    public var title: String
+    /// Target page index (0-based).
+    public var page: Int
+    /// Optional scroll position (top of the view); `nil` keeps the current view.
+    public var top: Double?
+    public var children: [Bookmark]
+
+    public init(title: String, page: Int, top: Double? = nil, children: [Bookmark] = []) {
+        self.title = title
+        self.page = page
+        self.top = top
+        self.children = children
+    }
+
+    /// Append a child entry, returning the modified bookmark (builder style).
+    public func child(_ bookmark: Bookmark) -> Bookmark {
+        var copy = self
+        copy.children.append(bookmark)
+        return copy
+    }
+
+    /// Pre-order flatten into parallel `(level, title, page, top)` tuples.
+    func flatten(level: Int, into out: inout [(level: Int, title: String, page: Int, top: Double?)]) {
+        out.append((level, title, page, top))
+        for c in children { c.flatten(level: level + 1, into: &out) }
+    }
+}
+
 /// A PDF being authored. Native memory is released by `deinit`; the type is a
 /// reference type so the handle is freed exactly once.
 public final class Document {
@@ -320,6 +351,73 @@ public final class Document {
                     handle, UnsafePointer(n), UInt(page), UInt(buttons.count),
                     rp.baseAddress, ep.baseAddress, Int32(selected)))
             }
+        }
+        return self
+    }
+
+    // MARK: - Links + bookmarks + Factur-X
+
+    /// Add a clickable web link over `rect` `(x0, y0, x1, y1)` opening `uri` on
+    /// the current page.
+    @discardableResult
+    public func linkURI(rect: (Double, Double, Double, Double), uri: String) throws -> Document {
+        try uri.withCString {
+            try check(Native.shared.pdf_page_link_uri(handle, rect.0, rect.1, rect.2, rect.3, $0))
+        }
+        return self
+    }
+
+    /// Add an internal link over `rect` jumping to `pageIndex` (0-based) on the
+    /// current page. `top` (when non-`nil`) scrolls so that y-coordinate is at
+    /// the top of the view.
+    @discardableResult
+    public func linkToPage(rect: (Double, Double, Double, Double), pageIndex: Int,
+                           top: Double? = nil) throws -> Document {
+        try check(Native.shared.pdf_page_link_to_page(
+            handle, rect.0, rect.1, rect.2, rect.3, UInt(pageIndex),
+            top ?? 0.0, top == nil ? 0 : 1))
+        return self
+    }
+
+    /// Append one outline tree (pre-order flattened) to the document outline.
+    @discardableResult
+    public func addBookmark(_ bookmark: Bookmark) throws -> Document {
+        var entries: [(level: Int, title: String, page: Int, top: Double?)] = []
+        bookmark.flatten(level: 0, into: &entries)
+        let n = entries.count
+
+        let levels = entries.map { Int32($0.level) }
+        let pages = entries.map { UInt($0.page) }
+        let tops = entries.map { $0.top ?? 0.0 }
+        let hasTops = entries.map { $0.top == nil ? Int32(0) : Int32(1) }
+        // Duplicate every title; free them all afterwards.
+        let titles: [UnsafeMutablePointer<CChar>?] = entries.map { dupCString($0.title) }
+        defer { for t in titles { free(t) } }
+
+        try levels.withUnsafeBufferPointer { lp in
+            try pages.withUnsafeBufferPointer { pp in
+                try tops.withUnsafeBufferPointer { tp in
+                    try hasTops.withUnsafeBufferPointer { hp in
+                        let constTitles: [UnsafePointer<CChar>?] = titles.map { UnsafePointer($0) }
+                        try constTitles.withUnsafeBufferPointer { ttp in
+                            try check(Native.shared.pdf_document_add_bookmarks(
+                                handle, UInt(n), lp.baseAddress, ttp.baseAddress,
+                                pp.baseAddress, tp.baseAddress, hp.baseAddress))
+                        }
+                    }
+                }
+            }
+        }
+        return self
+    }
+
+    /// Make this a ZUGFeRD / Factur-X invoice: embed `xml` as `factur-x.xml`,
+    /// mark it PDF/A-3b, and add the Factur-X XMP at `profile`. Requires a
+    /// license.
+    @discardableResult
+    public func facturx(_ xml: [UInt8], profile: FacturxProfile = .en16931) throws -> Document {
+        try withBytes(xml) { ptr, len in
+            try check(Native.shared.pdf_document_facturx(handle, ptr, len, profile.rawValue))
         }
         return self
     }

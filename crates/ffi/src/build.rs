@@ -6,7 +6,10 @@
 
 use std::ffi::{c_char, c_int};
 
-use pdf::{AFRelationship, Align, FontId, ImageId, Info, Paragraph, PdfaLevel, StructTag, Version};
+use pdf::{
+    AFRelationship, Align, Bookmark, FacturxProfile, FontId, ImageId, Info, Paragraph, PdfaLevel,
+    StructTag, Version,
+};
 
 use crate::{
     bytes, clear_last_error, cstr, set_last_error, transform_doc, with_current_page, with_doc,
@@ -49,6 +52,16 @@ fn af_rel(v: c_int) -> AFRelationship {
         2 => AFRelationship::Alternative,
         3 => AFRelationship::Supplement,
         _ => AFRelationship::Unspecified,
+    }
+}
+
+fn facturx_profile(v: c_int) -> FacturxProfile {
+    match v {
+        0 => FacturxProfile::Minimum,
+        1 => FacturxProfile::BasicWl,
+        2 => FacturxProfile::Basic,
+        4 => FacturxProfile::Extended,
+        _ => FacturxProfile::En16931,
     }
 }
 
@@ -571,6 +584,166 @@ pub unsafe extern "C" fn pdf_document_radio_group(
             Some(selected as usize)
         };
         d.radio_group(name, page, buttons, sel);
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+// ---- hyperlinks (Tier 1) ---------------------------------------------------
+
+/// Add a clickable web link over `(x0,y0,x1,y1)` opening `uri` on the current page.
+///
+/// # Safety
+/// `doc` must be valid with at least one page; `uri` a valid C string.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_page_link_uri(
+    doc: *mut PdfDocument,
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+    uri: *const c_char,
+) -> PdfStatus {
+    let uri = match unsafe { cstr(uri, "pdf_page_link_uri") } {
+        Ok(s) => s.to_string(),
+        Err(st) => return st,
+    };
+    with_current_page(doc, "pdf_page_link_uri", |page| {
+        page.link_uri([x0, y0, x1, y1], uri);
+    })
+}
+
+/// Add an internal link over `(x0,y0,x1,y1)` jumping to `target_page` (0-based)
+/// on the current page. `has_top` != 0 scrolls so `top` is at the top of view.
+///
+/// # Safety
+/// `doc` must be valid with at least one page.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_page_link_to_page(
+    doc: *mut PdfDocument,
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+    target_page: usize,
+    top: f64,
+    has_top: c_int,
+) -> PdfStatus {
+    let top = if has_top != 0 { Some(top) } else { None };
+    with_current_page(doc, "pdf_page_link_to_page", |page| {
+        page.link_to_page([x0, y0, x1, y1], target_page, top);
+    })
+}
+
+// ---- bookmarks / outline (Tier 1) ------------------------------------------
+
+/// Add the document outline from a **flat, pre-order** list. Each entry has a
+/// `level` (0 = top-level, 1 = child, …), a `title`, a target `page` (0-based),
+/// and an optional `top` (used when `has_tops[i]` != 0). The nested tree is
+/// rebuilt from the level sequence.
+///
+/// # Safety
+/// All arrays have `count` entries and are readable; `titles[i]` are valid C
+/// strings.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_document_add_bookmarks(
+    doc: *mut PdfDocument,
+    count: usize,
+    levels: *const c_int,
+    titles: *const *const c_char,
+    pages: *const usize,
+    tops: *const f64,
+    has_tops: *const c_int,
+) -> PdfStatus {
+    with_doc(doc, "pdf_document_add_bookmarks", |d| {
+        if count > 0 && (levels.is_null() || titles.is_null() || pages.is_null()) {
+            set_last_error("add_bookmarks: null array");
+            return PdfStatus::NullPointer;
+        }
+        let levels = unsafe { std::slice::from_raw_parts(levels, count) };
+        let titles = unsafe { std::slice::from_raw_parts(titles, count) };
+        let pages = unsafe { std::slice::from_raw_parts(pages, count) };
+        let mut entries: Vec<(usize, String, usize, Option<f64>)> = Vec::with_capacity(count);
+        for i in 0..count {
+            let title = match unsafe { cstr(titles[i], "add_bookmarks:title") } {
+                Ok(s) => s.to_string(),
+                Err(st) => return st,
+            };
+            let top = if !tops.is_null() && !has_tops.is_null() && unsafe { *has_tops.add(i) } != 0
+            {
+                Some(unsafe { *tops.add(i) })
+            } else {
+                None
+            };
+            entries.push((levels[i].max(0) as usize, title, pages[i], top));
+        }
+        for bm in build_bookmark_tree(entries) {
+            d.add_bookmark(bm);
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Rebuild a nested [`Bookmark`] forest from a flat, pre-order `(level, title,
+/// page, top)` list.
+fn build_bookmark_tree(entries: Vec<(usize, String, usize, Option<f64>)>) -> Vec<Bookmark> {
+    let mut roots: Vec<Bookmark> = Vec::new();
+    let mut stack: Vec<Bookmark> = Vec::new();
+    let mut levels: Vec<usize> = Vec::new();
+
+    let close_into = |stack: &mut Vec<Bookmark>, roots: &mut Vec<Bookmark>| {
+        let child = stack.pop().expect("non-empty");
+        if let Some(parent) = stack.last_mut() {
+            let p = std::mem::replace(parent, Bookmark::new("", 0));
+            *parent = p.child(child);
+        } else {
+            roots.push(child);
+        }
+    };
+
+    for (level, title, page, top) in entries {
+        let mut bm = Bookmark::new(title, page);
+        if let Some(t) = top {
+            bm = bm.at_top(t);
+        }
+        while levels.last().is_some_and(|&l| l >= level) {
+            levels.pop();
+            close_into(&mut stack, &mut roots);
+        }
+        stack.push(bm);
+        levels.push(level);
+    }
+    while !stack.is_empty() {
+        levels.pop();
+        close_into(&mut stack, &mut roots);
+    }
+    roots
+}
+
+// ---- ZUGFeRD / Factur-X (Tier 2) -------------------------------------------
+
+/// Make the document a ZUGFeRD / Factur-X invoice: embed `xml` as `factur-x.xml`,
+/// mark it PDF/A-3b, and add the Factur-X XMP at `profile` (0=Minimum, 1=BasicWL,
+/// 2=Basic, 3=EN 16931, 4=Extended).
+///
+/// # Safety
+/// `doc` valid; `xml`/`len` readable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_document_facturx(
+    doc: *mut PdfDocument,
+    xml: *const u8,
+    len: usize,
+    profile: c_int,
+) -> PdfStatus {
+    with_doc(doc, "pdf_document_facturx", |d| {
+        d.facturx(
+            unsafe { bytes(xml, len) }.to_vec(),
+            facturx_profile(profile),
+        );
         clear_last_error();
         PdfStatus::Ok
     })

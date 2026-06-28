@@ -164,6 +164,102 @@ public final class EditableDoc {
         return self
     }
 
+    // MARK: - Forms
+
+    /// Check or uncheck a checkbox field by name; returns whether it existed.
+    @discardableResult
+    public func setCheckbox(name: String, checked: Bool = true) throws -> Bool {
+        var found: Int32 = 0
+        try name.withCString { n in
+            try check(Native.shared.pdf_editable_set_checkbox(handle, n, checked ? 1 : 0, &found))
+        }
+        return found != 0
+    }
+
+    /// Select a radio button by its export value; returns whether it existed.
+    @discardableResult
+    public func setRadio(name: String, exportValue: String) throws -> Bool {
+        var found: Int32 = 0
+        try name.withCString { n in
+            try exportValue.withCString { v in
+                try check(Native.shared.pdf_editable_set_radio(handle, n, v, &found))
+            }
+        }
+        return found != 0
+    }
+
+    /// Set a choice (dropdown/list) field value; returns whether it existed.
+    @discardableResult
+    public func setChoice(name: String, value: String) throws -> Bool {
+        var found: Int32 = 0
+        try name.withCString { n in
+            try value.withCString { v in
+                try check(Native.shared.pdf_editable_set_choice(handle, n, v, &found))
+            }
+        }
+        return found != 0
+    }
+
+    /// Flatten all interactive form fields into static page content.
+    @discardableResult
+    public func flattenForms() throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_flatten_forms(handle)); return self
+    }
+
+    /// The document's terminal field names (empty entries dropped).
+    public func fieldNames() throws -> [String] {
+        let bytes = try takeBytes { out, len in Native.shared.pdf_editable_field_names(handle, out, len) }
+        return String(decoding: bytes, as: UTF8.self).split(separator: "\n").map(String.init)
+    }
+
+    // MARK: - Watermarks + redaction
+
+    /// Stamp a diagonal text watermark (standard Helvetica) across every page.
+    @discardableResult
+    public func watermarkText(_ text: String, size: Double = 64.0,
+                              color: (Double, Double, Double) = (0.5, 0.5, 0.5),
+                              opacity: Double = 0.30, rotationDeg: Double = 45.0) throws -> EditableDoc {
+        try text.withCString {
+            try check(Native.shared.pdf_editable_watermark_text(
+                handle, $0, size, color.0, color.1, color.2, opacity, rotationDeg))
+        }
+        return self
+    }
+
+    /// Stamp an image (from a JPEG/PNG file at `path`) centered on every page.
+    @discardableResult
+    public func watermarkImageFile(path: String, width: Double, height: Double,
+                                   opacity: Double = 0.30) throws -> EditableDoc {
+        try path.withCString {
+            try check(Native.shared.pdf_editable_watermark_image_file(handle, $0, width, height, opacity))
+        }
+        return self
+    }
+
+    /// Redact rectangular regions `[(x0, y0, x1, y1), ...]` on page `index`;
+    /// returns whether the page existed.
+    @discardableResult
+    public func redact(_ index: Int, rects: [(Double, Double, Double, Double)]) throws -> Bool {
+        var flat = [Double]()
+        flat.reserveCapacity(rects.count * 4)
+        for r in rects { flat.append(contentsOf: [r.0, r.1, r.2, r.3]) }
+        var found: Int32 = 0
+        try flat.withUnsafeBufferPointer {
+            try check(Native.shared.pdf_editable_redact(
+                handle, UInt(index), $0.baseAddress, UInt(rects.count), &found))
+        }
+        return found != 0
+    }
+
+    /// Convert the loaded document to PDF/A at `level` (B-levels only: A-1b,
+    /// A-2b, A-3b). Requires a license.
+    @discardableResult
+    public func convertToPdfa(_ level: PdfaLevel = .a2b) throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_convert_to_pdfa(handle, level.rawValue)); return self
+    }
+
+    // MARK: - Output
+
     /// Serialize the document to bytes.
     public func toBytes() throws -> [UInt8] {
         try takeBytes { out, len in Native.shared.pdf_editable_to_bytes(handle, out, len) }

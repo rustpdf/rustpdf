@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Is PDF/A? A Clear Guide to PDF Archiving, With Examples | rust-pdf</title>
+  <meta name="description" content="PDF/A explained simply: what it is, why it matters for legal and long-term archiving, the conformance levels (parts 1–4, levels a/b/u), real-world examples, and how to create valid PDF/A in any language with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/pdf-a" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/pdf-a" />
+  <meta property="og:title" content="What Is PDF/A? A Clear Guide to PDF Archiving" />
+  <meta property="og:description" content="What PDF/A is, why it matters, the conformance levels, real examples, and how to generate valid PDF/A in any language." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What Is PDF/A? A Clear Guide to PDF Archiving" />
+  <meta name="twitter:description" content="PDF/A explained with analogies, examples and the conformance levels. Plus how to create it in any language." />
+  <meta property="og:image:alt" content="What is PDF/A — a clear guide to PDF archiving" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="What is PDF/A — a clear guide to PDF archiving" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "What is PDF/A?", "item": "https://rustpdf.dev/pdf-a" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "What is PDF/A? A clear guide to PDF archiving",
+        "description": "A plain-language explanation of PDF/A: what it is, why it matters for long-term and legal archiving, the conformance levels (parts 1–4, levels a/b/u), real examples, and how to create valid PDF/A.",
+        "url": "https://rustpdf.dev/pdf-a",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF/A", "description": "ISO 19005 archival subset of PDF for long-term preservation." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is PDF/A?",
+            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A is an ISO-standardized version of PDF (ISO 19005) designed for long-term archiving. It is a stricter subset of normal PDF: everything needed to display the document, such as fonts and color information, must be embedded inside the file, and anything that could change over time or depend on the outside world (external links, JavaScript, audio, video, encryption) is forbidden. The result is a self-contained file that will open and look the same decades from now." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is PDF/A important?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Many laws and regulations require records to be kept readable for 5 to 30 years or longer: invoices, contracts, bank statements, medical and court records, and government archives. A normal PDF can render differently or break as fonts and software change. PDF/A removes those external dependencies so the document stays faithful and verifiable over the long term, which is why it is mandated for e-invoicing, public-sector archiving and regulated industries." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between PDF/A-1, PDF/A-2, PDF/A-3 and PDF/A-4?",
+            "acceptedAnswer": { "@type": "Answer", "text": "These are the parts of the standard. PDF/A-1 (2005) is based on PDF 1.4 and is the strictest. PDF/A-2 (2011) is based on PDF 1.7 and adds JPEG2000, transparency, and the ability to embed other PDF/A files. PDF/A-3 (2012) additionally allows embedding any file type, which is what e-invoice formats like Factur-X and ZUGFeRD use to attach the source XML. PDF/A-4 (2020) is based on PDF 2.0." }
+          },
+          {
+            "@type": "Question",
+            "name": "What do the conformance levels a, b and u mean?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Level b (basic) guarantees the document looks the same everywhere. Level a (accessible) adds a tagged logical structure and Unicode mapping, so the document is also accessible to assistive technology and reliably searchable. Level u guarantees Unicode mapping for all text without requiring full tagging. So PDF/A-2b is visually faithful, while PDF/A-2a is visually faithful and accessible." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I create a valid PDF/A file?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example doc.pdfa(PdfaLevel.A2B), in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b and 3a." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /pdf-a concept page (scoped, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 720px; }
+    .kbd { font-size: .8rem; color: var(--muted); }
+
+    /* hero art: a self-contained document with embedded chips */
+    .pa-scene { position: relative; height: 240px; max-width: 360px; margin: 34px auto 0; }
+    .pa-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 150px; height: 188px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.55); animation: paPulse 4.5s ease-in-out infinite; }
+    .pa-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .pa-paper .ln.s { width: 58%; }
+    .pa-seal { position: absolute; top: -11px; right: -11px; background: var(--brand); color: #1a0e02;
+      font-size: .6rem; font-weight: 800; letter-spacing: .04em; padding: 4px 9px; border-radius: 999px; }
+    .pa-chip { position: absolute; width: 40px; height: 40px; margin: -20px; border-radius: 11px;
+      display: grid; place-items: center; font-size: 1rem; font-weight: 700; color: #cbd5e1;
+      background: var(--panel-2); border: 1px solid var(--border); box-shadow: 0 8px 20px -10px rgba(0,0,0,.6); }
+    .pa-chip.c1 { left: 14%; top: 22%; animation: paFloat 5s ease-in-out infinite; }
+    .pa-chip.c2 { left: 86%; top: 26%; animation: paFloat 5s ease-in-out .6s infinite; }
+    .pa-chip.c3 { left: 12%; top: 76%; animation: paFloat 5s ease-in-out 1.2s infinite; }
+    .pa-chip.c4 { left: 88%; top: 78%; animation: paFloat 5s ease-in-out 1.8s infinite; }
+    @keyframes paFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+    @keyframes paPulse { 0%,100% { box-shadow: 0 30px 60px -30px rgba(249,115,22,.40); }
+      50% { box-shadow: 0 30px 70px -28px rgba(249,115,22,.75); } }
+
+    /* compare: font-substitution demo */
+    .pa-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .pa-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; }
+    .pa-card.bad { border-color: #3a2020; }
+    .pa-card.good { border-color: #1e3a2a; }
+    .pa-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .pa-card .tagline { color: var(--muted); font-size: .85rem; margin: 0 0 16px; }
+    .pa-doc { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; }
+    .pa-glyphs { position: relative; height: 1.5em; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: 1.12rem; }
+    .pa-glyphs span { position: absolute; inset: 0; white-space: nowrap; }
+    .pa-ok { color: #e6edf6; }
+    .pa-broken { color: #94a3b8; opacity: 0; }
+    .pa-card.bad .pa-ok { animation: paFlipA 4.2s steps(1) infinite; }
+    .pa-card.bad .pa-broken { animation: paFlipB 4.2s steps(1) infinite; }
+    @keyframes paFlipA { 0%,42% { opacity: 1; } 50%,92% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes paFlipB { 0%,42% { opacity: 0; } 50%,92% { opacity: 1; } 100% { opacity: 0; } }
+    .pa-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .pa-doc .ln.s { width: 55%; }
+    .pa-status { display: inline-flex; align-items: center; gap: 7px; font-size: .8rem; font-weight: 700;
+      padding: 5px 11px; border-radius: 999px; margin-top: 16px; }
+    .pa-status.err { background: rgba(248,113,113,.12); color: #fca5a5; animation: paBlink 4.2s ease-in-out infinite; }
+    .pa-status.ok { background: rgba(52,211,153,.12); color: #34d399; }
+    @keyframes paBlink { 0%,42%,100% { opacity: .5; } 50%,92% { opacity: 1; } }
+
+    /* embed scene: ingredients sealing into the file */
+    .pa-embed { position: relative; height: 210px; max-width: 540px; margin: 32px auto 0; }
+    .pa-embed-doc { position: absolute; right: 6%; top: 50%; transform: translateY(-50%);
+      width: 120px; height: 150px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 11px; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;
+      animation: paPulse 3.2s ease-in-out infinite; }
+    .pa-embed-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .pa-embed-doc .ln.s { width: 60%; }
+    .pa-embed-chip { position: absolute; left: 2%; display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 13px; border-radius: 999px; font-size: .82rem; font-weight: 600; color: #cbd5e1;
+      background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; opacity: 0; }
+    .pa-embed-chip .d { width: 9px; height: 9px; border-radius: 3px; }
+    .pa-embed-chip.e1 { top: 8%;  animation: paSlide 5.2s ease-in 0s   infinite; }
+    .pa-embed-chip.e2 { top: 34%; animation: paSlide 5.2s ease-in 1.3s infinite; }
+    .pa-embed-chip.e3 { top: 60%; animation: paSlide 5.2s ease-in 2.6s infinite; }
+    .pa-embed-chip.e4 { top: 86%; animation: paSlide 5.2s ease-in 3.9s infinite; }
+    @keyframes paSlide {
+      0%   { transform: translateX(0)     scale(1);   opacity: 0; }
+      12%  { opacity: 1; }
+      66%  { transform: translateX(300px) scale(.96); opacity: 1; }
+      82%  { transform: translateX(330px) scale(.4);  opacity: 0; }
+      100% { opacity: 0; }
+    }
+
+    /* time sweep: regular PDF degrades, PDF/A stays faithful */
+    .pa-decades { max-width: 660px; margin: 30px auto 0; }
+    .pa-years { display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem;
+      margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+    .pa-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 14px; margin: 11px 0; }
+    .pa-row .lbl { color: #cbd5e1; font-size: .86rem; }
+    .pa-bar { position: relative; height: 22px; border-radius: 6px; overflow: hidden; }
+    .pa-bar.reg { background: linear-gradient(90deg,#34d399 0%, #34d399 35%, #fbbf24 62%, #f87171 100%); }
+    .pa-bar.pa  { background: linear-gradient(90deg,#34d399, #34d399); }
+    .pa-sweep { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #e6edf6;
+      box-shadow: 0 0 10px 1px rgba(230,237,246,.8); animation: paSweep 7s ease-in-out infinite; }
+    @keyframes paSweep { 0% { left: 2%; } 80%,100% { left: 99%; } }
+
+    /* conformance matrix */
+    .pa-levels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
+    .pa-part { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
+    .pa-part h3 { margin: 0 0 4px; }
+    .pa-part .yr { color: var(--brand-2); font-weight: 700; font-size: .82rem; }
+    .pa-part p { color: var(--muted); margin: 8px 0 0; font-size: .92rem; }
+    .pa-matrix { width: 100%; border-collapse: collapse; margin-top: 36px; }
+    .pa-matrix th, .pa-matrix td { border: 1px solid var(--border); padding: 12px 14px; text-align: left; font-size: .92rem; }
+    .pa-matrix th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .pa-matrix td b { color: var(--text); }
+
+    /* examples */
+    .pa-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .pa-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .pa-use .ic { color: var(--brand-2); height: 30px; }
+    .pa-use .ic svg { width: 30px; height: 30px; }
+    .pa-chip svg { width: 20px; height: 20px; }
+    .pa-status svg { width: 15px; height: 15px; flex: none; }
+    .pa-use h3 { margin: 12px 0 6px; font-size: 1.02rem; }
+    .pa-use p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    @media (max-width: 820px) {
+      .pa-compare, .pa-levels, .pa-uses { grid-template-columns: 1fr; }
+      .pa-embed { max-width: 420px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pa-paper, .pa-chip, .pa-embed-doc, .pa-status.err, .pa-sweep,
+      .pa-card.bad .pa-ok, .pa-card.bad .pa-broken { animation: none !important; }
+      .pa-card.bad .pa-ok { opacity: 1; }
+      .pa-card.bad .pa-broken { opacity: 0; }
+      .pa-embed-chip { opacity: 1; position: static; display: inline-flex; margin: 4px; transform: none; }
+      .pa-embed { height: auto; text-align: center; }
+      .pa-embed-doc { position: static; transform: none; margin: 14px auto 0; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Long-term archiving</p>
+        <h1>What is <span class="grad">PDF/A</span>,<br />and why does it matter?</h1>
+        <p class="lede concept-lede">
+          PDF/A is the version of PDF built to last. It is a stricter, ISO-standardized
+          subset of normal PDF: everything the file needs in order to look right, from
+          fonts to color, is sealed inside it, so the document opens the same way today,
+          next year, and decades from now. This guide explains it in plain language,
+          with analogies and examples.
+        </p>
+        <div class="pa-scene" aria-hidden="true">
+          <div class="pa-chip c1">Aa</div>
+          <div class="pa-chip c2" style="color:#38bdf8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg></div>
+          <div class="pa-chip c3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+          <div class="pa-chip c4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></div>
+          <div class="pa-paper">
+            <span class="pa-seal">PDF/A</span>
+            <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Create one with rust-pdf</a>
+          <a href="#levels" class="btn btn-ghost btn-lg">Jump to the levels</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: a time capsule</h2>
+        <p class="muted">
+          Think of a normal PDF as a recipe card that says <i>"use the flour from the
+          shop on the corner."</i> It works perfectly today, while that shop is open and
+          stocks that flour. But hand the card to someone in twenty years, after the shop
+          has closed, and the recipe can no longer be reproduced faithfully.
+        </p>
+        <p class="muted">
+          PDF/A is the same recipe with <b>every ingredient sealed in the box</b>: the
+          flour, the spices, the exact measuring cups. It does not rely on anything from
+          the outside world. That is the whole idea, a document that is
+          <b>self-contained</b> and therefore reproducible forever. It is the difference
+          between a photo of a meal and a vacuum-sealed kit that anyone can cook,
+          identically, on any day in the future.
+        </p>
+      </div>
+    </section>
+
+    <!-- THE PROBLEM (font substitution demo) -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What goes wrong with an ordinary PDF</h2>
+        <p class="center muted narrow">
+          A regular PDF can <i>reference</i> a font instead of carrying it. If the
+          reader does not have that exact font, it substitutes another one, and your
+          carefully laid-out document shifts, reflows, or loses characters. Watch the
+          left card: the same line, rendered on a machine that is missing the font.
+        </p>
+        <div class="pa-compare">
+          <div class="pa-card bad reveal">
+            <h3>An ordinary PDF</h3>
+            <p class="tagline">Trusts the reader to already have the right fonts.</p>
+            <div class="pa-doc">
+              <div class="pa-glyphs">
+                <span class="pa-ok">Café Façade · Año 2050</span>
+                <span class="pa-broken">Caf□ Fa□ade · A□o 2050</span>
+              </div>
+              <span class="ln"></span><span class="ln s"></span>
+            </div>
+            <span class="pa-status err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg> Font missing &middot; characters substituted</span>
+          </div>
+          <div class="pa-card good reveal">
+            <h3>The same file as PDF/A</h3>
+            <p class="tagline">Carries its fonts and colors inside, sealed.</p>
+            <div class="pa-doc">
+              <div class="pa-glyphs">
+                <span class="pa-ok">Café Façade · Año 2050</span>
+              </div>
+              <span class="ln"></span><span class="ln s"></span>
+            </div>
+            <span class="pa-status ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Identical on any device, in any year</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT MAKES A PDF/A (embed scene) -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">What turns a PDF into a PDF/A</h2>
+        <p class="center muted narrow">
+          PDF/A adds a set of rules whose single goal is to remove every dependency on
+          the outside world. Everything required to render the page is embedded; anything
+          that could change or phone home is banned.
+        </p>
+
+        <div class="pa-embed" aria-hidden="true">
+          <div class="pa-embed-chip e1"><span class="d" style="background:#fb923c"></span> Fonts (embedded)</div>
+          <div class="pa-embed-chip e2"><span class="d" style="background:#38bdf8"></span> ICC color profile</div>
+          <div class="pa-embed-chip e3"><span class="d" style="background:#34d399"></span> Images</div>
+          <div class="pa-embed-chip e4"><span class="d" style="background:#a78bfa"></span> XMP metadata</div>
+          <div class="pa-embed-doc">
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span><span class="ln s"></span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:34px">
+          <ul class="check-list">
+            <li><b>Fonts must be embedded</b>: the file carries every glyph it uses, so nothing is ever substituted.</li>
+            <li><b>Color must be device-independent</b>: an ICC profile and output intent pin down the exact colors.</li>
+            <li><b>Metadata in XMP</b>: title, author and dates are stored in a standard, machine-readable form.</li>
+          </ul>
+          <ul class="check-list">
+            <li><b>No external references</b>: no links to files or fonts that live somewhere else.</li>
+            <li><b>No JavaScript, audio or video</b>: nothing that executes or depends on a plugin.</li>
+            <li><b>No encryption</b>: an archive must stay openable without a password or key.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHY IT MATTERS (time sweep) -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Why it matters: documents outlive their software</h2>
+        <p class="center muted narrow">
+          Records often must stay readable for 5 to 30 years or more. Fonts get removed,
+          renderers change, operating systems are retired. An ordinary PDF can quietly
+          degrade over that span; a PDF/A is built to render identically the whole time.
+        </p>
+
+        <div class="pa-decades" aria-hidden="true">
+          <div class="pa-years"><span>2005</span><span>2030</span><span>2055</span><span>2080</span></div>
+          <div class="pa-row">
+            <span class="lbl">Ordinary PDF</span>
+            <span class="pa-bar reg"><span class="pa-sweep"></span></span>
+          </div>
+          <div class="pa-row">
+            <span class="lbl">PDF/A</span>
+            <span class="pa-bar pa"><span class="pa-sweep"></span></span>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          As the marker sweeps forward in time, the ordinary file drifts from green
+          toward red. The PDF/A stays faithful, because it never depended on anything
+          that could disappear.
+        </p>
+      </div>
+    </section>
+
+    <!-- LEVELS -->
+    <section id="levels" class="band">
+      <div class="wrap">
+        <h2 class="center">The parts: PDF/A-1, 2, 3 and 4</h2>
+        <p class="center muted narrow">
+          PDF/A grew in <b>parts</b> over time. Each newer part is based on a newer
+          version of PDF and relaxes a few restrictions while keeping the archival
+          guarantee.
+        </p>
+        <div class="pa-levels">
+          <div class="pa-part reveal">
+            <h3>PDF/A-1 <span class="yr">2005</span></h3>
+            <p>Based on PDF 1.4. The strictest and most universally supported. No transparency, no layers, no embedded files.</p>
+          </div>
+          <div class="pa-part reveal">
+            <h3>PDF/A-2 <span class="yr">2011</span></h3>
+            <p>Based on PDF 1.7. Adds JPEG2000, transparency, layers, and embedding other PDF/A files. The common default today.</p>
+          </div>
+          <div class="pa-part reveal">
+            <h3>PDF/A-3 <span class="yr">2012</span></h3>
+            <p>Like A-2, but lets you embed <b>any</b> file type. This is what e-invoices (Factur-X, ZUGFeRD) use to attach the source XML.</p>
+          </div>
+          <div class="pa-part reveal">
+            <h3>PDF/A-4 <span class="yr">2020</span></h3>
+            <p>Based on PDF 2.0, the modern foundation. Simplifies the conformance model for new archival systems.</p>
+          </div>
+        </div>
+
+        <h2 class="center" style="margin-top:60px">The levels: b, a and u</h2>
+        <p class="center muted narrow">
+          On top of a part, a <b>conformance level</b> says how much the file guarantees.
+          You combine them, for example <code>PDF/A-2b</code> or <code>PDF/A-2a</code>.
+        </p>
+        <table class="pa-matrix">
+          <tr><th>Level</th><th>Name</th><th>What it guarantees</th></tr>
+          <tr><td><b>b</b></td><td>Basic</td><td>The document <b>looks</b> the same everywhere. Visual fidelity only.</td></tr>
+          <tr><td><b>u</b></td><td>Unicode</td><td>Everything in <b>b</b>, plus every character maps to Unicode, so text is reliably searchable and copyable.</td></tr>
+          <tr><td><b>a</b></td><td>Accessible</td><td>Everything in <b>u</b>, plus a tagged logical structure (headings, lists, tables, alt text) for assistive technology and PDF/UA.</td></tr>
+        </table>
+        <p class="center muted narrow" style="margin-top:20px">
+          rust-pdf produces and validates <b>PDF/A-1b, 2b, 2a, 3b and 3a</b>, with the
+          accessible <b>a</b> levels building a full tagged structure tree.
+        </p>
+      </div>
+    </section>
+
+    <!-- REAL EXAMPLES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Where PDF/A is used in the real world</h2>
+        <p class="center muted narrow">
+          Anywhere a document must remain trustworthy long after it was created, and in
+          most places this is not optional but legally required.
+        </p>
+        <div class="pa-uses">
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg></div>
+            <h3>E-invoicing</h3>
+            <p>Factur-X and ZUGFeRD embed the invoice XML inside a PDF/A-3, so one file is both human-readable and machine-readable.</p>
+          </div>
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M6 21h12M5 7h14"/><path d="M7 7l-3 6a3 3 0 0 0 6 0z"/><path d="M17 7l3 6a3 3 0 0 1-6 0z"/></svg></div>
+            <h3>Legal &amp; courts</h3>
+            <p>Contracts and case filings must be archived in a form that cannot silently change and stays readable for decades.</p>
+          </div>
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M4 10v8M9 10v8M15 10v8M20 10v8"/><path d="M3 21h18"/></svg></div>
+            <h3>Banking &amp; finance</h3>
+            <p>Statements and disclosures are retained for years under regulation, and must render identically on audit.</p>
+          </div>
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg></div>
+            <h3>Healthcare</h3>
+            <p>Patient records and reports are kept long-term and must stay faithful, with no external dependencies.</p>
+          </div>
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M4 9h16"/><path d="M6 9v9M10 9v9M14 9v9M18 9v9"/><path d="M3 21h18"/></svg></div>
+            <h3>Government &amp; archives</h3>
+            <p>National archives and public administrations mandate PDF/A for digital preservation of official records.</p>
+          </div>
+          <div class="pa-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.6"/><path d="M5 8h14"/><path d="M12 8v6"/><path d="M8.5 21l3.5-7 3.5 7"/></svg></div>
+            <h3>Accessible records</h3>
+            <p>PDF/A-2a and 3a carry a tagged structure, meeting accessibility duties (PDF/UA) at the same time.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON TABLE -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Ordinary PDF vs PDF/A at a glance</h2>
+        <table class="pa-matrix">
+          <tr><th>&nbsp;</th><th>Ordinary PDF</th><th>PDF/A</th></tr>
+          <tr><td>Fonts</td><td>May be referenced</td><td><b>Always embedded</b></td></tr>
+          <tr><td>Color</td><td>Can be device-dependent</td><td><b>ICC + output intent</b></td></tr>
+          <tr><td>External links to content</td><td>Allowed</td><td><b>Forbidden</b></td></tr>
+          <tr><td>JavaScript / audio / video</td><td>Allowed</td><td><b>Forbidden</b></td></tr>
+          <tr><td>Encryption</td><td>Allowed</td><td><b>Forbidden</b></td></tr>
+          <tr><td>Metadata</td><td>Optional</td><td><b>Required XMP</b></td></tr>
+          <tr><td>Opens identically in 30 years</td><td>Not guaranteed</td><td><b>By design</b></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to create a valid PDF/A with rust-pdf</h2>
+        <p class="center muted narrow">
+          One method call embeds the sRGB ICC profile, adds the output intent, writes the
+          XMP metadata and the document ID, and enforces the rules. The output is checked
+          by <b>veraPDF</b>, the reference open-source validator.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+with rustpdf.Document() as doc:
+    doc.pdfa(rustpdf.PdfaLevel.A2B).set_info(title="Q3 Report")
+    f = doc.add_font_file("Roboto-Regular.ttf")   # embedded &amp; subset
+    doc.add_page()
+    doc.show_text(f, 22, 72, 760, "Archival report")
+    doc.save("report_pdfa.pdf")                    # validates as PDF/A-2b</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var doc = new Document();
+doc.Pdfa(PdfaLevel.A2a).Tagged().SetInfo(title: "Q3 Report"); // accessible
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 22, 72, 760, "Archival report", headingLevel: 1);
+byte[] bytes = doc.ToBytes();                                 // PDF/A-2a</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+doc, _ := rustpdf.New()
+defer doc.Close()
+doc.PdfaLevel(rustpdf.A2b)
+doc.SetInfo(rustpdf.Info{Title: "Q3 Report"})
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+doc.AddPage()
+doc.ShowText(f, 22, 72, 760, "Archival report", 0)
+data, _ := doc.ToBytes()                            // PDF/A-2b</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document, PdfaLevel } = require("rustpdf");
+
+const doc = new Document();
+doc.pdfa(PdfaLevel.A2b).setInfo({ title: "Q3 Report" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 22, 72, 760, "Archival report");
+const bytes = doc.toBytes();                         // PDF/A-2b</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>veraPDF</span><span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Need archival plus attachments (e-invoices) or accessibility? Use
+          <code>A3B</code>/<code>A3A</code> for embedded files, or pair any level with
+          tagging. Full details in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF/A FAQ</h2>
+        <details><summary>What is PDF/A?</summary>
+          <p>PDF/A is an ISO-standardized version of PDF (ISO 19005) designed for long-term archiving. It is a stricter subset of normal PDF: everything needed to display the document, such as fonts and color information, must be embedded inside the file, and anything that could change over time or depend on the outside world (external links, JavaScript, audio, video, encryption) is forbidden. The result is a self-contained file that will open and look the same decades from now.</p>
+        </details>
+        <details><summary>Why is PDF/A important?</summary>
+          <p>Many laws and regulations require records to be kept readable for 5 to 30 years or longer: invoices, contracts, bank statements, medical and court records, and government archives. A normal PDF can render differently or break as fonts and software change. PDF/A removes those external dependencies so the document stays faithful and verifiable over the long term, which is why it is mandated for e-invoicing, public-sector archiving and regulated industries.</p>
+        </details>
+        <details><summary>What is the difference between PDF/A-1, PDF/A-2, PDF/A-3 and PDF/A-4?</summary>
+          <p>These are the parts of the standard. PDF/A-1 (2005) is based on PDF 1.4 and is the strictest. PDF/A-2 (2011) is based on PDF 1.7 and adds JPEG2000, transparency, and embedding other PDF/A files. PDF/A-3 (2012) additionally allows embedding any file type, which is what e-invoice formats like Factur-X and ZUGFeRD use to attach the source XML. PDF/A-4 (2020) is based on PDF 2.0.</p>
+        </details>
+        <details><summary>What do the conformance levels a, b and u mean?</summary>
+          <p>Level b (basic) guarantees the document looks the same everywhere. Level a (accessible) adds a tagged logical structure and Unicode mapping, so the document is also accessible to assistive technology and reliably searchable. Level u guarantees Unicode mapping for all text without requiring full tagging. So PDF/A-2b is visually faithful, while PDF/A-2a is visually faithful and accessible.</p>
+        </details>
+        <details><summary>How do I create a valid PDF/A file?</summary>
+          <p>Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example <code>doc.pdfa(PdfaLevel.A2B)</code>, in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b and 3a.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Generate archival PDF/A in your language</h2>
+        <p class="muted">
+          One core, the same archival output across nine languages. Prototype for free,
+          license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pades">What is PAdES?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/aes-256">What is AES-256?</a>
+          <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

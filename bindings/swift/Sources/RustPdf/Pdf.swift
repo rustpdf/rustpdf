@@ -34,6 +34,26 @@ public struct SignOptions: Sendable {
     }
 }
 
+/// One signature's validation result (from ``Pdf/verifySignatures(_:)``).
+public struct SignatureReport: Sendable, Decodable {
+    /// The AcroForm field name, if any.
+    public let fieldName: String?
+    /// The signature sub-filter (e.g. `adbe.pkcs7.detached`, `ETSI.CAdES.detached`).
+    public let subFilter: String
+    /// The signer's common name, if extractable.
+    public let signer: String?
+    /// Whether the `/ByteRange` covers the whole document.
+    public let coversWholeDocument: Bool
+    /// Whether the signed digest matches the document bytes.
+    public let digestValid: Bool
+    /// Whether the CMS signature itself verifies.
+    public let signatureValid: Bool
+    /// Whether the signature is valid overall.
+    public let isValid: Bool
+    /// The four `/ByteRange` integers.
+    public let byteRange: [Int]
+}
+
 /// The namespace for the package-level (static) entry points. Document
 /// authoring lives on ``Document``; manipulation on ``EditableDoc``.
 public enum Pdf {
@@ -63,6 +83,20 @@ public enum Pdf {
             }
         }
         return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// Extract every raster image from `pdf` into directory `dir` (JPEG verbatim
+    /// as `.jpg`, everything else as `.png`, named `page{N}_{name}.{ext}`).
+    ///
+    /// - Returns: the number of images written.
+    public static func extractImagesToDir(_ data: [UInt8], _ dir: String) throws -> Int {
+        var count: UInt = 0
+        try withBytes(data) { ptr, len in
+            try dir.withCString { d in
+                try check(Native.shared.pdf_extract_images_to_dir(ptr, len, d, &count))
+            }
+        }
+        return Int(count)
     }
 
     /// Sign `pdf` with a PKCS#8 DER private key and a DER certificate,
@@ -106,6 +140,20 @@ public enum Pdf {
                 }
             }
         }
+    }
+
+    /// Validate every signature in `data` and return one report per signature.
+    /// An empty array means the document is unsigned.
+    public static func verifySignatures(_ data: [UInt8]) throws -> [SignatureReport] {
+        let bytes = try withBytes(data) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_verify_signatures_json(ptr, len, out, outLen)
+            }
+        }
+        if bytes.isEmpty { return [] }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode([SignatureReport].self, from: Data(bytes))
     }
 
     /// Append a Document Security Store (`/DSS`, PAdES-B-LT) with the given DER
