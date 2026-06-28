@@ -20,7 +20,9 @@ jpeg-decoder = "0.3"
 
 [dev-dependencies]
 pdf.workspace = true
+testkit.workspace = true
 png = "0.18"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [lints]
 workspace = true
