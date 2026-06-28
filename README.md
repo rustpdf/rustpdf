@@ -15,9 +15,10 @@ shaping, justified paragraphs), images (JPEG `DCTDecode`, PNG `FlateDecode`,
 palette, alpha via `SMask`, 16-bit), and a **parser** for existing PDFs (classic
 & cross-reference streams, object streams, all standard filters, recovery, and
 RC4/AES decryption), plus **manipulation** (merge, split, rotate/reorder/delete,
-text extraction, metadata, overlay, optimize). Output is validated with
-`qpdf`/`mutool`, text round-trips through `pdftotext`, and the C ABI is dogfooded
-from Python.
+text extraction, metadata, overlay, optimize) and **page rendering** (rasterize
+a page to a PNG image, a native tiny-skia rasterizer). Output is validated with
+`qpdf`/`mutool`, text round-trips through `pdftotext`, page rendering is checked
+against `mutool` with a perceptual diff, and the C ABI is dogfooded from Python.
 
 > Deferred/partial items across all phases are tracked in [`PENDING.md`](PENDING.md)
 > (e.g. AcroForm appearance streams, object dedupe, network TSA/OCSP).
@@ -45,7 +46,8 @@ never `Rc`/`RefCell` (ADR [0002](docs/adr/0002-concurrency-model.md)).
 | `fonts`    | parsing / embedding / subsetting / shaping / BiDi | ✅ Fase 3 |
 | `images`   | JPEG / PNG / palette / alpha / 16-bit | ✅ Fase 4 |
 | `parser`   | read existing PDFs (xref/streams, filters, crypto) | ✅ Fase 5 |
-| `ffi`      | C ABI boundary (full surface, ~60 exports) | ✅ + 9 bindings (Python on PyPI, Node on npm) |
+| `render`   | rasterize a page to an image (tiny-skia) | ✅ Fase 7.8 (Pro feature) |
+| `ffi`      | C ABI boundary (full surface, ~78 exports) | ✅ + 9 bindings (Python on PyPI, Node on npm) |
 | `license`  | Ed25519-signed feature licensing (gates PDF/A, signing, encryption) | ✅ |
 | `testkit`  | external validators + visual regression | ✅ Fase 0 |
 | `layout`   | high-level flow (tables, pagination) | ⏳ Fase 7 (paragraph done in `pdf`) |
