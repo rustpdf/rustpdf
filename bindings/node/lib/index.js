@@ -17,7 +17,7 @@ class PdfError extends Error {
 
 // ---- enums -----------------------------------------------------------------
 
-const PdfaLevel = Object.freeze({ A1b: 0, A2b: 1, A2a: 2, A3b: 3, A3a: 4 });
+const PdfaLevel = Object.freeze({ A1b: 0, A2b: 1, A2a: 2, A3b: 3, A3a: 4, A4: 5, A4e: 6, A4f: 7 });
 const Align = Object.freeze({ Left: 0, Right: 1, Center: 2, Justify: 3 });
 const AFRelationship = Object.freeze({ Source: 0, Data: 1, Alternative: 2, Supplement: 3, Unspecified: 4 });
 const Encryption = Object.freeze({ Rc4: 0, Aes128: 1, Aes256: 2 });

@@ -210,7 +210,8 @@ PdfStatus pdf_document_pdfa(PdfDocument *doc);
 
 /**
  * Mark the document as PDF/A at `level`: 0=A-1b, 1=A-2b, 2=A-2a, 3=A-3b,
- * 4=A-3a. Level-A variants also enable tagging.
+ * 4=A-3a, 5=A-4, 6=A-4e, 7=A-4f. Level-A variants also enable tagging;
+ * the A-4 family is based on PDF 2.0.
  *
  * # Safety
  * `doc` must be a valid handle.
@@ -226,7 +227,7 @@ PdfStatus pdf_document_pdfa_level(PdfDocument *doc, int level);
 PdfStatus pdf_document_tagged(PdfDocument *doc);
 
 /**
- * Set the PDF version: 0=1.4, 1=1.5, 2=1.7.
+ * Set the PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0.
  *
  * # Safety
  * `doc` must be a valid handle.

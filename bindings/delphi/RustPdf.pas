@@ -42,7 +42,8 @@ type
   );
 
   { PDF/A conformance level (argument to TPdfDocument.Pdfa). }
-  TPdfaLevel = (palA1B, palA2B, palA2A, palA3B, palA3A);
+  { palA4/palA4E/palA4F are PDF/A-4 (ISO 19005-4), based on PDF 2.0. }
+  TPdfaLevel = (palA1B, palA2B, palA2A, palA3B, palA3A, palA4, palA4E, palA4F);
 
   { Paragraph alignment. }
   TPdfAlign = (paLeft, paRight, paCenter, paJustify);
@@ -119,7 +120,7 @@ type
     function Pdfa: TPdfDocument; overload;                 // PDF/A-2b
     function Pdfa(Level: TPdfaLevel): TPdfDocument; overload;
     function Tagged: TPdfDocument;
-    function SetVersion(V: Integer): TPdfDocument;         // 0=1.4, 1=1.5, 2=1.7
+    function SetVersion(V: Integer): TPdfDocument;         // 0=1.4, 1=1.5, 2=1.7, 3=2.0
     function DefaultSize(Width, Height: Double): TPdfDocument;
     function SetInfo(const Title, Author, Subject, Keywords, Creator: string): TPdfDocument;
 

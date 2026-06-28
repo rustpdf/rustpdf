@@ -37,6 +37,10 @@ const (
 	A2a PdfaLevel = 2
 	A3b PdfaLevel = 3
 	A3a PdfaLevel = 4
+	// PDF/A-4 (ISO 19005-4), based on PDF 2.0.
+	A4  PdfaLevel = 5
+	A4e PdfaLevel = 6
+	A4f PdfaLevel = 7
 )
 
 // Align is a paragraph horizontal alignment.

@@ -375,29 +375,54 @@ pub enum PdfaLevel {
     A3b,
     /// PDF/A-3a — accessible (tagged) A-3.
     A3a,
+    /// PDF/A-4 (ISO 19005-4) — based on **PDF 2.0**. No A/B/U conformance
+    /// letters; tagging is optional. Object/xref streams are allowed.
+    A4,
+    /// PDF/A-4e — the "engineering" conformance, intended for documents with
+    /// 3D/rich-media annotations (`/AFRelationship`-style data). Same as A-4
+    /// here plus the `pdfaid:conformance=E` marker.
+    A4e,
+    /// PDF/A-4f — permits arbitrary embedded file attachments (the PDF/A-4
+    /// analogue of A-3), marked with `pdfaid:conformance=F`.
+    A4f,
 }
 
 impl PdfaLevel {
-    /// The PDF/A part number (1, 2 or 3).
+    /// The PDF/A part number (1, 2, 3 or 4).
     fn part(self) -> u8 {
         match self {
             PdfaLevel::A1b => 1,
             PdfaLevel::A2b | PdfaLevel::A2a => 2,
             PdfaLevel::A3b | PdfaLevel::A3a => 3,
+            PdfaLevel::A4 | PdfaLevel::A4e | PdfaLevel::A4f => 4,
         }
     }
 
-    /// The conformance level letter ('A' accessible/tagged, 'B' basic).
-    fn conformance(self) -> char {
+    /// The amendment revision year, for part 4 (`pdfaid:rev`). PDF/A-1/2/3 use
+    /// `pdfaid:conformance` instead and return `None` here.
+    fn rev(self) -> Option<u16> {
         match self {
-            PdfaLevel::A2a | PdfaLevel::A3a => 'A',
-            _ => 'B',
+            PdfaLevel::A4 | PdfaLevel::A4e | PdfaLevel::A4f => Some(2020),
+            _ => None,
         }
     }
 
-    /// Whether this level requires a tagged structure tree.
+    /// The conformance level marker: parts 1–3 use `'A'` (accessible/tagged) or
+    /// `'B'` (basic); part 4 uses `'E'`/`'F'` for the engineering/embedded-file
+    /// variants and `None` for the base level.
+    fn conformance(self) -> Option<char> {
+        match self {
+            PdfaLevel::A2a | PdfaLevel::A3a => Some('A'),
+            PdfaLevel::A1b | PdfaLevel::A2b | PdfaLevel::A3b => Some('B'),
+            PdfaLevel::A4 => None,
+            PdfaLevel::A4e => Some('E'),
+            PdfaLevel::A4f => Some('F'),
+        }
+    }
+
+    /// Whether this level requires a tagged structure tree (PDF/A level A only).
     fn tagged(self) -> bool {
-        self.conformance() == 'A'
+        matches!(self, PdfaLevel::A2a | PdfaLevel::A3a)
     }
 }
 
@@ -538,6 +563,24 @@ impl Document {
     /// Convenience: a tagged, **PDF/A-2a** (accessible) document.
     pub fn pdfa_a(self) -> Self {
         self.pdfa_with(PdfaLevel::A2a)
+    }
+
+    /// Emit a **PDF/A-4** conformant file (ISO 19005-4, based on **PDF 2.0**):
+    /// the header becomes `%PDF-2.0`, the XMP carries `pdfaid:part=4` +
+    /// `pdfaid:rev=2020`, plus the sRGB `OutputIntent` and document `/ID`.
+    pub fn pdfa4(self) -> Self {
+        self.pdfa_with(PdfaLevel::A4)
+    }
+
+    /// Convenience: **PDF/A-4f** — PDF/A-4 that permits arbitrary embedded file
+    /// attachments (use with [`Document::attach_file`]).
+    pub fn pdfa4f(self) -> Self {
+        self.pdfa_with(PdfaLevel::A4f)
+    }
+
+    /// Convenience: **PDF/A-4e** — the engineering conformance variant.
+    pub fn pdfa4e(self) -> Self {
+        self.pdfa_with(PdfaLevel::A4e)
     }
 
     /// Attach a file to the document (an embedded file with an
@@ -817,12 +860,16 @@ impl Document {
             }
         }
 
-        // PDF/A-1 is based on PDF 1.4 and needs `/CIDSet` in font descriptors.
+        // PDF/A-1 is based on PDF 1.4; PDF/A-4 is based on PDF 2.0. Other levels
+        // keep the caller-chosen version.
         let version = match self.pdfa {
             Some(PdfaLevel::A1b) => PdfVersion::V1_4,
+            Some(PdfaLevel::A4 | PdfaLevel::A4e | PdfaLevel::A4f) => PdfVersion::V2_0,
             _ => self.version,
         };
-        let need_cidset = self.pdfa.is_some();
+        // `/CIDSet` is required in PDF/A-1/2/3 font descriptors; PDF 2.0 (hence
+        // PDF/A-4) deprecates it, so it is not emitted there.
+        let need_cidset = matches!(self.pdfa, Some(l) if l.part() < 4);
         let mut doc = WriterDoc::new(version);
         let catalog_ref = doc.reserve();
         let pages_ref = doc.reserve();
@@ -1087,6 +1134,13 @@ impl Document {
             .with("Type", Object::name("Catalog"))
             .with("Pages", pages_ref);
 
+        // PDF 2.0: record the version in the catalog as well (it overrides the
+        // header), so downstream consumers see 2.0 even after an incremental
+        // update that keeps the original header.
+        if version == PdfVersion::V2_0 {
+            catalog.set("Version", Object::name("2.0"));
+        }
+
         // Tagged PDF structure tree (Fase 7.5) → required for PDF/A level A.
         if tagged {
             let (structtree_ref, _) = tree.build(&mut doc, self.pages.len());
@@ -1131,6 +1185,7 @@ impl Document {
                 &self.info_entries(),
                 level.part(),
                 level.conformance(),
+                level.rev(),
                 self.facturx.as_ref(),
             );
         }
@@ -1138,9 +1193,16 @@ impl Document {
         doc.assign(catalog_ref, catalog);
         doc.set_root(catalog_ref);
 
-        if let Some(info_dict) = self.build_info() {
-            let info_ref = doc.add(info_dict);
-            doc.set_info(info_ref);
+        // PDF 2.0 deprecates the document information dictionary; PDF/A-4
+        // forbids `/Info` in the trailer unless the catalog carries `/PieceInfo`
+        // (ISO 19005-4 6.1.3). The metadata already lives in the XMP, so for
+        // PDF/A-4 we simply omit `/Info`.
+        let omit_info = matches!(self.pdfa, Some(l) if l.part() == 4);
+        if !omit_info {
+            if let Some(info_dict) = self.build_info() {
+                let info_ref = doc.add(info_dict);
+                doc.set_info(info_ref);
+            }
         }
 
         Ok(doc.write()?)

@@ -63,7 +63,7 @@ public final class Document implements AutoCloseable {
         return this;
     }
 
-    /** Set the PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7). */
+    /** Set the PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7, 3 = 2.0). */
     public Document setVersion(int v) {
         Pdf.check(FFI.C.pdf_document_set_version(h(), v));
         return this;

@@ -1199,7 +1199,7 @@ impl EditableDoc {
     /// inferred from arbitrary content. Requires the PDF/A feature license.
     pub fn convert_to_pdfa(&mut self, level: crate::PdfaLevel) -> Result<(), ConvertError> {
         crate::require(license::Feature::Pdfa)?;
-        if level.conformance() == 'A' {
+        if level.conformance() == Some('A') {
             return Err(ConvertError::TaggingRequired);
         }
         let missing = self.unembedded_fonts();
@@ -1245,15 +1245,27 @@ impl EditableDoc {
         });
 
         // XMP metadata with the PDF/A identifier (also wires catalog /Metadata).
-        let xmp = crate::pdfa::build_xmp(&info_refs, level.part(), level.conformance(), None);
+        let xmp = crate::pdfa::build_xmp(
+            &info_refs,
+            level.part(),
+            level.conformance(),
+            level.rev(),
+            None,
+        );
         self.set_xmp(xmp.into_bytes());
 
-        // Deterministic /ID + version constraints for A-1.
+        // Deterministic /ID + version constraints per part.
         let id = crate::pdfa::document_id(&info_refs);
         self.forced_id = Some([id.clone(), id]);
         if level.part() == 1 {
             self.version = PdfVersion::V1_4;
             self.compress = false;
+        } else if level.part() == 4 {
+            // PDF/A-4 is based on PDF 2.0.
+            self.version = PdfVersion::V2_0;
+            self.update_dict(self.catalog, |d| {
+                d.set("Version", Object::name("2.0"));
+            });
         }
         Ok(())
     }

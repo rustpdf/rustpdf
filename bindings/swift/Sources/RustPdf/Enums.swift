@@ -12,6 +12,10 @@ public enum PdfaLevel: Int32, Sendable {
     case a2a = 2
     case a3b = 3
     case a3a = 4
+    // PDF/A-4 (ISO 19005-4), based on PDF 2.0.
+    case a4 = 5
+    case a4e = 6
+    case a4f = 7
 }
 
 /// Paragraph horizontal alignment (argument to ``Document/paragraph(font:size:x:y:width:text:align:)``).
@@ -53,4 +57,5 @@ public enum PdfVersion: Int32, Sendable {
     case v14 = 0
     case v15 = 1
     case v17 = 2
+    case v20 = 3
 }

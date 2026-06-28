@@ -88,7 +88,7 @@ func (d *Document) PdfaLevel(level PdfaLevel) error {
 // Tagged enables the tagged/accessible structure tree (requires a license).
 func (d *Document) Tagged() error { return check(C.pdf_document_tagged(d.h)) }
 
-// SetVersion sets the PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7).
+// SetVersion sets the PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7, 3 = 2.0).
 func (d *Document) SetVersion(v int) error { return check(C.pdf_document_set_version(d.h, C.int(v))) }
 
 // SetDefaultSize sets the default page size for subsequent pages.

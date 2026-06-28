@@ -16,6 +16,8 @@ pub enum PdfVersion {
     V1_4,
     V1_5,
     V1_7,
+    /// PDF 2.0 (ISO 32000-2). Also the basis for PDF/A-4.
+    V2_0,
 }
 
 impl PdfVersion {
@@ -24,6 +26,7 @@ impl PdfVersion {
             PdfVersion::V1_4 => b"%PDF-1.4",
             PdfVersion::V1_5 => b"%PDF-1.5",
             PdfVersion::V1_7 => b"%PDF-1.7",
+            PdfVersion::V2_0 => b"%PDF-2.0",
         }
     }
 }

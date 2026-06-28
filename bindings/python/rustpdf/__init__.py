@@ -69,6 +69,9 @@ class PdfaLevel(IntEnum):
     A2A = 2
     A3B = 3
     A3A = 4
+    A4 = 5  # PDF/A-4 (ISO 19005-4), based on PDF 2.0
+    A4E = 6  # PDF/A-4e (engineering)
+    A4F = 7  # PDF/A-4f (embedded files)
 
 
 class Align(IntEnum):
@@ -434,6 +437,7 @@ class Document:
         return self
 
     def set_version(self, v: int) -> "Document":
+        """Set the PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0."""
         _check(_set_version(self._ptr(), int(v)))
         return self
 

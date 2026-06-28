@@ -319,6 +319,29 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
 - ⏳ **7.7 HTML/CSS → PDF** — efetivamente um motor de layout de browser; o
   próprio `project.md` recomenda tratar como **produto à parte**. Fora de escopo.
 
+## Fase 7.9 — PDF 2.0 + PDF/A-4 (ISO 32000-2 / ISO 19005-4)
+
+✅ **Feito (2026-06-28).** `PdfVersion::V2_0` (header `%PDF-2.0` + catálogo
+`/Version /2.0`); **PDF/A-4 / A-4e / A-4f** (`Document::pdfa4()`/`pdfa4f()`/
+`pdfa4e()`, `PdfaLevel::{A4,A4e,A4f}`). XMP usa `pdfaid:part=4`+`pdfaid:rev=2020`
+(sem `conformance` no nível base; `E`/`F` para as variantes); `/CIDSet` e `/Info`
+omitidos (deprecados no PDF 2.0; `/Info` sem `/PieceInfo` é proibido — pego pelo
+veraPDF). **veraPDF confirma `isCompliant=true` para A-4 e A-4f.** FFI: versão
+int `3`=2.0, pdfa level `5`/`6`/`7`.
+
+✅ **Todas as 10 bindings atualizadas** (Python/C#/Go/PHP/Ruby/Node/Java/Delphi/
+Swift/Rust): constantes `A4`/`A4e`/`A4f` (=5/6/7) em cada `PdfaLevel`, e `V2_0`
+(=3) onde há enum de versão tipado (Rust `PdfVersion::V2_0`, Swift `PdfVersion.v20`);
+as demais recebem versão como `int` direto (doc-comments → `3=2.0`). Sem mudança no
+`pdf.h`. Validado: **Python** gera PDF/A-4 (`%PDF-2.0` + pdfaid part4/rev2020) e
+PDF/A-4f (conformance F) ponta-a-ponta; Rust binding compila; Go `gofmt` limpo;
+PHP/Ruby/Node sintaxe OK. ⏳ Falta rodar os smokes completos por linguagem
+(`make {csharp,go,…}-test`) — exigem build do cdylib + toolchain de cada uma.
+
+- ⏳ **PDF/A-4 a partir de leitura** (`EditableDoc::convert_to_pdfa(A4)`): o caminho
+  já seta versão 2.0 + XMP, mas falta validar com veraPDF um PDF lido→A-4
+  (remover `/Info`/CIDSet do doc existente como no caminho de autoria).
+
 ## Próximas fases
 
 Nenhuma fase nova além da 7. Concluídos em 2026-06-25: AES-256 (R/W), object

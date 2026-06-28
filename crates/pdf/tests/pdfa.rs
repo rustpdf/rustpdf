@@ -157,6 +157,65 @@ fn verapdf_confirms_levels_1b_3b_3a_when_available() {
 }
 
 #[test]
+fn pdfa4_is_pdf20_with_rev_and_no_conformance() {
+    let bytes = simple_level_doc(PdfaLevel::A4, false);
+    let text = String::from_utf8_lossy(&bytes);
+    // PDF/A-4 is based on PDF 2.0.
+    assert!(text.starts_with("%PDF-2.0"), "A-4 must declare PDF 2.0");
+    assert!(text.contains("/Version /2.0"), "catalog records 2.0");
+    // pdfaid uses part 4 + rev 2020 and (for the base level) NO conformance.
+    assert!(text.contains("<pdfaid:part>4</pdfaid:part>"));
+    assert!(text.contains("<pdfaid:rev>2020</pdfaid:rev>"));
+    assert!(!text.contains("<pdfaid:conformance>"));
+    // Same archival scaffolding as the other levels.
+    assert!(text.contains("/OutputIntents"));
+    assert!(text.contains("/S /GTS_PDFA1"));
+    assert!(text.contains("/FontFile2"));
+    // CIDSet is deprecated in PDF 2.0 — not emitted for A-4.
+    assert!(!text.contains("/CIDSet"), "A-4 should not emit a CIDSet");
+    assert_eq!(EditableDoc::load(&bytes).unwrap().page_count(), 1);
+    assert!(pdf::extract_text(&bytes).unwrap().contains("café"));
+}
+
+#[test]
+fn pdfa4f_embeds_file_with_conformance_marker() {
+    let bytes = simple_level_doc(PdfaLevel::A4f, true);
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("<pdfaid:part>4</pdfaid:part>"));
+    assert!(text.contains("<pdfaid:rev>2020</pdfaid:rev>"));
+    assert!(text.contains("<pdfaid:conformance>F</pdfaid:conformance>"));
+    assert!(text.contains("/Type /EmbeddedFile"));
+    assert!(text.contains("/AFRelationship /Source"));
+}
+
+#[test]
+fn pdf20_plain_document_header() {
+    // PDF 2.0 without PDF/A: just the header + catalog /Version.
+    use pdf::Version;
+    let mut doc = Document::new().with_version(Version::V2_0);
+    doc.add_page();
+    let bytes = doc.to_bytes().unwrap();
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.starts_with("%PDF-2.0"));
+    assert!(text.contains("/Version /2.0"));
+    assert_eq!(EditableDoc::load(&bytes).unwrap().page_count(), 1);
+}
+
+#[test]
+fn verapdf_confirms_pdfa4_when_available() {
+    use testkit::{validate_with, Validator, ValidatorStatus};
+    for (level, attach, tag) in [(PdfaLevel::A4, false, "4"), (PdfaLevel::A4f, true, "4f")] {
+        let path = std::env::temp_dir().join(format!("rustpdf_pdfa_{tag}.pdf"));
+        std::fs::write(&path, simple_level_doc(level, attach)).unwrap();
+        for r in validate_with(&path, &[Validator::VeraPdf]) {
+            if let ValidatorStatus::Fail { code, output } = r.status {
+                panic!("veraPDF rejected PDF/A-{tag} (code {code:?}):\n{output}");
+            }
+        }
+    }
+}
+
+#[test]
 fn non_pdfa_has_no_output_intent() {
     let mut doc = Document::new();
     doc.add_page();
