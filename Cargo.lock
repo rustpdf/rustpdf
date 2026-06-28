@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "cos"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "cpufeatures"
@@ -442,7 +442,7 @@ dependencies = [
 
 [[package]]
 name = "fonts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rustybuzz",
  "subsetter",
@@ -484,7 +484,7 @@ dependencies = [
 
 [[package]]
 name = "graphics"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cos",
 ]
@@ -518,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "images"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "png",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "layout"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "lazy_static"
@@ -604,7 +604,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "license"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ed25519-dalek",
  "getrandom 0.2.17",
@@ -718,7 +718,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "parser"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aes",
  "cbc",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "pdf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aes",
  "cbc",
@@ -761,7 +761,7 @@ dependencies = [
 
 [[package]]
 name = "pdf-ffi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cbindgen",
  "pdf",
@@ -1152,7 +1152,7 @@ dependencies = [
 
 [[package]]
 name = "testkit"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "image",
 ]
@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "writer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cos",
  "flate2",
