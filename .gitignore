@@ -28,3 +28,6 @@ bindings/java/src/main/resources/win32-*/
 
 # Agent scratch
 .agents/
+
+# impeccable (design skill) local state + critique snapshots
+.impeccable/

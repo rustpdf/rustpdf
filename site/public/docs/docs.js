@@ -1,3 +1,30 @@
+// Mobile nav toggle — docs pages load docs.js (not app.js), so the same
+// injected hamburger lives here. Hidden ≥820px via CSS.
+(() => {
+  const inner = document.querySelector(".nav .nav-inner");
+  const links = inner && inner.querySelector(".nav-links");
+  if (!inner || !links || inner.querySelector(".nav-toggle")) return;
+  links.id = links.id || "nav-links";
+  const btn = document.createElement("button");
+  btn.className = "nav-toggle";
+  btn.type = "button";
+  btn.setAttribute("aria-label", "Menu");
+  btn.setAttribute("aria-controls", links.id);
+  btn.setAttribute("aria-expanded", "false");
+  btn.innerHTML = '<span class="bars" aria-hidden="true"></span>';
+  links.insertAdjacentElement("beforebegin", btn);
+  const set = (open) => {
+    btn.setAttribute("aria-expanded", String(open));
+    links.classList.toggle("open", open);
+  };
+  btn.addEventListener("click", () => set(btn.getAttribute("aria-expanded") !== "true"));
+  links.addEventListener("click", (e) => { if (e.target.closest("a")) set(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") set(false); });
+  document.addEventListener("click", (e) => {
+    if (links.classList.contains("open") && !inner.contains(e.target)) set(false);
+  });
+})();
+
 // Copy buttons on every .code block
 document.querySelectorAll(".code").forEach((block) => {
   const pre = block.querySelector("pre");

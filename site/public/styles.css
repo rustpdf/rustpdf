@@ -1,3 +1,14 @@
+/* Display face: Schibsted Grotesk (SIL OFL 1.1), self-hosted — no runtime
+   external call (sovereign-by-default). Headings only; body stays system-UI so
+   there is no body FOUT. font-display: swap keeps first paint instant. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-latin.woff2") format("woff2");
+}
+
 :root {
   --bg: #0a0e16;
   --bg-2: #0d1320;
@@ -12,6 +23,8 @@
   --green: #34d399;
   --radius: 14px;
   --maxw: 1080px;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Schibsted Grotesk", var(--font-body);
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -19,7 +32,7 @@ body {
   margin: 0;
   background: radial-gradient(1200px 600px at 80% -10%, #15233b 0%, transparent 60%), var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -27,10 +40,12 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, pre { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
 .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
-/* .narrow { max-width: 760px; } */
+/* Reading measure: caps prose near ~70ch and re-centers the block. Applied to
+   ledes, FAQ and concept copy across the site. */
+.narrow { max-width: 760px; margin-inline: auto; }
 .center { text-align: center; }
 .muted { color: var(--muted); }
-h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; letter-spacing: -0.02em; }
 h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 
 /* nav */
@@ -41,12 +56,23 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
   border-bottom: 1px solid var(--border);
 }
 .nav-inner { display: flex; align-items: center; gap: 24px; height: 62px; }
-.brand { font-weight: 800; font-size: 1.15rem; color: var(--text); letter-spacing: -0.03em; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: var(--text); letter-spacing: -0.03em; }
 .brand span { color: var(--brand); }
 .nav-links { display: flex; gap: 22px; margin-left: auto; }
 .nav-links a { color: var(--muted); font-size: 0.93rem; }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 .nav .btn-sm { margin-left: 8px; }
+
+/* mobile menu toggle — injected by app.js / docs.js, shown only ≤820px */
+.nav-toggle { display: none; margin-left: auto; width: 42px; height: 38px; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border); border-radius: 9px; cursor: pointer; }
+.nav-toggle:hover { background: var(--panel); }
+.nav-toggle .bars, .nav-toggle .bars::before, .nav-toggle .bars::after { content: ""; display: block; width: 18px; height: 2px; background: var(--text); border-radius: 2px; transition: transform .2s ease, opacity .2s ease; }
+.nav-toggle .bars { position: relative; }
+.nav-toggle .bars::before { position: absolute; top: -6px; }
+.nav-toggle .bars::after { position: absolute; top: 6px; }
+.nav-toggle[aria-expanded="true"] .bars { background: transparent; }
+.nav-toggle[aria-expanded="true"] .bars::before { top: 0; transform: rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bars::after { top: 0; transform: rotate(-45deg); }
 
 /* buttons */
 .btn {
@@ -64,13 +90,18 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 
 /* hero */
 .hero { padding: 92px 0 64px; text-align: center; }
-.eyebrow { color: var(--brand-2); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.02em; margin: 0 0 18px; text-transform: uppercase; }
+/* Kicker — deliberately NOT the tracked-uppercase SaaS eyebrow: normal case,
+   mono, a leading rule, reads as an engineering label not a template tic. */
+.eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--brand-2); font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-weight: 500; font-size: 0.82rem; letter-spacing: 0; margin: 0 0 20px; }
+.eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--brand); opacity: 0.7; }
 .hero h1 { font-size: clamp(2.1rem, 5.5vw, 3.6rem); margin: 0 0 22px; font-weight: 800; text-wrap: balance; }
 .grad { color: var(--brand-2); }
 .lede { max-width: 680px; margin: 0 auto 30px; font-size: 1.12rem; color: #cbd5e1; }
 .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .validators { margin-top: 42px; color: var(--muted); font-size: 0.85rem; }
-.validators span { display: inline-block; margin: 6px 4px 0; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: #cbd5e1; }
+.validators span, .validators a.vtool { display: inline-block; margin: 6px 4px 0; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: #cbd5e1; }
+.validators a.vtool:hover { border-color: var(--brand); color: var(--text); text-decoration: none; }
+.validators .vverify { margin-left: 6px; color: var(--brand-2); font-weight: 600; white-space: nowrap; }
 
 /* sections */
 .section { padding: 76px 0; }
@@ -79,6 +110,16 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 .check-list { list-style: none; padding: 0; margin: 0; }
 .check-list li { position: relative; padding: 10px 0 10px 28px; border-bottom: 1px solid var(--border); }
 .check-list li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 800; }
+
+/* explore links — chunked + labeled, replaces run-on link prose */
+.explore { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin: 30px auto 0; text-align: left; }
+.explore-col h4 { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: var(--brand-2); margin: 0 0 12px; letter-spacing: -0.01em; }
+.explore-col h4 + h4, .explore-links + h4 { margin-top: 18px; }
+.explore-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.explore-links a { font-size: 0.86rem; border: 1px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 6px 13px; color: #cbd5e1; }
+.explore-links a:hover { border-color: var(--brand); color: var(--text); text-decoration: none; }
+@media (max-width: 820px) { .explore { grid-template-columns: 1fr 1fr; gap: 24px; } }
+@media (max-width: 560px) { .explore { grid-template-columns: 1fr; gap: 22px; } }
 
 /* feature cards */
 .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
@@ -93,9 +134,8 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 /* performance */
 .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
 .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 20px; text-align: center; }
-.hero-stat { position: relative; overflow: hidden; }
-.hero-stat::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); opacity: .8; }
-.stat-num { display: block; font-weight: 800; font-size: 3rem; line-height: 1; letter-spacing: -0.03em; }
+.hero-stat { position: relative; }
+.stat-num { display: block; font-family: var(--font-display); font-weight: 700; font-size: 2.6rem; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .stat-label { display: block; margin-top: 14px; color: var(--muted); font-size: 0.95rem; }
 .stat-big { display: block; font-weight: 700; font-size: 1.1rem; color: #e5e7eb; }
 
@@ -145,12 +185,18 @@ a.lang:hover small { color: #cbd5e1; }
 .tab-pane code { color: #d6e2f0; white-space: pre; }
 
 /* syntax highlighting tokens (self-hosted highlight.js) */
-.tok-c { color: #5b6b85; font-style: italic; }
+.tok-c { color: #7f8da6; font-style: italic; }
 .tok-s { color: #9ece6a; }
 .tok-n { color: #56b6c2; }
 .tok-k { color: #fb923c; }
 .tok-t { color: #e5c07b; }
 .tok-f { color: #61afef; }
+
+/* verify-it-yourself block */
+.verify-code { margin: 26px 0 18px; background: #0b1120; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; overflow-x: auto; font-size: 0.85rem; line-height: 1.7; }
+.verify-code code { color: #d6e2f0; white-space: pre; }
+.verify-code .c { color: #7f8da6; font-style: italic; }
+.verify-code .ok { color: var(--green); }
 
 /* pricing */
 .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 40px; align-items: start; }
@@ -158,7 +204,7 @@ a.lang:hover small { color: #cbd5e1; }
 .price-card.featured { border-color: #3b2a14; box-shadow: 0 0 0 1px rgba(249,115,22,.18), 0 30px 70px -40px rgba(249,115,22,.6); }
 .popular { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #1a0e02; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
 .price-head h3 { margin: 0 0 4px; font-size: 1.3rem; }
-.price-amount { margin: 6px 0 4px; font-weight: 800; letter-spacing: -0.02em; }
+.price-amount { margin: 6px 0 4px; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .price-amount > span:first-child { font-size: 2.2rem; }
 .price-amount .per { color: var(--muted); font-size: 1rem; font-weight: 600; margin-left: 4px; }
 .price-features { list-style: none; padding: 0; margin: 22px 0; flex: 1; }
@@ -192,7 +238,16 @@ details .faq-list li { line-height: 1.55; text-wrap: pretty; }
 .cookie-actions { display: flex; gap: 10px; }
 
 @media (max-width: 820px) {
-  .nav-links { display: none; }
+  .nav-toggle { display: inline-flex; }
+  .nav-links {
+    display: none; position: absolute; left: 0; right: 0; top: 62px;
+    flex-direction: column; gap: 0; margin: 0;
+    background: rgba(10, 14, 22, 0.98); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 6px 24px 14px;
+  }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 13px 2px; font-size: 1rem; border-bottom: 1px solid var(--border); }
+  .nav-links a:last-child { border-bottom: none; }
   .grid-2, .feature-grid { grid-template-columns: 1fr; }
   .lang-grid { grid-template-columns: repeat(2, 1fr); }
   .perf-grid { grid-template-columns: 1fr; }
