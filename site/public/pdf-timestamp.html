@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Timestamps &amp; Long-Term Validation (LTV), Explained | rust-pdf</title>
+  <meta name="description" content="PDF timestamps and LTV (long-term validation) explained: what a trusted timestamp is, how a DSS embeds certificates and CRLs so signatures stay verifiable for decades, the PAdES B-B to B-LT to B-LTA ladder, and how to build it with rust-pdf." />
+  <link rel="canonical" href="https://rustpdf.dev/pdf-timestamp" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/pdf-timestamp" />
+  <meta property="og:title" content="PDF Timestamps &amp; Long-Term Validation (LTV), Explained" />
+  <meta property="og:description" content="What a trusted timestamp is, why signatures expire without LTV, how a DSS keeps them verifiable for decades, and how to build B-B, B-LT and B-LTA PDFs with rust-pdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PDF Timestamps &amp; Long-Term Validation (LTV), Explained" />
+  <meta name="twitter:description" content="Trusted timestamps, DSS, and the PAdES ladder (B-B, B-LT, B-LTA) explained. Plus code to build it in any language." />
+  <meta property="og:image:alt" content="PDF Timestamps and Long-Term Validation explained" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="PDF Timestamps and Long-Term Validation explained" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "PDF Timestamps &amp; LTV", "item": "https://rustpdf.dev/pdf-timestamp" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "PDF Timestamps and Long-Term Validation (LTV), Explained",
+        "description": "A plain-language explanation of trusted timestamps in PDF: what an RFC 3161 token proves, why signatures stop validating over time, how a Document Security Store (DSS) embeds the evidence needed to verify a signature years later, and how to build the full PAdES B-B, B-LT, B-LTA ladder.",
+        "url": "https://rustpdf.dev/pdf-timestamp",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF Timestamps and LTV", "description": "RFC 3161 trusted timestamps and Document Security Store (DSS) for long-term validation of PDF signatures." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is a PDF timestamp?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A PDF timestamp is an RFC 3161 token issued by a Time Stamping Authority (TSA) that proves a document or signature existed at a specific moment and has not changed since. In PDF it is stored as a /DocTimeStamp entry whose /Contents holds a CMS SignedData encapsulating a TSTInfo structure. The TSTInfo messageImprint is the SHA-256 hash of the signed byte range, so any change to the document invalidates the token." }
+          },
+          {
+            "@type": "Question",
+            "name": "What is LTV / a DSS?",
+            "acceptedAnswer": { "@type": "Answer", "text": "LTV stands for long-term validation. A Document Security Store (DSS) is an entry in the PDF catalog that embeds the certificates and CRLs needed to verify a signature directly inside the file. A verifier can check the entire chain without making any network requests, even after the issuer's revocation service goes offline or the certificate expires, because all the evidence is self-contained." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why do signatures stop validating over time?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A normal digital signature relies on the signer's certificate being valid at the time of signing and on a live revocation check (OCSP or CRL) to confirm it was not revoked. Once the certificate expires, the issuer's CA is decommissioned, or the revocation service goes offline, a verifier has no way to confirm the signature was made with a valid credential. The DSS solves this by capturing the revocation evidence at the time of signing and embedding it in the file." }
+          },
+          {
+            "@type": "Question",
+            "name": "What are B-LT and B-LTA?",
+            "acceptedAnswer": { "@type": "Answer", "text": "B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and current revocation information (CRLs or OCSP responses) embedded in the PDF. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering." }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need a trusted TSA?",
+            "acceptedAnswer": { "@type": "Answer", "text": "For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /pdf-timestamp concept page (scoped prefix: ts-) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* hero art: a notary clock stamp sealing a signature panel */
+    .ts-scene { position: relative; height: 260px; max-width: 480px; margin: 36px auto 0; }
+
+    /* the document panel */
+    .ts-doc {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 148px; height: 185px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 14px; display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 24px 48px -20px rgba(0,0,0,.55);
+      animation: tsPulse 4s ease-in-out infinite; z-index: 2;
+    }
+    .ts-doc .ln { height: 7px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .ts-doc .ln.s { width: 54%; }
+    .ts-doc .sig-bar {
+      margin-top: auto; height: 12px; border-radius: 4px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    /* stamp overlay */
+    .ts-stamp {
+      position: absolute; right: -16px; bottom: -14px; z-index: 4;
+      width: 66px; height: 66px; border-radius: 50%;
+      border: 3px solid var(--brand); background: #0d1220;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      animation: tsSpin 12s linear infinite;
+    }
+    .ts-stamp svg { width: 22px; height: 22px; color: var(--brand); }
+    .ts-stamp .ts-time {
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .45rem; font-weight: 800; color: var(--brand-2); letter-spacing: .04em;
+    }
+
+    /* timeline bar on the right */
+    .ts-timeline {
+      position: absolute; right: 12px; top: 10px; bottom: 10px;
+      width: 36px; display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .ts-tl-track {
+      flex: 1; width: 3px; border-radius: 2px;
+      background: linear-gradient(180deg, var(--brand) 0%, #34d399 100%);
+      animation: tsFill 3.5s ease-in-out infinite;
+    }
+    .ts-tl-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex: none;
+      border: 2px solid var(--brand-2); background: #0d1220;
+    }
+    .ts-tl-dot.now { background: var(--brand); border-color: var(--brand); }
+    .ts-tl-dot.future { background: #34d399; border-color: #34d399; animation: tsGlow 2.8s ease-in-out 1.2s infinite; }
+    .ts-tl-label {
+      font-size: .55rem; color: var(--muted); writing-mode: vertical-rl;
+      text-orientation: mixed; margin-top: 4px; letter-spacing: .06em;
+    }
+
+    /* left orbit: "TSA" badge */
+    .ts-tsa {
+      position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 10px; text-align: center; width: 64px;
+      animation: tsFloat 5s ease-in-out infinite;
+    }
+    .ts-tsa svg { width: 22px; height: 22px; color: #a78bfa; }
+    .ts-tsa .cap { font-size: .58rem; color: var(--muted); margin-top: 5px; }
+
+    /* connecting ray TSA -> doc */
+    .ts-ray {
+      position: absolute; top: 50%; left: 84px; right: calc(50% + 74px);
+      height: 2px; background: linear-gradient(90deg, #a78bfa, transparent);
+      transform: translateY(-50%); animation: tsRay 3s ease-in-out infinite;
+    }
+
+    @keyframes tsPulse {
+      0%,100% { box-shadow: 0 24px 48px -20px rgba(0,0,0,.40); }
+      50%      { box-shadow: 0 28px 56px -16px rgba(0,0,0,.70); }
+    }
+    @keyframes tsSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes tsFloat {
+      0%,100% { transform: translateY(-50%); }
+      50%     { transform: translateY(calc(-50% - 8px)); }
+    }
+    @keyframes tsFill {
+      0%,100% { opacity: .45; }
+      50%     { opacity: 1; }
+    }
+    @keyframes tsGlow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+      50%     { box-shadow: 0 0 0 5px rgba(52,211,153,.35); }
+    }
+    @keyframes tsRay {
+      0%,100% { opacity: .3; }
+      50%     { opacity: .9; }
+    }
+
+    /* what a timestamp proves: 3-card row */
+    .ts-proves { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 38px; }
+    .ts-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px 20px;
+    }
+    .ts-card .ic { color: var(--brand-2); margin-bottom: 12px; }
+    .ts-card .ic svg { width: 26px; height: 26px; }
+    .ts-card h3 { margin: 0 0 6px; font-size: 1rem; }
+    .ts-card p { margin: 0; color: var(--muted); font-size: .89rem; }
+
+    /* problem: expiry/revocation */
+    .ts-expiry-flow {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center; gap: 12px; max-width: 720px; margin: 38px auto 0;
+    }
+    .ts-node {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+      padding: 18px 14px; text-align: center; color: #cbd5e1;
+    }
+    .ts-node svg { width: 24px; height: 24px; color: var(--brand-2); }
+    .ts-node .t { font-size: .82rem; margin-top: 8px; }
+    .ts-node.bad { border-color: #3a2020; }
+    .ts-node.bad svg { color: #fca5a5; }
+    .ts-node.good { border-color: #1e3a2a; }
+    .ts-node.good svg { color: #34d399; }
+    .ts-arrow { color: var(--muted); font-size: 1.3rem; }
+    @media (max-width: 720px) {
+      .ts-expiry-flow { grid-template-columns: 1fr; }
+      .ts-arrow { transform: rotate(90deg); justify-self: center; }
+    }
+
+    /* DSS ingredients */
+    .ts-dss { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 36px; }
+    .ts-dss-card {
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px;
+    }
+    .ts-dss-card .ic { color: var(--brand-2); height: 28px; margin-bottom: 10px; }
+    .ts-dss-card .ic svg { width: 28px; height: 28px; }
+    .ts-dss-card h3 { margin: 0 0 6px; font-size: 1rem; }
+    .ts-dss-card p { margin: 0; color: var(--muted); font-size: .89rem; }
+
+    /* ladder: B-B -> B-LT -> B-LTA */
+    .ts-ladder { display: flex; flex-direction: column; gap: 0; margin-top: 38px; max-width: 700px; margin-left: auto; margin-right: auto; }
+    .ts-rung {
+      display: grid; grid-template-columns: 90px 1fr; gap: 0; align-items: stretch;
+    }
+    .ts-rung-badge {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 12px 0 0 12px; padding: 22px 14px; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      font-weight: 800; font-size: .8rem; text-align: center; letter-spacing: .04em;
+      border-right: none;
+    }
+    .ts-rung-badge.bb  { color: #94a3b8; }
+    .ts-rung-badge.blt { color: var(--brand-2); }
+    .ts-rung-badge.blta { color: #34d399; }
+    .ts-rung-body {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 0 12px 12px 0; padding: 22px 22px; border-left: none;
+    }
+    .ts-rung-body h3 { margin: 0 0 4px; font-size: 1rem; }
+    .ts-rung-body p { margin: 0; color: var(--muted); font-size: .88rem; }
+    .ts-rung + .ts-rung { margin-top: -1px; }
+    .ts-rung + .ts-rung .ts-rung-badge { border-radius: 0 0 0 12px; border-top: none; }
+    .ts-rung + .ts-rung .ts-rung-body  { border-radius: 0 0 12px 0; border-top: none; }
+    .ts-rung:nth-child(2) .ts-rung-badge { border-radius: 0; }
+    .ts-rung:nth-child(2) .ts-rung-body  { border-radius: 0; }
+    .ts-connector { width: 90px; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 1.1rem; padding: 4px 0; }
+
+    @media (max-width: 820px) {
+      .ts-proves, .ts-dss { grid-template-columns: 1fr; }
+      .ts-rung { grid-template-columns: 70px 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ts-stamp, .ts-tsa, .ts-tl-track, .ts-tl-dot.future, .ts-ray { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Long-term validity</p>
+        <h1>PDF Timestamps &amp;<br /><span class="grad">Long-Term Validation</span></h1>
+        <p class="lede concept-lede">
+          A digital signature proves who signed. A <b>trusted timestamp</b> proves
+          <em>when</em>, and that nothing changed since. <b>LTV</b> goes further: it
+          buries all the verification evidence inside the PDF itself, so the signature
+          stays provable decades later with no network call. This guide explains the
+          mechanics and the PAdES ladder from B-B to B-LTA.
+        </p>
+        <div class="ts-scene" aria-hidden="true">
+          <div class="ts-tsa">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="cap">TSA</div>
+          </div>
+          <span class="ts-ray"></span>
+          <div class="ts-doc">
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span>
+            <span class="sig-bar"></span>
+            <div class="ts-stamp">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span class="ts-time">RFC3161</span>
+            </div>
+          </div>
+          <div class="ts-timeline">
+            <div class="ts-tl-dot now"></div>
+            <div class="ts-tl-track"></div>
+            <div class="ts-tl-dot future"></div>
+            <span class="ts-tl-label">decades later</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Build it with rust-pdf</a>
+          <a href="#ladder" class="btn btn-ghost btn-lg">See the B-B to B-LTA ladder</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The analogy: a notary stamp plus a self-contained evidence folder</h2>
+        <p class="muted">
+          Think of a signature on a contract and a notary who dates and stamps it in
+          front of you. The stamp proves the document existed on that date and the
+          notary witnessed it. That is what a trusted timestamp does: a Time Stamping
+          Authority (TSA) issues a signed token that pins the document's cryptographic
+          fingerprint to a moment in time.
+        </p>
+        <p class="muted">
+          Now imagine the notary also photocopies every credential in the room, the
+          signing certificate, the CA certificate chain, and the current revocation
+          list, and staples them all to the back of the contract. Years from now, if
+          the CA shuts down and its website goes offline, anyone with that folder can
+          still verify everything. <b>That is the Document Security Store (DSS).</b>
+          No phone call required, ever.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHAT A TIMESTAMP PROVES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What a trusted timestamp proves</h2>
+        <p class="center muted narrow">
+          An RFC 3161 token from a TSA gives three guarantees at once, independently
+          of any later changes to the document or the signer's certificate.
+        </p>
+        <div class="ts-proves">
+          <div class="ts-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <h3>Existence at a point in time</h3>
+            <p>The TSA's token includes a trusted timestamp of when it was issued. The document's SHA-256 fingerprint is bound to that moment, so you know the content existed then.</p>
+          </div>
+          <div class="ts-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h3>Integrity since signing</h3>
+            <p>The token's messageImprint is the SHA-256 hash of the signed byte range. Any subsequent modification invalidates the hash, making tampering detectable.</p>
+          </div>
+          <div class="ts-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+            <h3>TSA-independent verification</h3>
+            <p>The token is a self-contained CMS SignedData object inside the PDF. Verification needs only the TSA's certificate, not a live connection to the TSA's servers.</p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          In PDF, the token lives in a <code>/DocTimeStamp</code> entry with subfilter
+          <code>ETSI.RFC3161</code>. Its <code>/Contents</code> is a CMS
+          <code>SignedData</code> encapsulating a <code>TSTInfo</code> structure whose
+          <code>messageImprint</code> is the SHA-256 of the signed byte range.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHY SIGNATURES EXPIRE / DSS -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Why signatures expire, and how the DSS fixes it</h2>
+        <p class="center muted narrow">
+          A digital signature is not self-contained. To verify it, a relying party must
+          confirm the signer's certificate was valid at signing time and was not revoked.
+          Both of those checks depend on infrastructure that will eventually go offline.
+        </p>
+        <div class="ts-expiry-flow" aria-hidden="true">
+          <div class="ts-node bad">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div class="t">Certificate expired / CA offline</div>
+          </div>
+          <span class="ts-arrow">&rarr;</span>
+          <div class="ts-node bad">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div class="t">Revocation check fails</div>
+          </div>
+          <span class="ts-arrow">&rarr;</span>
+          <div class="ts-node bad">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div class="t">Signature unverifiable</div>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:28px">
+          The <b>Document Security Store (DSS)</b> solves this by embedding everything
+          a verifier will ever need directly inside the PDF at the time of signing,
+          when all the services are still live.
+        </p>
+        <div class="ts-dss">
+          <div class="ts-dss-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <h3>Certificate chain</h3>
+            <p>Every certificate from the signer's leaf up to the root CA is stored as a stream inside <code>/DSS /Certs</code>, so the chain can be rebuilt without contacting any CA.</p>
+          </div>
+          <div class="ts-dss-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg></div>
+            <h3>Revocation data (CRLs)</h3>
+            <p>Current Certificate Revocation Lists are embedded in <code>/DSS /CRLs</code>. A verifier checks revocation status from the local copy, never from the network.</p>
+          </div>
+          <div class="ts-dss-card reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+            <h3>Self-contained verification</h3>
+            <p>With certs and CRLs in the file, any compliant PDF reader can verify the full signature chain offline, now and decades from now.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE LADDER -->
+    <section id="ladder" class="section">
+      <div class="wrap">
+        <h2 class="center">The PAdES ladder: B-B, B-LT, B-LTA</h2>
+        <p class="center muted narrow">
+          PAdES defines three levels of increasing longevity. Each level builds on the
+          previous one by appending an incremental update, so earlier signatures are
+          never disturbed. See <a href="/pades">What is PAdES?</a> and
+          <a href="/eidas">What is eIDAS?</a> for the regulatory context.
+        </p>
+        <div class="ts-ladder">
+          <div class="ts-rung">
+            <div class="ts-rung-badge bb">B-B<br /><span style="font-weight:400;font-size:.72rem;color:var(--muted)">basic</span></div>
+            <div class="ts-rung-body">
+              <h3>PAdES Baseline B (B-B)</h3>
+              <p>A standard CAdES-based signature with the subfilter <code>ETSI.CAdES.detached</code> and, optionally, the ESS signing-certificate-v2 attribute for PAdES compliance. Verifiable today, but vulnerable to expiry and revocation service loss over time.</p>
+            </div>
+          </div>
+          <div class="ts-rung">
+            <div class="ts-rung-badge blt">B-LT<br /><span style="font-weight:400;font-size:.72rem;color:var(--muted)">+ DSS</span></div>
+            <div class="ts-rung-body">
+              <h3>PAdES Long-Term (B-LT)</h3>
+              <p>A DSS is appended in an incremental update with the signer's full certificate chain and current CRLs embedded inside the file. Verification becomes offline and network-independent. The B-B signature bytes are untouched.</p>
+            </div>
+          </div>
+          <div class="ts-rung">
+            <div class="ts-rung-badge blta">B-LTA<br /><span style="font-weight:400;font-size:.72rem;color:var(--muted)">+ timestamp</span></div>
+            <div class="ts-rung-body">
+              <h3>PAdES Long-Term with Archival (B-LTA)</h3>
+              <p>A document timestamp (<code>/DocTimeStamp</code>, <code>ETSI.RFC3161</code>) is appended over the file including the DSS. This seals everything under a trusted time proof and proves the validation data itself existed at signing time, making the document archival-grade.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to build B-B, B-LT and B-LTA with rust-pdf</h2>
+        <p class="center muted narrow">
+          Start from a signed PDF, embed validation material (DSS), then add an archival
+          timestamp. Each step appends an incremental update so earlier signatures remain valid.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+signed = rustpdf.sign(pdf, key, cert, reason="Approved", pades=True)  # B-B
+lt     = rustpdf.add_dss(signed, certs=[cert], crls=[crl])            # -&gt; B-LT (DSS)
+lta    = rustpdf.timestamp(lt, tsa_key, tsa_cert)                     # -&gt; B-LTA
+open("contract.ltv.pdf", "wb").write(lta)</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] signed = Pdf.Sign(pdf, keyDer, certDer, reason: "Approved", pades: true); // B-B
+byte[] lt     = Pdf.AddDss(signed, certs: new[]{ certDer }, crls: new[]{ crl }); // B-LT
+byte[] lta    = Pdf.Timestamp(lt, tsaKeyDer, tsaCertDer);                        // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+signed, _ := rustpdf.Sign(pdf, key, cert, rustpdf.SignOptions{Reason: "Approved", Pades: true})
+lt,  _    := rustpdf.AddDss(signed, [][]byte{cert}, [][]byte{crl})  // B-LT
+lta, _    := rustpdf.Timestamp(lt, tsaKey, tsaCert)                 // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { sign, addDss, timestamp } = require("rustpdf");
+
+const signed = sign(pdf, key, cert, { reason: "Approved", pades: true }); // B-B
+const lt     = addDss(signed, { certs: [cert], crls: [crl] });            // B-LT
+const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-LTA</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>openssl&nbsp;cms</span><span>pdfsig</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          rust-pdf builds the standards-compliant RFC 3161 container and DSS offline.
+          For production you supply a <b>trusted TSA</b> key and certificate (any
+          qualified TSA from your national Trusted List) and real revocation data from
+          your CA. The dev example uses a self-issued TSA, which is sufficient for
+          testing the full workflow. Full details in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF timestamp &amp; LTV FAQ</h2>
+        <details><summary>What is a PDF timestamp?</summary>
+          <p>A PDF timestamp is an RFC 3161 token issued by a Time Stamping Authority (TSA) that proves a document or signature existed at a specific moment and has not changed since. In PDF it is stored as a <code>/DocTimeStamp</code> entry whose <code>/Contents</code> holds a CMS SignedData encapsulating a TSTInfo structure. The TSTInfo messageImprint is the SHA-256 hash of the signed byte range, so any change to the document invalidates the token.</p>
+        </details>
+        <details><summary>What is LTV / a DSS?</summary>
+          <p>LTV stands for long-term validation. A Document Security Store (DSS) is an entry in the PDF catalog that embeds the certificates and CRLs needed to verify a signature directly inside the file. A verifier can check the entire chain without making any network requests, even after the issuer's revocation service goes offline or the certificate expires, because all the evidence is self-contained.</p>
+        </details>
+        <details><summary>Why do signatures stop validating over time?</summary>
+          <p>A normal digital signature relies on the signer's certificate being valid at the time of signing and on a live revocation check (OCSP or CRL) to confirm it was not revoked. Once the certificate expires, the issuer's CA is decommissioned, or the revocation service goes offline, a verifier has no way to confirm the signature was made with a valid credential. The DSS solves this by capturing the revocation evidence at the time of signing and embedding it in the file.</p>
+        </details>
+        <details><summary>What are B-LT and B-LTA?</summary>
+          <p>B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and current revocation information (CRLs or OCSP responses) embedded in the PDF. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering.</p>
+        </details>
+        <details><summary>Do I need a trusted TSA?</summary>
+          <p>For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Add LTV timestamps in your language</h2>
+        <p class="muted">
+          One Rust core, nine language bindings: Python, C#/.NET, Go, Node.js, Java,
+          PHP, Ruby, Delphi, Swift. Prototype for free, license the corporate features
+          when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pades">What is PAdES?</a>
+          <a href="/eidas">What is eIDAS?</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Are PDF Forms (AcroForm)? Create &amp; Fill PDFs in Code | rust-pdf</title>
+  <meta name="description" content="AcroForm and PDF forms explained clearly: field types (text, checkbox, radio, dropdown), how appearance streams work, authoring blank forms, filling programmatically, and flattening to a final read-only copy. Code examples in Python, C#, Go, and Node." />
+  <link rel="canonical" href="https://rustpdf.dev/pdf-forms" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/pdf-forms" />
+  <meta property="og:title" content="What Are PDF Forms (AcroForm)? Create &amp; Fill PDFs in Code" />
+  <meta property="og:description" content="A plain-language guide to PDF forms (AcroForm): field types, appearance streams, authoring, programmatic fill, and flattening. Examples in Python, C#, Go, and Node." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What Are PDF Forms (AcroForm)? Create &amp; Fill PDFs in Code" />
+  <meta name="twitter:description" content="PDF forms explained: AcroForm field types, appearance streams, authoring, programmatic fill, and flattening. Code in Python, C#, Go, Node." />
+  <meta property="og:image:alt" content="What are PDF forms (AcroForm): create and fill PDFs in code" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="What are PDF forms (AcroForm): create and fill PDFs in code" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "What are PDF Forms (AcroForm)?", "item": "https://rustpdf.dev/pdf-forms" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "What Are PDF Forms (AcroForm)? Create &amp; Fill PDFs in Code",
+        "description": "A plain-language explanation of PDF AcroForms: what they are, the field types (text, checkbox, radio group, dropdown), how appearance streams work, the difference between authoring and filling, flattening to a final copy, and how to do all of it in code.",
+        "url": "https://rustpdf.dev/pdf-forms",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF AcroForm", "description": "The interactive form layer of the PDF specification, allowing text fields, checkboxes, radio groups, and dropdowns that software can fill programmatically." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is a PDF form / AcroForm?",
+            "acceptedAnswer": { "@type": "Answer", "text": "An AcroForm is the interactive-form layer of the PDF specification. It adds fields (text boxes, checkboxes, radio buttons, and dropdowns) that a person can fill in a PDF viewer, or that software can fill programmatically. Each field is a widget annotation attached to a page, with an appearance stream that controls how it is drawn. AcroForm is part of the PDF standard and is supported by every major viewer." }
+          },
+          {
+            "@type": "Question",
+            "name": "What field types are supported in PDF forms?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The PDF AcroForm specification defines text fields (single or multi-line free text), checkboxes (on/off toggle), radio groups (one option from a mutually exclusive set), and choice fields such as dropdowns and list boxes. rust-pdf supports all four types: text_field, checkbox, radio_group, and dropdown." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I fill a PDF form in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Load the existing PDF into an editable document, then call fill_text_field, set_checkbox, set_choice, or set_radio with the field name and the desired value. In Python: ed.fill_text_field('applicant.name', 'Ada Lovelace'). In C#: ed.FillTextField('applicant.name', 'Ada Lovelace'). In Go: ed.FillTextField('applicant.name', 'Ada Lovelace'). In Node: ed.fillTextField('applicant.name', 'Ada Lovelace'). Hierarchical dotted names like applicant.name address a nested field inside a parent group." }
+          },
+          {
+            "@type": "Question",
+            "name": "What does flattening a form do?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Flattening bakes the current field values into the page as static, non-editable content and removes the interactive form layer. The result looks identical to the filled form in any viewer, but the fields can no longer be changed. Flattening is the right step before archiving a completed form, emailing a final copy, or attaching a document to a record system. Call flatten_forms() / FlattenForms() after filling to produce the final read-only PDF." }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need the NeedAppearances flag?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. The NeedAppearances flag tells viewers to regenerate field appearances because the document's /AP streams are absent or stale. rust-pdf generates a correct /AP appearance stream for every field at authoring time, using the built-in Helvetica and ZapfDingbats fonts, so viewers render fields correctly without that flag. Avoiding NeedAppearances means the form looks right in every viewer, including those that ignore the flag." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /pdf-forms concept page (scoped: fm-*, animations respect reduced-motion) ===== */
+    .concept-lede { max-width: 760px; }
+
+    /* ── Hero diagram: an interactive form being filled ── */
+    .fm-scene {
+      position: relative; height: 280px; max-width: 420px;
+      margin: 36px auto 0;
+    }
+
+    /* form card */
+    .fm-card {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 260px; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 22px 20px 20px; display: flex; flex-direction: column;
+      gap: 14px; box-shadow: 0 28px 56px -28px rgba(99,102,241,.5);
+      z-index: 2;
+    }
+    .fm-card-title {
+      font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 2px;
+    }
+
+    /* text field */
+    .fm-field-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .fm-label { font-size: .67rem; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+    .fm-input {
+      height: 30px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--panel-2); position: relative; overflow: hidden;
+      display: flex; align-items: center; padding: 0 9px;
+    }
+    .fm-input-text {
+      font-size: .75rem; color: #e2e8f0; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      white-space: nowrap; overflow: hidden;
+      /* typing animation */
+      width: 0; border-right: 1px solid var(--brand);
+      animation: fmType 4s steps(13, end) 0.4s forwards,
+                 fmBlink 0.7s step-end 4.4s 2;
+    }
+    .fm-input-caret {
+      width: 1px; height: 14px; background: var(--brand); margin-left: 1px;
+      animation: fmBlink 0.7s step-end infinite;
+      display: none;
+    }
+
+    /* checkbox row */
+    .fm-check-row {
+      display: flex; align-items: center; gap: 10px; font-size: .78rem;
+      color: #94a3b8;
+    }
+    .fm-box {
+      width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--border);
+      background: var(--panel-2); flex: none; display: grid; place-items: center;
+      animation: fmCheck 4s ease-in-out 2.2s infinite;
+    }
+    .fm-box svg { width: 11px; height: 11px; color: var(--brand); opacity: 0;
+      animation: fmCheckMark 4s ease-in-out 2.2s infinite; }
+
+    /* dropdown */
+    .fm-select {
+      height: 30px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--panel-2); display: flex; align-items: center;
+      justify-content: space-between; padding: 0 9px;
+    }
+    .fm-select-val {
+      font-size: .76rem; color: #e2e8f0;
+      animation: fmDropVal 6s ease-in-out 1.8s infinite;
+    }
+    .fm-select svg { width: 12px; height: 12px; color: var(--muted); }
+
+    /* status badge on card */
+    .fm-badge {
+      position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+      background: var(--brand); color: #fff; font-size: .58rem; font-weight: 800;
+      letter-spacing: .04em; padding: 4px 12px; border-radius: 999px;
+      white-space: nowrap; z-index: 3;
+      animation: fmPulse 3s ease-in-out infinite;
+    }
+
+    /* cursor dot floating around */
+    .fm-cursor {
+      position: absolute; width: 12px; height: 12px; z-index: 5; pointer-events: none;
+      animation: fmCursorPath 8s ease-in-out infinite;
+    }
+    .fm-cursor::before {
+      content: ""; display: block; width: 10px; height: 10px;
+      border: 2px solid var(--brand-2); border-radius: 50%;
+      background: rgba(139,92,246,.25);
+    }
+
+    @keyframes fmType {
+      from { width: 0; }
+      to   { width: 102px; }
+    }
+    @keyframes fmBlink {
+      0%, 100% { border-color: var(--brand); }
+      50%       { border-color: transparent; }
+    }
+    @keyframes fmCheck {
+      0%, 30%  { background: var(--panel-2); border-color: var(--border); }
+      40%, 100% { background: rgba(99,102,241,.15); border-color: var(--brand); }
+    }
+    @keyframes fmCheckMark {
+      0%, 30%  { opacity: 0; }
+      40%, 100% { opacity: 1; }
+    }
+    @keyframes fmDropVal {
+      0%, 35%  { content: "Basic"; }
+      0%       { opacity: 1; }
+      36%      { opacity: 0; }
+      40%      { opacity: 1; }
+      100%     { opacity: 1; }
+    }
+    @keyframes fmPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,.35); }
+      50%      { box-shadow: 0 0 0 6px rgba(99,102,241,.0); }
+    }
+    @keyframes fmCursorPath {
+      0%   { top: 42%; left: 20%; }
+      20%  { top: 42%; left: 62%; }
+      40%  { top: 57%; left: 25%; }
+      60%  { top: 57%; left: 28%; }
+      80%  { top: 72%; left: 30%; }
+      100% { top: 42%; left: 20%; }
+    }
+
+    /* ── Field types grid ── */
+    .fm-types {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 18px; margin-top: 38px;
+    }
+    .fm-type {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 20px; text-align: center;
+    }
+    .fm-type-icon {
+      width: 48px; height: 48px; margin: 0 auto 14px; border-radius: 12px;
+      background: var(--panel-2); border: 1px solid var(--border);
+      display: grid; place-items: center; color: var(--brand-2);
+    }
+    .fm-type-icon svg { width: 22px; height: 22px; }
+    .fm-type h3 { margin: 0 0 6px; font-size: .98rem; }
+    .fm-type p  { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
+
+    /* ── Two-jobs split ── */
+    .fm-jobs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px;
+    }
+    .fm-job {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 24px;
+    }
+    .fm-job.author { border-color: #1e2e4a; }
+    .fm-job.fill   { border-color: #1e3a2a; }
+    .fm-job h3 {
+      margin: 0 0 6px; font-size: 1.05rem; display: flex; align-items: center; gap: 9px;
+    }
+    .fm-job h3 svg { width: 19px; height: 19px; flex: none; }
+    .fm-job.author h3 svg { color: #38bdf8; }
+    .fm-job.fill   h3 svg { color: #34d399; }
+    .fm-job .tagline { color: var(--muted); font-size: .86rem; margin: 0 0 16px; }
+    .fm-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 9px; }
+    .fm-steps li {
+      font-size: .87rem; color: #94a3b8; display: flex; align-items: flex-start; gap: 8px;
+    }
+    .fm-steps li::before {
+      content: ""; display: block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--brand-2); flex: none; margin-top: 6px;
+    }
+
+    /* ── Flatten explainer ── */
+    .fm-flatten-flow {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center; gap: 12px; max-width: 760px; margin: 38px auto 0;
+    }
+    .fm-fnode {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 14px; text-align: center; color: #cbd5e1;
+    }
+    .fm-fnode svg { width: 26px; height: 26px; color: var(--brand-2); }
+    .fm-fnode .t { font-size: .82rem; margin-top: 8px; }
+    .fm-fnode.final { border-color: #1e3a2a; }
+    .fm-fnode.final svg { color: #34d399; }
+    .fm-arrow { color: var(--muted); font-size: 1.3rem; }
+
+    /* ── Use-cases grid ── */
+    .fm-uses {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 18px; margin-top: 38px;
+    }
+    .fm-use {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px;
+    }
+    .fm-use .ic { color: var(--brand-2); height: 30px; }
+    .fm-use .ic svg { width: 30px; height: 30px; }
+    .fm-use h3 { margin: 12px 0 6px; font-size: 1.02rem; }
+    .fm-use p  { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    /* responsive */
+    @media (max-width: 820px) {
+      .fm-types { grid-template-columns: repeat(2, 1fr); }
+      .fm-jobs  { grid-template-columns: 1fr; }
+      .fm-uses  { grid-template-columns: 1fr; }
+      .fm-flatten-flow { grid-template-columns: 1fr; }
+      .fm-arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fm-input-text, .fm-box, .fm-box svg,
+      .fm-select-val, .fm-badge, .fm-cursor { animation: none !important; }
+      .fm-input-text { width: 102px; }
+      .fm-box { background: rgba(99,102,241,.15); border-color: var(--brand); }
+      .fm-box svg { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Interactive documents</p>
+        <h1>What are <span class="grad">PDF forms</span> (AcroForm)?<br />Create &amp; fill PDFs in code</h1>
+        <p class="lede concept-lede">
+          An <b>AcroForm</b> is the interactive-form layer of the PDF
+          specification. It adds fields a person can type into, tick, and
+          select, and that your software can fill in seconds, no printing,
+          no scanning, no retyping. This guide explains the field types,
+          how appearance streams work, and how to author, fill, and flatten
+          a form entirely in code.
+        </p>
+        <!-- animated hero diagram -->
+        <div class="fm-scene" aria-hidden="true">
+          <span class="fm-badge">AcroForm · being filled</span>
+          <div class="fm-cursor"></div>
+          <div class="fm-card">
+            <div class="fm-card-title">Application form</div>
+
+            <div class="fm-field-wrap">
+              <span class="fm-label">Full name</span>
+              <div class="fm-input">
+                <span class="fm-input-text">Ada Lovelace</span>
+              </div>
+            </div>
+
+            <div class="fm-check-row">
+              <div class="fm-box">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="2,6 5,9 10,3"/>
+                </svg>
+              </div>
+              I agree to the terms
+            </div>
+
+            <div class="fm-field-wrap">
+              <span class="fm-label">Plan</span>
+              <div class="fm-select">
+                <span class="fm-select-val">Pro</span>
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="2,4 6,8 10,4"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">See code examples</a>
+          <a href="#field-types" class="btn btn-ghost btn-lg">Explore field types</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The analogy: a paper form made smart</h2>
+        <p class="muted">
+          Think of a paper form: pre-printed labels, blank boxes to write in,
+          tick boxes down the side. Anyone can fill it with a pen. But every time
+          it lands in an office, someone has to read it and type the answers into
+          a computer. That is slow, error-prone, and scales to zero.
+        </p>
+        <p class="muted">
+          A PDF form is that same form, made <b>smart</b>. The fields are real
+          interactive objects your software can reach into and fill
+          programmatically (from a database record, an API response, or a
+          form submission) at any volume, instantly, without human
+          transcription. When you are done, you <b>flatten</b> the form: bake
+          the values into the page as static content so the recipient gets a
+          clean, finished document, not a half-editable curiosity.
+        </p>
+      </div>
+    </section>
+
+    <!-- FIELD TYPES -->
+    <section id="field-types" class="section">
+      <div class="wrap">
+        <h2 class="center">The four field types</h2>
+        <p class="center muted narrow">
+          The PDF AcroForm specification defines four kinds of interactive
+          fields. rust-pdf supports all four and generates a correct
+          <code>/AP</code> appearance stream for each at authoring time,
+          so fields render in every viewer without the
+          <code>NeedAppearances</code> flag.
+        </p>
+        <div class="fm-types">
+          <div class="fm-type reveal">
+            <div class="fm-type-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <path d="M7 9h5M7 13h3"/>
+              </svg>
+            </div>
+            <h3>Text field</h3>
+            <p>Free-form text entry, single or multi-line. Used for names, addresses, descriptions, any open answer.</p>
+          </div>
+          <div class="fm-type reveal">
+            <div class="fm-type-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <polyline points="7,12 10,15 17,9"/>
+              </svg>
+            </div>
+            <h3>Checkbox</h3>
+            <p>A binary on/off toggle. Checked state renders a tick or cross using the built-in ZapfDingbats font.</p>
+          </div>
+          <div class="fm-type reveal">
+            <div class="fm-type-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <h3>Radio group</h3>
+            <p>Mutually exclusive options: selecting one deselects the rest. Defined as a group sharing a field name.</p>
+          </div>
+          <div class="fm-type reveal">
+            <div class="fm-type-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <path d="M8 10l4 4 4-4"/>
+              </svg>
+            </div>
+            <h3>Dropdown</h3>
+            <p>A choice field presenting a fixed list of options. Software sets the selected value by name, not by index.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TWO JOBS -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Two jobs: author a blank form, then fill it</h2>
+        <p class="center muted narrow">
+          Working with PDF forms involves two distinct operations. They
+          are often done at separate times: the blank template lives in
+          version control; filling happens at runtime from live data.
+        </p>
+        <div class="fm-jobs">
+          <div class="fm-job author reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+              </svg>
+              1. Authoring
+            </h3>
+            <p class="tagline">Place interactive fields on a page to create a blank form template.</p>
+            <ul class="fm-steps">
+              <li>Create a new <code>Document</code> and add a page</li>
+              <li>Call <code>text_field</code>, <code>checkbox</code>, <code>radio_group</code>, or <code>dropdown</code> with a name, page index, and bounding box</li>
+              <li>Field names are hierarchical: <code>applicant.name</code> creates a nested <code>applicant</code> parent field automatically</li>
+              <li>rust-pdf generates a <code>/AP</code> appearance stream for every field using built-in fonts, so no font loading is needed</li>
+              <li>Save the blank form; distribute it as a reusable template</li>
+            </ul>
+          </div>
+          <div class="fm-job fill reveal">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              2. Filling
+            </h3>
+            <p class="tagline">Load the template and write values into its fields programmatically.</p>
+            <ul class="fm-steps">
+              <li>Load the form bytes into an <code>EditableDoc</code></li>
+              <li>Call <code>fill_text_field</code>, <code>set_checkbox</code>, <code>set_choice</code>, or <code>set_radio</code> with the field name and value</li>
+              <li>Dotted field names navigate the hierarchy: <code>applicant.name</code> targets the right widget automatically</li>
+              <li>Optionally call <code>flatten_forms()</code> to bake values into static content (see below)</li>
+              <li>Save or stream the completed PDF</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FLATTENING -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Flattening: making it final</h2>
+        <p class="center muted narrow">
+          A filled form is still interactive; a recipient could change the
+          values. Flattening removes the form layer and burns the current
+          values into the page as ordinary, non-editable content. The result
+          looks identical in every viewer, but no field can be altered.
+        </p>
+        <div class="fm-flatten-flow" aria-hidden="true">
+          <div class="fm-fnode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2"/>
+              <path d="M7 9h5M7 13h3"/>
+            </svg>
+            <div class="t">Blank form template</div>
+          </div>
+          <span class="fm-arrow">&rarr;</span>
+          <div class="fm-fnode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+            <div class="t">Fill fields in code</div>
+          </div>
+          <span class="fm-arrow">&rarr;</span>
+          <div class="fm-fnode final">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/>
+              <polyline points="9,13 11,15 15,11"/>
+            </svg>
+            <div class="t">Flatten &rarr; final PDF</div>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          Flatten before archiving, emailing a signed copy, attaching to a
+          record system, or converting to <a href="/pdf-a">PDF/A</a> for
+          long-term storage. Once flattened the document behaves like any
+          static PDF.
+        </p>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">Where PDF forms are used</h2>
+        <p class="center muted narrow">
+          Any workflow where structured data needs to reach a human-readable
+          PDF document, whether the human fills it or the software does.
+        </p>
+        <div class="fm-uses">
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <h3>Customer onboarding</h3>
+            <p>Pre-fill application forms with data from your CRM, send a PDF ready to sign, flatten on receipt.</p>
+          </div>
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg></div>
+            <h3>Government &amp; tax forms</h3>
+            <p>Agencies publish AcroForm templates; software fills them from taxpayer records and returns completed PDFs.</p>
+          </div>
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+            <h3>Contracts &amp; agreements</h3>
+            <p>Generate a contract pre-populated with party names, dates, and terms; send for e-signature or wet sign.</p>
+          </div>
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></div>
+            <h3>Database-driven generation</h3>
+            <p>Pull thousands of records and render a unique filled, flattened PDF for each: invoices, statements, certificates.</p>
+          </div>
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+            <h3>Applications &amp; surveys</h3>
+            <p>Publish a blank AcroForm for users to fill in a viewer; collect the data back as field values, not images.</p>
+          </div>
+          <div class="fm-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+            <h3>Interactive kiosks &amp; portals</h3>
+            <p>Serve a form in a web viewer; flatten and archive once submitted, keeping a human-readable audit trail.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to author and fill a PDF form with rust-pdf</h2>
+        <p class="center muted narrow">
+          Place fields when authoring, then fill and flatten an existing form.
+          The generated <code>/AP</code> means no <code>NeedAppearances</code>
+          flag is required.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+# 1) Author a blank form
+with rustpdf.Document() as doc:
+    doc.add_page()
+    doc.text_field("applicant.name", 0, [72, 690, 320, 712])
+    doc.checkbox("agree", 0, [72, 650, 90, 668], checked=False)
+    doc.dropdown("plan", 0, [72, 610, 260, 630], ["Basic", "Pro", "Enterprise"])
+    doc.save("form.pdf")
+
+# 2) Fill it, then flatten to a final read-only copy
+with rustpdf.EditableDoc.load(open("form.pdf", "rb").read()) as ed:
+    ed.fill_text_field("applicant.name", "Ada Lovelace")
+    ed.set_checkbox("agree", True)
+    ed.set_choice("plan", "Pro")
+    ed.flatten_forms()                 # bake values; no longer editable
+    ed.save("form_filled.pdf")</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using (var doc = new Document()) {
+    doc.AddPage();
+    doc.TextField("applicant.name", 0, (72, 690, 320, 712));
+    doc.Checkbox("agree", 0, (72, 650, 90, 668), false);
+    doc.Dropdown("plan", 0, (72, 610, 260, 630), new[]{ "Basic", "Pro", "Enterprise" });
+    doc.Save("form.pdf");
+}
+
+using var ed = EditableDoc.Load(File.ReadAllBytes("form.pdf"));
+ed.FillTextField("applicant.name", "Ada Lovelace");
+ed.SetCheckbox("agree", true);
+ed.SetChoice("plan", "Pro");
+ed.FlattenForms();
+ed.Save("form_filled.pdf");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+doc, _ := rustpdf.New()
+doc.AddPage()
+doc.TextField("applicant.name", 0, [4]float64{72, 690, 320, 712}, "", 0)
+doc.Checkbox("agree", 0, [4]float64{72, 650, 90, 668}, false)
+doc.Dropdown("plan", 0, [4]float64{72, 610, 260, 630}, []string{"Basic", "Pro", "Enterprise"}, -1, 0)
+doc.Save("form.pdf")
+doc.Close()
+
+ed, _ := rustpdf.Load(mustRead("form.pdf"))
+defer ed.Close()
+ed.FillTextField("applicant.name", "Ada Lovelace")
+ed.SetCheckbox("agree", true)
+ed.SetChoice("plan", "Pro")
+ed.FlattenForms()
+ed.Save("form_filled.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document, EditableDoc } = require("rustpdf");
+const fs = require("fs");
+
+const doc = new Document();
+doc.addPage();
+doc.textField("applicant.name", 0, [72, 690, 320, 712]);
+doc.checkbox("agree", 0, [72, 650, 90, 668], false);
+doc.dropdown("plan", 0, [72, 610, 260, 630], ["Basic", "Pro", "Enterprise"]);
+doc.save("form.pdf");
+
+const ed = EditableDoc.load(fs.readFileSync("form.pdf"));
+ed.fillTextField("applicant.name", "Ada Lovelace");
+ed.setCheckbox("agree", true);
+ed.setChoice("plan", "Pro");
+ed.flattenForms();
+ed.save("form_filled.pdf");</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Output validated by:
+          <span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Form fields use the built-in Helvetica and ZapfDingbats fonts for
+          their <code>/AP</code> streams, so no font file is needed. For
+          nine-language coverage (Python, C#, Go, Node, Java, PHP, Ruby,
+          Delphi, Swift) see the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF forms FAQ</h2>
+        <details><summary>What is a PDF form / AcroForm?</summary>
+          <p>An AcroForm is the interactive-form layer of the PDF specification. It adds fields (text boxes, checkboxes, radio buttons, and dropdowns) that a person can fill in a PDF viewer, or that software can fill programmatically. Each field is a widget annotation attached to a page, with an appearance stream that controls how it is drawn. AcroForm is part of the PDF standard and is supported by every major viewer.</p>
+        </details>
+        <details><summary>What field types are supported in PDF forms?</summary>
+          <p>The PDF AcroForm specification defines text fields (single or multi-line free text), checkboxes (on/off toggle), radio groups (one option from a mutually exclusive set), and choice fields such as dropdowns and list boxes. rust-pdf supports all four types: <code>text_field</code>, <code>checkbox</code>, <code>radio_group</code>, and <code>dropdown</code>.</p>
+        </details>
+        <details><summary>How do I fill a PDF form in code?</summary>
+          <p>Load the existing PDF into an editable document, then call <code>fill_text_field</code>, <code>set_checkbox</code>, <code>set_choice</code>, or <code>set_radio</code> with the field name and the desired value. In Python: <code>ed.fill_text_field("applicant.name", "Ada Lovelace")</code>. Hierarchical dotted names like <code>applicant.name</code> address a nested field inside a parent group. After filling, call <code>flatten_forms()</code> to produce a final, non-editable PDF.</p>
+        </details>
+        <details><summary>What does flattening a form do?</summary>
+          <p>Flattening bakes the current field values into the page as static, non-editable content and removes the interactive form layer. The result looks identical to the filled form in any viewer, but the fields can no longer be changed. Flattening is the right step before archiving a completed form, emailing a final copy, or attaching a document to a record system. Call <code>flatten_forms()</code> / <code>FlattenForms()</code> after filling to produce the final read-only PDF.</p>
+        </details>
+        <details><summary>Do I need the NeedAppearances flag?</summary>
+          <p>No. The <code>NeedAppearances</code> flag tells viewers to regenerate field appearances because the document's <code>/AP</code> streams are absent or stale. rust-pdf generates a correct <code>/AP</code> appearance stream for every field at authoring time, using the built-in Helvetica and ZapfDingbats fonts, so viewers render fields correctly without that flag. Avoiding <code>NeedAppearances</code> means the form looks right in every viewer, including those that ignore the flag.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Generate and fill PDF forms in your language</h2>
+        <p class="muted">
+          One Rust core, nine bindings: Python, C#/.NET, Go, Node.js, Java,
+          PHP, Ruby, Delphi, Swift. Prototype for free; license the corporate
+          features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/pdf-ua">What is PDF/UA?</a>
+          <a href="/pades">What is PAdES?</a>
+          <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

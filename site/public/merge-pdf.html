@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Merge and Split PDF Files Programmatically, Explained | rust-pdf</title>
+  <meta name="description" content="How to merge PDF files (append all pages from one into another) and split PDFs (extract any page subset) in code, with examples in Python, C#, Go, and Node.js. Also covers reorder, delete, and rotate. Built on a single Rust core." />
+  <link rel="canonical" href="https://rustpdf.dev/merge-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/merge-pdf" />
+  <meta property="og:title" content="Merge and Split PDF Files Programmatically | rust-pdf" />
+  <meta property="og:description" content="How to merge and split PDF files in code: append pages from multiple PDFs into one, or extract any page subset, in Python, C#, Go, Node, and more." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Merge and Split PDF Files Programmatically | rust-pdf" />
+  <meta name="twitter:description" content="Merge PDFs, split by page, reorder, delete, and rotate. Code examples in Python, C#, Go, and Node.js." />
+  <meta property="og:image:alt" content="Merge and split PDF files programmatically with rust-pdf" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Merge and split PDF files programmatically with rust-pdf" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Merge and Split PDFs", "item": "https://rustpdf.dev/merge-pdf" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Merge and Split PDF Files Programmatically, Explained",
+        "description": "How to merge PDF files and split PDFs in code, with examples in Python, C#, Go, and Node.js. Covers merge, split/extract, reorder, delete, and rotate operations.",
+        "url": "https://rustpdf.dev/merge-pdf",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PDF page operations", "description": "Programmatic PDF merge, split, reorder, delete, and rotate using rust-pdf." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I merge PDFs in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Load both files into EditableDoc objects, call merge() on the first with the second as argument, then save. rust-pdf renumbers the second document's objects by an offset and deep-remaps every cross-reference so nothing collides. The result is a single valid PDF containing all pages from both files." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I split a PDF?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Call extract_pages() with a list of 0-based page indices. rust-pdf performs a reachability pass to collect only the objects those pages need, then renumbers them compactly into a brand-new PDF. Pages not in the list are not carried over." }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I reorder or delete pages?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. reorder_pages() takes a list of page indices in the desired output order. delete_page() removes a single page by its 0-based index. Both are list operations on the flattened page list and take effect when you call save() or to_bytes()." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does merging break internal references?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf renumbers every object in the second document by an offset before merging, then deep-remaps all object references recursively. Cross-references that were valid before remain valid in the merged file." }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I rotate pages?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rotate_page(index, degrees) rotates a single page by 90, 180, or 270 degrees. The rotation is recorded in the page dictionary and respected by all PDF viewers." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /merge-pdf concept page (ms- prefix, animations respect reduced-motion) ===== */
+    .ms-lede { max-width: 760px; }
+
+    /* ---- Hero scene: merge (left) + split (right) ---- */
+    .ms-scene {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      height: 220px;
+      max-width: 600px;
+      margin: 38px auto 0;
+    }
+
+    .ms-op-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .ms-op-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ms-op-lbl {
+      font-size: .67rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Page stack */
+    .ms-stack {
+      position: relative;
+      width: 50px;
+      height: 64px;
+      flex: none;
+    }
+    .ms-pg {
+      position: absolute;
+      width: 46px;
+      height: 60px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: 0 8px 22px -12px rgba(0,0,0,.6);
+    }
+    .ms-pg:nth-child(1) { top: 0; left: 0; z-index: 3; }
+    .ms-pg:nth-child(2) { top: 4px; left: 4px; z-index: 2; opacity: .72; }
+    .ms-pg:nth-child(3) { top: 8px; left: 8px; z-index: 1; opacity: .44; }
+    .ms-ln { height: 4px; border-radius: 3px; background: linear-gradient(90deg, #243049, #2c3a57); }
+    .ms-ln.s { width: 56%; }
+    .ms-ln.xs { width: 32%; }
+    .ms-pg:first-child .ms-ln:first-child {
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    /* Merge inputs: two stacks drift gently toward the arrow */
+    .ms-stack--a { animation: msDriftR 4.2s ease-in-out infinite; }
+    .ms-stack--b { animation: msDriftR 4.2s ease-in-out .9s infinite; }
+
+    /* Merged result: glowing pulse */
+    .ms-stack--merged .ms-pg:first-child {
+      box-shadow: 0 10px 34px -14px rgba(249,115,22,.55);
+      animation: msPulse 4.2s ease-in-out infinite;
+    }
+
+    /* Split source: blue-tinted pulse */
+    .ms-stack--src .ms-pg:first-child {
+      box-shadow: 0 10px 34px -14px rgba(99,179,237,.45);
+      animation: msPulse2 4.2s ease-in-out .4s infinite;
+    }
+
+    /* Split outputs container */
+    .ms-out {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: none;
+    }
+
+    /* Mini stacks for split result */
+    .ms-mini {
+      position: relative;
+      width: 38px;
+      height: 48px;
+      flex: none;
+    }
+    .ms-mini-pg {
+      position: absolute;
+      width: 36px;
+      height: 46px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .ms-mini-pg:nth-child(1) { top: 0; left: 0; z-index: 2; }
+    .ms-mini-pg:nth-child(2) { top: 3px; left: 3px; z-index: 1; opacity: .58; }
+    .ms-mini-pg:first-child .ms-ln:first-child {
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    /* Split outputs drift apart */
+    .ms-out-a { animation: msDriftUp 4.8s ease-in-out infinite; }
+    .ms-out-b { animation: msDriftDown 4.8s ease-in-out .65s infinite; }
+
+    /* Scene divider */
+    .ms-divider {
+      width: 1px;
+      height: 80px;
+      background: var(--border);
+      flex: none;
+      opacity: .45;
+    }
+
+    /* Arrow */
+    .ms-arrow { color: var(--muted); font-size: 1.1rem; flex: none; }
+
+    @keyframes msDriftR {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(4px); }
+    }
+    @keyframes msDriftUp {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    @keyframes msDriftDown {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(5px); }
+    }
+    @keyframes msPulse {
+      0%, 100% { box-shadow: 0 10px 34px -14px rgba(249,115,22,.35); }
+      50% { box-shadow: 0 10px 44px -12px rgba(249,115,22,.75); }
+    }
+    @keyframes msPulse2 {
+      0%, 100% { box-shadow: 0 10px 34px -14px rgba(99,179,237,.30); }
+      50% { box-shadow: 0 10px 44px -12px rgba(99,179,237,.65); }
+    }
+
+    /* ---- Operations grid ---- */
+    .ms-ops {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 38px;
+    }
+    .ms-op-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .ms-op-card .ic { color: var(--brand-2); height: 28px; margin-bottom: 12px; }
+    .ms-op-card .ic svg { width: 28px; height: 28px; }
+    .ms-op-card h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .ms-op-card p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+    /* ---- Flat page list diagram ---- */
+    .ms-flatlist {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 34px;
+    }
+    .ms-flatitem {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: .88rem;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+    .ms-flatitem.hl {
+      border-color: #2a4060;
+      color: var(--text);
+      background: var(--panel-2);
+      box-shadow: 0 0 0 1px rgba(99,179,237,.18);
+    }
+    .ms-sep { color: var(--muted); font-size: 1.1rem; }
+
+    /* ---- Use cases ---- */
+    .ms-uses {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 38px;
+    }
+    .ms-use {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+    .ms-use .ic { color: var(--brand-2); height: 30px; }
+    .ms-use .ic svg { width: 30px; height: 30px; }
+    .ms-use h3 { margin: 12px 0 6px; font-size: 1.1rem; }
+    .ms-use p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+    @media (max-width: 820px) {
+      .ms-ops { grid-template-columns: 1fr 1fr; }
+      .ms-uses { grid-template-columns: 1fr; }
+      .ms-scene { flex-direction: column; height: auto; gap: 22px; }
+      .ms-divider { width: 72px; height: 1px; }
+    }
+    @media (max-width: 520px) {
+      .ms-ops { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ms-stack--a, .ms-stack--b,
+      .ms-stack--merged .ms-pg:first-child,
+      .ms-stack--src .ms-pg:first-child,
+      .ms-out-a, .ms-out-b { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Page operations</p>
+        <h1>Merge and Split PDFs <span class="grad">Programmatically</span></h1>
+        <p class="lede ms-lede">
+          A merge appends all pages of one PDF after another into a single file.
+          A split pulls any chosen set of pages into its own new PDF.
+          Both run entirely in your process: no upload limits, no data leaving your server,
+          and no re-rendering of any content.
+        </p>
+
+        <!-- Hero animation: merge (left) + split (right) -->
+        <div class="ms-scene" aria-hidden="true">
+
+          <!-- Merge half -->
+          <div class="ms-op-wrap">
+            <div class="ms-op-row">
+              <!-- Stack A -->
+              <div class="ms-stack ms-stack--a">
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span><span class="ms-ln xs"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span></div>
+              </div>
+              <!-- Stack B -->
+              <div class="ms-stack ms-stack--b">
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span><span class="ms-ln xs"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span></div>
+              </div>
+              <span class="ms-arrow">&rarr;</span>
+              <!-- Merged result -->
+              <div class="ms-stack ms-stack--merged">
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span><span class="ms-ln xs"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span></div>
+              </div>
+            </div>
+            <span class="ms-op-lbl">merge</span>
+          </div>
+
+          <div class="ms-divider"></div>
+
+          <!-- Split half -->
+          <div class="ms-op-wrap">
+            <div class="ms-op-row">
+              <!-- Source stack -->
+              <div class="ms-stack ms-stack--src">
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span><span class="ms-ln xs"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span><span class="ms-ln s"></span></div>
+                <div class="ms-pg"><span class="ms-ln"></span></div>
+              </div>
+              <span class="ms-arrow">&rarr;</span>
+              <!-- Split outputs -->
+              <div class="ms-out">
+                <div class="ms-out-a">
+                  <div class="ms-mini">
+                    <div class="ms-mini-pg"><span class="ms-ln"></span><span class="ms-ln s"></span></div>
+                    <div class="ms-mini-pg"><span class="ms-ln"></span></div>
+                  </div>
+                </div>
+                <div class="ms-out-b">
+                  <div class="ms-mini">
+                    <div class="ms-mini-pg"><span class="ms-ln"></span><span class="ms-ln xs"></span></div>
+                    <div class="ms-mini-pg"><span class="ms-ln"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="ms-op-lbl">split</span>
+          </div>
+
+        </div>
+
+        <div class="cta-row" style="margin-top:36px">
+          <a href="#how" class="btn btn-lg">See the code</a>
+          <a href="#ops" class="btn btn-ghost btn-lg">Jump to operations</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALOGY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The simplest analogy: binding and tearing booklets</h2>
+        <p class="muted">
+          Imagine you have printed three separate booklets for the three sections of an annual
+          report. Merging them is like taking those booklets and binding them all between two covers,
+          spine first, so all the pages appear in order as one volume. The pages themselves do not
+          change; only the cover changes.
+        </p>
+        <p class="muted">
+          Splitting is the reverse: you take that bound volume and pull out one chapter,
+          setting its pages aside as their own smaller booklet. You are not rewriting the words
+          or reprinting anything; you are just deciding which cover each page sits inside.
+        </p>
+        <p class="muted">
+          In code, rust-pdf works the same way. It never re-renders, re-encodes, or reflows any
+          content. Pages are rearranged as-is. What you put in is what you get out, just in a
+          different arrangement.
+        </p>
+      </div>
+    </section>
+
+    <!-- THE OPERATIONS GRID -->
+    <section id="ops" class="section">
+      <div class="wrap">
+        <h2 class="center">The operations</h2>
+        <p class="center muted narrow">
+          Five page-level operations, all working on 0-based page indices.
+        </p>
+        <div class="ms-ops">
+
+          <!-- Merge -->
+          <div class="ms-op-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"/>
+                <path d="M12 3l-4 4h8l-4-4z"/>
+                <path d="M3 7h4M17 7h4"/>
+                <path d="M3 17h18"/>
+              </svg>
+            </div>
+            <h3>Merge</h3>
+            <p>Append all pages of a second PDF after all pages of the first. Every object in the second document is renumbered by an offset and its references are deep-remapped so the two documents never collide.</p>
+          </div>
+
+          <!-- Split / Extract -->
+          <div class="ms-op-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v14"/>
+                <path d="M8 17l4 4 4-4"/>
+                <path d="M4 7h4M16 7h4M4 12h4M16 12h4"/>
+              </svg>
+            </div>
+            <h3>Split / Extract</h3>
+            <p>Pull any subset of pages into a brand-new PDF by passing 0-based indices. A reachability pass carries only the objects those pages need; everything else is discarded.</p>
+          </div>
+
+          <!-- Reorder -->
+          <div class="ms-op-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 8h18M3 16h18"/>
+                <path d="M8 5l-4 3 4 3"/>
+                <path d="M16 19l4-3-4-3"/>
+              </svg>
+            </div>
+            <h3>Reorder</h3>
+            <p>Provide a list of page indices in the desired output order. Ideal for fixing scanned books where odd and even pages were captured in separate passes.</p>
+          </div>
+
+          <!-- Delete -->
+          <div class="ms-op-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+              </svg>
+            </div>
+            <h3>Delete</h3>
+            <p>Remove a single page by its 0-based index. All remaining pages shift down. Handy for stripping cover pages, blank separators, or accidental duplicates.</p>
+          </div>
+
+          <!-- Rotate -->
+          <div class="ms-op-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 2v6h-6"/>
+                <path d="M21 8A9 9 0 1 0 5.6 5.6L3 8"/>
+              </svg>
+            </div>
+            <h3>Rotate</h3>
+            <p>Rotate any page by 90, 180, or 270 degrees. The rotation is stored in the page dictionary so every PDF viewer renders it correctly without any content re-encoding.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS: FLAT PAGE LIST -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">How it works: a flat page list</h2>
+        <p class="muted">
+          PDF files store pages in a tree structure: a root node that fans out into branches and
+          leaf nodes. That tree is efficient for large documents but awkward to manipulate
+          directly. To move a page you would need to detach it from one branch and reattach it
+          to another, updating parent references and rebalancing the tree.
+        </p>
+        <p class="muted">
+          On load, rust-pdf <b>flattens the page tree</b> into a simple ordered list. Each
+          entry in that list is just an object number pointing to a page dictionary. From that
+          point on, merge, split, reorder, delete, and rotate are plain list operations:
+          append, slice, permute, remove, or set a value on a list item.
+        </p>
+        <div class="ms-flatlist" aria-label="Flat page list example">
+          <div class="ms-flatitem">page 0</div>
+          <span class="ms-sep">,</span>
+          <div class="ms-flatitem hl">page 1</div>
+          <span class="ms-sep">,</span>
+          <div class="ms-flatitem hl">page 2</div>
+          <span class="ms-sep">,</span>
+          <div class="ms-flatitem hl">page 3</div>
+          <span class="ms-sep">,</span>
+          <div class="ms-flatitem">page 4</div>
+        </div>
+        <p class="center muted" style="margin-top:14px; font-size:.88rem;">
+          Highlighted pages are selected by <code>extract_pages([1, 2, 3])</code>.
+        </p>
+        <p class="muted" style="margin-top:22px;">
+          When you call <code>save()</code>, rust-pdf rebuilds the real <code>/Pages</code>
+          tree from the list and writes only the objects that are still referenced.
+          Nothing from discarded pages leaks into the output.
+        </p>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Common use cases</h2>
+        <p class="center muted narrow">
+          Page operations are at the heart of many real-world document workflows.
+        </p>
+        <div class="ms-uses">
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <h3>Assembling a report pack</h3>
+            <p>Merge a cover page, individual section PDFs generated from templates, and a back-matter appendix into one document ready for distribution.</p>
+          </div>
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                <line x1="12" y1="12" x2="12" y2="16"/>
+                <line x1="10" y1="14" x2="14" y2="14"/>
+              </svg>
+            </div>
+            <h3>Bursting a batch</h3>
+            <p>A print run produces one multi-page PDF. Split it into individual per-recipient files so each customer receives only their own statement or letter.</p>
+          </div>
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <h3>Removing blank or cover pages</h3>
+            <p>Strip the leading cover or trailing blank pages that a scanner or template system inserts before archiving or sending a document.</p>
+          </div>
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2"/>
+                <path d="M5 12h14M8 2v20M16 2v20"/>
+              </svg>
+            </div>
+            <h3>Reordering scanned pages</h3>
+            <p>A duplex scanner captured odd pages in one pass and even pages in another. Reorder the combined list to restore reading order without rescanning.</p>
+          </div>
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 2v6h-6"/>
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                <path d="M3 22v-6h6"/>
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+              </svg>
+            </div>
+            <h3>Rotating misoriented scans</h3>
+            <p>Some pages land portrait when they should be landscape, or vice versa. Rotate individual pages by 90 or 270 degrees without touching the rest of the document.</p>
+          </div>
+
+          <div class="ms-use reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <h3>Compliance packaging</h3>
+            <p>Assemble signed terms, a signed quote, and supporting appendices into one auditable file that travels as a unit through a contract or approval workflow.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to merge and split PDFs with rust-pdf</h2>
+        <p class="center muted narrow">
+          Load, combine or extract, save. Page indices are 0-based.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+# Merge: append b after a
+a = rustpdf.EditableDoc.load(open("part-a.pdf", "rb").read())
+b = rustpdf.EditableDoc.load(open("part-b.pdf", "rb").read())
+a.merge(b)
+a.save("merged.pdf")
+
+# Split: pull pages 1-3 (0-based) into a new file
+doc = rustpdf.EditableDoc.load(open("merged.pdf", "rb").read())
+doc.extract_pages([0, 1, 2]).save("chapter1.pdf")</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var a = EditableDoc.Load(File.ReadAllBytes("part-a.pdf"));
+using var b = EditableDoc.Load(File.ReadAllBytes("part-b.pdf"));
+a.Merge(b);
+a.Save("merged.pdf");
+
+using var doc = EditableDoc.Load(File.ReadAllBytes("merged.pdf"));
+using var chapter = doc.ExtractPages(new[]{ 0, 1, 2 });
+chapter.Save("chapter1.pdf");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+a, _ := rustpdf.Load(mustRead("part-a.pdf"))
+b, _ := rustpdf.Load(mustRead("part-b.pdf"))
+a.Merge(b)
+a.Save("merged.pdf")
+a.Close(); b.Close()
+
+doc, _ := rustpdf.Load(mustRead("merged.pdf"))
+defer doc.Close()
+chapter, _ := doc.ExtractPages([]int{0, 1, 2})
+defer chapter.Close()
+chapter.Save("chapter1.pdf")</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { EditableDoc } = require("rustpdf");
+const fs = require("fs");
+
+const a = EditableDoc.load(fs.readFileSync("part-a.pdf"));
+a.merge(EditableDoc.load(fs.readFileSync("part-b.pdf")));
+a.save("merged.pdf");
+
+const doc = EditableDoc.load(fs.readFileSync("merged.pdf"));
+doc.extractPages([0, 1, 2]).save("chapter1.pdf");</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Structural integrity validated by:
+          <span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Nine language bindings share the same Rust core: Python, C#/.NET, Go, Node.js,
+          Java, PHP, Ruby, Delphi, and Swift. Full details in the
+          <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Merge and split PDF FAQ</h2>
+        <details><summary>How do I merge PDFs in code?</summary>
+          <p>Load both files into EditableDoc objects, call <code>merge()</code> on the first with the second as argument, then save. rust-pdf renumbers the second document's objects by an offset and deep-remaps every cross-reference so nothing collides. The result is a single valid PDF containing all pages from both files.</p>
+        </details>
+        <details><summary>How do I split a PDF?</summary>
+          <p>Call <code>extract_pages()</code> with a list of 0-based page indices. rust-pdf performs a reachability pass to collect only the objects those pages need, then renumbers them compactly into a brand-new PDF. Pages not in the list are not carried over.</p>
+        </details>
+        <details><summary>Can I reorder or delete pages?</summary>
+          <p><code>reorder_pages()</code> takes a list of page indices in the desired output order. <code>delete_page()</code> removes a single page by its 0-based index. Both are list operations on the flattened page list and take effect when you call <code>save()</code> or <code>to_bytes()</code>.</p>
+        </details>
+        <details><summary>Does merging break internal references?</summary>
+          <p>No. rust-pdf renumbers every object in the second document by an offset before merging, then deep-remaps all object references recursively. Cross-references that were valid before remain valid in the merged file.</p>
+        </details>
+        <details><summary>Can I rotate pages?</summary>
+          <p><code>rotate_page(index, degrees)</code> rotates a single page by 90, 180, or 270 degrees. The rotation is recorded in the page dictionary and respected by all PDF viewers.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Merge, split, and reorganize PDFs in your language</h2>
+        <p class="muted">
+          One Rust core, nine language bindings. Prototype for free; license the
+          corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/compress-pdf">Compress PDF</a>
+          <a href="/extract-text">Extract text</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/encrypt-pdf">Encrypt PDF</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>
