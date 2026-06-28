@@ -4,7 +4,7 @@ One command publishes a new Delphi release and updates the public download on
 the site, with **no manual file edits**:
 
 ```sh
-scripts/release-delphi.sh 0.2.0      # or no arg to re-release the current version
+scripts/release-delphi.sh 0.3.0      # or no arg to re-release the current version
 ```
 
 ## What it does
@@ -45,9 +45,9 @@ always match the bytes that were baked in.
 ## Options & manual fallback
 
 ```sh
-scripts/release-delphi.sh 0.2.0 --skip-ci-wait   # don't wait on CI (Release already exists)
-scripts/release-delphi.sh 0.2.0 --skip-deploy    # publish the Release only, no site deploy
-scripts/release-delphi.sh 0.2.0 --force-tag      # recreate an existing tag
+scripts/release-delphi.sh 0.3.0 --skip-ci-wait   # don't wait on CI (Release already exists)
+scripts/release-delphi.sh 0.3.0 --skip-deploy    # publish the Release only, no site deploy
+scripts/release-delphi.sh 0.3.0 --force-tag      # recreate an existing tag
 
 # Build the archive locally (host target only, or every installed Rust target):
 make delphi-dist
