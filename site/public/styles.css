@@ -173,6 +173,8 @@ summary::-webkit-details-marker { display: none; }
 summary::before { content: "+ "; color: var(--brand); font-weight: 800; }
 details[open] summary::before { content: "– "; }
 details p { margin: 0 0 16px; color: var(--muted); }
+details .faq-list { margin: 0 0 16px; padding-left: 20px; color: var(--muted); display: grid; gap: 10px; }
+details .faq-list li { line-height: 1.55; text-wrap: pretty; }
 
 /* footer */
 .footer { border-top: 1px solid var(--border); padding: 40px 0; margin-top: 40px; }
