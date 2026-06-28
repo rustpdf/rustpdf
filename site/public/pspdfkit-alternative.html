@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PSPDFKit / Nutrient Alternative: rust-pdf for Server-Side PDF Generation and Signing | rust-pdf</title>
+  <meta name="description" content="An honest comparison of rust-pdf and PSPDFKit (now Nutrient). PSPDFKit leads in document viewers and annotation UIs; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, nine languages and flat published pricing." />
+  <link rel="canonical" href="https://rustpdf.dev/pspdfkit-alternative" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/pspdfkit-alternative" />
+  <meta property="og:title" content="PSPDFKit / Nutrient Alternative: rust-pdf" />
+  <meta property="og:description" content="PSPDFKit leads in viewers and annotation; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, nine languages and flat pricing." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PSPDFKit / Nutrient Alternative: rust-pdf" />
+  <meta name="twitter:description" content="The server-side alternative for generating and signing compliant PDFs: PAdES B-LTA, Factur-X, nine languages, flat published pricing." />
+  <meta property="og:image:alt" content="rust-pdf as a PSPDFKit / Nutrient alternative for server-side PDF work" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="rust-pdf as a PSPDFKit / Nutrient alternative for server-side PDF work" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "PSPDFKit alternative", "item": "https://rustpdf.dev/pspdfkit-alternative" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "PSPDFKit / Nutrient alternative: rust-pdf for server-side PDF work",
+        "description": "A side by side comparison of rust-pdf and PSPDFKit (Nutrient), focused on server-side generation, signing and compliance rather than viewers and annotation UIs.",
+        "url": "https://rustpdf.dev/pspdfkit-alternative",
+        "inLanguage": "en",
+        "about": { "@type": "Thing", "name": "PSPDFKit alternative", "description": "Choosing a tool for server-side PDF generation, signing and compliance versus a viewer and annotation SDK." },
+        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is rust-pdf a replacement for PSPDFKit?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Only for the server-side generation and signing job. If you need an interactive PDF viewer, annotator or editor embedded in a web or mobile app, PSPDFKit, now Nutrient, is the right tool and rust-pdf does not provide that. The two overlap on producing, signing and validating compliant PDFs on the server, which is what this comparison covers." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does rust-pdf render or display PDFs in the browser?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf generates, signs, encrypts and processes PDFs on the server. It has no viewer or annotation user interface. Browser rendering and annotation are core PSPDFKit strengths." }
+          },
+          {
+            "@type": "Question",
+            "name": "What can rust-pdf do that PSPDFKit cannot?",
+            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover." }
+          },
+          {
+            "@type": "Question",
+            "name": "How does rust-pdf pricing compare to PSPDFKit?",
+            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. PSPDFKit pricing is quote-only, typically annual or multi-year with a three-year commitment being common. Independent third-party estimates put it in the tens of thousands of dollars per year." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is rust-pdf fully on-premise?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf runs entirely on your servers, offline, with no telemetry and deterministic, byte-identical output. PSPDFKit offers SDKs alongside cloud services such as its Document Engine and hosted APIs." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does rust-pdf do OCR or AI document processing?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. OCR and AI document processing are PSPDFKit strengths. rust-pdf focuses on standards-compliant generation, signing, encryption and text and image extraction." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /pspdfkit-alternative comparison page (scoped, prefix pk-) ===== */
+    .pk-lede { max-width: 790px; }
+
+    /* hero: versus cards */
+    .pk-versus { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 16px;
+      max-width: 580px; margin: 34px auto 0; }
+    .pk-vcard { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px;
+      display: flex; flex-direction: column; gap: 10px; }
+    .pk-vcard h3 { margin: 0; font-size: 1.05rem; }
+    .pk-vcard .sub { color: var(--muted); font-size: .82rem; margin: -4px 0 4px; }
+    .pk-vcard ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+    .pk-vcard li { font-size: .82rem; color: #cbd5e1; display: flex; align-items: center; gap: 8px; }
+    .pk-vcard li svg { width: 15px; height: 15px; flex: none; }
+    .pk-vcard.them li svg { color: #64748b; }
+    .pk-vcard.win { border-color: rgba(249,115,22,.55);
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.55); animation: pkPulse 4.5s ease-in-out infinite; }
+    .pk-vcard.win li svg { color: var(--brand); }
+    .pk-vs { align-self: center; font-weight: 800; font-size: .82rem; color: var(--muted);
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 8px 11px; }
+    @keyframes pkPulse { 0%,100% { box-shadow: 0 30px 60px -30px rgba(249,115,22,.40); }
+      50% { box-shadow: 0 30px 70px -28px rgba(249,115,22,.72); } }
+    @media (max-width: 580px) { .pk-versus { grid-template-columns: 1fr; } .pk-vs { justify-self: center; } }
+
+    /* differentiator cards */
+    .pk-diffs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
+    .pk-diff { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .pk-diff .ic { color: var(--brand-2); height: 28px; }
+    .pk-diff .ic svg { width: 28px; height: 28px; }
+    .pk-diff h3 { margin: 12px 0 6px; font-size: 1.05rem; }
+    .pk-diff p { margin: 0; color: var(--muted); font-size: .82rem; }
+
+    /* comparison table */
+    .pk-cmp { width: 100%; border-collapse: collapse; margin-top: 30px; }
+    .pk-cmp th, .pk-cmp td { border: 1px solid var(--border); padding: 12px 14px; text-align: left;
+      font-size: .82rem; vertical-align: top; }
+    .pk-cmp th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .pk-cmp thead th:last-child { color: var(--brand); }
+    .pk-cmp td:first-child { color: #cbd5e1; font-weight: 600; width: 22%; }
+    .pk-cmp td b { color: var(--text); }
+    .pk-cmp .y { color: #34d399; font-weight: 700; }
+    .pk-cmp tr td:last-child { background: rgba(249,115,22,.04); }
+
+    /* two-column contrast */
+    .pk-split { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 32px; }
+    .pk-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .pk-card.them { border-color: #3a2a20; }
+    .pk-card.us { border-color: #1e3a2a; }
+    .pk-card h3 { margin: 0 0 12px; font-size: 1.05rem; }
+    .pk-card ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+    .pk-card ul b { color: var(--text); }
+
+    /* fair callout */
+    .pk-fair { background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px 24px; margin-top: 30px; }
+    .pk-fair h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--brand); }
+    .pk-fair p { margin: 0; color: var(--muted); font-size: .82rem; }
+
+    @media (max-width: 820px) { .pk-diffs, .pk-split { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .pk-vcard.win { animation: none !important; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Comparison &middot; PSPDFKit / Nutrient alternative</p>
+        <h1>The server-side<br /><span class="grad">PSPDFKit alternative</span></h1>
+        <p class="lede pk-lede">
+          PSPDFKit, now Nutrient, is a leader in document viewers, annotation and
+          eSign user interfaces across web and mobile. rust-pdf is not that. It is the
+          <b>server-side alternative</b> for the other half of the job: generating and
+          signing compliant PDFs. Where they overlap, rust-pdf adds <b>PAdES B-LTA</b>,
+          <b>Factur-X</b>, <b>nine languages</b> and <b>flat published pricing</b>.
+          Here is the honest line between them.
+        </p>
+        <div class="pk-versus" aria-hidden="true">
+          <div class="pk-vcard them">
+            <h3>PSPDFKit</h3>
+            <p class="sub">now Nutrient</p>
+            <ul>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg> Quote-only pricing</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg> Signs to B-LT only</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg> No Factur-X</li>
+            </ul>
+          </div>
+          <span class="pk-vs">vs</span>
+          <div class="pk-vcard win">
+            <h3>rust-pdf</h3>
+            <p class="sub">server-side core</p>
+            <ul>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Flat published price</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Signs to B-LTA</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Factur-X built in</li>
+            </ul>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#compare" class="btn btn-lg">See the full comparison</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HONEST: DIFFERENT JOBS -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Different jobs, one overlap</h2>
+        <p class="muted">
+          PSPDFKit is bought to put a document <b>viewer, annotator or editor</b> in
+          front of users, in the browser, on iOS and Android, with eSign flows and AI
+          document processing. That is its home turf and rust-pdf does not compete
+          there. If a viewer is what you need, PSPDFKit is the right tool.
+        </p>
+        <p class="muted">
+          The two products overlap on the <b>server side</b>: producing PDFs, signing
+          them, validating PDF/A and encrypting. That is the whole of what rust-pdf
+          does, and it does it in nine languages, fully offline, with deeper signature
+          leveling and e-invoicing. This page compares only that overlap, fairly.
+        </p>
+      </div>
+    </section>
+
+    <!-- DIFFERENTIATORS -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Where rust-pdf is different on the server</h2>
+        <p class="center muted narrow">
+          Four contrasts on the generation and signing work the two share.
+        </p>
+        <div class="pk-diffs">
+          <div class="pk-diff reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <h3>Transparent flat pricing</h3>
+            <p>Published prices, free then 1,500 and 3,000 USD per year, versus quote-only, contact-sales pricing where a three-year commitment is common.</p>
+          </div>
+          <div class="pk-diff reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+            <h3>PAdES B-LTA and Factur-X</h3>
+            <p>rust-pdf signs through long-term-archival B-LTA and produces ZUGFeRD and Factur-X invoices. PSPDFKit's signing stops at B-LT and it has no e-invoicing.</p>
+          </div>
+          <div class="pk-diff reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></div>
+            <h3>Nine server languages</h3>
+            <p>Including PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover, all from one core with identical output.</p>
+          </div>
+          <div class="pk-diff reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <h3>Fully offline and deterministic</h3>
+            <p>Runs entirely on your servers with no cloud dependency or telemetry, and the same input always produces byte-identical output.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON TABLE -->
+    <section id="compare" class="band">
+      <div class="wrap">
+        <h2 class="center">rust-pdf vs PSPDFKit / Nutrient</h2>
+        <p class="center muted narrow">
+          Compared on the server-side overlap. Where PSPDFKit leads, including the
+          viewer it is built for, the table says so.
+        </p>
+        <table class="pk-cmp">
+          <thead>
+            <tr><th>Capability</th><th>PSPDFKit / Nutrient</th><th>rust-pdf</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Primary purpose</td><td><b>Viewing, annotation and eSign UIs</b> plus Document Engine</td><td>Server-side PDF generation, signing and compliance</td></tr>
+            <tr><td>Platforms and languages</td><td>Web, iOS, Android, Flutter, React Native, .NET, plus server SDKs (.NET, Java, Python, Node)</td><td><b>Nine bindings: Python, C#, Go, PHP, Ruby, Node, Java, Delphi, Swift</b></td></tr>
+            <tr><td>Interactive viewer and annotation UI</td><td><b>Yes, best in class</b></td><td>No, out of scope</td></tr>
+            <tr><td>PDF/A</td><td>Validate and convert</td><td>Generate 1b to 3a</td></tr>
+            <tr><td>PAdES signatures</td><td>B-B, B-T, B-LT (B-LTA not supported)</td><td><span class="y">B-B, B-LT, B-LTA</span> + LTV</td></tr>
+            <tr><td>PDF/UA accessibility</td><td>Yes</td><td>Yes (UA-1)</td></tr>
+            <tr><td>Encryption</td><td>AES-128, AES-256</td><td>RC4, AES-128, AES-256</td></tr>
+            <tr><td>ZUGFeRD / Factur-X</td><td>No</td><td><span class="y">Yes</span></td></tr>
+            <tr><td>Deployment</td><td>SDK plus cloud Document Engine</td><td><span class="y">Fully on-prem, offline, deterministic</span></td></tr>
+            <tr><td>Pricing model</td><td>Quote-only, multi-year commitment common</td><td><span class="y">Published: free, 1,500, 3,000 USD, OEM</span></td></tr>
+          </tbody>
+        </table>
+        <p class="center muted narrow" style="margin-top:18px">
+          Where PSPDFKit leads honestly: the interactive viewer, annotation and eSign
+          experience across web, mobile and desktop, plus OCR and AI document
+          processing, none of which rust-pdf offers. Pricing estimates for PSPDFKit
+          are from independent third parties, since its own pricing is not published.
+        </p>
+      </div>
+    </section>
+
+    <!-- LICENSING -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">Pricing, side by side</h2>
+        <p class="center muted narrow">
+          The clearest practical difference for a procurement team.
+        </p>
+        <div class="pk-split">
+          <div class="pk-card them reveal">
+            <h3>PSPDFKit / Nutrient</h3>
+            <ul>
+              <li><b>Quote-only.</b> Pricing is not published; you contact sales.</li>
+              <li>Priced by component and deployment model, typically <b>annual or multi-year</b>, with a three-year commitment being common.</li>
+              <li>Independent third-party estimates put it in the <b>tens of thousands of dollars per year</b>. There is no free tier, only a 30-day watermarked trial.</li>
+            </ul>
+          </div>
+          <div class="pk-card us reveal">
+            <h3>rust-pdf</h3>
+            <ul>
+              <li><b>Published, flat per-application annual pricing.</b></li>
+              <li>Free Community, Pro at <b>1,500 USD</b> per year, Enterprise at <b>3,000 USD</b> per year, plus OEM and Site licensing.</li>
+              <li>Activated by an <b>offline token</b>, no metering, no lock-in beyond the annual term.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHEN PSPDFKIT WINS -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">When PSPDFKit is the right choice</h2>
+        <div class="pk-fair">
+          <h3>Pick PSPDFKit / Nutrient if any of these is true</h3>
+          <p>
+            You need to embed a document <b>viewer, annotator or editor</b> in a web
+            or mobile app, you want client-side rendering, or you want a hosted
+            Document Engine, OCR or AI document processing. That is its core strength,
+            and rust-pdf does not compete there.
+          </p>
+        </div>
+        <div class="pk-fair">
+          <h3 style="color: var(--brand-2)">Pick rust-pdf if any of these is true</h3>
+          <p>
+            Your need is <b>server-side</b> generation and signing of compliant
+            documents: PDF/A, PAdES through B-LTA, AES-256, PDF/UA and Factur-X, in
+            languages including PHP, Ruby, Go and Delphi, fully offline, at a
+            transparent flat price. For producing documents rather than displaying
+            them, rust-pdf is the simpler, cheaper fit.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">Factur-X e-invoices, which PSPDFKit does not offer</h2>
+        <p class="center muted narrow">
+          One call embeds the EN 16931 invoice XML, switches the document to PDF/A-3,
+          and writes the Factur-X identification into the metadata. The output is
+          checked by veraPDF, in four of the nine rust-pdf languages.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+xml = open("invoice.xml", "rb").read()    # EN 16931 Cross-Industry Invoice
+with rustpdf.Document() as doc:
+    doc.facturx(xml, rustpdf.FacturxProfile.EN16931)   # -&gt; PDF/A-3 + Factur-X
+    doc.set_info(title="Invoice INV-2026-0042")
+    f = doc.add_font_file("Roboto-Regular.ttf")
+    doc.add_page()
+    doc.show_text(f, 22, 72, 760, "Invoice INV-2026-0042")
+    doc.save("invoice_facturx.pdf")        # veraPDF-valid hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] xml = File.ReadAllBytes("invoice.xml");   // EN 16931 CII
+using var doc = new Document();
+doc.Facturx(xml, FacturxProfile.En16931)         // -&gt; PDF/A-3 + Factur-X
+   .SetInfo(title: "Invoice INV-2026-0042");
+int f = doc.AddFontFile("Roboto-Regular.ttf");
+doc.AddPage();
+doc.ShowText(f, 22, 72, 760, "Invoice INV-2026-0042");
+byte[] bytes = doc.ToBytes();                     // hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+xml, _ := os.ReadFile("invoice.xml")            // EN 16931 CII
+doc, _ := rustpdf.New()
+defer doc.Close()
+doc.Facturx(xml, rustpdf.FacturxEN16931)        // -&gt; PDF/A-3 + Factur-X
+doc.SetInfo(rustpdf.Info{Title: "Invoice INV-2026-0042"})
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+doc.AddPage()
+doc.ShowText(f, 22, 72, 760, "Invoice INV-2026-0042", 0)
+data, _ := doc.ToBytes()                         // hybrid invoice</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document, FacturxProfile } = require("rustpdf");
+const fs = require("fs");
+
+const xml = fs.readFileSync("invoice.xml");      // EN 16931 CII
+const doc = new Document();
+doc.facturx(xml, FacturxProfile.EN16931)         // -&gt; PDF/A-3 + Factur-X
+   .setInfo({ title: "Invoice INV-2026-0042" });
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 22, 72, 760, "Invoice INV-2026-0042");
+const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Conformance validated by:
+          <span>veraPDF</span><span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          See <a href="/pades">PAdES signatures</a> through B-LTA,
+          <a href="/pdf-a">PDF/A</a> and <a href="/zugferd">ZUGFeRD / Factur-X</a> in
+          the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PSPDFKit alternative FAQ</h2>
+        <details><summary>Is rust-pdf a replacement for PSPDFKit?</summary>
+          <p>Only for the server-side generation and signing job. If you need an interactive PDF viewer, annotator or editor embedded in a web or mobile app, PSPDFKit, now Nutrient, is the right tool and rust-pdf does not provide that. The two overlap on producing, signing and validating compliant PDFs on the server, which is what this comparison covers.</p>
+        </details>
+        <details><summary>Does rust-pdf render or display PDFs in the browser?</summary>
+          <p>No. rust-pdf generates, signs, encrypts and processes PDFs on the server. It has no viewer or annotation user interface. Browser rendering and annotation are core PSPDFKit strengths.</p>
+        </details>
+        <details><summary>What can rust-pdf do that PSPDFKit cannot?</summary>
+          <p>rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover.</p>
+        </details>
+        <details><summary>How does rust-pdf pricing compare to PSPDFKit?</summary>
+          <p>rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. PSPDFKit pricing is quote-only, typically annual or multi-year with a three-year commitment being common. Independent third-party estimates put it in the tens of thousands of dollars per year.</p>
+        </details>
+        <details><summary>Is rust-pdf fully on-premise?</summary>
+          <p>Yes. rust-pdf runs entirely on your servers, offline, with no telemetry and deterministic, byte-identical output. PSPDFKit offers SDKs alongside cloud services such as its Document Engine and hosted APIs.</p>
+        </details>
+        <details><summary>Does rust-pdf do OCR or AI document processing?</summary>
+          <p>No. OCR and AI document processing are PSPDFKit strengths. rust-pdf focuses on standards-compliant generation, signing, encryption and text and image extraction.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Try rust-pdf on your server</h2>
+        <p class="muted">
+          Prototype for free, then license the corporate features when you ship. One
+          core that generates, signs and validates compliant PDFs across nine
+          languages, entirely on your own infrastructure.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/itext-alternative">iText alternative</a>
+          <a href="/aspose-alternative">Aspose alternative</a>
+          <a href="/pades">What is PAdES?</a>
+          <a href="/zugferd">ZUGFeRD / Factur-X</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js"></script>
+  <script src="/app.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>
