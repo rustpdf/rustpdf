@@ -241,6 +241,23 @@ app.get(["/factur-x", "/facturx"], (_req, res) =>
 app.get(["/split-pdf"], (_req, res) =>
   res.sendFile(path.join(publicDir, "merge-pdf.html")));
 
+// Task x language spoke pages live at /<task>/<lang>.html and are served by the
+// static handler above. Map the common alternate language spellings (golang,
+// nodejs, dotnet) to the canonical spoke file; each spoke's <link rel=canonical>
+// points at the primary slug (go / node / csharp).
+const SPOKE_TASKS = [
+  "sign-pdf", "pdf-a", "encrypt-pdf", "merge-pdf",
+  "extract-text", "compress-pdf", "generate-pdf", "pdf-forms",
+];
+const SPOKE_LANG_ALIAS = { golang: "go", nodejs: "node", dotnet: "csharp" };
+app.get("/:task/:lang", (req, res, next) => {
+  const { task, lang } = req.params;
+  const canonical = SPOKE_LANG_ALIAS[lang];
+  if (!canonical || !SPOKE_TASKS.includes(task)) return next();
+  const file = path.join(publicDir, task, `${canonical}.html`);
+  res.sendFile(file, (err) => (err ? next() : undefined));
+});
+
 // 404 — anything unmatched (HTML pages get the styled page; APIs get JSON).
 app.use((req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "not_found" });
