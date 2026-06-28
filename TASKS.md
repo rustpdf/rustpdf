@@ -221,9 +221,12 @@ Tier explicitamente "escopo leve, vai mudar" no `project.md`. Entregue o que é
   `/Rotate`/`/CropBox`. API: `pdf::render_page_to_png`/`render_page_rgba`(`_with`)
   + FFI `pdf_render_page_to_png`/`pdf_page_count`. Testado ponta-a-ponta
   (vetores posicionados, glifos, imagem RGB, CMYK) + unit tests do avaliador de
-  funções. **Licenciado como feature Pro** (`Feature::Rendering`; gate no wrapper
-  `pdf::render_page_*`). Lacunas conhecidas (mesh shadings 4–7, tiling patterns,
-  CCITT/JPX/JBIG2, soft mask por luminosidade, FontFile Type1) em `PENDING.md`.
+  funções + **regressão visual vs mutool** (`tests/visual_regression.rs`:
+  testkit `render_to_png` + diff perceptual; corpus even-odd/CTM/Unicode/alpha
+  <0.0003, vetores/texto ~0.001). **Licenciado como feature Pro**
+  (`Feature::Rendering`; gate no wrapper `pdf::render_page_*`). Lacunas conhecidas
+  (mesh shadings 4–7, tiling patterns, CCITT/JPX/JBIG2, soft mask por
+  luminosidade, FontFile Type1) em `PENDING.md`.
 
 ---
 

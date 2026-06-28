@@ -989,11 +989,13 @@ version = "0.3.0"
 dependencies = [
  "cos",
  "fonts",
+ "image",
  "images",
  "jpeg-decoder",
  "parser",
  "pdf",
  "png 0.18.1",
+ "testkit",
  "tiny-skia",
  "ttf-parser",
 ]
