@@ -149,6 +149,14 @@ export function version(): string;
 export function activateLicense(token: string): void;
 export function extractText(pdf: Bytes): string;
 export function extractImagesToDir(pdf: Bytes, dir: string): number;
+/**
+ * Render page `page` (0-based) of `pdf` to a PNG image at `dpi` dots-per-inch.
+ * Page rendering is a licensed Pro feature: throws unless a license granting it
+ * is active.
+ */
+export function renderPageToPng(pdf: Bytes, page?: number, dpi?: number): Buffer;
+/** Number of pages in `pdf` (free — no license required). */
+export function pageCount(pdf: Bytes): number;
 export function verifySignatures(pdf: Bytes): SignatureInfo[];
 export function sign(pdf: Bytes, keyDer: Bytes, certDer: Bytes, opts?: SignOptions): Buffer;
 export function timestamp(pdf: Bytes, tsaKeyDer: Bytes, tsaCertDer: Bytes, date?: string | null): Buffer;

@@ -73,6 +73,12 @@ text = RustPdf.extract_text(pdfa)
 check(text.include?("Título"), "extracted text: #{text}")
 puts "built PDF/A-2a (#{pdfa.bytesize} bytes); extracted ok"
 
+# Page rendering (Pro feature; license already active).
+check(RustPdf.page_count(pdfa) == 1, "page count")
+png = RustPdf.render_page_to_png(pdfa, 0, 72.0)
+check(png.bytesize > 8 && png.byteslice(1, 3) == "PNG", "PNG header")
+puts "rendered page 0 -> #{png.bytesize} byte PNG"
+
 # 3. Incremental update preserves the original prefix.
 ed = RustPdf::EditableDoc.load(pdfa)
 check(ed.page_count == 1, "page count")

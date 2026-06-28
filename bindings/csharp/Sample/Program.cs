@@ -60,6 +60,12 @@ var text = Pdf.ExtractText(pdfa);
 Assert(text.Contains("Título"), $"extracted text: {text}");
 Console.WriteLine($"built PDF/A-2a ({pdfa.Length} bytes); extracted ok");
 
+// Page rendering (Pro feature; license already active).
+Assert(Pdf.PageCount(pdfa) == 1, "page count");
+var png = Pdf.RenderPageToPng(pdfa, 0, 72.0);
+Assert(png.Length > 8 && png[1] == 0x50 && png[2] == 0x4E && png[3] == 0x47, "PNG header");
+Console.WriteLine($"rendered page 0 → {png.Length} byte PNG");
+
 // 3. Manipulation: incremental update preserves the original prefix.
 byte[] incr;
 using (var ed = EditableDoc.Load(pdfa))

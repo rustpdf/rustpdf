@@ -71,6 +71,12 @@ final class SmokeTest: XCTestCase {
         let text = try Pdf.extractText(pdfa)
         XCTAssertTrue(text.contains("Título"), "extracted text: \(text)")
 
+        // 3b. Page rendering (Pro feature; license already active).
+        XCTAssertEqual(try Pdf.pageCount(pdfa), 1)
+        let png = try Pdf.renderPageToPng(pdfa, page: 0, dpi: 72.0)
+        XCTAssertTrue(png.count > 8 && png[1] == 0x50 && png[2] == 0x4E && png[3] == 0x47,
+                      "expected a PNG header")
+
         // 4. Incremental update preserves the original prefix.
         do {
             let ed = try EditableDoc(loading: pdfa)

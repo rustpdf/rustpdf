@@ -18,7 +18,8 @@ well-known, permissively-licensed font crates:
 | `fonts`    | `ttf-parser`, `rustybuzz`, `subsetter`, `unicode-bidi` (+ their transitive deps) |
 | `images`   | `png`, `flate2` (Fase 4) |
 | `parser`   | `flate2`, `aes`, `cbc`, `md-5` (Fase 5) |
-| `pdf`      | core crates + `aes`/`cbc`/`md-5` (enc 7.3) + `rsa`/`cms`/`x509-cert`/`der`/`const-oid`/`sha2`/`signature` (signatures 7.1) |
+| `render`   | `cos`, `parser`, `fonts`, `images` + `tiny-skia`, `ttf-parser`, `png`, `jpeg-decoder` (page rasterizer) |
+| `pdf`      | core crates + `render` + `aes`/`cbc`/`md-5` (enc 7.3) + `rsa`/`cms`/`x509-cert`/`der`/`const-oid`/`sha2`/`signature` (signatures 7.1) |
 | `ffi`      | `pdf` |
 
 ### Signature crates (Fase 7.1) — all permissive (RustCrypto)
@@ -67,7 +68,27 @@ RC4 is implemented by hand (no dependency).
 | `flate2` | MIT OR Apache-2.0 | zlib/deflate encoding (`FlateDecode`) |
 | `miniz_oxide` | MIT OR Zlib OR Apache-2.0 | transitive (flate2/png backend) |
 
-JPEG needs no decoder — bytes are embedded verbatim via `DCTDecode`.
+JPEG needs no decoder for *authoring* — bytes are embedded verbatim via
+`DCTDecode`. The page **rasterizer** (`render`) does decode JPEG pixels, see
+below.
+
+### Page rasterizer crates (`render`) — all permissive
+
+| Crate           | License                    | Role |
+|-----------------|----------------------------|------|
+| `tiny-skia`     | BSD-3-Clause               | anti-aliased 2D scan conversion (fill/stroke/clip/gradients) |
+| `tiny-skia-path`| BSD-3-Clause               | transitive (paths/strokes) |
+| `ttf-parser`    | MIT OR Apache-2.0          | glyph outline extraction (shared with `fonts`) |
+| `jpeg-decoder`  | MIT OR Apache-2.0          | decode `DCTDecode` image pixels for compositing |
+| `png`           | MIT OR Apache-2.0          | encode the rendered page to PNG |
+| transitive: `arrayref` | BSD-2-Clause        | tiny-skia support |
+| transitive: `bytemuck` | Zlib OR Apache-2.0 OR MIT | tiny-skia support |
+| transitive: `rayon`, `log`, `cfg-if`, `crossbeam-*`, `either` | MIT OR Apache-2.0 | tiny-skia / jpeg-decoder support |
+
+BSD-3-Clause / BSD-2-Clause / Zlib are all permitted by `deny.toml`. Confirmed
+permissive on 2026-06-28 via `cargo metadata`. `render` reuses the bundled
+Roboto font (below) as the fallback program for non-embedded fonts, so it is now
+part of the **shipped** library, not just tests.
 
 ### Font crates (Fase 3) — all permissive
 
@@ -95,9 +116,11 @@ crate as the PDF/A `OutputIntent` destination profile. See `assets/icc/LICENSE.t
 
 `assets/fonts/Roboto-Regular.ttf` and `Roboto-Bold.ttf` are **Roboto**, ©
 Google, licensed **Apache-2.0** (redistributable). See
-`assets/fonts/LICENSE.txt`. Used only by tests/examples; not part of the
-library. System fonts (e.g. Hiragino for the CJK test) are referenced in place,
-never bundled.
+`assets/fonts/LICENSE.txt`. Besides tests/examples, the `render` crate now
+`include_bytes!`-embeds both as the fallback glyph program for non-embedded
+(standard-14) fonts, so they ship inside the library — Apache-2.0 permits this.
+System fonts (e.g. Hiragino for the CJK test) are referenced in place, never
+bundled.
 
 ## Tooling / test-only dependencies
 

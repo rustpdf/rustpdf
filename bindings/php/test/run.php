@@ -77,6 +77,12 @@ $text = Pdf::extractText($pdfa);
 check(str_contains($text, 'Título'), "extracted text: $text");
 echo 'built PDF/A-2a (' . strlen($pdfa) . " bytes); extracted ok\n";
 
+// Page rendering (Pro feature; license already active).
+check(Pdf::pageCount($pdfa) === 1, 'page count');
+$png = Pdf::renderPageToPng($pdfa, 0, 72.0);
+check(strlen($png) > 8 && substr($png, 1, 3) === 'PNG', 'PNG header');
+echo 'rendered page 0 → ' . strlen($png) . " byte PNG\n";
+
 // 3. Incremental update preserves the original prefix.
 $ed = EditableDoc::load($pdfa);
 check($ed->pageCount() === 1, 'page count');

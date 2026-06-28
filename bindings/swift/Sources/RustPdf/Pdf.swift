@@ -99,6 +99,26 @@ public enum Pdf {
         return Int(count)
     }
 
+    /// Render page `page` (0-based) of `pdf` to a PNG image at `dpi`
+    /// dots-per-inch. Page rendering is a licensed **Pro** feature: throws
+    /// `PdfError` (status `License`) unless a license granting it is active.
+    public static func renderPageToPng(_ pdf: [UInt8], page: Int = 0, dpi: Double = 150.0) throws -> [UInt8] {
+        try withBytes(pdf) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_render_page_to_png(ptr, len, UInt(page), dpi, out, outLen)
+            }
+        }
+    }
+
+    /// Number of pages in `pdf` (free — no license required).
+    public static func pageCount(_ pdf: [UInt8]) throws -> Int {
+        var count: UInt = 0
+        try withBytes(pdf) { ptr, len in
+            try check(Native.shared.pdf_page_count(ptr, len, &count))
+        }
+        return Int(count)
+    }
+
     /// Sign `pdf` with a PKCS#8 DER private key and a DER certificate,
     /// producing a new PDF (PKCS#7 detached, incremental update). Requires a
     /// license granting the signatures feature.

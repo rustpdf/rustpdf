@@ -79,6 +79,8 @@ module RustPdf
 
       "pdf_extract_text"             => [[VP, SZ, VP, VP], I],
       "pdf_extract_images_to_dir"    => [[VP, SZ, VP, VP], I],
+      "pdf_render_page_to_png"       => [[VP, SZ, SZ, D, VP, VP], I],
+      "pdf_page_count"               => [[VP, SZ, VP], I],
       "pdf_sign"                     => [[VP, SZ, VP, SZ, VP, SZ, VP, VP, VP, I, VP, VP], I],
       "pdf_timestamp"                => [[VP, SZ, VP, SZ, VP, SZ, VP, VP, VP], I],
       "pdf_add_dss"                  => [[VP, SZ, VP, VP, SZ, VP, VP, SZ, VP, VP], I],

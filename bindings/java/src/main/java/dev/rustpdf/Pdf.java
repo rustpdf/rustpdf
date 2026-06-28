@@ -56,6 +56,23 @@ public final class Pdf {
     }
 
     /**
+     * Render page {@code pageIndex} (0-based) of {@code pdf} to a PNG image at
+     * {@code dpi} dots-per-inch. Page rendering is a licensed Pro feature: throws
+     * {@link PdfException} (status {@code License}) unless a license granting it
+     * is active.
+     */
+    public static byte[] renderPageToPng(byte[] pdf, int pageIndex, double dpi) {
+        return takeBuffer((p, n) -> FFI.C.pdf_render_page_to_png(pdf, pdf.length, pageIndex, dpi, p, n));
+    }
+
+    /** Number of pages in {@code pdf} (free — no license required). */
+    public static long pageCount(byte[] pdf) {
+        LongByReference count = new LongByReference();
+        check(FFI.C.pdf_page_count(pdf, pdf.length, count));
+        return count.getValue();
+    }
+
+    /**
      * Sign {@code pdf} (PKCS#7 detached, incremental update). {@code pades} selects
      * PAdES-B-B. {@code reason}/{@code location}/{@code name} may be null. Requires a license.
      */

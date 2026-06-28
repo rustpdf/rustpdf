@@ -129,7 +129,7 @@ var
   Doc, Form, Plain: TPdfDocument;
   Ed, A, B, Merged, EncEd: TPdfEditable;
   F, PF: Integer;
-  Pdfa, Incr, Fb, EncBytes, Signed, Stamped, Dss, PlainBytes: TBytes;
+  Pdfa, Incr, Fb, EncBytes, Signed, Stamped, Dss, PlainBytes, Png: TBytes;
   Buttons: TRadioButtons;
   Blocked: Boolean;
   Key, Cert, TsaKey, TsaCert: TBytes;
@@ -197,6 +197,12 @@ begin
   Assert(Length(Pdfa) > 0, 'pdfa bytes');
   Assert(TextContains(Pdf.ExtractText(Pdfa), 'Título'), 'extracted text');
   Writeln(Format('built PDF/A-2a (%d bytes); extracted ok', [Length(Pdfa)]));
+
+  { 1c. Page rendering (Pro feature; license already active). }
+  Assert(Pdf.PageCount(Pdfa) = 1, 'page count');
+  Png := Pdf.RenderPageToPng(Pdfa, 0, 72.0);
+  Assert((Length(Png) > 8) and (Png[1] = Ord('P')) and (Png[2] = Ord('N')) and (Png[3] = Ord('G')), 'PNG header');
+  Writeln(Format('rendered page 0 -> %d byte PNG', [Length(Png)]));
 
   { 2b. Embed a raster image, then extract every image to a temp directory. }
   ImgDoc := TPdfDocument.Create;

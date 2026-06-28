@@ -13,6 +13,7 @@ writer.workspace = true
 graphics.workspace = true
 fonts.workspace = true
 images.workspace = true
+render.workspace = true
 parser.workspace = true
 aes = "0.8"
 cbc = "0.1"

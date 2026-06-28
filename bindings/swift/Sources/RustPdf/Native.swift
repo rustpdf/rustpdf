@@ -68,6 +68,8 @@ typealias HFillFieldFn  = (OpaquePointer?, UnsafePointer<CChar>?, UnsafePointer<
 typealias HEncryptFn    = (OpaquePointer?, Int32, UnsafePointer<CChar>?, UnsafePointer<CChar>?, Int32) -> Int32
 typealias HIncrFn       = (OpaquePointer?, UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
 typealias ExtractTextFn = (UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
+typealias RenderPageFn  = (UnsafePointer<UInt8>?, UInt, UInt, Double, OutBuf, OutLen) -> Int32
+typealias PageCountFn   = (UnsafePointer<UInt8>?, UInt, UnsafeMutablePointer<UInt>?) -> Int32
 typealias HLinkUriFn    = (OpaquePointer?, Double, Double, Double, Double, UnsafePointer<CChar>?) -> Int32
 typealias HLinkPageFn   = (OpaquePointer?, Double, Double, Double, Double, UInt, Double, Int32) -> Int32
 typealias HBookmarksFn  = (OpaquePointer?, UInt, UnsafePointer<Int32>?, UnsafePointer<UnsafePointer<CChar>?>?,
@@ -191,6 +193,8 @@ final class Native {
     // ---- text extraction + signing ------------------------------------------
     let pdf_extract_text: ExtractTextFn = CRustPdf.pdf_extract_text
     let pdf_extract_images_to_dir: ExtractImagesFn = CRustPdf.pdf_extract_images_to_dir
+    let pdf_render_page_to_png: RenderPageFn = CRustPdf.pdf_render_page_to_png
+    let pdf_page_count: PageCountFn = CRustPdf.pdf_page_count
     let pdf_sign: SignFn = CRustPdf.pdf_sign
     let pdf_timestamp: TimestampFn = CRustPdf.pdf_timestamp
     let pdf_add_dss: AddDssFn = CRustPdf.pdf_add_dss

@@ -122,6 +122,29 @@ pub fn extract_images_to_dir(data: &[u8], dir: &str) -> Result<usize> {
     Ok(count)
 }
 
+/// Render page `page` (0-based) of `data` to a PNG image at `dpi`
+/// dots-per-inch. Page rendering is a licensed **Pro** feature: returns an
+/// error (license status) unless a license granting it is active.
+pub fn render_page_to_png(data: &[u8], page: usize, dpi: f64) -> Result<Vec<u8>> {
+    let a = ffi::api()?;
+    let mut ptr: *mut u8 = ptr::null_mut();
+    let mut len: usize = 0;
+    check(a, unsafe {
+        (a.pdf_render_page_to_png)(data.as_ptr(), data.len(), page, dpi, &mut ptr, &mut len)
+    })?;
+    Ok(take_buffer(a, ptr, len))
+}
+
+/// Number of pages in `data` (free — no license required).
+pub fn page_count(data: &[u8]) -> Result<usize> {
+    let a = ffi::api()?;
+    let mut count: usize = 0;
+    check(a, unsafe {
+        (a.pdf_page_count)(data.as_ptr(), data.len(), &mut count)
+    })?;
+    Ok(count)
+}
+
 /// The validation result for a single signature in a document, as returned by
 /// [`verify_signatures`].
 #[derive(Clone, Debug, PartialEq)]

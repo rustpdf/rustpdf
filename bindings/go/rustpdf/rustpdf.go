@@ -203,6 +203,29 @@ func ExtractImagesToDir(data []byte, dir string) (int, error) {
 	return int(count), nil
 }
 
+// RenderPageToPng renders page pageIndex (0-based) of pdf to a PNG image at dpi
+// dots-per-inch. Page rendering is a licensed Pro feature: it returns an error
+// (PdfStatus license) unless a license granting it is active.
+func RenderPageToPng(pdf []byte, pageIndex int, dpi float64) ([]byte, error) {
+	return takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_render_page_to_png(
+			uptr(pdf), C.uintptr_t(len(pdf)), C.uintptr_t(pageIndex), C.double(dpi), out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+}
+
+// PageCount returns the number of pages in pdf (free — no license required).
+func PageCount(pdf []byte) (int, error) {
+	var count C.uintptr_t
+	st := C.pdf_page_count(uptr(pdf), C.uintptr_t(len(pdf)), &count)
+	runtime.KeepAlive(pdf)
+	if err := check(st); err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 // SignatureReport is the validation result for one signature in a document.
 type SignatureReport struct {
 	FieldName           *string `json:"field_name"`

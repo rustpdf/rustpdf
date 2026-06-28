@@ -74,8 +74,9 @@ Strings cross as UTF-8; byte payloads are `TBytes`; rectangles use `TPdfRect`
 
 ## Licensing
 
-Corporate features (PDF/A, tagging, encryption, signing) require a license.
-Either call `Pdf.ActivateLicense(token)` or set the `RUSTPDF_LICENSE` /
+Corporate features (PDF/A, tagging, encryption, signing, page rendering — a
+**Pro** feature) require a license. Either call `Pdf.ActivateLicense(token)` or
+set the `RUSTPDF_LICENSE` /
 `RUSTPDF_LICENSE_FILE` environment variable — auto-activation lives in the core,
 so the binding gets it for free. See `docs/LICENSING.md`.
 

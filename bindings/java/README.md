@@ -5,7 +5,8 @@ Idiomatic Java wrapper over the rust-pdf C ABI (`libpdf_ffi`) using
 step**. Covers the whole product surface: vector graphics, embedded/subset fonts
 and Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output,
 attachments, AcroForm fields, manipulation (merge/split/rotate/optimize/
-incremental update), text extraction, encryption and digital signatures.
+incremental update), text extraction, page rendering (page to PNG image),
+encryption and digital signatures.
 
 Requires Java 17+. The published artifact is a **fat JAR** — it bundles the
 native library for every supported platform, so there is nothing else to install.

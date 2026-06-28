@@ -5,8 +5,9 @@ Idiomatic Go binding for the `rust-pdf` core over its C ABI (`libpdf_ffi`), via
 fonts and text, wrapping paragraphs, images, **PDF/A** (levels 1b–3a),
 **tagged/accessible** output, embedded-file attachments, **AcroForm** fields,
 manipulation (merge/split/rotate/optimize/incremental update), **text
-extraction**, **encryption** (RC4 / AES-128 / AES-256) and **digital signatures**
-(PKCS#7 / PAdES) — plus **feature licensing**.
+extraction**, **page rendering** (page to PNG image), **encryption** (RC4 /
+AES-128 / AES-256) and **digital signatures** (PKCS#7 / PAdES) — plus **feature
+licensing**.
 
 Files (package `rustpdf`):
 
@@ -98,5 +99,6 @@ func main() {
 }
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility) require a license;
+Corporate features (PDF/A, signing, encryption, accessibility, page rendering
+— a **Pro** feature) require a license;
 without one they return an `*Error`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).

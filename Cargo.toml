@@ -9,6 +9,7 @@ members = [
     "crates/fonts",
     "crates/images",
     "crates/layout",
+    "crates/render",
     "crates/pdf",
     "crates/ffi",
     "crates/testkit",
@@ -35,6 +36,7 @@ graphics = { path = "crates/graphics" }
 fonts = { path = "crates/fonts" }
 images = { path = "crates/images" }
 layout = { path = "crates/layout" }
+render = { path = "crates/render" }
 pdf = { path = "crates/pdf" }
 testkit = { path = "crates/testkit" }
 

@@ -5,8 +5,9 @@ It covers the whole product surface: vector graphics, embedded/subsetted fonts
 and text, wrapping paragraphs, images, **PDF/A** (levels 1b–3a),
 **tagged/accessible** output, embedded-file attachments, **AcroForm** fields,
 manipulation (merge/split/rotate/optimize/incremental update), **text
-extraction**, **encryption** (RC4 / AES-128 / AES-256) and **digital
-signatures** (PKCS#7 / PAdES) — plus **feature licensing**.
+extraction**, **page rendering** (page to PNG image), **encryption** (RC4 /
+AES-128 / AES-256) and **digital signatures** (PKCS#7 / PAdES) — plus **feature
+licensing**.
 
 The native library is **linked**, not loaded at run time: the C declarations
 come from the `CRustPdf` clang module (a vendored copy of `include/pdf.h`), and
@@ -139,9 +140,9 @@ try Document()
 
 ## Corporate features (licensed)
 
-PDF/A, tagging, encryption and signing require a license. Activate a token
-explicitly, or set `RUSTPDF_LICENSE` / `RUSTPDF_LICENSE_FILE` in the environment
-(auto-activated on first use):
+PDF/A, tagging, encryption, signing and page rendering (a **Pro** feature)
+require a license. Activate a token explicitly, or set `RUSTPDF_LICENSE` /
+`RUSTPDF_LICENSE_FILE` in the environment (auto-activated on first use):
 
 ```swift
 try Pdf.activateLicense(token)

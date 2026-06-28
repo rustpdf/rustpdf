@@ -152,6 +152,11 @@ def exercise_full_surface() -> None:
     written = list(Path(out_dir).iterdir())
     assert len(written) == n_images, f"count {n_images} != files {written}"
 
+    # 8. Page rendering (Pro): rasterize a page to PNG (license already active).
+    assert rustpdf.page_count(with_img) == 1
+    png = rustpdf.render_page_to_png(with_img, page=0, dpi=72.0)
+    assert png[:8] == b"\x89PNG\r\n\x1a\n", "render_page_to_png did not return a PNG"
+
 
 def _tiny_png() -> bytes:
     """A minimal valid 1x1 red RGB PNG, built with the stdlib only."""

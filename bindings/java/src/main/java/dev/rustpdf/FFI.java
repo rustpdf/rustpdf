@@ -110,6 +110,9 @@ final class FFI {
         // ---- extract + sign -------------------------------------------------
         int pdf_extract_text(byte[] data, long len, PointerByReference outPtr, LongByReference outLen);
         int pdf_extract_images_to_dir(byte[] data, long len, String dir, LongByReference outCount);
+        int pdf_render_page_to_png(byte[] data, long len, long pageIndex, double dpi,
+                                   PointerByReference outPtr, LongByReference outLen);
+        int pdf_page_count(byte[] data, long len, LongByReference outCount);
         int pdf_sign(byte[] pdf, long pdfLen, byte[] keyDer, long keyLen, byte[] certDer, long certLen,
                      String reason, String location, String name, int pades,
                      PointerByReference outPtr, LongByReference outLen);

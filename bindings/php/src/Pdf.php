@@ -50,6 +50,29 @@ final class Pdf
     }
 
     /**
+     * Render page `$page` (0-based) of `$pdf` to a PNG image at `$dpi`
+     * dots-per-inch. Page rendering is a licensed Pro feature: throws unless a
+     * license granting it is active.
+     */
+    public static function renderPageToPng(string $pdf, int $page = 0, float $dpi = 150.0): string
+    {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf, $page, $dpi) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_render_page_to_png($b, $l, $page, $dpi, $o, $n);
+        });
+    }
+
+    /** Number of pages in `$pdf` (free — no license required). */
+    public static function pageCount(string $pdf): int
+    {
+        $ffi = Ffi::get();
+        [$b, $l] = Ffi::bytes($pdf);
+        $count = $ffi->new('uintptr_t');
+        Ffi::check($ffi->pdf_page_count($b, $l, \FFI::addr($count)));
+        return (int) $count->cdata;
+    }
+
+    /**
      * Sign a PDF (PKCS#7 detached, incremental update). `$pades` selects
      * PAdES-B-B. Requires a license.
      */

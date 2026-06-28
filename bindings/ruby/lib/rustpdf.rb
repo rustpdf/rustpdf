@@ -115,6 +115,20 @@ module RustPdf
     count[0, Native::SIZEOF_SZ].unpack1("J")
   end
 
+  # Render page +page+ (0-based) of +pdf+ to a PNG image at +dpi+
+  # dots-per-inch. Page rendering is a licensed Pro feature: raises unless a
+  # license granting it is active.
+  def render_page_to_png(pdf, page = 0, dpi = 150.0)
+    take_bytes { |pp, pn| Native.call("pdf_render_page_to_png", pdf, pdf.bytesize, page, dpi.to_f, pp, pn) }
+  end
+
+  # Number of pages in +pdf+ (free — no license required).
+  def page_count(pdf)
+    count = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    check(Native.call("pdf_page_count", pdf, pdf.bytesize, count))
+    count[0, Native::SIZEOF_SZ].unpack1("J")
+  end
+
   # Validate every signature in +pdf+. Returns one Hash per signature with keys
   # "field_name", "sub_filter", "signer", "covers_whole_document",
   # "digest_valid", "signature_valid", "is_valid" and "byte_range". An empty

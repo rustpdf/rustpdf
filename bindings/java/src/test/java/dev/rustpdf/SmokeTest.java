@@ -59,6 +59,12 @@ public final class SmokeTest {
         assertThat(text.contains("Título"), "extracted text: " + text);
         System.out.println("built PDF/A-2a (" + pdfa.length + " bytes); extracted ok");
 
+        // 2b. Page rendering (Pro feature; license already active).
+        assertThat(Pdf.pageCount(pdfa) == 1, "page count");
+        byte[] png = Pdf.renderPageToPng(pdfa, 0, 72.0);
+        assertThat(png.length > 8 && png[1] == 'P' && png[2] == 'N' && png[3] == 'G', "PNG header");
+        System.out.println("rendered page 0 -> " + png.length + " byte PNG");
+
         // 3. Manipulation: incremental update preserves the original prefix.
         byte[] incr;
         try (EditableDoc ed = EditableDoc.load(pdfa)) {

@@ -214,6 +214,8 @@ int pdf_editable_save(PdfEditable *ed, const char *path);
 
 int pdf_extract_text(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_extract_images_to_dir(const uint8_t *data, uintptr_t len, const char *dir, uintptr_t *out_count);
+int pdf_render_page_to_png(const uint8_t *data, uintptr_t len, uintptr_t page_index, double dpi, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_page_count(const uint8_t *data, uintptr_t len, uintptr_t *out_count);
 int pdf_sign(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t *key_der, uintptr_t key_len, const uint8_t *cert_der, uintptr_t cert_len, const char *reason, const char *location, const char *name, int pades, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_timestamp(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t *key_der, uintptr_t key_len, const uint8_t *cert_der, uintptr_t cert_len, const char *date, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_add_dss(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t **cert_ptrs, const uintptr_t *cert_lens, uintptr_t cert_count, const uint8_t **crl_ptrs, const uintptr_t *crl_lens, uintptr_t crl_count, uint8_t **out_ptr, uintptr_t *out_len);

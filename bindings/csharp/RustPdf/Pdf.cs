@@ -142,6 +142,26 @@ public static class Pdf
         return (int)count;
     }
 
+    /// <summary>
+    /// Render page <paramref name="pageIndex"/> (0-based) of <paramref name="pdf"/>
+    /// to a PNG image at <paramref name="dpi"/> dots-per-inch. Page rendering is a
+    /// licensed Pro feature: throws <see cref="PdfException"/> with
+    /// <c>PdfStatus.License</c> unless a license granting it is active.
+    /// </summary>
+    public static byte[] RenderPageToPng(byte[] pdf, int pageIndex = 0, double dpi = 150.0)
+    {
+        return TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_render_page_to_png(pdf, (nuint)pdf.Length, (nuint)pageIndex, dpi, out p, out n));
+    }
+
+    /// <summary>Number of pages in <paramref name="pdf"/> (free — no license required).</summary>
+    public static int PageCount(byte[] pdf)
+    {
+        Native.Init();
+        Check(Native.pdf_page_count(pdf, (nuint)pdf.Length, out var count));
+        return (int)count;
+    }
+
     /// <summary>Sign <paramref name="pdf"/> (PKCS#7 detached, incremental update).
     /// <paramref name="pades"/> selects PAdES-B-B. Requires a license.</summary>
     public static byte[] Sign(byte[] pdf, byte[] keyDer, byte[] certDer,

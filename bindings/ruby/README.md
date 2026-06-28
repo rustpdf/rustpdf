@@ -6,7 +6,7 @@ covers the whole product surface: vector graphics, embedded/subsetted fonts and
 text, wrapping paragraphs, images, **PDF/A** (levels 1b–3a),
 **tagged/accessible** output, embedded-file attachments, **AcroForm** fields,
 manipulation (merge/split/rotate/optimize/incremental update), **text
-extraction**, **encryption** (RC4 / AES-128 / AES-256) and **digital signatures**
+extraction**, **page rendering** (page to PNG image), **encryption** (RC4 / AES-128 / AES-256) and **digital signatures**
 (PKCS#7 / PAdES) — plus **feature licensing**.
 
 Files (module `RustPdf`):
@@ -46,7 +46,7 @@ ed.encrypt(method: RustPdf::Cipher::AES256, owner: "owner").save("secured.pdf")
 signed = RustPdf.sign(data, key_der, cert_der, pades: true)
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility) require a license;
+Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
 without one they raise `RustPdf::Error`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
 
 ## Test

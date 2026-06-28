@@ -19,6 +19,7 @@ mod outline;
 mod paragraph;
 mod pdfa;
 mod redact;
+mod render;
 mod sign;
 mod tag;
 mod tagtree;
@@ -120,6 +121,10 @@ pub use images::{Image, ImageError};
 pub use outline::Bookmark;
 pub use paragraph::{Align, Paragraph};
 pub use parser::{PdfError, PdfReader};
+pub use render::{
+    page_count as render_page_count, render_page_rgba, render_page_rgba_with, render_page_to_png,
+    render_page_to_png_with, PageRenderError, RenderOptions, RenderedPage,
+};
 pub use sign::{add_dss, sign, timestamp, SignError, SignOptions, Signer, VisibleSignature};
 pub use tag::StructTag;
 pub use text::{Rgb, TextObject};
