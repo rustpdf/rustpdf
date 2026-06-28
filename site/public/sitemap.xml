@@ -157,6 +157,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://rustpdf.dev/itext-alternative</loc>
+    <lastmod>2026-06-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://rustpdf.dev/aspose-alternative</loc>
+    <lastmod>2026-06-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://rustpdf.dev/pspdfkit-alternative</loc>
+    <lastmod>2026-06-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://rustpdf.dev/docs/</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>weekly</changefreq>
