@@ -51,6 +51,29 @@ pub struct LoadedFont {
     cid_default_width: f32,
     /// Optional explicit CIDToGIDMap (cid → gid).
     cid_to_gid: Option<Vec<u16>>,
+    /// Type 3 font data: glyphs are content streams, not outlines.
+    type3: Option<Type3>,
+}
+
+/// A Type 3 font: each glyph is a content-stream procedure drawn in glyph
+/// space and mapped to text space by `font_matrix`. Glyphs are executed by the
+/// content interpreter (like a tiny Form XObject), not outlined.
+pub struct Type3 {
+    /// Glyph space → text space (e.g. `[0.001 0 0 0.001 0 0]`).
+    pub font_matrix: [f32; 6],
+    /// Byte code → decoded CharProc content stream.
+    char_procs: HashMap<u8, Vec<u8>>,
+    /// `/Resources` used by the CharProcs (fonts/images/colorspaces they draw).
+    pub resources: Option<Dict>,
+    /// Advance per byte code in text space (already × `font_matrix[0]`).
+    widths_text: Box<[f32; 256]>,
+}
+
+impl Type3 {
+    /// The CharProc content stream for a byte code, if this code has a glyph.
+    pub fn char_proc(&self, code: u8) -> Option<&[u8]> {
+        self.char_procs.get(&code).map(|v| v.as_slice())
+    }
 }
 
 impl LoadedFont {
@@ -63,8 +86,24 @@ impl LoadedFont {
         self.program.face()
     }
 
+    /// Type 3 data when this is a Type 3 font (glyphs are content streams).
+    pub fn type3(&self) -> Option<&Type3> {
+        self.type3.as_ref()
+    }
+
     /// Decode a shown string into positioned glyphs.
     pub fn decode(&self, bytes: &[u8]) -> Vec<Glyph> {
+        if let Some(t3) = &self.type3 {
+            // Type 3 is single-byte; the byte code indexes CharProcs and widths.
+            return bytes
+                .iter()
+                .map(|&c| Glyph {
+                    gid: c as u16,
+                    width: t3.widths_text[c as usize],
+                    is_space: c == 32,
+                })
+                .collect();
+        }
         if self.two_byte {
             let mut out = Vec::with_capacity(bytes.len() / 2);
             let mut i = 0;
@@ -120,8 +159,80 @@ impl LoadedFont {
         let subtype = name_of(font_dict.get("Subtype"));
         match subtype.as_deref() {
             Some("Type0") => Self::load_type0(reader, font_dict),
+            Some("Type3") => Self::load_type3(reader, font_dict),
             _ => Self::load_simple(reader, font_dict),
         }
+    }
+
+    fn load_type3(reader: &PdfReader, font_dict: &Dict) -> Option<LoadedFont> {
+        // FontMatrix maps glyph space → text space (default 1/1000).
+        let fm: [f32; 6] = match font_dict.get("FontMatrix").map(|o| reader.resolve(o)) {
+            Some(Object::Array(a)) => {
+                let v: Vec<f32> = a.iter().filter_map(num).collect();
+                if v.len() == 6 {
+                    [v[0], v[1], v[2], v[3], v[4], v[5]]
+                } else {
+                    [0.001, 0.0, 0.0, 0.001, 0.0, 0.0]
+                }
+            }
+            _ => [0.001, 0.0, 0.0, 0.001, 0.0, 0.0],
+        };
+
+        // /Encoding /Differences gives code → glyph name; CharProcs maps name →
+        // the glyph's content stream.
+        let names = build_encoding_names(reader, font_dict);
+        let char_procs_dict = reader.resolve_dict(font_dict.get("CharProcs")?)?.clone();
+        let mut char_procs: HashMap<u8, Vec<u8>> = HashMap::new();
+        for (code, name) in names.iter().enumerate() {
+            if let Some(name) = name {
+                if let Some(Object::Stream(s)) = char_procs_dict.get(name).map(|o| reader.resolve(o))
+                {
+                    if let Ok(data) = reader.stream_data(s) {
+                        char_procs.insert(code as u8, data);
+                    }
+                }
+            }
+        }
+
+        // Widths are in glyph space; scale by font_matrix[0] to text space so the
+        // advance path matches simple/Type0 fonts (advance = width × font_size).
+        let first = font_dict.get("FirstChar").and_then(int).unwrap_or(0);
+        let widths_arr = match font_dict.get("Widths").map(|o| reader.resolve(o)) {
+            Some(Object::Array(a)) => a.iter().filter_map(num).collect::<Vec<f32>>(),
+            _ => Vec::new(),
+        };
+        let mut widths_text = Box::new([0f32; 256]);
+        for (i, w) in widths_arr.iter().enumerate() {
+            let code = first as usize + i;
+            if code < 256 {
+                widths_text[code] = w * fm[0];
+            }
+        }
+
+        let resources = reader
+            .resolve_dict(font_dict.get("Resources").unwrap_or(&Object::Null))
+            .cloned();
+
+        // Placeholder program — never used for Type 3 (no outlines), but the
+        // struct requires one; the bundled fallback is always valid.
+        let (program, _) = load_program(reader, None, false);
+        let units_per_em = program.units_per_em() as f32;
+        Some(LoadedFont {
+            program,
+            units_per_em,
+            two_byte: false,
+            simple_gids: None,
+            simple_widths: None,
+            cid_widths: HashMap::new(),
+            cid_default_width: 0.0,
+            cid_to_gid: None,
+            type3: Some(Type3 {
+                font_matrix: fm,
+                char_procs,
+                resources,
+                widths_text,
+            }),
+        })
     }
 
     fn load_type0(reader: &PdfReader, font_dict: &Dict) -> Option<LoadedFont> {
@@ -167,6 +278,7 @@ impl LoadedFont {
             cid_widths,
             cid_default_width: dw,
             cid_to_gid,
+            type3: None,
         })
     }
 
@@ -224,6 +336,7 @@ impl LoadedFont {
             cid_widths: HashMap::new(),
             cid_default_width: 0.5,
             cid_to_gid: None,
+            type3: None,
         })
     }
 }
@@ -290,6 +403,30 @@ fn parse_w_array(reader: &PdfReader, w: Option<&Object>) -> HashMap<u32, f32> {
         }
     }
     map
+}
+
+/// Build a code→glyph-name table from a Type 3 font's `/Encoding /Differences`
+/// (the names index `/CharProcs`).
+fn build_encoding_names(reader: &PdfReader, font_dict: &Dict) -> Vec<Option<String>> {
+    let mut table: Vec<Option<String>> = vec![None; 256];
+    if let Some(Object::Dict(enc)) = font_dict.get("Encoding").map(|o| reader.resolve(o)) {
+        if let Some(Object::Array(diffs)) = enc.get("Differences").map(|o| reader.resolve(o)) {
+            let mut code = 0usize;
+            for item in diffs {
+                match reader.resolve(item) {
+                    Object::Integer(n) => code = *n as usize,
+                    Object::Name(name) => {
+                        if code < 256 {
+                            table[code] = Some(name.as_str().to_string());
+                        }
+                        code += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    table
 }
 
 /// Build a code→Unicode table from a simple font's `/Encoding`.
