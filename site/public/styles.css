@@ -101,6 +101,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 12px; }
 .validators { margin-top: 42px; color: var(--muted); font-size: 0.85rem; }
 .validators span, .validators a.vtool { display: inline-block; margin: 6px 4px 0; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: #cbd5e1; }
 .validators a.vtool:hover { border-color: var(--brand); color: var(--text); text-decoration: none; }
+.validators .vtool-primary { border-color: var(--brand-2); color: var(--text); font-weight: 600; }
 .validators .vverify { margin-left: 6px; color: var(--brand-2); font-weight: 600; white-space: nowrap; }
 
 /* sections */
