@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Generate a PDF in Go | rust-pdf</title>
-  <meta name="description" content="Create PDFs programmatically from Go: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images." />
+  <meta name="description" content="Build PDFs from scratch in Go: pages, graphics, subset Unicode fonts and tables. go get the module and stream deterministic bytes from a Gin or net/http handler." />
   <link rel="canonical" href="https://rustpdf.dev/generate-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/generate-pdf/go" />
   <meta property="og:title" content="Generate a PDF in Go" />
-  <meta property="og:description" content="Create PDFs programmatically from Go: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images." />
+  <meta property="og:description" content="Build PDFs from scratch in Go: pages, graphics, subset Unicode fonts and tables. go get the module and stream deterministic bytes from a Gin or net/http handler." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Generate a PDF in Go" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Generate a PDF in Go" />
-  <meta name="twitter:description" content="Create PDFs programmatically from Go: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images." />
+  <meta name="twitter:description" content="Build PDFs from scratch in Go: pages, graphics, subset Unicode fonts and tables. go get the module and stream deterministic bytes from a Gin or net/http handler." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Generate a PDF in Go" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Generate a PDF in Go",
-      "description": "Create PDFs programmatically from Go: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images.",
+      "description": "Build PDFs from scratch in Go: pages, graphics, subset Unicode fonts and tables. go get the module and stream deterministic bytes from a Gin or net/http handler.",
       "url": "https://rustpdf.dev/generate-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/generate-pdf/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/generate-pdf/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "How do I stream a generated PDF to an HTTP response in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Build the document, save it, and serve the result from a net/http or Gin handler with Content-Type application/pdf. Because identical input yields identical bytes, you can cache the response and assert it in a golden-file test without any flakiness."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Authoring &middot; Go</p>
         <h1>Generate a <span class="grad">PDF</span> in Go</h1>
         <p class="lede sp-lede">Create PDFs programmatically from Go: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Go a fast, memory-safe core with deterministic output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">Most Go teams that need an invoice, report or shipping label find their options are an archived gofpdf or a commercial SDK — neither pairs modern font shaping with a free, scriptable core, so simple documents end up harder to build than they should be.</p>
+            <p class="muted">Generation is rust-pdf's free foundation: draw vector shapes, place HarfBuzz-quality shaped and kerned Unicode text, lay out wrapping and justified paragraphs, build tables, and embed JPEG and PNG images — all from one idiomatic Go API with no per-document cost.</p>
+            <p class="muted">The same input always produces the same bytes, which is unusual for a PDF engine and exactly what Go testing wants: assert a generated document against a golden file, or serve it from a Gin handler and cache the response with confidence it will not drift between runs.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -219,7 +246,7 @@ func main() {
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Go. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -235,18 +262,18 @@ func main() {
         <details><summary>Why a Rust core for Go?</summary>
           <p>One memory-safe, high-performance Rust core is exposed to Go through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>How do I stream a generated PDF to an HTTP response in Go?</summary>
+          <p>Build the document, save it, and serve the result from a net/http or Gin handler with Content-Type application/pdf. Because identical input yields identical bytes, you can cache the response and assert it in a golden-file test without any flakiness.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Generate a PDF in Go</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Start building PDFs in Go today</h2>
+        <p class="muted">One Rust core, the same deterministic bytes in every language. All basic generation is free in Go forever; license only the corporate features.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -260,7 +287,7 @@ func main() {
           <a href="/encrypt-pdf/go">Encryption in Go</a>
           <a href="/merge-pdf/go">Merging in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -273,8 +300,8 @@ func main() {
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

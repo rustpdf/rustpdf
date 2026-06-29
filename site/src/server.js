@@ -34,9 +34,31 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  // Content-Security-Policy: lock down to self + the only third party we load
+  // (Google Analytics, and only after cookie consent — see consent.js).
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'; " +
+      "img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; " +
+      "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com",
+  );
   const proto = req.headers["x-forwarded-proto"];
   if (proto && proto !== "https" && req.method === "GET") {
     return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+  }
+  next();
+});
+
+// --- Canonical URL form: redirect any `.html` URL to its extensionless path ---
+// Every page's <link rel=canonical> is extensionless; the static handler below
+// also serves the bare filename, so `.html` would be a 200 duplicate. 301 it to
+// the clean URL so link equity and crawl budget consolidate on one form.
+app.use((req, res, next) => {
+  if (req.method === "GET" && req.path.endsWith(".html")) {
+    const clean = req.path.slice(0, -5);
+    const suffix = req.originalUrl.slice(req.path.length); // preserve ?query
+    return res.redirect(301, (clean === "/index" ? "/" : clean) + suffix);
   }
   next();
 });
@@ -253,19 +275,28 @@ app.get(["/docs/swift.html", "/docs/swift"], (_req, res) => {
 // `/pdf-a/`, find no index there and return 404 — silently dropping the hub page
 // from the index. Serve the hub .html explicitly (200 at the canonical URL)
 // BEFORE the static handler runs. /pdf-a/<lang> spokes are unaffected.
+// HTML pages served via explicit routes (below) bypass the static handler's
+// setHeaders, so give them the same short-TTL cache policy here.
+const PAGE_CACHE = "public, max-age=300, stale-while-revalidate=86400";
+const sendPage = (res, ...parts) => {
+  res.setHeader("Cache-Control", PAGE_CACHE);
+  res.sendFile(path.join(publicDir, ...parts));
+};
+
 const HUBS_WITH_SUBDIR = [
   "pdf-a", "encrypt-pdf", "merge-pdf", "extract-text", "compress-pdf", "pdf-forms",
 ];
 for (const slug of HUBS_WITH_SUBDIR) {
-  app.get([`/${slug}`, `/${slug}/`], (_req, res) =>
-    res.sendFile(path.join(publicDir, `${slug}.html`)));
+  // `/slug/` (trailing slash) 301s to the canonical `/slug`; canonical serves 200.
+  app.get(`/${slug}/`, (_req, res) => res.redirect(301, `/${slug}`));
+  app.get(`/${slug}`, (_req, res) => sendPage(res, `${slug}.html`));
 }
 // sign-pdf and generate-pdf have spoke directories but no concept page of their
 // own; serve the dedicated hub index we generate into each directory.
-app.get(["/sign-pdf", "/sign-pdf/"], (_req, res) =>
-  res.sendFile(path.join(publicDir, "sign-pdf", "index.html")));
-app.get(["/generate-pdf", "/generate-pdf/"], (_req, res) =>
-  res.sendFile(path.join(publicDir, "generate-pdf", "index.html")));
+app.get("/sign-pdf/", (_req, res) => res.redirect(301, "/sign-pdf"));
+app.get("/sign-pdf", (_req, res) => sendPage(res, "sign-pdf", "index.html"));
+app.get("/generate-pdf/", (_req, res) => res.redirect(301, "/generate-pdf"));
+app.get("/generate-pdf", (_req, res) => sendPage(res, "generate-pdf", "index.html"));
 
 // --- Static site -------------------------------------------------------------
 app.use(
@@ -280,20 +311,22 @@ app.use(
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       } else if (/\.(css|js)$/i.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=86400");
+      } else if (/\.html$/i.test(filePath)) {
+        // HTML: short edge/browser TTL with background revalidation so a page
+        // navigation can serve instantly while fetching a fresh copy.
+        res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
       }
     },
   }),
 );
-app.get("/success", (_req, res) => res.sendFile(path.join(publicDir, "success.html")));
-app.get("/cancel", (_req, res) => res.sendFile(path.join(publicDir, "cancel.html")));
+app.get("/success", (_req, res) => sendPage(res, "success.html"));
+app.get("/cancel", (_req, res) => sendPage(res, "cancel.html"));
 // /zugferd is the canonical hybrid-e-invoice page; serve the same page for the
 // French "Factur-X" spelling (the page's <link rel=canonical> points to /zugferd).
-app.get(["/factur-x", "/facturx"], (_req, res) =>
-  res.sendFile(path.join(publicDir, "zugferd.html")));
+app.get(["/factur-x", "/facturx"], (_req, res) => sendPage(res, "zugferd.html"));
 // /merge-pdf is the canonical page for combine + split; serve it for /split-pdf
 // too (its <link rel=canonical> points to /merge-pdf).
-app.get(["/split-pdf"], (_req, res) =>
-  res.sendFile(path.join(publicDir, "merge-pdf.html")));
+app.get(["/split-pdf"], (_req, res) => sendPage(res, "merge-pdf.html"));
 
 // Task x language spoke pages live at /<task>/<lang>.html and are served by the
 // static handler above. Map the common alternate language spellings (golang,

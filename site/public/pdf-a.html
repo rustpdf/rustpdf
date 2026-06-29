@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="What is PDF/A — a clear guide to PDF archiving" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "What is PDF/A?", "item": "https://rustpdf.dev/pdf-a" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What is PDF/A?",
+          "item": "https://rustpdf.dev/pdf-a"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "What is PDF/A? A clear guide to PDF archiving",
+      "description": "A plain-language explanation of PDF/A: what it is, why it matters for long-term and legal archiving, the conformance levels (parts 1–4, levels a/b/u), real examples, and how to create valid PDF/A.",
+      "url": "https://rustpdf.dev/pdf-a",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF/A",
+        "description": "ISO 19005 archival subset of PDF for long-term preservation."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "What is PDF/A? A clear guide to PDF archiving",
-        "description": "A plain-language explanation of PDF/A: what it is, why it matters for long-term and legal archiving, the conformance levels (parts 1–4, levels a/b/u), real examples, and how to create valid PDF/A.",
-        "url": "https://rustpdf.dev/pdf-a",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF/A", "description": "ISO 19005 archival subset of PDF for long-term preservation." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is PDF/A?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A is an ISO-standardized version of PDF (ISO 19005) designed for long-term archiving. It is a stricter subset of normal PDF: everything needed to display the document, such as fonts and color information, must be embedded inside the file, and anything that could change over time or depend on the outside world (external links, JavaScript, audio, video, encryption) is forbidden. The result is a self-contained file that will open and look the same decades from now." }
-          },
-          {
-            "@type": "Question",
-            "name": "Why is PDF/A important?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Many laws and regulations require records to be kept readable for 5 to 30 years or longer: invoices, contracts, bank statements, medical and court records, and government archives. A normal PDF can render differently or break as fonts and software change. PDF/A removes those external dependencies so the document stays faithful and verifiable over the long term, which is why it is mandated for e-invoicing, public-sector archiving and regulated industries." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between PDF/A-1, PDF/A-2, PDF/A-3 and PDF/A-4?",
-            "acceptedAnswer": { "@type": "Answer", "text": "These are the parts of the standard. PDF/A-1 (2005) is based on PDF 1.4 and is the strictest. PDF/A-2 (2011) is based on PDF 1.7 and adds JPEG2000, transparency, and the ability to embed other PDF/A files. PDF/A-3 (2012) additionally allows embedding any file type, which is what e-invoice formats like Factur-X and ZUGFeRD use to attach the source XML. PDF/A-4 (2020) is based on PDF 2.0." }
-          },
-          {
-            "@type": "Question",
-            "name": "What do the conformance levels a, b and u mean?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Level b (basic) guarantees the document looks the same everywhere. Level a (accessible) adds a tagged logical structure and Unicode mapping, so the document is also accessible to assistive technology and reliably searchable. Level u guarantees Unicode mapping for all text without requiring full tagging. So PDF/A-2b is visually faithful, while PDF/A-2a is visually faithful and accessible." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I create a valid PDF/A file?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example doc.pdfa(PdfaLevel.A2B), in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b, 3a and 4." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is PDF/A?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PDF/A is an ISO-standardized version of PDF (ISO 19005) designed for long-term archiving. It is a stricter subset of normal PDF: everything needed to display the document, such as fonts and color information, must be embedded inside the file, and anything that could change over time or depend on the outside world (external links, JavaScript, audio, video, encryption) is forbidden. The result is a self-contained file that will open and look the same decades from now."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is PDF/A important?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Many laws and regulations require records to be kept readable for 5 to 30 years or longer: invoices, contracts, bank statements, medical and court records, and government archives. A normal PDF can render differently or break as fonts and software change. PDF/A removes those external dependencies so the document stays faithful and verifiable over the long term, which is why it is mandated for e-invoicing, public-sector archiving and regulated industries."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between PDF/A-1, PDF/A-2, PDF/A-3 and PDF/A-4?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "These are the parts of the standard. PDF/A-1 (2005) is based on PDF 1.4 and is the strictest. PDF/A-2 (2011) is based on PDF 1.7 and adds JPEG2000, transparency, and the ability to embed other PDF/A files. PDF/A-3 (2012) additionally allows embedding any file type, which is what e-invoice formats like Factur-X and ZUGFeRD use to attach the source XML. PDF/A-4 (2020) is based on PDF 2.0."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do the conformance levels a, b and u mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Level b (basic) guarantees the document looks the same everywhere. Level a (accessible) adds a tagged logical structure and Unicode mapping, so the document is also accessible to assistive technology and reliably searchable. Level u guarantees Unicode mapping for all text without requiring full tagging. So PDF/A-2b is visually faithful, while PDF/A-2a is visually faithful and accessible."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I create a valid PDF/A file?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Generate the document with a library that embeds all fonts, attaches an ICC color profile and output intent, writes XMP metadata, and avoids forbidden features. With rust-pdf you call one method, for example doc.pdfa(PdfaLevel.A2B), in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift. The output is validated with veraPDF for levels 1b, 2b, 2a, 3b, 3a and 4."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -228,7 +286,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Long-term archiving</p>
         <h1>What is <span class="grad">PDF/A</span>,<br />and why does it matter?</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           PDF/A is the version of PDF built to last. It is a stricter, ISO-standardized
           subset of normal PDF: everything the file needs in order to look right, from
@@ -588,6 +646,8 @@ const bytes = doc.toBytes();                         // PDF/A-2b</code></pre>
           <a href="/pdf-ua">What is PDF/UA?</a>
           <a href="/aes-256">What is AES-256?</a>
           <a href="/zugferd">What is ZUGFeRD / Factur-X?</a>
+          <a href="/xmp-metadata">XMP metadata</a>
+          <a href="/render-pdf">Render a PDF to an image</a>
           <a href="/docs/">All languages</a>
         </div>
       </div>
@@ -601,8 +661,8 @@ const bytes = doc.toBytes();                         // PDF/A-2b</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in Node.js (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Generate archival-grade PDF/A from Node.js with one method call." />
+  <meta name="description" content="With npm install rustpdf you emit archival PDF/A from a serverless function or an Express API: fonts embedded and subset, output checked by the veraPDF tool." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/node" />
   <meta property="og:title" content="Create PDF/A in Node.js (Archival PDF)" />
-  <meta property="og:description" content="Generate archival-grade PDF/A from Node.js with one method call." />
+  <meta property="og:description" content="With npm install rustpdf you emit archival PDF/A from a serverless function or an Express API: fonts embedded and subset, output checked by the veraPDF tool." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in Node.js (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in Node.js (Archival PDF)" />
-  <meta name="twitter:description" content="Generate archival-grade PDF/A from Node.js with one method call." />
+  <meta name="twitter:description" content="With npm install rustpdf you emit archival PDF/A from a serverless function or an Express API: fonts embedded and subset, output checked by the veraPDF tool." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in Node.js (Archival PDF)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in Node.js (Archival PDF)",
-      "description": "Generate archival-grade PDF/A from Node.js with one method call.",
+      "description": "With npm install rustpdf you emit archival PDF/A from a serverless function or an Express API: fonts embedded and subset, output checked by the veraPDF tool.",
       "url": "https://rustpdf.dev/pdf-a/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a/node#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a/node"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Node.js project?",
+          "name": "Are TypeScript type definitions included for the Node binding?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
+            "text": "Yes. The npm package ships an index.d.ts, so Document, PdfaLevel and every method are fully typed. Your editor autocompletes the level constants and catches a wrong argument before save ever runs, with no separate @types package to install."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Long-term archiving &middot; Node.js and TypeScript</p>
         <h1>Create <span class="grad">PDF/A</span> in Node.js</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from Node.js with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Generating archival PDF/A is where headless-Chrome pipelines fall down in Node: they cannot seal every font, attach an output intent, or pass veraPDF, so the files fail an archive audit.</p>
             <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+            <p class="muted">Because the Koffi binding is pure FFI with no node-gyp, you bundle the prebuilt native library beside an AWS Lambda or Vercel function and it loads at cold start, and PdfaLevel ships fully typed in index.d.ts. addFontFile embeds and subsets each font so the archived file stays self-contained, while save throws a typed PdfError if no license grants PDF/A.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Create PDF/A in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install from npm, call doc.pdfa with the level you need, then add fonts and pages. The snippet below is real Node.js from the reference docs and validates under veraPDF.</p>
         <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
@@ -214,7 +241,7 @@ doc.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">Node.js basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">The full Node.js PDF/A reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
 
@@ -230,18 +257,18 @@ doc.close();</code></pre>
         <details><summary>Do I need a license to create PDF/A in Node.js?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Node.js is free. One offline token unlocks PDF/A in every supported language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Node.js project?</summary>
-          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+        <details><summary>Are TypeScript type definitions included for the Node binding?</summary>
+          <p>Yes. The npm package ships an index.d.ts, so Document, PdfaLevel and every method are fully typed. Your editor autocompletes the level constants and catches a wrong argument before save ever runs, with no separate @types package to install.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create PDF/A in Node.js (Archival PDF)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Archive documents that still open correctly in 2050</h2>
+        <p class="muted">One Rust core, the same veraPDF-clean PDF/A in every language. Prototype on the free tier, then enable archival output with a single license token when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -257,7 +284,7 @@ doc.close();</code></pre>
           <a href="/merge-pdf/node">Merging in Node.js</a>
           <a href="/extract-text/node">Text extraction in Node.js</a>
           <a href="/compress-pdf/node">Compression in Node.js</a>
-          <a href="/docs/node.html">Node.js docs</a>
+          <a href="/docs/node">Node.js docs</a>
         </div>
       </div>
     </section>
@@ -270,8 +297,8 @@ doc.close();</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

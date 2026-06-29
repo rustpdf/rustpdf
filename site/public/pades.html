@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="What is PAdES — PDF digital signatures explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "What is PAdES?", "item": "https://rustpdf.dev/pades" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What is PAdES?",
+          "item": "https://rustpdf.dev/pades"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "What is PAdES? PDF digital signatures explained",
+      "description": "A plain-language explanation of PDF digital signatures and PAdES: how they prove who signed and that nothing changed, the conformance levels B-B, B-T, B-LT and B-LTA, eIDAS context, and how to sign documents.",
+      "url": "https://rustpdf.dev/pades",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PAdES",
+        "description": "PDF Advanced Electronic Signatures, the ETSI profile of PDF digital signatures used under eIDAS."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "What is PAdES? PDF digital signatures explained",
-        "description": "A plain-language explanation of PDF digital signatures and PAdES: how they prove who signed and that nothing changed, the conformance levels B-B, B-T, B-LT and B-LTA, eIDAS context, and how to sign documents.",
-        "url": "https://rustpdf.dev/pades",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PAdES", "description": "PDF Advanced Electronic Signatures, the ETSI profile of PDF digital signatures used under eIDAS." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is PAdES?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PAdES stands for PDF Advanced Electronic Signatures. It is the ETSI family of standards (EN 319 142) that defines how to embed a legally robust digital signature inside a PDF. A PAdES signature proves who signed the document, that the document has not changed by even a single byte since signing, and optionally when it was signed. It is the profile referenced by the EU eIDAS regulation for electronic signatures." }
-          },
-          {
-            "@type": "Question",
-            "name": "How is a digital signature different from a scanned signature?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A scanned or drawn image of a handwritten signature is just a picture: it can be copied onto any document and proves nothing. A digital signature is cryptographic. The signer's private key produces a mathematical seal over the exact bytes of the document, and anyone can verify it with the matching public certificate. If a single byte changes, verification fails, so it proves both identity and integrity." }
-          },
-          {
-            "@type": "Question",
-            "name": "What do the PAdES levels B-B, B-T, B-LT and B-LTA mean?",
-            "acceptedAnswer": { "@type": "Answer", "text": "They are baseline levels that add longevity. B-B is the basic signature with the signing certificate. B-T adds a trusted timestamp that proves when the document was signed. B-LT (long-term) embeds the validation material, such as certificates and revocation data, so the signature can still be checked years later even if the issuing authority is gone. B-LTA adds an archive timestamp over everything for very long-term integrity." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is a PAdES signature legally valid?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PAdES is the PDF signature profile referenced by the EU eIDAS regulation, and equivalent frameworks exist worldwide. Legal weight depends on the type of certificate used (for example a qualified certificate for a qualified electronic signature). The PAdES format itself provides the technical proof of identity, integrity and time that regulations require." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I sign a PDF with rust-pdf?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Call rustpdf.sign with the PDF bytes, your private key and certificate (DER), and pades=True for a PAdES-B-B signature. The library appends an incremental update so the original bytes are preserved, which keeps earlier signatures valid. add_dss and timestamp then extend it to B-LT and B-LTA. Signatures are checked with pdfsig and openssl cms." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pades#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pades"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is PAdES?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PAdES stands for PDF Advanced Electronic Signatures. It is the ETSI family of standards (EN 319 142) that defines how to embed a legally robust digital signature inside a PDF. A PAdES signature proves who signed the document, that the document has not changed by even a single byte since signing, and optionally when it was signed. It is the profile referenced by the EU eIDAS regulation for electronic signatures."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is a digital signature different from a scanned signature?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A scanned or drawn image of a handwritten signature is just a picture: it can be copied onto any document and proves nothing. A digital signature is cryptographic. The signer's private key produces a mathematical seal over the exact bytes of the document, and anyone can verify it with the matching public certificate. If a single byte changes, verification fails, so it proves both identity and integrity."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What do the PAdES levels B-B, B-T, B-LT and B-LTA mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "They are baseline levels that add longevity. B-B is the basic signature with the signing certificate. B-T adds a trusted timestamp that proves when the document was signed. B-LT (long-term) embeds the validation material, such as certificates and revocation data, so the signature can still be checked years later even if the issuing authority is gone. B-LTA adds an archive timestamp over everything for very long-term integrity."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a PAdES signature legally valid?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PAdES is the PDF signature profile referenced by the EU eIDAS regulation, and equivalent frameworks exist worldwide. Legal weight depends on the type of certificate used (for example a qualified certificate for a qualified electronic signature). The PAdES format itself provides the technical proof of identity, integrity and time that regulations require."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I sign a PDF with rust-pdf?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Call rustpdf.sign with the PDF bytes, your private key and certificate (DER), and pades=True for a PAdES-B-B signature. The library appends an incremental update so the original bytes are preserved, which keeps earlier signatures valid. add_dss and timestamp then extend it to B-LT and B-LTA. Signatures are checked with pdfsig and openssl cms."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -188,7 +246,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Digital signatures</p>
         <h1>What is <span class="grad">PAdES</span>,<br />and how do PDF signatures work?</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           A PAdES signature is a cryptographic seal inside a PDF. It proves three things
           at once: <b>who</b> signed, that the document has <b>not changed</b> by even a
@@ -469,8 +527,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

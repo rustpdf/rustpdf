@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Generate a PDF in Node.js | rust-pdf</title>
-  <meta name="description" content="Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables." />
+  <meta name="description" content="Install rustpdf from npm and build PDFs from scratch in an Express or serverless handler — pages, Unicode text, tables — with no headless-Chrome dependency." />
   <link rel="canonical" href="https://rustpdf.dev/generate-pdf/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/generate-pdf/node" />
   <meta property="og:title" content="Generate a PDF in Node.js" />
-  <meta property="og:description" content="Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables." />
+  <meta property="og:description" content="Install rustpdf from npm and build PDFs from scratch in an Express or serverless handler — pages, Unicode text, tables — with no headless-Chrome dependency." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Generate a PDF in Node.js" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Generate a PDF in Node.js" />
-  <meta name="twitter:description" content="Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables." />
+  <meta name="twitter:description" content="Install rustpdf from npm and build PDFs from scratch in an Express or serverless handler — pages, Unicode text, tables — with no headless-Chrome dependency." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Generate a PDF in Node.js" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Generate a PDF in Node.js",
-      "description": "Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables.",
+      "description": "Install rustpdf from npm and build PDFs from scratch in an Express or serverless handler — pages, Unicode text, tables — with no headless-Chrome dependency.",
       "url": "https://rustpdf.dev/generate-pdf/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/generate-pdf/node#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/generate-pdf/node"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Node.js project?",
+          "name": "Can rust-pdf replace Puppeteer for generating PDFs in Node?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
+            "text": "For programmatic documents, yes. Instead of rendering HTML in headless Chrome you draw pages, text and tables directly, which is faster, deterministic and far lighter in memory. The Koffi binding installs from npm with no node-gyp, so there is no browser to bundle or keep patched."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Authoring &middot; Node.js and TypeScript</p>
         <h1>Generate a <span class="grad">PDF</span> in Node.js</h1>
         <p class="lede sp-lede">Create PDFs programmatically from Node.js: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Node.js a fast, memory-safe core with deterministic output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Building a PDF in Node has long meant rendering HTML in headless Chrome — a slow, memory-hungry dependency that drifts visually and never produces archival-grade output.</p>
             <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
-            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+            <p class="muted">Wire new Document() into an Express or NestJS endpoint to build invoices and reports on the fly, returning the document from the route. The package ships TypeScript types in index.d.ts so every drawing call autocompletes, and the pure-FFI Koffi binding installs from npm with no node-gyp — replacing a Puppeteer step with one small native dependency.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Generate a PDF in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install from npm, then create a Document, add a page and draw. The snippet below is real Node.js from the reference docs.</p>
         <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
@@ -213,8 +240,8 @@ doc.save("out.pdf");
 doc.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Node.js. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">All of this basic generation is part of the free tier in Node.js — no license token needed.</p>
+        <p class="center muted narrow" style="margin-top:22px">The full Node.js authoring reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
 
@@ -230,18 +257,18 @@ doc.close();</code></pre>
         <details><summary>Why a Rust core for Node.js?</summary>
           <p>One memory-safe, high-performance Rust core is exposed to Node.js through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Node.js project?</summary>
-          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+        <details><summary>Can rust-pdf replace Puppeteer for generating PDFs in Node?</summary>
+          <p>For programmatic documents, yes. Instead of rendering HTML in headless Chrome you draw pages, text and tables directly, which is faster, deterministic and far lighter in memory. The Koffi binding installs from npm with no node-gyp, so there is no browser to bundle or keep patched.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Generate a PDF in Node.js</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Render PDFs from code instead of a browser</h2>
+        <p class="muted">One Rust core, the same deterministic output in every language. Generation is free; license PDF/A, signatures or encryption only when you ship them.</p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -255,7 +282,7 @@ doc.close();</code></pre>
           <a href="/encrypt-pdf/node">Encryption in Node.js</a>
           <a href="/merge-pdf/node">Merging in Node.js</a>
           <a href="/extract-text/node">Text extraction in Node.js</a>
-          <a href="/docs/node.html">Node.js docs</a>
+          <a href="/docs/node">Node.js docs</a>
         </div>
       </div>
     </section>
@@ -268,8 +295,8 @@ doc.close();</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

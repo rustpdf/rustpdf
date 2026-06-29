@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Embedded files in PDF — PDF/A-3 attachments explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Embedded Files in PDF (PDF/A-3 Attachments)", "item": "https://rustpdf.dev/pdf-attachments" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Embedded Files in PDF (PDF/A-3 Attachments)",
+          "item": "https://rustpdf.dev/pdf-attachments"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Embedded Files in PDF (PDF/A-3 Attachments), Explained",
+      "description": "How a PDF carries other files sealed inside it: the /Filespec structure, AFRelationship values, why PDF/A-3 is the archival level that permits arbitrary attachments, and how to embed files in any language with rust-pdf.",
+      "url": "https://rustpdf.dev/pdf-attachments",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF embedded files / PDF/A-3 attachments",
+        "description": "A PDF can carry other files sealed inside it as typed streams listed in the catalog /Names /EmbeddedFiles and /AF. PDF/A-3 is the archival level that explicitly permits arbitrary embedded files."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Embedded Files in PDF (PDF/A-3 Attachments), Explained",
-        "description": "How a PDF carries other files sealed inside it: the /Filespec structure, AFRelationship values, why PDF/A-3 is the archival level that permits arbitrary attachments, and how to embed files in any language with rust-pdf.",
-        "url": "https://rustpdf.dev/pdf-attachments",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF embedded files / PDF/A-3 attachments", "description": "A PDF can carry other files sealed inside it as typed streams listed in the catalog /Names /EmbeddedFiles and /AF. PDF/A-3 is the archival level that explicitly permits arbitrary embedded files." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Can a PDF contain other files?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. A PDF can carry other files sealed inside its binary structure. Each attachment is an EmbeddedFile stream with a MIME subtype, size, and modification date, wrapped in a Filespec dictionary and listed in the catalog under /Names /EmbeddedFiles and /AF. The embedded files travel with the PDF: if you send or archive the document, everything inside it goes too." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is AFRelationship?",
-            "acceptedAnswer": { "@type": "Answer", "text": "AFRelationship is a key on a PDF Filespec dictionary that declares how the embedded file relates to the visible document. The defined values are Source (the attachment is the source material from which this document was derived), Data (a dataset associated with the document), Alternative (a machine-readable alternative of the whole document, used in e-invoices), Supplement (supplementary material), and Unspecified (no specific relationship declared)." }
-          },
-          {
-            "@type": "Question",
-            "name": "Why does this need PDF/A-3?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A-1 and PDF/A-2 restrict embedded files: they only allow embedding other PDF/A-compliant files. PDF/A-3 explicitly lifts that restriction, permitting any file type as an attachment while the outer document still meets archival requirements. So a PDF/A-3 can legally carry an XML invoice, a CSV dataset, a spreadsheet, or any other format." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between PDF/A-2 and A-3 for attachments?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A-2 only allows embedding files that are themselves PDF/A-compliant. PDF/A-3 removes that constraint: any file type can be attached. The rest of the conformance requirements are the same between the two levels. This single change is what makes PDF/A-3 the right base for ZUGFeRD / Factur-X invoices, scientific data packages, and other use cases that need to bundle non-PDF source files." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I embed a file in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "With rust-pdf, call doc.attach_file(name, mime, data, relationship, description) on a Document that has pdfa(PdfaLevel.A3b) set. The library emits the EmbeddedFile stream, wraps it in a Filespec with the correct AFRelationship, and registers it in /Names/EmbeddedFiles and /AF. The output is veraPDF-validated PDF/A-3b or 3a." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-attachments#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-attachments"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can a PDF contain other files?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. A PDF can carry other files sealed inside its binary structure. Each attachment is an EmbeddedFile stream with a MIME subtype, size, and modification date, wrapped in a Filespec dictionary and listed in the catalog under /Names /EmbeddedFiles and /AF. The embedded files travel with the PDF: if you send or archive the document, everything inside it goes too."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is AFRelationship?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AFRelationship is a key on a PDF Filespec dictionary that declares how the embedded file relates to the visible document. The defined values are Source (the attachment is the source material from which this document was derived), Data (a dataset associated with the document), Alternative (a machine-readable alternative of the whole document, used in e-invoices), Supplement (supplementary material), and Unspecified (no specific relationship declared)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does this need PDF/A-3?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PDF/A-1 and PDF/A-2 restrict embedded files: they only allow embedding other PDF/A-compliant files. PDF/A-3 explicitly lifts that restriction, permitting any file type as an attachment while the outer document still meets archival requirements. So a PDF/A-3 can legally carry an XML invoice, a CSV dataset, a spreadsheet, or any other format."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between PDF/A-2 and A-3 for attachments?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PDF/A-2 only allows embedding files that are themselves PDF/A-compliant. PDF/A-3 removes that constraint: any file type can be attached. The rest of the conformance requirements are the same between the two levels. This single change is what makes PDF/A-3 the right base for ZUGFeRD / Factur-X invoices, scientific data packages, and other use cases that need to bundle non-PDF source files."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I embed a file in code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "With rust-pdf, call doc.attach_file(name, mime, data, relationship, description) on a Document that has pdfa(PdfaLevel.A3b) set. The library emits the EmbeddedFile stream, wraps it in a Filespec with the correct AFRelationship, and registers it in /Names/EmbeddedFiles and /AF. The output is veraPDF-validated PDF/A-3b or 3a."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -193,7 +251,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Embedded files</p>
         <h1>Embedded Files in PDF:<br /><span class="grad">PDF/A-3 Attachments</span></h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede at-lede">
           A PDF can carry other files sealed inside its binary structure: an XML invoice,
           a source spreadsheet, a dataset, a machine-readable twin of the visible page.
@@ -522,8 +580,8 @@ const bytes = doc.toBytes();</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -12,19 +12,76 @@
   <meta property="og:title" content="Documentation · rust-pdf" />
   <meta property="og:description" content="Per-language reference for enterprise PDF: PDF/A, signatures, encryption, accessibility." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:alt" content="rust-pdf documentation" />
   <meta name="twitter:image:alt" content="rust-pdf documentation" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-      { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://rustpdf.dev/docs/" }
-    ]
-  }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://rustpdf.dev/docs/"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "@id": "https://rustpdf.dev/docs/#article",
+      "headline": "rust-pdf documentation",
+      "description": "Reference documentation for rust-pdf across Python, C#, Go, PHP, Ruby, Node, Swift and Delphi.",
+      "url": "https://rustpdf.dev/docs/",
+      "inLanguage": "en",
+      "proficiencyLevel": "Intermediate",
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
+      },
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/docs/"
+      }
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <link rel="stylesheet" href="/docs/docs.css" />
@@ -47,39 +104,39 @@
 
   <main id="main" class="docs-main" style="max-width:900px;margin:0 auto;padding:48px 24px 100px">
     <h1>Documentation</h1>
-      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: June 2026</p>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
     <p class="docs-lead">One Rust core, identical behavior in every language. Pick your binding: each page is a complete usage reference for the whole product surface.</p>
 
     <div class="lang-cards">
-      <a class="lang-card" href="/docs/python.html">
+      <a class="lang-card" href="/docs/python">
         <h3>Python</h3>
         <small>pip · ctypes wrapper</small>
       </a>
-      <a class="lang-card" href="/docs/delphi.html">
+      <a class="lang-card" href="/docs/delphi">
         <h3>Delphi / Free Pascal</h3>
         <small>unit · pure FFI</small>
       </a>
-      <a class="lang-card" href="/docs/swift.html">
+      <a class="lang-card" href="/docs/swift">
         <h3>Swift</h3>
         <small>SwiftPM · macOS &amp; iOS</small>
       </a>
-      <a class="lang-card" href="/docs/node.html">
+      <a class="lang-card" href="/docs/node">
         <h3>Node / TypeScript</h3>
         <small>npm · Koffi FFI</small>
       </a>
-      <a class="lang-card" href="/docs/ruby.html">
+      <a class="lang-card" href="/docs/ruby">
         <h3>Ruby</h3>
         <small>gem · Fiddle FFI</small>
       </a>
-      <a class="lang-card" href="/docs/php.html">
+      <a class="lang-card" href="/docs/php">
         <h3>PHP</h3>
         <small>composer · ext-ffi</small>
       </a>
-      <a class="lang-card" href="/docs/go.html">
+      <a class="lang-card" href="/docs/go">
         <h3>Go</h3>
         <small>go get · cgo, static</small>
       </a>
-      <a class="lang-card" href="/docs/csharp.html">
+      <a class="lang-card" href="/docs/csharp">
         <h3>C# / .NET</h3>
         <small>NuGet · P/Invoke</small>
       </a>

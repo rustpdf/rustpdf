@@ -24,94 +24,110 @@
   <meta property="og:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift" />
   <meta name="twitter:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org",
-        "name": "CaseFy Inc.",
-        "url": "https://rustpdf.dev/",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://rustpdf.dev/og.png",
-          "width": 1200,
-          "height": 630
-        },
-        "sameAs": [
-          "https://casefy.io",
-          "https://github.com/rustpdf",
-          "https://pypi.org/project/rustpdf/",
-          "https://www.npmjs.com/package/rustpdf",
-          "https://rubygems.org/gems/rustpdf",
-          "https://pkg.go.dev/github.com/rustpdf/rustpdf-go"
-        ],
-        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. rust-pdf is an independent commercial product and is not affiliated with or endorsed by the Rust Foundation or the Rust programming language project."
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://rustpdf.dev/#org",
+      "name": "CaseFy Inc.",
+      "url": "https://rustpdf.dev/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/logo.png",
+        "width": 512,
+        "height": 512
       },
-      {
-        "@type": "WebSite",
-        "@id": "https://rustpdf.dev/#website",
-        "url": "https://rustpdf.dev/",
-        "name": "rust-pdf",
-        "publisher": { "@id": "https://rustpdf.dev/#org" }
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://rustpdf.dev/#software",
-        "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Linux, macOS, Windows",
-        "url": "https://rustpdf.dev/",
-        "publisher": { "@id": "https://rustpdf.dev/#org" },
-        "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
-        "programmingLanguage": [
-          "Python", "C#", "Go", "PHP", "Ruby", "JavaScript", "TypeScript", "Delphi", "Object Pascal", "Swift", "Rust"
-        ],
-        "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4) and converting existing PDFs to PDF/A",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA) plus signature validation",
-          "AES-256 encryption",
-          "Page rendering: render a PDF page to a PNG image",
-          "PDF/UA accessibility (Tagged PDF)",
-          "ZUGFeRD / Factur-X electronic invoices",
-          "AcroForm fields: create, fill and flatten",
-          "Redaction, watermarks, hyperlinks and bookmarks",
-          "Merge, split, text and image extraction"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "1500",
-          "highPrice": "3000",
-          "offerCount": "2",
-          "priceValidUntil": "2026-12-31",
-          "url": "https://rustpdf.dev/#pricing",
-          "offers": [
-            {
-              "@type": "Offer",
-              "name": "Pro",
-              "price": "1500",
-              "priceCurrency": "USD",
-              "category": "Annual license",
-              "availability": "https://schema.org/InStock",
-              "priceValidUntil": "2026-12-31",
-              "url": "https://rustpdf.dev/#pricing"
-            },
-            {
-              "@type": "Offer",
-              "name": "Enterprise",
-              "price": "3000",
-              "priceCurrency": "USD",
-              "category": "Annual license",
-              "availability": "https://schema.org/InStock",
-              "priceValidUntil": "2026-12-31",
-              "url": "https://rustpdf.dev/#pricing"
-            }
-          ]
-        }
+      "sameAs": [
+        "https://casefy.io",
+        "https://github.com/rustpdf",
+        "https://pypi.org/project/rustpdf/",
+        "https://www.npmjs.com/package/rustpdf",
+        "https://rubygems.org/gems/rustpdf",
+        "https://pkg.go.dev/github.com/rustpdf/rustpdf-go",
+        "https://www.nuget.org/packages/RustPdf",
+        "https://packagist.org/packages/rustpdf/rustpdf"
+      ],
+      "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. rust-pdf is an independent commercial product and is not affiliated with or endorsed by the Rust Foundation or the Rust programming language project."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://rustpdf.dev/#website",
+      "url": "https://rustpdf.dev/",
+      "name": "rust-pdf",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
       }
-    ]
-  }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://rustpdf.dev/#software",
+      "name": "rust-pdf",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://rustpdf.dev/",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
+      },
+      "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
+      "programmingLanguage": [
+        "Python",
+        "C#",
+        "Go",
+        "PHP",
+        "Ruby",
+        "JavaScript",
+        "TypeScript",
+        "Delphi",
+        "Object Pascal",
+        "Swift",
+        "Rust"
+      ],
+      "featureList": [
+        "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4) and converting existing PDFs to PDF/A (basic profiles 1b/2b/3b)",
+        "Digital signatures and PAdES (B-B, B-LT, B-LTA) plus signature validation",
+        "AES-256 encryption",
+        "Page rendering: render a PDF page to a PNG image",
+        "PDF/UA accessibility (Tagged PDF)",
+        "ZUGFeRD / Factur-X electronic invoices",
+        "AcroForm fields: create, fill and flatten",
+        "Redaction, watermarks, hyperlinks and bookmarks",
+        "Merge, split, text and image extraction"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "1500",
+        "highPrice": "3000",
+        "offerCount": "2",
+        "priceValidUntil": "2027-12-31",
+        "url": "https://rustpdf.dev/#pricing",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "1500",
+            "priceCurrency": "USD",
+            "category": "Annual license",
+            "availability": "https://schema.org/InStock",
+            "priceValidUntil": "2027-12-31",
+            "url": "https://rustpdf.dev/#pricing"
+          },
+          {
+            "@type": "Offer",
+            "name": "Enterprise",
+            "price": "3000",
+            "priceCurrency": "USD",
+            "category": "Annual license",
+            "availability": "https://schema.org/InStock",
+            "priceValidUntil": "2027-12-31",
+            "url": "https://rustpdf.dev/#pricing"
+          }
+        ]
+      }
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
@@ -328,7 +344,7 @@
           <div class="card pro reveal">
             <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
             <ul>
-              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f, plus convert existing PDFs</li>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f, plus convert existing PDFs to basic profiles (1b/2b/3b)</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
               <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
               <li><b>Signature validation</b>: verify any signed PDF</li>
@@ -536,7 +552,7 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
               <p class="muted">Per application · renews yearly · offline · all eight languages</p>
             </div>
             <ul class="price-features">
-              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f) + convert existing PDFs</li>
+              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f) + convert existing PDFs (basic 1b/2b/3b)</li>
               <li>✓ ZUGFeRD / Factur-X electronic invoices</li>
               <li>✓ Encryption (RC4 / AES-128 / AES-256)</li>
               <li>✓ Page rendering (PDF page to PNG image)</li>
@@ -604,7 +620,7 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
           <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill &amp; flatten, merge/split, text &amp; image extraction and optimization. Forever free, no license.</p>
         </details>
         <details><summary>What's the difference between Pro and Enterprise?</summary>
-          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs), ZUGFeRD / Factur-X e-invoices, encryption (RC4 / AES-128 / AES-256), and page rendering (rasterizing a PDF page to a PNG image). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
+          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs to basic profiles 1b/2b/3b), ZUGFeRD / Factur-X e-invoices, encryption (RC4 / AES-128 / AES-256), and page rendering (rasterizing a PDF page to a PNG image). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
         </details>
         <details><summary>What counts as an application?</summary>
           <p>An application is one product or system you build and operate, defined by
@@ -644,9 +660,9 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
-        <a href="/legal/refund.html">Refunds</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
+        <a href="/legal/refund">Refunds</a>
         <a href="mailto:sales@casefy.io">Contact</a>
         <a href="/itext-alternative">vs iText</a>
         <a href="/aspose-alternative">vs Aspose</a>

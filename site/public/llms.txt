@@ -70,17 +70,17 @@ static xcframework for macOS and iOS).
 - What is PDF/UA? (accessibility guide): https://rustpdf.dev/pdf-ua
 - What is AES-256? (encryption guide): https://rustpdf.dev/aes-256
 - Documentation (per language): https://rustpdf.dev/docs/
-- Python reference: https://rustpdf.dev/docs/python.html
-- Delphi / Free Pascal reference: https://rustpdf.dev/docs/delphi.html
-- Swift reference: https://rustpdf.dev/docs/swift.html
-- C# / .NET reference: https://rustpdf.dev/docs/csharp.html
-- Node.js / TypeScript reference: https://rustpdf.dev/docs/node.html
-- Ruby reference: https://rustpdf.dev/docs/ruby.html
-- PHP reference: https://rustpdf.dev/docs/php.html
-- Go reference: https://rustpdf.dev/docs/go.html
+- Python reference: https://rustpdf.dev/docs/python
+- Delphi / Free Pascal reference: https://rustpdf.dev/docs/delphi
+- Swift reference: https://rustpdf.dev/docs/swift
+- C# / .NET reference: https://rustpdf.dev/docs/csharp
+- Node.js / TypeScript reference: https://rustpdf.dev/docs/node
+- Ruby reference: https://rustpdf.dev/docs/ruby
+- PHP reference: https://rustpdf.dev/docs/php
+- Go reference: https://rustpdf.dev/docs/go
 - Pricing: https://rustpdf.dev/#pricing
-- Terms: https://rustpdf.dev/legal/terms.html
-- Privacy: https://rustpdf.dev/legal/privacy.html
+- Terms: https://rustpdf.dev/legal/terms
+- Privacy: https://rustpdf.dev/legal/privacy
 
 ## Comparison pages
 
@@ -99,16 +99,51 @@ static xcframework for macOS and iOS).
   - Node.js: https://rustpdf.dev/sign-pdf/node
 - Create PDF/A (hub): https://rustpdf.dev/pdf-a
   - Python: https://rustpdf.dev/pdf-a/python
-  - Go: https://rustpdf.dev/pdf-a/go
   - C#: https://rustpdf.dev/pdf-a/csharp
+  - Go: https://rustpdf.dev/pdf-a/go
+  - PHP: https://rustpdf.dev/pdf-a/php
+  - Ruby: https://rustpdf.dev/pdf-a/ruby
+  - Node.js: https://rustpdf.dev/pdf-a/node
 - Encrypt a PDF (hub): https://rustpdf.dev/encrypt-pdf
   - Python: https://rustpdf.dev/encrypt-pdf/python
+  - C#: https://rustpdf.dev/encrypt-pdf/csharp
   - Go: https://rustpdf.dev/encrypt-pdf/go
+  - PHP: https://rustpdf.dev/encrypt-pdf/php
+  - Ruby: https://rustpdf.dev/encrypt-pdf/ruby
+  - Node.js: https://rustpdf.dev/encrypt-pdf/node
 - Generate a PDF (hub): https://rustpdf.dev/generate-pdf
+  - Go: https://rustpdf.dev/generate-pdf/go
+  - Node.js: https://rustpdf.dev/generate-pdf/node
+  - PHP: https://rustpdf.dev/generate-pdf/php
+  - Ruby: https://rustpdf.dev/generate-pdf/ruby
 - Merge PDFs (hub): https://rustpdf.dev/merge-pdf
+  - Go: https://rustpdf.dev/merge-pdf/go
+  - Node.js: https://rustpdf.dev/merge-pdf/node
+  - PHP: https://rustpdf.dev/merge-pdf/php
+  - Ruby: https://rustpdf.dev/merge-pdf/ruby
 - Extract text (hub): https://rustpdf.dev/extract-text
+  - Go: https://rustpdf.dev/extract-text/go
+  - Node.js: https://rustpdf.dev/extract-text/node
+  - PHP: https://rustpdf.dev/extract-text/php
+  - Ruby: https://rustpdf.dev/extract-text/ruby
 - Compress a PDF (hub): https://rustpdf.dev/compress-pdf
+  - Go: https://rustpdf.dev/compress-pdf/go
+  - Node.js: https://rustpdf.dev/compress-pdf/node
+  - PHP: https://rustpdf.dev/compress-pdf/php
+  - Ruby: https://rustpdf.dev/compress-pdf/ruby
 - PDF forms (hub): https://rustpdf.dev/pdf-forms
+  - Go: https://rustpdf.dev/pdf-forms/go
+  - Node.js: https://rustpdf.dev/pdf-forms/node
+  - PHP: https://rustpdf.dev/pdf-forms/php
+  - Ruby: https://rustpdf.dev/pdf-forms/ruby
+
+
+## Product data
+
+- Current stable version: 0.4.1 (2026-06)
+- License verification: offline Ed25519 token, no network call
+- Distribution: native shared library (.so / .dylib / .dll) wrapped by each binding
+- Deterministic output: identical input produces byte-identical PDFs across languages
 
 ## Notes for accurate citation
 

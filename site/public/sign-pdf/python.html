@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in Python (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Python." />
+  <meta name="description" content="pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/python" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/python" />
   <meta property="og:title" content="Digitally Sign a PDF in Python (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Python." />
+  <meta property="og:description" content="pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in Python (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in Python (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Python." />
+  <meta name="twitter:description" content="pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in Python (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in Python (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from Python.",
+      "description": "pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV.",
       "url": "https://rustpdf.dev/sign-pdf/python",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/python#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/python"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Python project?",
+          "name": "Can I sign with a PKCS#12/.pfx key in Python?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image."
+            "text": "rustpdf.sign expects a PKCS#8 private key and an X.509 certificate as DER bytes. A .pfx/.p12 file is a container, so load it once with cryptography.hazmat (pkcs12.load_key_and_certificates), then re-encode the key as DER (PKCS#8) and the certificate as DER and pass both to sign. The private key stays in memory and is never written to disk."
           }
         }
       ]
@@ -160,8 +187,8 @@
       <div class="wrap">
         <p class="eyebrow">Digital signatures &middot; Python</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Python</h1>
-        <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from Python. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="lede sp-lede">pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Python</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Python needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">ReportLab handles layout (its strongest parts are paid) while pikepdf and pypdf cover slices, so archival PDF/A and signatures stay a recurring pain in Python.</p>
-            <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image.</p>
+            <p class="muted">Signing needs a private key and an X.509 certificate, and rust-pdf takes them as raw DER — a PKCS#8 key plus the cert. If your key lives in a <code>.pfx</code>/PKCS#12 container or a PEM bundle (the usual output of a CA or <code>openssl</code>), convert it once with the <code>cryptography</code> package and hand the DER bytes straight to <code>rustpdf.sign</code>; no key material ever leaves the Python process or touches disk.</p>
+            <p class="muted">Each call appends a non-destructive incremental update: the original PDF stays byte-for-byte intact and only the signature dictionary, its <code>/ByteRange</code> and the detached CMS are added at the end. So you can sign a freshly rendered invoice inside a Django view, stream the bytes back in the <code>HttpResponse</code>, and re-sign the same file later without invalidating the first signature.</p>
+            <p class="muted">For long-term validation, follow the signature with <code>add_dss</code> (certificates and CRLs, PAdES B-LT) and <code>timestamp</code> (an RFC 3161 token, PAdES B-LTA) — both offline and incremental. pdfsig and OpenSSL confirm the ByteRange digest and that <code>/Contents</code> decodes as CMS SignedData.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -216,7 +243,7 @@ open("contract.signed.pdf", "wb").write(signed)
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
         <p class="center muted narrow" style="margin-top:18px">Python basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Python reference in the <a href="/docs/python.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Python reference in the <a href="/docs/python">documentation</a>.</p>
       </div>
     </section>
 
@@ -232,18 +259,18 @@ open("contract.signed.pdf", "wb").write(signed)
         <details><summary>Do I need a license to sign in Python?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Python is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Python project?</summary>
-          <p>It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image.</p>
+        <details><summary>Can I sign with a PKCS#12/.pfx key in Python?</summary>
+          <p><code>rustpdf.sign</code> expects a PKCS#8 private key and an X.509 certificate as DER bytes. A <code>.pfx</code>/<code>.p12</code> file is a container, so load it once with <code>cryptography.hazmat</code> (<code>pkcs12.load_key_and_certificates</code>), then re-encode the key as DER (PKCS#8) and the certificate as DER and pass both to <code>sign</code>. The private key stays in memory and is never written to disk.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in Python (PAdES)</h2>
+        <h2>Start signing PDFs in Python</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/python.html" class="btn btn-lg">Read the Python docs</a>
+          <a href="/docs/python" class="btn btn-lg">Read the Python docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -256,7 +283,7 @@ open("contract.signed.pdf", "wb").write(signed)
           <a href="/sign-pdf/csharp">Signing in C#</a>
           <a href="/pdf-a/python">PDF/A in Python</a>
           <a href="/encrypt-pdf/python">Encryption in Python</a>
-          <a href="/docs/python.html">Python docs</a>
+          <a href="/docs/python">Python docs</a>
         </div>
       </div>
     </section>
@@ -269,8 +296,8 @@ open("contract.signed.pdf", "wb").write(signed)
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -24,47 +24,59 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for PHP" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "PHP", "item": "https://rustpdf.dev/php" }
-        ]
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://rustpdf.dev/#software",
-        "name": "rust-pdf for PHP",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Linux, macOS, Windows",
-        "programmingLanguage": "PHP",
-        "url": "https://rustpdf.dev/php",
-        "softwareRequirements": "PHP 8.1+ with the FFI extension",
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for PHP: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with composer require rust-pdf/rustpdf, running entirely on your own servers.",
-        "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
-          "AES-256 encryption",
-          "PDF/UA accessibility (Tagged PDF)",
-          "AcroForm fields",
-          "Merge, split, text extraction"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "1500",
-          "highPrice": "3000",
-          "offerCount": "2",
-          "priceValidUntil": "2026-12-31",
-          "url": "https://rustpdf.dev/#pricing"
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "PHP",
+          "item": "https://rustpdf.dev/php"
         }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://rustpdf.dev/#software",
+      "name": "rust-pdf for PHP",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "programmingLanguage": "PHP",
+      "url": "https://rustpdf.dev/php",
+      "softwareRequirements": "PHP 8.1+ with the FFI extension",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
+      },
+      "description": "An enterprise PDF library for PHP: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with composer require rust-pdf/rustpdf, running entirely on your own servers.",
+      "featureList": [
+        "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
+        "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+        "AES-256 encryption",
+        "PDF/UA accessibility (Tagged PDF)",
+        "AcroForm fields",
+        "Merge, split, text extraction"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "1500",
+        "highPrice": "3000",
+        "offerCount": "2",
+        "priceValidUntil": "2027-12-31",
+        "url": "https://rustpdf.dev/#pricing"
       }
-    ]
-  }
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
@@ -76,7 +88,7 @@
       <nav class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
-        <a href="/docs/php.html">Docs</a>
+        <a href="/docs/php">Docs</a>
         <a href="/#pricing">Pricing</a>
         <a href="/#faq">FAQ</a>
       </nav>
@@ -102,7 +114,7 @@
           <div class="tabs"><pre class="tab-pane active"><code>composer require rust-pdf/rustpdf</code></pre></div>
         </div>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
@@ -195,7 +207,7 @@ $bytes = $doc->toBytes();          // archival-grade, accessible PDF</code></pre
         </div>
         <p class="center muted narrow" style="margin-top:22px">
           The full PHP reference (fonts, images, forms, manipulation, encryption and
-          signatures) lives in the <a href="/docs/php.html">PHP docs</a>.
+          signatures) lives in the <a href="/docs/php">PHP docs</a>.
         </p>
       </div>
     </section>
@@ -264,7 +276,7 @@ public function invoice()
           you go to production.
         </p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -299,9 +311,9 @@ public function invoice()
       <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
-        <a href="/docs/php.html">PHP docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/docs/php">PHP docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

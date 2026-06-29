@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Generate a PDF in PHP | rust-pdf</title>
-  <meta name="description" content="Create PDFs programmatically from PHP: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
+  <meta name="description" content="composer require rust-pdf/rustpdf to build PDFs from scratch in Laravel or Symfony — pages, vector graphics, Unicode text and tables with deterministic output." />
   <link rel="canonical" href="https://rustpdf.dev/generate-pdf/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/generate-pdf/php" />
   <meta property="og:title" content="Generate a PDF in PHP" />
-  <meta property="og:description" content="Create PDFs programmatically from PHP: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf to build PDFs from scratch in Laravel or Symfony — pages, vector graphics, Unicode text and tables with deterministic output." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Generate a PDF in PHP" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Generate a PDF in PHP" />
-  <meta name="twitter:description" content="Create PDFs programmatically from PHP: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf to build PDFs from scratch in Laravel or Symfony — pages, vector graphics, Unicode text and tables with deterministic output." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Generate a PDF in PHP" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Generate a PDF in PHP",
-      "description": "Create PDFs programmatically from PHP: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and.",
+      "description": "composer require rust-pdf/rustpdf to build PDFs from scratch in Laravel or Symfony — pages, vector graphics, Unicode text and tables with deterministic output.",
       "url": "https://rustpdf.dev/generate-pdf/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/generate-pdf/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/generate-pdf/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Do I need the FFI extension, and does this run on shared hosting?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "rust-pdf bridges to its Rust core through PHP's ext-ffi, so you set ffi.enable=true in php.ini and ship the platform cdylib next to your app. That works on any VPS, container or Laravel Forge server you control; the exception is most shared-hosting plans, which forbid the FFI extension outright."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Authoring &middot; PHP</p>
         <h1>Generate a <span class="grad">PDF</span> in PHP</h1>
         <p class="lede sp-lede">Create PDFs programmatically from PHP: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives PHP a fast, memory-safe core with deterministic output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">Most server-side PDF in PHP is built by gluing TCPDF or FPDF to a templating layer, or by shelling out to wkhtmltopdf — each with its own gaps in Unicode shaping, font embedding and reproducibility.</p>
+            <p class="muted">rust-pdf gives PHP a single memory-safe core for authoring: vector graphics, JPEG and PNG images, embedded and subset fonts with HarfBuzz-quality shaping and kerning, wrapping and justified paragraphs, tables, links and bookmarks. Identical input yields identical bytes, which makes the output auditable and testable.</p>
+            <p class="muted">Generation is the free tier: composer require rust-pdf/rustpdf, enable ffi in php.ini, and call the API from a controller, a Symfony command or an Artisan job. There is no separate rendering service to deploy and scale — the only real constraint is shared hosting that forbids the FFI extension.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Generate a PDF in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Install via Composer, then call the same idiomatic API every rust-pdf binding shares. The authoring snippet below is real PHP from the reference docs.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -215,8 +242,8 @@ $doc-&gt;addPage()
     -&gt;save('out.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in PHP. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Authoring is part of the free PHP tier — no license token required.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete authoring API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -232,18 +259,18 @@ $doc-&gt;addPage()
         <details><summary>Why a Rust core for PHP?</summary>
           <p>One memory-safe, high-performance Rust core is exposed to PHP through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Do I need the FFI extension, and does this run on shared hosting?</summary>
+          <p>rust-pdf bridges to its Rust core through PHP's ext-ffi, so you set <code>ffi.enable=true</code> in php.ini and ship the platform cdylib next to your app. That works on any VPS, container or Laravel Forge server you control; the exception is most shared-hosting plans, which forbid the FFI extension outright.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Generate a PDF in PHP</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Start building documents in your PHP app today</h2>
+        <p class="muted">One Rust core, deterministic output in every language. Authoring is free forever; you license only the corporate features such as PDF/A, signing and encryption.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -257,7 +284,7 @@ $doc-&gt;addPage()
           <a href="/encrypt-pdf/php">Encryption in PHP</a>
           <a href="/merge-pdf/php">Merging in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -270,8 +297,8 @@ $doc-&gt;addPage()
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

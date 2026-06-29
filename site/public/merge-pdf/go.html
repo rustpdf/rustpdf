@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Merge PDF Files in Go | rust-pdf</title>
-  <meta name="description" content="Combine, split, reorder and rotate PDF pages from Go." />
+  <meta name="description" content="Combine, split, reorder and rotate PDF pages in Go. go get the module and wire merge into a chi or net/http upload handler, with the page tree rebuilt on save." />
   <link rel="canonical" href="https://rustpdf.dev/merge-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/merge-pdf/go" />
   <meta property="og:title" content="Merge PDF Files in Go" />
-  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages from Go." />
+  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages in Go. go get the module and wire merge into a chi or net/http upload handler, with the page tree rebuilt on save." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Merge PDF Files in Go" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Merge PDF Files in Go" />
-  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages from Go." />
+  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages in Go. go get the module and wire merge into a chi or net/http upload handler, with the page tree rebuilt on save." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge PDF Files in Go" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Merge PDF Files in Go",
-      "description": "Combine, split, reorder and rotate PDF pages from Go.",
+      "description": "Combine, split, reorder and rotate PDF pages in Go. go get the module and wire merge into a chi or net/http upload handler, with the page tree rebuilt on save.",
       "url": "https://rustpdf.dev/merge-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/merge-pdf/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/merge-pdf/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "Does merge preserve bookmarks and form fields?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Page content, annotations and rotation survive the merge because every object is renumbered and its references are deep-remapped. Document-level structures such as the bookmark outline tree and a shared AcroForm are not stitched together, so rebuild those after merging if your workflow needs them."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Manipulation &middot; Go</p>
         <h1>Merge <span class="grad">PDF</span> files in Go</h1>
         <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">Back-office Go services constantly stitch PDFs together — invoices into one statement, signed pages back into a contract, a cover sheet onto a report — yet Go has no built-in way to even read an existing file, let alone reorder or rotate its pages.</p>
+            <p class="muted">rust-pdf flattens each document into a single page order, so merge, split, reorder, rotate and delete become plain list operations; objects from a second file are renumbered, references are deep-remapped, and the real page tree is rebuilt on save. The parser reads classic and cross-reference streams, object streams and encrypted input, so it works on files it never wrote.</p>
+            <p class="muted">A chi or net/http endpoint can accept two uploads and return the merged result in a handful of lines. Because output is deterministic, you can pin the merged bytes in a table-driven golden-file test and catch a regression the instant the hash changes, with no rendering step to flake.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -218,7 +245,7 @@ _ = sub.Save("subset.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Go. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -234,18 +261,18 @@ _ = sub.Save("subset.pdf")</code></pre>
         <details><summary>Is merging free?</summary>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Go. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>Does merge preserve bookmarks and form fields?</summary>
+          <p>Page content, annotations and rotation survive the merge because every object is renumbered and its references are deep-remapped. Document-level structures such as the bookmark outline tree and a shared AcroForm are not stitched together, so rebuild those after merging if your workflow needs them.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Merge PDF Files in Go</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Wire PDF assembly into your Go backend</h2>
+        <p class="muted">One Rust core, the same byte-for-byte results in every language. Merging, splitting and reordering are free in Go — no token, no daemon.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -259,7 +286,7 @@ _ = sub.Save("subset.pdf")</code></pre>
           <a href="/encrypt-pdf/go">Encryption in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
           <a href="/compress-pdf/go">Compression in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -272,8 +299,8 @@ _ = sub.Save("subset.pdf")</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

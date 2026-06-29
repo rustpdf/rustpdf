@@ -24,65 +24,126 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf as a PSPDFKit / Nutrient alternative for server-side PDF work" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "PSPDFKit alternative", "item": "https://rustpdf.dev/pspdfkit-alternative" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "PSPDFKit alternative",
+          "item": "https://rustpdf.dev/pspdfkit-alternative"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "PSPDFKit / Nutrient alternative: rust-pdf for server-side PDF work",
+      "description": "A side by side comparison of rust-pdf and PSPDFKit (Nutrient), focused on server-side generation, signing and compliance rather than viewers and annotation UIs.",
+      "url": "https://rustpdf.dev/pspdfkit-alternative",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PSPDFKit alternative",
+        "description": "Choosing a tool for server-side PDF generation, signing and compliance versus a viewer and annotation SDK."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "PSPDFKit / Nutrient alternative: rust-pdf for server-side PDF work",
-        "description": "A side by side comparison of rust-pdf and PSPDFKit (Nutrient), focused on server-side generation, signing and compliance rather than viewers and annotation UIs.",
-        "url": "https://rustpdf.dev/pspdfkit-alternative",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PSPDFKit alternative", "description": "Choosing a tool for server-side PDF generation, signing and compliance versus a viewer and annotation SDK." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Is rust-pdf a replacement for PSPDFKit?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Only for the server-side generation and signing job. If you need an interactive PDF viewer, annotator or editor embedded in a web or mobile app, PSPDFKit, now Nutrient, is the right tool and rust-pdf does not provide that. The two overlap on producing, signing and validating compliant PDFs on the server, which is what this comparison covers." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does rust-pdf render or display PDFs in the browser?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf generates, signs, encrypts and processes PDFs on the server. It has no viewer or annotation user interface. Browser rendering and annotation are core PSPDFKit strengths." }
-          },
-          {
-            "@type": "Question",
-            "name": "What can rust-pdf do that PSPDFKit cannot?",
-            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing, as publicly documented, stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover." }
-          },
-          {
-            "@type": "Question",
-            "name": "How does rust-pdf pricing compare to PSPDFKit?",
-            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. PSPDFKit pricing is quote-only, typically annual or multi-year with a three-year commitment being common. Independent third-party estimates put it in the tens of thousands of dollars per year." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is rust-pdf fully on-premise?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf runs entirely on your servers, offline, with no telemetry and deterministic, byte-identical output. PSPDFKit offers SDKs alongside cloud services such as its Document Engine and hosted APIs." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does rust-pdf do OCR or AI document processing?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. OCR and AI document processing are PSPDFKit strengths. rust-pdf focuses on standards-compliant generation, signing, encryption and text and image extraction." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pspdfkit-alternative#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pspdfkit-alternative"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is rust-pdf a replacement for PSPDFKit?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only for the server-side generation and signing job. If you need an interactive PDF viewer, annotator or editor embedded in a web or mobile app, PSPDFKit, now Nutrient, is the right tool and rust-pdf does not provide that. The two overlap on producing, signing and validating compliant PDFs on the server, which is what this comparison covers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does rust-pdf render or display PDFs in the browser?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. rust-pdf generates, signs, encrypts and processes PDFs on the server. It has no viewer or annotation user interface. Browser rendering and annotation are core PSPDFKit strengths."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What can rust-pdf do that PSPDFKit cannot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing, as publicly documented, stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf pricing compare to PSPDFKit?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. PSPDFKit pricing is quote-only, typically annual or multi-year with a three-year commitment being common. Independent third-party estimates put it in the tens of thousands of dollars per year."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is rust-pdf fully on-premise?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. rust-pdf runs entirely on your servers, offline, with no telemetry and deterministic, byte-identical output. PSPDFKit offers SDKs alongside cloud services such as its Document Engine and hosted APIs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does rust-pdf do OCR or AI document processing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. OCR and AI document processing are PSPDFKit strengths. rust-pdf focuses on standards-compliant generation, signing, encryption and text and image extraction."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -169,7 +230,7 @@
       <div class="wrap">
         <p class="eyebrow">Comparison &middot; PSPDFKit / Nutrient alternative</p>
         <h1>The server-side<br /><span class="grad">PSPDFKit alternative</span></h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede pk-lede">
           PSPDFKit, now Nutrient, is a leader in document viewers, annotation and
           eSign user interfaces across web and mobile. rust-pdf is not that. It is the
@@ -474,8 +535,8 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

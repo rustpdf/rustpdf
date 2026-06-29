@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Encrypt a PDF in Go (AES-256) | rust-pdf</title>
-  <meta name="description" content="Password-protect a PDF from Go with strong AES-256 encryption." />
+  <meta name="description" content="Password-protect a PDF from Go with AES-256 (V5/R6). go get the cgo module and encrypt files inside a net/http or Gin handler, keys drawn from the OS CSPRNG." />
   <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/encrypt-pdf/go" />
   <meta property="og:title" content="Encrypt a PDF in Go (AES-256)" />
-  <meta property="og:description" content="Password-protect a PDF from Go with strong AES-256 encryption." />
+  <meta property="og:description" content="Password-protect a PDF from Go with AES-256 (V5/R6). go get the cgo module and encrypt files inside a net/http or Gin handler, keys drawn from the OS CSPRNG." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Encrypt a PDF in Go (AES-256)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Encrypt a PDF in Go (AES-256)" />
-  <meta name="twitter:description" content="Password-protect a PDF from Go with strong AES-256 encryption." />
+  <meta name="twitter:description" content="Password-protect a PDF from Go with AES-256 (V5/R6). go get the cgo module and encrypt files inside a net/http or Gin handler, keys drawn from the OS CSPRNG." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Encrypt a PDF in Go (AES-256)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Encrypt a PDF in Go (AES-256)",
-      "description": "Password-protect a PDF from Go with strong AES-256 encryption.",
+      "description": "Password-protect a PDF from Go with AES-256 (V5/R6). go get the cgo module and encrypt files inside a net/http or Gin handler, keys drawn from the OS CSPRNG.",
       "url": "https://rustpdf.dev/encrypt-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/encrypt-pdf/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/encrypt-pdf/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "How do I cross-compile this for a Linux Docker image from a Mac?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Set CGO_ENABLED=1 with a Linux cross toolchain (for example zig cc or a golang:bookworm builder), compile inside a multi-stage Dockerfile, and copy libpdf_ffi.so next to the binary in the final stage. The Encrypt call is byte-for-byte identical on every target."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Encryption &middot; Go</p>
         <h1>Encrypt a <span class="grad">PDF</span> in Go</h1>
         <p class="lede sp-lede">Password-protect a PDF from Go with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">Sensitive PDFs — statements, payslips, contracts — usually pass through a Go API before a user ever sees them, yet the standard library has no PDF encryption at all. The archived gofpdf can't help and commercial wrappers are heavy, so teams either shell out to qpdf or skip protection entirely.</p>
+            <p class="muted">rust-pdf implements AES-256 (V5/R6) directly, deriving the file key, salts and IVs from the operating system CSPRNG so every output file is unique, with AES-128 and legacy RC4 still on hand for older readers. qpdf validates the result for both the user and the owner password.</p>
+            <p class="muted">Inside a net/http or Gin handler you load the document, call Encrypt, and write the secured bytes straight to the ResponseWriter with Content-Type application/pdf. Every call returns an explicit error rather than panicking, so a missing Encryption license surfaces as a clean 500 instead of crashing the request.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -212,7 +239,7 @@ _ = ed.Save("secured.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">Go basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -228,18 +255,18 @@ _ = ed.Save("secured.pdf")</code></pre>
         <details><summary>Do I need a license to encrypt in Go?</summary>
           <p>Encryption is a corporate feature and needs an active license token. Basic generation in Go is free. The same offline token enables encryption in every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>How do I cross-compile this for a Linux Docker image from a Mac?</summary>
+          <p>Set CGO_ENABLED=1 with a Linux cross toolchain (for example zig cc or a golang:bookworm builder), compile inside a multi-stage Dockerfile, and copy libpdf_ffi.so next to the binary in the final stage. The Encrypt call is byte-for-byte identical on every target.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Encrypt a PDF in Go (AES-256)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Ship encrypted PDFs from your Go services</h2>
+        <p class="muted">One Rust core, identical encrypted output across every binding. Generation is free in Go; unlock AES-256 with a single offline token when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -255,7 +282,7 @@ _ = ed.Save("secured.pdf")</code></pre>
           <a href="/merge-pdf/go">Merging in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
           <a href="/compress-pdf/go">Compression in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -268,8 +295,8 @@ _ = ed.Save("secured.pdf")</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

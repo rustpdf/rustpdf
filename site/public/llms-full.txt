@@ -32,7 +32,9 @@ One Rust core, identical behavior across every binding:
 - Swift: SwiftPM with a static xcframework for macOS and iOS.
 
 Supported programming languages, stated as data: Python, C#, Go, PHP, Ruby,
-JavaScript, TypeScript, Delphi, Object Pascal, Swift, Rust.
+JavaScript, TypeScript, Delphi, Object Pascal and Swift. The core itself is
+written in Rust; a public Rust crate is private/in development and not yet
+installable from crates.io.
 
 ## Feature list (capabilities)
 
@@ -70,7 +72,8 @@ extraction.
 ## Pricing, stated as data
 
 - Pro: about USD 1,500 per year. Includes PDF/A archival (and converting existing
-  PDFs), ZUGFeRD / Factur-X e-invoices, and encryption (RC4 / AES-128 / AES-256).
+  PDFs to PDF/A basic profiles 1b/2b/3b), ZUGFeRD / Factur-X e-invoices, and
+  encryption (RC4 / AES-128 / AES-256).
 - Enterprise: about USD 3,000 per year. Everything in Pro plus digital signatures
   and PAdES (B-B, B-LT, B-LTA) with RFC 3161 timestamps and LTV, signature
   validation, true redaction, and PDF/UA accessibility, plus priority support.

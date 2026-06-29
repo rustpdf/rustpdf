@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Compress and optimize PDF files in code — explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Compress and optimize PDF files in code", "item": "https://rustpdf.dev/compress-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Compress and optimize PDF files in code",
+          "item": "https://rustpdf.dev/compress-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Compress and optimize PDF files in code, explained",
+      "description": "How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift.",
+      "url": "https://rustpdf.dev/compress-pdf",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF optimization",
+        "description": "Lossless structural compression of PDF files: dropping unused objects, deduplicating identical objects, Flate-compressing streams, and packing into object streams."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Compress and optimize PDF files in code, explained",
-        "description": "How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift.",
-        "url": "https://rustpdf.dev/compress-pdf",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF optimization", "description": "Lossless structural compression of PDF files: dropping unused objects, deduplicating identical objects, Flate-compressing streams, and packing into object streams." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I compress a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a /ObjStm and emit a /XRef stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is the compression lossless?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. optimize() and compact() are purely structural operations. Text, vector graphics, and every pixel of embedded images come out identical to the original. The library does not perform image down-sampling, colour-depth reduction, or quality reduction of any kind." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between optimize and compact?",
-            "acceptedAnswer": { "@type": "Answer", "text": "optimize() removes unused objects, deduplicates byte-identical objects by remapping references to one canonical copy, and Flate-compresses uncompressed streams. compact(true) packs every eligible object into an object stream (/ObjStm) and emits a cross-reference stream (/XRef) instead of a classic cross-reference table, which is the denser file structure introduced in PDF 1.5. The two operations are independent and can be combined for maximum reduction." }
-          },
-          {
-            "@type": "Question",
-            "name": "Will it shrink images?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Structurally, yes: images benefit from the same unused-object and deduplication passes as any other content. However, the pixel data inside each image is not altered. JPEG images are kept verbatim (their DCT stream is not re-encoded, so there is no quality loss). PNG-sourced images are already Flate-compressed inside the PDF. The library does not perform lossy down-sampling or quality reduction." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I compress and encrypt at once?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Not in the same pass. When encryption is enabled, object streams and cross-reference streams are automatically disabled because they do not mix in this implementation. The recommended approach is to run optimize() and compact() first, save the result, and then apply encryption in a separate step." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/compress-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/compress-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I compress a PDF in code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a /ObjStm and emit a /XRef stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the compression lossless?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. optimize() and compact() are purely structural operations. Text, vector graphics, and every pixel of embedded images come out identical to the original. The library does not perform image down-sampling, colour-depth reduction, or quality reduction of any kind."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between optimize and compact?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "optimize() removes unused objects, deduplicates byte-identical objects by remapping references to one canonical copy, and Flate-compresses uncompressed streams. compact(true) packs every eligible object into an object stream (/ObjStm) and emits a cross-reference stream (/XRef) instead of a classic cross-reference table, which is the denser file structure introduced in PDF 1.5. The two operations are independent and can be combined for maximum reduction."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will it shrink images?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Structurally, yes: images benefit from the same unused-object and deduplication passes as any other content. However, the pixel data inside each image is not altered. JPEG images are kept verbatim (their DCT stream is not re-encoded, so there is no quality loss). PNG-sourced images are already Flate-compressed inside the PDF. The library does not perform lossy down-sampling or quality reduction."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I compress and encrypt at once?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not in the same pass. When encryption is enabled, object streams and cross-reference streams are automatically disabled because they do not mix in this implementation. The recommended approach is to run optimize() and compact() first, save the result, and then apply encryption in a separate step."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -335,7 +393,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Optimization</p>
         <h1>Compress and <span class="grad">optimize PDF files</span><br />in code</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           A generated PDF often carries dead weight: objects nothing references, redundant
           copies of identical data, and streams left uncompressed. <b>optimize()</b> sweeps
@@ -717,8 +775,8 @@ ed.save("small.pdf");</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

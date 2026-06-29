@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Merge PDF Files in Ruby | rust-pdf</title>
-  <meta name="description" content="Combine, split, reorder and rotate PDF pages from Ruby." />
+  <meta name="description" content="gem install rustpdf to combine, split, reorder and rotate PDF pages from Ruby, running the whole job inside a Rails controller or a Sidekiq worker with no shell-outs." />
   <link rel="canonical" href="https://rustpdf.dev/merge-pdf/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/merge-pdf/ruby" />
   <meta property="og:title" content="Merge PDF Files in Ruby" />
-  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages from Ruby." />
+  <meta property="og:description" content="gem install rustpdf to combine, split, reorder and rotate PDF pages from Ruby, running the whole job inside a Rails controller or a Sidekiq worker with no shell-outs." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Merge PDF Files in Ruby" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Merge PDF Files in Ruby" />
-  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages from Ruby." />
+  <meta name="twitter:description" content="gem install rustpdf to combine, split, reorder and rotate PDF pages from Ruby, running the whole job inside a Rails controller or a Sidekiq worker with no shell-outs." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge PDF Files in Ruby" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Merge PDF Files in Ruby",
-      "description": "Combine, split, reorder and rotate PDF pages from Ruby.",
+      "description": "gem install rustpdf to combine, split, reorder and rotate PDF pages from Ruby, running the whole job inside a Rails controller or a Sidekiq worker with no shell-outs.",
       "url": "https://rustpdf.dev/merge-pdf/ruby",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/merge-pdf/ruby#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/merge-pdf/ruby"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Ruby project?",
+          "name": "Can I merge user-uploaded PDFs in a Rails app?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."
+            "text": "Yes. Load each upload with EditableDoc.load_file in a controller or a Sidekiq worker, merge or extract pages, then save. The parser reads classic, cross-reference and object streams plus encrypted input, and a bad upload surfaces as a RustPdf::Error you can rescue."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Manipulation &middot; Ruby</p>
         <h1>Merge <span class="grad">PDF</span> files in Ruby</h1>
         <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Ruby. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Ruby</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Ruby needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.</p>
-            <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
-            <p class="muted">It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+            <p class="muted">Prawn writes new PDFs but cannot open existing ones, so combining or splitting documents in Ruby usually means a CombinePDF detour or shelling out to a pdftk binary. rust-pdf parses real files and edits them in place.</p>
+            <p class="muted">Merging and splitting are list operations on a flat page order: append another document, pull out a subset, reverse, rotate or delete pages, then save. Because the parser reads classic and cross-reference streams, object streams and RC4 or AES encrypted input, it handles files it never wrote.</p>
+            <p class="muted">Load each PDF with <code>EditableDoc.load_file</code> in a Rails controller or a Sidekiq worker, chain <code>merge</code>, <code>reorder_pages</code> and <code>rotate_page</code>, then rescue <code>RustPdf::Error</code> on a malformed upload; it is pure FFI through Fiddle, so there is no pdftk binary to install.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -217,7 +244,7 @@ a.close</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Ruby. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
 
@@ -233,18 +260,18 @@ a.close</code></pre>
         <details><summary>Is merging free?</summary>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Ruby. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Ruby project?</summary>
-          <p>It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+        <details><summary>Can I merge user-uploaded PDFs in a Rails app?</summary>
+          <p>Yes. Load each upload with EditableDoc.load_file in a controller or a Sidekiq worker, merge or extract pages, then save. The parser reads classic, cross-reference and object streams plus encrypted input, and a bad upload surfaces as a RustPdf::Error you can rescue.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Merge PDF Files in Ruby</h2>
+        <h2>Reshape PDF documents straight from Ruby</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/ruby.html" class="btn btn-lg">Read the Ruby docs</a>
+          <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -258,7 +285,7 @@ a.close</code></pre>
           <a href="/encrypt-pdf/ruby">Encryption in Ruby</a>
           <a href="/extract-text/ruby">Text extraction in Ruby</a>
           <a href="/compress-pdf/ruby">Compression in Ruby</a>
-          <a href="/docs/ruby.html">Ruby docs</a>
+          <a href="/docs/ruby">Ruby docs</a>
         </div>
       </div>
     </section>
@@ -271,8 +298,8 @@ a.close</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -28,7 +28,7 @@
     bar.setAttribute("aria-label", "Cookie consent");
     bar.innerHTML =
       '<p>We use only essential cookies, plus optional Google Analytics to improve the site. ' +
-      'See our <a href="/legal/privacy.html">Privacy Policy</a>.</p>' +
+      'See our <a href="/legal/privacy">Privacy Policy</a>.</p>' +
       '<div class="cookie-actions">' +
       '<button type="button" class="btn btn-sm btn-ghost" data-consent="denied">Reject</button>' +
       '<button type="button" class="btn btn-sm" data-consent="granted">Accept</button>' +

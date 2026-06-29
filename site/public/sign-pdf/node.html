@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in Node.js (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Node.js." />
+  <meta name="description" content="Run npm install rustpdf to add a PKCS#7 or PAdES signature to a PDF from an Express or Fastify handler, signing with your own key and certificate as Buffers." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/node" />
   <meta property="og:title" content="Digitally Sign a PDF in Node.js (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Node.js." />
+  <meta property="og:description" content="Run npm install rustpdf to add a PKCS#7 or PAdES signature to a PDF from an Express or Fastify handler, signing with your own key and certificate as Buffers." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in Node.js (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in Node.js (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Node.js." />
+  <meta name="twitter:description" content="Run npm install rustpdf to add a PKCS#7 or PAdES signature to a PDF from an Express or Fastify handler, signing with your own key and certificate as Buffers." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in Node.js (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in Node.js (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from Node.js.",
+      "description": "Run npm install rustpdf to add a PKCS#7 or PAdES signature to a PDF from an Express or Fastify handler, signing with your own key and certificate as Buffers.",
       "url": "https://rustpdf.dev/sign-pdf/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/node#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/node"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Node.js project?",
+          "name": "What key and certificate format does the Node binding expect?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
+            "text": "rustpdf.sign takes a PKCS#8 private key and an X.509 certificate as DER Buffers. If you hold a PEM file or a PKCS#12 (.pfx) bundle, convert it to DER once with openssl, then read both files with fs.readFileSync and pass the Buffers straight into sign."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Digital signatures &middot; Node.js and TypeScript</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Node.js</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from Node.js. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Signing a PDF in Node normally pulls in a native toolkit with a build step, or pipes bytes through an external signer — fragile in CI and hard to run inside a request handler.</p>
             <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+            <p class="muted">From a Fastify or NestJS handler, read the PKCS#8 key and X.509 certificate with fs.readFileSync as Buffers — convert a PEM or PKCS#12 bundle to DER once with openssl — then call rustpdf.sign and write or return the signed Buffer. Signing is CPU-bound, so wrap it in an async job for busy endpoints; the pure-FFI Koffi binding adds no node-gyp step.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Sign a PDF in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install from npm, read your DER key and certificate as Buffers, and pass them to rustpdf.sign. The snippet below is real Node.js from the reference docs and verifies with pdfsig.</p>
         <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
@@ -218,7 +245,7 @@ fs.writeFileSync("contract.signed.pdf", signed);
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
         <p class="center muted narrow" style="margin-top:18px">Node.js basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">The full Node.js signing reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
 
@@ -234,18 +261,18 @@ fs.writeFileSync("contract.signed.pdf", signed);
         <details><summary>Do I need a license to sign in Node.js?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Node.js is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Node.js project?</summary>
-          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+        <details><summary>What key and certificate format does the Node binding expect?</summary>
+          <p>rustpdf.sign takes a PKCS#8 private key and an X.509 certificate as DER Buffers. If you hold a PEM file or a PKCS#12 (.pfx) bundle, convert it to DER once with openssl, then read both files with fs.readFileSync and pass the Buffers straight into sign.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in Node.js (PAdES)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Sign documents inline and keep the originals intact</h2>
+        <p class="muted">One Rust core, the same PAdES signatures in every language. Prototype on the free tier, then unlock signing with one offline Ed25519 token when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -261,7 +288,7 @@ fs.writeFileSync("contract.signed.pdf", signed);
           <a href="/merge-pdf/node">Merging in Node.js</a>
           <a href="/extract-text/node">Text extraction in Node.js</a>
           <a href="/compress-pdf/node">Compression in Node.js</a>
-          <a href="/docs/node.html">Node.js docs</a>
+          <a href="/docs/node">Node.js docs</a>
         </div>
       </div>
     </section>
@@ -274,8 +301,8 @@ fs.writeFileSync("contract.signed.pdf", signed);
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

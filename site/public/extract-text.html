@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Extract text from PDF programmatically -- a clear guide with code examples" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Extract Text from PDF Programmatically", "item": "https://rustpdf.dev/extract-text" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Extract Text from PDF Programmatically",
+          "item": "https://rustpdf.dev/extract-text"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Extract Text from PDF Programmatically, Explained",
+      "description": "A plain-language explanation of how PDF text extraction works: walking content-stream operators, mapping glyph codes to Unicode via ToUnicode CMaps, inferring spaces from TJ kerning adjustments and line breaks from Tm/T* position changes, and why it is not OCR.",
+      "url": "https://rustpdf.dev/extract-text",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF text extraction",
+        "description": "Reading the text layer of a PDF by mapping glyph codes to Unicode via each font's ToUnicode CMap."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Extract Text from PDF Programmatically, Explained",
-        "description": "A plain-language explanation of how PDF text extraction works: walking content-stream operators, mapping glyph codes to Unicode via ToUnicode CMaps, inferring spaces from TJ kerning adjustments and line breaks from Tm/T* position changes, and why it is not OCR.",
-        "url": "https://rustpdf.dev/extract-text",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF text extraction", "description": "Reading the text layer of a PDF by mapping glyph codes to Unicode via each font's ToUnicode CMap." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I extract text from a PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Pass the PDF bytes to rustpdf.extract_text() in Python, Pdf.ExtractText() in C#, rustpdf.ExtractText() in Go, or extractText() in Node. The library walks every page's content stream, maps each shown glyph code back to Unicode using the font's ToUnicode CMap, infers spaces from large negative TJ adjustments, and infers line breaks from Tm and T* vertical position changes. The result is a plain Unicode string." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does it work with CJK / Unicode?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf handles Type0 composite fonts with Identity-H encoding, which is the standard encoding for CJK and any Unicode-rich PDF produced by modern tools. Glyph codes in those fonts are two bytes wide, and the ToUnicode CMap maps each pair to one or more Unicode code points. Subset fonts are also handled correctly: the library reads the embedded subset program's CMap, not any external font data." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is this OCR?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. OCR (optical character recognition) analyses a raster image to guess what letters are shown. PDF text extraction reads the actual text that the PDF author encoded in the file. It is exact, instant, and language-agnostic. rust-pdf does not perform OCR and does not attempt to interpret images." }
-          },
-          {
-            "@type": "Question",
-            "name": "What about scanned PDFs?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read -- the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I use it for search or LLM/RAG pipelines?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Extracting text with rust-pdf and feeding the result into a full-text search index or an LLM context window is one of the primary use cases. The extraction is fast enough to process large document collections in bulk. The output is clean Unicode suitable for tokenisation, chunking, and embedding without further normalisation." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/extract-text#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/extract-text"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I extract text from a PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Pass the PDF bytes to rustpdf.extract_text() in Python, Pdf.ExtractText() in C#, rustpdf.ExtractText() in Go, or extractText() in Node. The library walks every page's content stream, maps each shown glyph code back to Unicode using the font's ToUnicode CMap, infers spaces from large negative TJ adjustments, and infers line breaks from Tm and T* vertical position changes. The result is a plain Unicode string."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work with CJK / Unicode?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. rust-pdf handles Type0 composite fonts with Identity-H encoding, which is the standard encoding for CJK and any Unicode-rich PDF produced by modern tools. Glyph codes in those fonts are two bytes wide, and the ToUnicode CMap maps each pair to one or more Unicode code points. Subset fonts are also handled correctly: the library reads the embedded subset program's CMap, not any external font data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this OCR?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. OCR (optical character recognition) analyses a raster image to guess what letters are shown. PDF text extraction reads the actual text that the PDF author encoded in the file. It is exact, instant, and language-agnostic. rust-pdf does not perform OCR and does not attempt to interpret images."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What about scanned PDFs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read -- the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use it for search or LLM/RAG pipelines?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Extracting text with rust-pdf and feeding the result into a full-text search index or an LLM context window is one of the primary use cases. The extraction is fast enough to process large document collections in bulk. The output is clean Unicode suitable for tokenisation, chunking, and embedding without further normalisation."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -217,7 +275,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Reading PDFs</p>
         <h1>Extract Text from PDF<br /><span class="grad">Programmatically</span>, Explained</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede tx-lede">
           PDF text extraction walks the page's content stream, finds every glyph
           the author placed, maps each glyph code back to a Unicode character
@@ -519,8 +577,8 @@ console.log(text);</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

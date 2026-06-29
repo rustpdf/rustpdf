@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Merge PDF Files in PHP | rust-pdf</title>
-  <meta name="description" content="Combine, split, reorder and rotate PDF pages from PHP." />
+  <meta name="description" content="composer require rust-pdf/rustpdf to combine, split, reorder and rotate PDF pages from a Laravel job — objects remapped correctly, valid output, no qpdf binary." />
   <link rel="canonical" href="https://rustpdf.dev/merge-pdf/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/merge-pdf/php" />
   <meta property="og:title" content="Merge PDF Files in PHP" />
-  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages from PHP." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf to combine, split, reorder and rotate PDF pages from a Laravel job — objects remapped correctly, valid output, no qpdf binary." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Merge PDF Files in PHP" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Merge PDF Files in PHP" />
-  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages from PHP." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf to combine, split, reorder and rotate PDF pages from a Laravel job — objects remapped correctly, valid output, no qpdf binary." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge PDF Files in PHP" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Merge PDF Files in PHP",
-      "description": "Combine, split, reorder and rotate PDF pages from PHP.",
+      "description": "composer require rust-pdf/rustpdf to combine, split, reorder and rotate PDF pages from a Laravel job — objects remapped correctly, valid output, no qpdf binary.",
       "url": "https://rustpdf.dev/merge-pdf/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/merge-pdf/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/merge-pdf/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Can I merge uploaded PDFs inside a Laravel request without pdftk?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "Yes. EditableDoc::loadFile reads an uploaded file straight from storage, merge, extractPages and reorderPages run in-process, and save returns the bytes. There is no pdftk or qpdf binary to install on the server, and no temp-file shell-out from your controller — it all stays inside the PHP process."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Manipulation &middot; PHP</p>
         <h1>Merge <span class="grad">PDF</span> files in PHP</h1>
         <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from PHP. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">Combining a cover letter with a contract, splitting a scanned batch into per-customer files, dropping a blank page or rotating a sideways scan — these page operations are bread-and-butter back-office work, yet awkward to do well in PHP without reaching for a command-line tool.</p>
+            <p class="muted">rust-pdf parses each document into a flat, editable page list, so merge, extractPages, reorderPages, rotatePage and delete are simple list operations. On merge it renumbers every object from the other file and deep-remaps its references, then rebuilds a clean page tree at save, so the output passes qpdf and mutool.</p>
+            <p class="muted">Loaded through Composer autoload and bridged by ext-ffi, the whole thing runs inside the PHP-FPM request or a worker — no pdftk or qpdf executable to provision, and no temp-file shuffling. Because the parser reads classic and cross-reference streams, object streams and encrypted input, it copes with real uploads, not just files it wrote itself.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Merge PDFs in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Add the package with Composer, then call the same idiomatic API every binding shares. The page-manipulation snippet below is real PHP from the reference docs.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -213,8 +240,8 @@ $subset = $a-&gt;extractPages([0, 2]);    // pages 1 and 3
 $subset-&gt;save('subset.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in PHP. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Page manipulation is part of the free PHP tier — no license token required.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete manipulation API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -230,18 +257,18 @@ $subset-&gt;save('subset.pdf');</code></pre>
         <details><summary>Is merging free?</summary>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in PHP. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Can I merge uploaded PDFs inside a Laravel request without pdftk?</summary>
+          <p>Yes. <code>EditableDoc::loadFile</code> reads an uploaded file straight from storage, merge, extractPages and reorderPages run in-process, and save returns the bytes. There is no pdftk or qpdf binary to install on the server, and no temp-file shell-out from your controller — it all stays inside the PHP process.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Merge PDF Files in PHP</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Wire PDF assembly into your PHP back office</h2>
+        <p class="muted">One Rust core, the same page operations in every language. Merging, splitting and reordering stay free — you only license the corporate features such as signing and encryption.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -255,7 +282,7 @@ $subset-&gt;save('subset.pdf');</code></pre>
           <a href="/encrypt-pdf/php">Encryption in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
           <a href="/compress-pdf/php">Compression in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -268,8 +295,8 @@ $subset-&gt;save('subset.pdf');</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

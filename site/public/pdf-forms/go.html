@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create and Fill PDF Forms in Go | rust-pdf</title>
-  <meta name="description" content="Build interactive AcroForm fields from Go (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta name="description" content="Create and fill AcroForm PDFs in Go: text fields, checkboxes, radios and dropdowns. go get the module, bind POST data in an Echo or net/http handler, then flatten." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-forms/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-forms/go" />
   <meta property="og:title" content="Create and Fill PDF Forms in Go" />
-  <meta property="og:description" content="Build interactive AcroForm fields from Go (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta property="og:description" content="Create and fill AcroForm PDFs in Go: text fields, checkboxes, radios and dropdowns. go get the module, bind POST data in an Echo or net/http handler, then flatten." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create and Fill PDF Forms in Go" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create and Fill PDF Forms in Go" />
-  <meta name="twitter:description" content="Build interactive AcroForm fields from Go (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta name="twitter:description" content="Create and fill AcroForm PDFs in Go: text fields, checkboxes, radios and dropdowns. go get the module, bind POST data in an Echo or net/http handler, then flatten." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create and Fill PDF Forms in Go" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create and Fill PDF Forms in Go",
-      "description": "Build interactive AcroForm fields from Go (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and.",
+      "description": "Create and fill AcroForm PDFs in Go: text fields, checkboxes, radios and dropdowns. go get the module, bind POST data in an Echo or net/http handler, then flatten.",
       "url": "https://rustpdf.dev/pdf-forms/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-forms/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-forms/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "Can I fill a form from HTTP request data in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Yes. Bind the incoming POST body in an Echo or net/http handler, set each field by its name on the loaded form, then flatten so the submitted values become static content. The dotted field names map cleanly onto nested request structs, and a bad field name returns an error rather than panicking."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Forms &middot; Go</p>
         <h1>Create and fill <span class="grad">PDF forms</span> in Go</h1>
         <p class="lede sp-lede">Build interactive AcroForm fields from Go (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and flatten them later. No NeedAppearances hack required.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">rust-pdf generates a full AcroForm with appearance streams baked in, so fields render correctly everywhere without relying on the viewer. Names support dotted hierarchy for grouped fields, and an existing form can be filled programmatically and flattened into static content.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">Onboarding flows, applications and consent screens built in Go frequently end in a filled PDF, but AcroForm fields that render in one viewer and vanish in another — the dreaded NeedAppearances flag — are a classic source of support tickets that Go's ecosystem gives you no clean way to avoid.</p>
+            <p class="muted">rust-pdf bakes an appearance stream into every text field, checkbox, radio group and dropdown, so they display correctly everywhere without the NeedAppearances hack. Dotted names give you a hierarchy for grouped data, and an existing form can be filled by name and flattened into non-editable static content.</p>
+            <p class="muted">This fits an HTTP form flow naturally: bind a POST body in an Echo or net/http handler, set each field by its dotted name, and flatten before returning the PDF so the submitted values are locked in. Errors come back as values, so a typo in a field name is handled cleanly rather than crashing the request.</p>
           </div>
           <ul class="check-list">
             <li>Text fields, checkboxes, radio groups and dropdowns with generated appearance streams.</li>
@@ -217,7 +244,7 @@ _ = doc.Save("form.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Go. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -233,18 +260,18 @@ _ = doc.Save("form.pdf")</code></pre>
         <details><summary>Is form authoring free?</summary>
           <p>Yes. Creating, filling and flattening AcroForm fields is part of the free tier in Go.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>Can I fill a form from HTTP request data in Go?</summary>
+          <p>Yes. Bind the incoming POST body in an Echo or net/http handler, set each field by its name on the loaded form, then flatten so the submitted values become static content. The dotted field names map cleanly onto nested request structs, and a bad field name returns an error rather than panicking.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create and Fill PDF Forms in Go</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Bring interactive forms to your Go app</h2>
+        <p class="muted">One Rust core, the same form rendering in every language. Creating, filling and flattening AcroForms is free in Go — no license required.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -258,7 +285,7 @@ _ = doc.Save("form.pdf")</code></pre>
           <a href="/encrypt-pdf/go">Encryption in Go</a>
           <a href="/merge-pdf/go">Merging in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -271,8 +298,8 @@ _ = doc.Save("form.pdf")</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>
