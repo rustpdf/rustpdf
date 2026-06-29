@@ -839,6 +839,50 @@ impl Document {
             ));
         }
 
+        // Form fields and internal links must reference an existing page, and
+        // every rectangle must have positive area. Without these checks a field
+        // on a non-existent page would be created but attached to no page (an
+        // invisible orphan), and a degenerate rectangle would render an
+        // invisible/inert widget or link — both silent, surprising failures.
+        let npages = self.pages.len();
+        for f in &self.form_fields {
+            if f.page >= npages {
+                return Err(BuildError::Invalid(format!(
+                    "form field {:?} targets page index {} but the document has {} page(s)",
+                    f.name, f.page, npages
+                )));
+            }
+            for rect in f.rects() {
+                if !form::rect_is_valid(&rect) {
+                    return Err(BuildError::Invalid(format!(
+                        "form field {:?} has a degenerate rectangle {:?} \
+                         (need x1 > x0 and y1 > y0)",
+                        f.name, rect
+                    )));
+                }
+            }
+        }
+        for (i, page) in self.pages.iter().enumerate() {
+            for link in &page.links {
+                if !form::rect_is_valid(&link.rect) {
+                    return Err(BuildError::Invalid(format!(
+                        "link on page {} has a degenerate rectangle {:?} \
+                         (need x1 > x0 and y1 > y0)",
+                        i, link.rect
+                    )));
+                }
+                if let LinkTarget::Page { index, .. } = &link.target {
+                    if *index >= npages {
+                        return Err(BuildError::Invalid(format!(
+                            "internal link on page {} targets page index {} \
+                             but the document has {} page(s)",
+                            i, index, npages
+                        )));
+                    }
+                }
+            }
+        }
+
         // Step 0: resolve each page's items, laying out paragraphs (needs the
         // font metrics) into positioned text objects. Owning the result lets us
         // borrow `self.fonts` freely afterwards.

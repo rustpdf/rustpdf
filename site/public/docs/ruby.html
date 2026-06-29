@@ -360,6 +360,7 @@ doc.add_page
 doc.save("form.pdf")
 doc.close</code></pre></div>
       <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+      <div class="note"><b>Page index and rectangle are validated.</b> A field (or internal link) whose <code>page</code> does not exist, or whose rectangle is degenerate (<code>x1 &lt; x0</code> or zero area), is rejected when the document is serialized: <code>to_bytes</code>/<code>save</code> raise <code>RustPdf::Error</code> ("targets page index N…" / "degenerate rectangle…") instead of producing an invisible, never-appearing widget. Pass a 0-based page index that exists and a rectangle with <code>x1 &gt; x0</code> and <code>y1 &gt; y0</code>.</div>
 
       <!-- LINKS -->
       <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>

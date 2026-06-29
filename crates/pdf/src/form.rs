@@ -25,6 +25,26 @@ pub(crate) struct FormField {
     pub kind: FieldKind,
 }
 
+impl FormField {
+    /// Every rectangle this field draws (one for most kinds; one per button for
+    /// a radio group). Used to validate against degenerate geometry.
+    pub(crate) fn rects(&self) -> Vec<Rect> {
+        match &self.kind {
+            FieldKind::Text { rect, .. }
+            | FieldKind::Checkbox { rect, .. }
+            | FieldKind::Choice { rect, .. } => vec![*rect],
+            FieldKind::Radio { buttons, .. } => buttons.iter().map(|(r, _)| *r).collect(),
+        }
+    }
+}
+
+/// A rectangle is usable only if it has positive width and height; an inverted
+/// or zero-area rectangle renders nothing, so callers that pass one are almost
+/// certainly making a mistake.
+pub(crate) fn rect_is_valid(rect: &Rect) -> bool {
+    rect[2] > rect[0] && rect[3] > rect[1]
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum FieldKind {
     Text {

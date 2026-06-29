@@ -1393,6 +1393,17 @@ impl EditableDoc {
         if self.redacted {
             crate::require(license::Feature::Redaction)?;
         }
+        // A valid PDF must have at least one page; an empty /Pages tree is
+        // rejected by qpdf/mutool ("malformed page tree"). This also catches
+        // the case where a corrupt/truncated input parsed into zero pages —
+        // without this guard we would silently write an invalid file.
+        if self.page_order.is_empty() {
+            return Err(BuildError::Invalid(
+                "document has no pages; nothing to serialize (a corrupt or truncated \
+                 input may have parsed into zero pages)"
+                    .into(),
+            ));
+        }
         let mut objects = self.finalize();
         let mut encrypt_ref = None;
         let mut id = None;

@@ -116,6 +116,30 @@ fn empty_document_is_rejected() {
 }
 
 #[test]
+fn editable_with_no_pages_is_rejected() {
+    // Deleting every page (or extracting an empty selection) leaves an editable
+    // doc with zero pages; serializing it must error rather than write an
+    // invalid PDF (an empty /Pages tree that qpdf rejects).
+    let mut ed = EditableDoc::load(sample(3)).unwrap();
+    for _ in 0..ed.page_count() {
+        ed.delete_page(0);
+    }
+    assert_eq!(ed.page_count(), 0);
+    assert!(
+        matches!(ed.to_bytes(), Err(pdf::BuildError::Invalid(_))),
+        "delete-all-pages must reject serialization"
+    );
+
+    // Same for an extraction that selects nothing.
+    let empty = EditableDoc::load(sample(2)).unwrap().extract_pages(&[]);
+    assert_eq!(empty.page_count(), 0);
+    assert!(
+        matches!(empty.to_bytes(), Err(pdf::BuildError::Invalid(_))),
+        "extract_pages([]) must reject serialization"
+    );
+}
+
+#[test]
 fn text_extraction_matches_content() {
     let pdf = sample(2);
     let text = pdf::extract_text(&pdf).unwrap();

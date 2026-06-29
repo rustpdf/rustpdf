@@ -123,6 +123,10 @@ fn verify_one(
 ) -> SignatureReport {
     let field_name = find_field_name(reader, sig_num);
     let covers_whole_document = byte_range[0] == 0 && byte_range[2] + byte_range[3] == pdf.len();
+    // An RFC 3161 document timestamp (`/DocTimeStamp`, PAdES-B-LTA) commits to the
+    // covered bytes through the TSTInfo `messageImprint`, not the CMS
+    // `messageDigest` attribute — its digest must be checked there instead.
+    let is_timestamp = sub_filter.eq_ignore_ascii_case("ETSI.RFC3161");
 
     // The bytes the signature covers (the two ByteRange segments concatenated).
     let signed_bytes = covered_bytes(pdf, byte_range);
@@ -147,10 +151,20 @@ fn verify_one(
     let cert = signer_cert(&signed);
     report.signer = cert.as_ref().map(|c| c.tbs_certificate.subject.to_string());
 
-    // messageDigest signed attribute == digest of covered bytes.
-    report.digest_valid = message_digest_attr(signer_info)
-        .map(|md| md.as_slice() == computed_digest.as_slice())
-        .unwrap_or(false);
+    // The digest the signature commits to must equal the digest of the covered
+    // bytes. For an ordinary CMS signature that lives in the `messageDigest`
+    // signed attribute; for an RFC 3161 timestamp it lives in the TSTInfo
+    // `messageImprint` (the CMS `messageDigest` there covers the TSTInfo, not the
+    // ByteRange), so look in the right place per signature type.
+    report.digest_valid = if is_timestamp {
+        timestamp_imprint(&signed)
+            .map(|imprint| imprint.as_slice() == computed_digest.as_slice())
+            .unwrap_or(false)
+    } else {
+        message_digest_attr(signer_info)
+            .map(|md| md.as_slice() == computed_digest.as_slice())
+            .unwrap_or(false)
+    };
 
     // Cryptographic check: RSA verify over the signed attributes (re-encoded as
     // a SET OF), using the signer certificate's RSA public key.
@@ -204,6 +218,61 @@ fn message_digest_attr(si: &SignerInfo) -> Option<Vec<u8>> {
         }
     }
     None
+}
+
+/// The `messageImprint.hashedMessage` from an RFC 3161 timestamp token's
+/// encapsulated `TSTInfo` — the digest the timestamp commits to (i.e. the digest
+/// of the covered `/ByteRange` bytes). Returns `None` if the eContent is absent
+/// or not a well-formed `TSTInfo`.
+///
+/// `TSTInfo ::= SEQUENCE { version INTEGER, policy OID, messageImprint, ... }`
+/// `MessageImprint ::= SEQUENCE { hashAlgorithm AlgorithmIdentifier, hashedMessage OCTET STRING }`
+fn timestamp_imprint(signed: &SignedData) -> Option<Vec<u8>> {
+    use der::asn1::OctetString;
+    // eContent is `[0] EXPLICIT OCTET STRING` wrapping the TSTInfo DER.
+    let econtent = signed.encap_content_info.econtent.as_ref()?;
+    let octets = OctetString::from_der(&econtent.to_der().ok()?).ok()?;
+    let tst = octets.as_bytes();
+
+    let (tag, body, _) = read_tlv(tst)?; // outer TSTInfo SEQUENCE
+    if tag != 0x30 {
+        return None;
+    }
+    let (_, _, rest) = read_tlv(body)?; // version INTEGER
+    let (_, _, rest) = read_tlv(rest)?; // policy OID
+    let (mi_tag, mi, _) = read_tlv(rest)?; // messageImprint SEQUENCE
+    if mi_tag != 0x30 {
+        return None;
+    }
+    let (_, _, after_alg) = read_tlv(mi)?; // hashAlgorithm SEQUENCE
+    let (hm_tag, hashed, _) = read_tlv(after_alg)?; // hashedMessage OCTET STRING
+    if hm_tag != 0x04 {
+        return None;
+    }
+    Some(hashed.to_vec())
+}
+
+/// Read one DER TLV: returns `(tag, value, rest)`. Supports short and long-form
+/// definite lengths (≤ 4 length octets); returns `None` on malformed input.
+fn read_tlv(b: &[u8]) -> Option<(u8, &[u8], &[u8])> {
+    let tag = *b.first()?;
+    let len_byte = *b.get(1)?;
+    let (len, header) = if len_byte < 0x80 {
+        (len_byte as usize, 2)
+    } else {
+        let n = (len_byte & 0x7f) as usize;
+        if n == 0 || n > 4 {
+            return None;
+        }
+        let mut len = 0usize;
+        for i in 0..n {
+            len = (len << 8) | *b.get(2 + i)? as usize;
+        }
+        (len, 2 + n)
+    };
+    let end = header.checked_add(len)?;
+    let value = b.get(header..end)?;
+    Some((tag, value, &b[end..]))
 }
 
 /// RSA-verify the signed attributes (re-encoded as a SET OF) for `cert`.

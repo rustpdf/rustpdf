@@ -368,6 +368,7 @@ doc.RadioGroup("billing", 0, new[]
 }, selected: 1);
 doc.Save("form.pdf");</code></pre></div>
       <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+      <div class="note"><b>Page index and rectangle are validated.</b> A field (or internal link) whose <code>page</code> does not exist, or whose rectangle is degenerate (<code>x1 &lt; x0</code> or zero area), is rejected when the document is serialized: <code>ToBytes()</code>/<code>Save()</code> throw <code>PdfException</code> ("targets page index N…" / "degenerate rectangle…") instead of producing an invisible, never-appearing widget. Pass a 0-based page index that exists and a rectangle with <code>x1 &gt; x0</code> and <code>y1 &gt; y0</code>.</div>
 
       <!-- LINKS -->
       <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
@@ -420,6 +421,7 @@ using (var ed = EditableDoc.LoadFile("in.pdf"))
 // encrypted input:
 using var sec = EditableDoc.LoadFile("secured.pdf", "user-or-owner-pw");
 sec.Save("plain.pdf");</code></pre></div>
+      <div class="note"><b>Corrupt or truncated input.</b> A badly damaged file (e.g. truncated mid-stream) may still <i>load</i> via the recovery scan but recover <b>zero pages</b> — <code>Load</code> does not throw in that case. Serializing a zero-page document throws <code>PdfException</code> ("document has no pages") rather than writing an invalid file, but you should check <code>PageCount &gt; 0</code> after loading untrusted input before relying on it.</div>
 
       <!-- ED PAGES -->
       <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
@@ -538,6 +540,7 @@ ed.Encrypt(user: "", owner: "owner-secret",
            method: Encryption.Aes256, readOnly: true);
 ed.Save("secured.pdf");          // throws PdfException without an Encryption license</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+      <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (verified against qpdf for all three ciphers). The <code>readOnly</code> permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat <code>readOnly</code> as a hint to well-behaved viewers, not as an access control.</div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>

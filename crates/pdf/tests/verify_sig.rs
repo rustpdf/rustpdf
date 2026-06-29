@@ -26,6 +26,12 @@ fn signer() -> Signer {
     Signer::from_pkcs8_der(&key, &cert).unwrap()
 }
 
+fn tsa() -> Signer {
+    let key = std::fs::read(format!("{FX}/tsa_key.pk8")).unwrap();
+    let cert = std::fs::read(format!("{FX}/tsa_cert.der")).unwrap();
+    Signer::from_pkcs8_der(&key, &cert).unwrap()
+}
+
 fn signed_pdf() -> Vec<u8> {
     lic();
     let mut doc = Document::new();
@@ -93,4 +99,42 @@ fn pades_signature_verifies() {
         reports[0]
     );
     assert_eq!(reports[0].sub_filter, "ETSI.CAdES.detached");
+}
+
+#[test]
+fn document_timestamp_verifies() {
+    // Regression: a DocTimeStamp (RFC 3161) commits to the covered bytes via the
+    // TSTInfo messageImprint, not the CMS messageDigest. verify_signatures must
+    // check the imprint, otherwise it falsely reports the timestamp as invalid.
+    let signed = signed_pdf();
+    let stamped = pdf::timestamp(&signed, &tsa(), None).unwrap();
+    let reports = verify_signatures(&stamped).unwrap();
+
+    let ts = reports
+        .iter()
+        .find(|r| r.sub_filter == "ETSI.RFC3161")
+        .expect("a DocTimeStamp report");
+    assert!(
+        ts.signature_valid,
+        "TSA CMS signature should verify: {ts:?}"
+    );
+    assert!(
+        ts.digest_valid,
+        "timestamp messageImprint must match the ByteRange digest: {ts:?}"
+    );
+    assert!(
+        ts.covers_whole_document,
+        "the timestamp covers the whole file"
+    );
+    assert!(
+        ts.is_valid(),
+        "the document timestamp should be valid: {ts:?}"
+    );
+
+    // The original signature is still present and intact under the timestamp.
+    let sig = reports
+        .iter()
+        .find(|r| r.sub_filter != "ETSI.RFC3161")
+        .expect("the original signature report");
+    assert!(sig.digest_valid && sig.signature_valid, "{sig:?}");
 }
