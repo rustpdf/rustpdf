@@ -334,6 +334,7 @@ let chart = try doc.addImage(path: "chart.png")
 try doc.figure(chart, x: 72, y: 520, width: 300, height: 150, alt: "Revenue grew 18% year over year")
 try doc.save(to: "accessible.pdf")</code></pre></div>
       <div class="note"><b>Figures need a tagged document.</b> <code>figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
+      <div class="note"><b><code>tagged()</code> alone is not PDF/UA-1 conformant.</b> By itself it builds the structure tree but does <i>not</i> emit the XMP <code>/Metadata</code> stream that PDF/UA-1 requires, so veraPDF fails clause 7.1-8 ("Catalog … shall contain the Metadata key"). For output that validates as PDF/UA-1, pair it with <code>pdfa(.a2a)</code>: <code>pdfa(.a2a).tagged()</code> emits the XMP and passes both <code>verapdf -f 2a</code> and <code>verapdf -f ua1</code>.</div>
 
       <!-- ATTACHMENTS -->
       <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>

@@ -420,10 +420,16 @@ fn hash_2b(password: &[u8], salt: &[u8], udata: &[u8]) -> Vec<u8> {
             1 => Sha384::digest(&e).to_vec(),
             _ => Sha512::digest(&e).to_vec(),
         };
-        if round >= 63 && (*e.last().unwrap_or(&0) as i32) <= round - 32 {
+        // ISO 32000-2 Algorithm 2.B numbers rounds 1-based: after at least 64
+        // rounds, stop once the last byte of E is <= (round number) - 32.
+        // Increment before the test so `round` is 1-based; testing with a
+        // 0-based counter made the threshold one too low, so a few percent of
+        // keys diverged from qpdf/pdfium and yielded files no other reader could
+        // open (the same buggy hash on both sides only stayed self-consistent).
+        round += 1;
+        if round >= 64 && (*e.last().unwrap_or(&0) as i32) <= round - 32 {
             break;
         }
-        round += 1;
     }
     k.truncate(32);
     k
@@ -518,5 +524,29 @@ mod tests {
         let k = b"0123456789abcdef";
         let ct = rc4(k, b"secret");
         assert_eq!(rc4(k, &ct), b"secret");
+    }
+
+    /// Known-answer test for ISO 32000-2 Algorithm 2.B (the R6/AES-256 key
+    /// derivation). The expected value was computed by an independent
+    /// reference implementation of the spec (1-based round counting, matching
+    /// qpdf/pdfium). These inputs deliberately drive the loop past 64 rounds so
+    /// the stopping condition is exercised: the previous 0-based counter stopped
+    /// one round too early here and produced `0883e398…`, a key no other PDF
+    /// reader could reproduce — the off-by-one that made ~a few percent of
+    /// AES-256 files unreadable outside rust-pdf.
+    #[test]
+    fn hash_2b_matches_spec_at_round_boundary() {
+        let salt = [0u8, 0, 0, 0, 0, 0, 0, 2];
+        let got = hash_2b(b"pw", &salt, &[]);
+        let expected =
+            hex_to_bytes("edb92bcc700f47c957b9c76684a73c4dd6f6df4a33e474467d16977516f637ec");
+        assert_eq!(got, expected, "Algorithm 2.B diverged from the spec");
+    }
+
+    fn hex_to_bytes(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
     }
 }

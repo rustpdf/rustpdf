@@ -398,10 +398,14 @@ fn hash_2b(password: &[u8], salt: &[u8], udata: &[u8]) -> Vec<u8> {
             1 => Sha384::digest(&e).to_vec(),
             _ => Sha512::digest(&e).to_vec(),
         };
-        if round >= 63 && (*e.last().unwrap_or(&0) as i32) <= round - 32 {
+        // ISO 32000-2 Algorithm 2.B numbers rounds 1-based: after at least 64
+        // rounds, stop once the last byte of E is <= (round number) - 32.
+        // Increment before the test so `round` is 1-based; a 0-based counter
+        // made the threshold one too low and diverged from qpdf/pdfium.
+        round += 1;
+        if round >= 64 && (*e.last().unwrap_or(&0) as i32) <= round - 32 {
             break;
         }
-        round += 1;
     }
     k.truncate(32);
     k
@@ -450,5 +454,23 @@ mod tests {
             ct,
             vec![0xBB, 0xF3, 0x16, 0xE8, 0xD9, 0x40, 0xAF, 0x0A, 0xD3]
         );
+    }
+
+    /// Known-answer test for Algorithm 2.B, mirroring the encryptor's copy in
+    /// `pdf::encrypt`. The reader's hash must agree with the spec (1-based round
+    /// counting, as qpdf/pdfium) so it authenticates files written by other
+    /// conformant producers, not just our own output. The inputs run past 64
+    /// rounds; the old 0-based counter stopped one round early and yielded
+    /// `0883e398…`. Expected value from an independent spec implementation.
+    #[test]
+    fn hash_2b_matches_spec_at_round_boundary() {
+        let salt = [0u8, 0, 0, 0, 0, 0, 0, 2];
+        let got = hash_2b(b"pw", &salt, &[]);
+        let hex = "edb92bcc700f47c957b9c76684a73c4dd6f6df4a33e474467d16977516f637ec";
+        let expected: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+            .collect();
+        assert_eq!(got, expected, "Algorithm 2.B diverged from the spec");
     }
 }
