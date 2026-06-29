@@ -323,6 +323,7 @@ doc.save("text.pdf");
 doc.close();</code></pre></div>
       <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped — they render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
       <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>\0</code>) character — it truncates the string at the FFI boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
+      <div class="note"><b>Font ids belong to the document that registered them.</b> The id returned by <code>addFontFile</code>/<code>addFont</code> is just an integer index into <i>that</i> <code>Document</code>. An id that was never registered, an id from a different document, or a negative number is not caught at the <code>showText</code> call. It is rejected only when you serialize (<code>toBytes()</code>/<code>save()</code>), throwing <code>PdfError</code> (and currently logging a Rust panic line to stderr). Use each id only with the document it came from.</div>
 
       <!-- PARAGRAPHS -->
       <h2 id="paragraphs">Paragraphs</h2>
@@ -373,7 +374,7 @@ doc.addPage();
 doc.showText(f, 20, 72, 760, "Archival report");
 doc.save("report_pdfa.pdf");     // throws PdfError without a license granting PDF/A
 doc.close();</code></pre></div>
-      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>setInfo({ title: … })</code>.</div>
+      <div class="note">A document title is recommended for valid PDF/A metadata. It is <b>mandatory for PDF/UA-1</b>: a tagged <code>pdfa(PdfaLevel.A2a)</code> document without a title still passes <code>verapdf -f 2a</code> but <b>fails</b> <code>verapdf -f ua1</code> (clause 7.1, missing <code>dc:title</code>), and the library does not warn. Always call <code>setInfo({ title: … })</code> for accessible output.</div>
 
       <!-- TAGGED -->
       <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
@@ -514,6 +515,7 @@ ed.close();
 const sec = EditableDoc.loadFile("secured.pdf", "user-or-owner-pw");
 sec.save("plain.pdf");
 sec.close();</code></pre></div>
+      <div class="note"><b><code>loadFile</code> reads the file in JS first.</b> A non-existent path throws a plain Node <code>ENOENT</code> error, not a <code>PdfError</code>, so an <code>instanceof PdfError</code> handler will not catch it. Only parsing failures of an existing file surface as <code>PdfError</code>.</div>
       <div class="note"><b>Corrupt or truncated input.</b> A badly damaged file (truncated mid-stream, for example) may still load via the recovery scan but recover <b>zero pages</b>, and <code>load</code> does not throw in that case. Serializing a zero-page document throws <code>PdfError</code> ("document has no pages") instead of writing an invalid file, but check <code>pageCount &gt; 0</code> after loading untrusted input before relying on it.</div>
 
       <!-- ED PAGES -->
@@ -584,7 +586,7 @@ ed.close();</code></pre></div>
 
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
-      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". Characters outside Latin-1 (Cyrillic, Greek, CJK, emoji) are not dropped: they render as visible mojibake, so do not pass them here.</p>
       <div class="api"><code>watermarkText(text, { size?, color?, opacity?, rotationDeg? }?)</code></div>
       <div class="api"><code>watermarkImageFile(path, width, height, opacity?)</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("report.pdf");
