@@ -587,6 +587,7 @@ $ed-&gt;watermarkText('CONFIDENTIAL', opacity: 0.25, rotationDeg: 45.0)
 $ed-&gt;redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]]);
 $ed-&gt;save('redacted.pdf');     // throws PdfException without a redaction license</code></pre></div>
       <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf::extractText</code> on the output no longer returns it. <code>redact</code> returns <code>false</code> if the page index does not exist.</div>
+      <div class="note"><b><code>redact()</code> is not chainable.</b> Unlike the other <code>EditableDoc</code> mutators (which return <code>$this</code>), <code>redact</code> returns a <code>bool</code> for whether the page existed. Call it as its own statement: <code>$ed-&gt;redact(...); $ed-&gt;save(...);</code>. Writing <code>$ed-&gt;redact(...)-&gt;save(...)</code> calls <code>save()</code> on a boolean and raises a PHP <code>Error</code>.</div>
 
       <!-- ED PDFA -->
       <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>

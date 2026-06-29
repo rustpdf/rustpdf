@@ -94,6 +94,11 @@ func main() {
 	_ = ed.Encrypt(rustpdf.AES256, "", "owner", false)
 	_ = ed.Save("secured.pdf")
 
+	// Open a password-protected PDF (user or owner password).
+	enc, _ := os.ReadFile("secured.pdf")
+	locked, _ := rustpdf.LoadWithPassword(enc, "owner")
+	defer locked.Close()
+
 	signed, _ := rustpdf.Sign(data, keyDER, certDER, rustpdf.SignOptions{PAdES: true})
 	_ = signed
 }

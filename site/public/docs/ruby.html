@@ -186,7 +186,7 @@
 
       <!-- INSTALL -->
       <h2 id="install">Installation</h2>
-      <p>Install from RubyGems. The native library (<code>libpdf_ffi</code>) ships inside <b>platform-specific gems</b> (<code>arm64-darwin</code>, <code>x86_64-linux</code>, <code>aarch64-linux</code>, <code>x64-mingw-ucrt</code>): RubyGems downloads only the gem matching your OS/architecture, so there's nothing to compile.</p>
+      <p>Install from RubyGems. The native library (<code>libpdf_ffi</code>) ships inside <b>platform-specific gems</b>. macOS has <code>arm64-darwin</code>, <code>x86_64-darwin</code> and a fat <code>universal-darwin</code> (x86_64 + arm64); Linux has <code>x86_64-linux</code> and <code>aarch64-linux</code>; Windows has <code>x64-mingw-ucrt</code>. RubyGems downloads only the gem matching your OS and architecture, so there's nothing to compile.</p>
       <div class="code has-label"><span class="lbl">shell</span><pre><code>gem install rustpdf
 # or in a Gemfile:
 #   gem "rustpdf"</code></pre></div>
@@ -655,6 +655,7 @@ puts RustPdf.extract_text(data)
 
 n = RustPdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
 puts "wrote #{n} image(s)"</code></pre></div>
+      <div class="note"><b>Extracted text is best-effort, not byte-faithful.</b> Two things to expect when comparing the output against your source string. (1) <b>Unicode normalization can differ.</b> A character you wrote pre-composed (e.g. <code>"à"</code>, U+00E0) may come back de-composed (<code>"a"</code> + U+0300), so the result can mix NFC and NFD forms. Normalize both sides (<code>str.unicode_normalize</code>) before any byte-for-byte comparison. (2) <b>Layout is inferred, not exact.</b> Spaces and line breaks are reconstructed from glyph positions, so independently positioned runs may be joined or split differently than you laid them out. Treat <code>extract_text</code> as a search/indexing aid (good for RAG), not as a lossless inverse of authoring.</div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -715,6 +716,7 @@ File.binwrite("page1.png", RustPdf.render_page_to_png(data, 0, 150.0))</code></p
       <!-- ERRORS -->
       <h2 id="errors">Error handling</h2>
       <p>Every failing native call raises <code>RustPdf::Error</code> (a <code>StandardError</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation&rsquo;s own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same &ldquo;requires a valid license&rdquo; message.</p>
+      <div class="note"><b>Always branch on the message, not on <code>status&nbsp;==&nbsp;0</code>.</b> A few raising paths (notably a failed <code>EditableDoc.load</code> of an unparseable or wrong-password file, and using a handle after <code>close</code>) report <code>status&nbsp;0</code>, the same numeric code as success. The exception was still raised and is still a genuine failure; <code>0</code> here only means "no specific <code>PdfStatus</code> was attached". Decide success or failure by whether <code>RustPdf::Error</code> was raised (rescue it), and use <code>e.message</code> for the human-readable reason. Do not treat <code>status&nbsp;0</code> as "ok".</div>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>begin
   doc = RustPdf::Document.new
   doc.pdfa.info(title: "x")
