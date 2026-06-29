@@ -185,7 +185,8 @@ impl LoadedFont {
         let mut char_procs: HashMap<u8, Vec<u8>> = HashMap::new();
         for (code, name) in names.iter().enumerate() {
             if let Some(name) = name {
-                if let Some(Object::Stream(s)) = char_procs_dict.get(name).map(|o| reader.resolve(o))
+                if let Some(Object::Stream(s)) =
+                    char_procs_dict.get(name).map(|o| reader.resolve(o))
                 {
                     if let Ok(data) = reader.stream_data(s) {
                         char_procs.insert(code as u8, data);

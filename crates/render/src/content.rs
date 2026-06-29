@@ -392,7 +392,15 @@ impl<'a> Renderer<'a> {
             }
             b"Tj" => {
                 if let Some(Object::String(s)) = ops.first() {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active, resources, depth);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"'" => {
@@ -401,7 +409,15 @@ impl<'a> Renderer<'a> {
                     .pre_concat(Transform::from_translate(0.0, -gs.leading));
                 ts.tm = ts.tlm;
                 if let Some(Object::String(s)) = ops.first() {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active, resources, depth);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"\"" => {
@@ -412,12 +428,28 @@ impl<'a> Renderer<'a> {
                     .pre_concat(Transform::from_translate(0.0, -gs.leading));
                 ts.tm = ts.tlm;
                 if let Some(Object::String(s)) = ops.get(2) {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active, resources, depth);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"TJ" => {
                 if let Some(Object::Array(arr)) = ops.first() {
-                    self.show_text_array(arr, gs, ts, text_clip, text_clip_active, resources, depth);
+                    self.show_text_array(
+                        arr,
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"d0" | b"d1" => {}

@@ -109,13 +109,33 @@ fn renders_type3_glyph() {
     pdf.extend_from_slice(b"%PDF-1.7\n");
     let mut offs = [0usize; 9];
     t3_obj(&mut pdf, &mut offs, 1, "<< /Type /Catalog /Pages 2 0 R >>");
-    t3_obj(&mut pdf, &mut offs, 2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+    t3_obj(
+        &mut pdf,
+        &mut offs,
+        2,
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    );
     t3_obj(&mut pdf, &mut offs, 3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 800] /Resources << /Font << /F0 4 0 R >> >> /Contents 5 0 R >>");
     t3_obj(&mut pdf, &mut offs, 4, "<< /Type /Font /Subtype /Type3 /FontBBox [0 0 100 100] /FontMatrix [0.01 0 0 0.01 0 0] /CharProcs 6 0 R /Encoding 7 0 R /FirstChar 65 /LastChar 65 /Widths [100] >>");
-    t3_stream(&mut pdf, &mut offs, 5, b"BT /F0 10 Tf 50 700 Td (A) Tj ET\n");
+    t3_stream(
+        &mut pdf,
+        &mut offs,
+        5,
+        b"BT /F0 10 Tf 50 700 Td (A) Tj ET\n",
+    );
     t3_obj(&mut pdf, &mut offs, 6, "<< /sq 8 0 R >>");
-    t3_obj(&mut pdf, &mut offs, 7, "<< /Type /Encoding /Differences [65 /sq] >>");
-    t3_stream(&mut pdf, &mut offs, 8, b"100 0 0 0 100 100 d1\n0 0 100 100 re f\n");
+    t3_obj(
+        &mut pdf,
+        &mut offs,
+        7,
+        "<< /Type /Encoding /Differences [65 /sq] >>",
+    );
+    t3_stream(
+        &mut pdf,
+        &mut offs,
+        8,
+        b"100 0 0 0 100 100 d1\n0 0 100 100 re f\n",
+    );
 
     let xref_off = pdf.len();
     pdf.extend_from_slice(b"xref\n0 9\n0000000000 65535 f \n");
