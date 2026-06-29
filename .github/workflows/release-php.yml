@@ -15,11 +15,11 @@ name: release-php
 # run manually (build only — the release upload is gated on the tag).
 
 on:
-  # DISABLED until PHP publishing infra is ready: Packagist webhook on the
-  # rustpdf-php mirror + the MIRROR_RELEASE_TOKEN secret (PAT, contents:write).
-  # See docs/RELEASING.md. Re-enable by uncommenting the tag trigger.
-  # push:
-  #   tags: ["php-v*"]
+  # Enabled 2026-06-29: MIRROR_RELEASE_TOKEN (PAT, contents:write on the
+  # rustpdf-php mirror) is configured. The tag upload of the per-platform
+  # cdylibs to the mirror's GH Release is gated on this. See docs/RELEASING.md.
+  push:
+    tags: ["php-v*"]
   workflow_dispatch:
 
 permissions:
