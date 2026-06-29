@@ -31,7 +31,7 @@ final class Installer
      * the attached asset names embed it. Kept in lockstep with the package
      * version in composer.json and bumped by the release pipeline.
      */
-    public const VERSION = '0.4.2';
+    public const VERSION = '0.4.3';
 
     /**
      * Public GitHub repo that hosts the per-platform release assets. This is the

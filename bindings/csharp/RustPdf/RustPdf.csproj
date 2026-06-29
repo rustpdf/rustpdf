@@ -9,7 +9,7 @@
 
     <!-- NuGet package metadata -->
     <PackageId>RustPdf</PackageId>
-    <Version>0.4.2</Version>
+    <Version>0.4.3</Version>
     <Authors>rust-pdf</Authors>
     <Company>rust-pdf</Company>
     <Description>Idiomatic .NET binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) over its C ABI. Bundles the native libpdf_ffi for osx-arm64, linux-x64, linux-arm64 and win-x64 — no native build required.</Description>

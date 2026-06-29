@@ -1,6 +1,6 @@
 {
   "name": "@rustpdf/win32-x64-msvc",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Prebuilt rust-pdf native library (pdf_ffi.dll) for Windows x64. Installed automatically as an optional dependency of `rustpdf`.",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://rustpdf.dev",
