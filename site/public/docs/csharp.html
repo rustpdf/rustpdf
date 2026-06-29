@@ -182,7 +182,7 @@
       <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
       <p class="docs-lead">The <code>RustPdf</code> NuGet package wraps the rust-pdf C core with idiomatic, chainable classes over source-generated P/Invoke (<code>LibraryImport</code>). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library ships inside the package for every runtime — no native build.</p>
 
-      <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both implement <code>IDisposable</code> and hold a native handle, so wrap them in <code>using</code> to free it promptly.</div>
+      <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both implement <code>IDisposable</code> and hold a native handle, so wrap them in <code>using</code> to free it promptly. Using a <code>Document</code> or <code>EditableDoc</code> after it has been disposed throws <code>ObjectDisposedException</code> (never a crash); calling <code>Dispose()</code> more than once is safe.</div>
 
       <!-- INSTALL -->
       <h2 id="install">Installation</h2>
