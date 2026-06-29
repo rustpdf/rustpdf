@@ -330,7 +330,7 @@ F := Doc.AddFontFile('Roboto-Regular.ttf');
 Doc.AddPage;
 Doc.ShowText(F, 20, 72, 760, 'Archival report');
 Doc.SaveToFile('report_pdfa.pdf');   // raises ERustPdf without a license granting PDF/A</code></pre></div>
-      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>SetInfo</code> with a non-empty title.</div>
+      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>SetInfo</code> with a non-empty title.</div>
 
       <!-- TAGGED -->
       <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
@@ -484,7 +484,7 @@ try
 finally
   A.Free; B.Free;
 end;</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -644,7 +644,7 @@ Lta := Pdf.Timestamp(Lt, TsaKeyDer, TsaCertDer);</code></pre></div>
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
-      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned.</p>
+      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
       <div class="api"><code>Pdf.VerifySignaturesJson(PdfBytes: TBytes): UTF8String</code></div>
       <p>Each array entry is an object with <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. <code>field_name</code> and <code>signer</code> may be empty when absent.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Json: UTF8String;

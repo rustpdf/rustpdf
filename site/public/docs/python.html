@@ -299,7 +299,7 @@ with Document() as doc:
     doc.add_page()
     doc.show_text(f, 20, 72, 760, "Archival report")
     doc.save("report_pdfa.pdf")     # raises PdfError without a license granting PDF/A</code></pre></div>
-      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>set_info(title=…)</code>.</div>
+      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>set_info(title=…)</code>.</div>
 
       <!-- TAGGED -->
       <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
@@ -450,7 +450,7 @@ with EditableDoc.load_file("secured.pdf", password="user-or-owner-pw") as ed:
 with EditableDoc.load_file("merged.pdf") as doc:
     with doc.extract_pages([0, 2]) as subset:   # pages 1 and 3
         subset.save("subset.pdf")</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorder_pages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorder_pages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -592,7 +592,7 @@ open("contract.lta.pdf", "wb").write(lta)</code></pre></div>
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>rustpdf.verify_signatures(data: bytes) → list[dict]</code></div>
-      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Note that <code>field_name</code> and <code>signer</code> may be <code>None</code> when absent from the signature. An empty list means the document is unsigned.</p>
+      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Note that <code>field_name</code> and <code>signer</code> may be <code>None</code> when absent from the signature. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("contract.signed.pdf", "rb").read()
 for sig in rustpdf.verify_signatures(data):
     print(sig["signer"], "valid:", sig["is_valid"],

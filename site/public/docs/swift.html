@@ -318,7 +318,7 @@ let f = try doc.addFont(path: "Roboto-Regular.ttf")
 try doc.addPage()
 try doc.showText(font: f, size: 20, x: 72, y: 760, "Archival report")
 try doc.save(to: "report_pdfa.pdf")   // throws without a license granting PDF/A</code></pre></div>
-      <div class="note">PDF/A requires the title to be set for valid metadata: pass a non-empty <code>title</code> in <code>DocumentInfo</code>.</div>
+      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: pass a non-empty <code>title</code> in <code>DocumentInfo</code>.</div>
 
       <!-- TAGGED -->
       <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
@@ -451,7 +451,7 @@ try a.merge(b)                  // a now has a's pages followed by b's
 try a.rotatePage(0, degrees: 90)
 try a.reorderPages([2, 1, 0])
 try a.save(to: "merged.pdf")</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -579,7 +579,7 @@ let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert)</co
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf.verifySignatures(_ data: [UInt8]) -&gt; [SignatureReport]</code></div>
-      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. Note that <code>fieldName</code> and <code>signer</code> are optional (<code>String?</code>) and <code>nil</code> when absent. An empty array means the document is unsigned.</p>
+      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. Note that <code>fieldName</code> and <code>signer</code> are optional (<code>String?</code>) and <code>nil</code> when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("contract.signed.pdf")
 for sig in try Pdf.verifySignatures(data) {
     print(sig.signer ?? "?", "valid:", sig.isValid,
