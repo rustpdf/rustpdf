@@ -340,7 +340,9 @@
           <a class="lang reveal" href="/php"><span>PHP</span><small>ext-ffi</small></a>
           <a class="lang reveal" href="/ruby"><span>Ruby</span><small>Fiddle</small></a>
           <a class="lang reveal" href="/nodejs"><span>Node / TS</span><small>Koffi</small></a>
+          <!-- Java hidden until published on Maven Central (no account yet); re-enable when release-java publishes.
           <a class="lang reveal" href="/java"><span>Java</span><small>JNA</small></a>
+          -->
           <a class="lang reveal" href="/delphi"><span>Delphi / FPC</span><small>pure FFI</small></a>
           <a class="lang reveal" href="/swift"><span>Swift</span><small>SwiftPM</small></a>
         </div>
@@ -360,7 +362,9 @@
             <button class="tab" data-tab="php">PHP</button>
             <button class="tab" data-tab="ruby">Ruby</button>
             <button class="tab" data-tab="node">Node</button>
+            <!-- Java hidden until published on Maven Central
             <button class="tab" data-tab="java">Java</button>
+            -->
             <button class="tab" data-tab="delphi">Delphi</button>
             <button class="tab" data-tab="swift">Swift</button>
             <button class="tab" data-tab="activate">Activate</button>
@@ -435,6 +439,7 @@ f = doc.add_font_file("Roboto-Regular.ttf")
 doc.add_page
    .show_text(f, 20, 72, 760, "Title", heading_level: 1)
 data = doc.to_bytes               # archival-grade PDF</code></pre>
+<!-- Java tab hidden until published on Maven Central
 <pre class="tab-pane" data-pane="java"><code>// Maven: dev.rustpdf:rustpdf:0.4.0
 try (Document doc = new Document()) {
     doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Report");
@@ -442,6 +447,7 @@ try (Document doc = new Document()) {
     doc.addPage().showText(f, 20, 72, 760, "Title", 1);
     byte[] bytes = doc.toBytes();  // archival-grade PDF
 }</code></pre>
+-->
 <pre class="tab-pane" data-pane="delphi"><code>// add RustPdf.pas to your unit search path (rustpdf.dev/docs/delphi)
 Doc := TPdfDocument.Create;
 try
