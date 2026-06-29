@@ -507,7 +507,7 @@ try a.save(to: "merged.pdf")</code></pre></div>
         <tr><td><code>setInfo(key:value:)</code></td><td>Set one info entry (e.g. <code>"Title"</code>).</td></tr>
         <tr><td><code>getInfo(key:) -&gt; String</code></td><td>Read an info entry.</td></tr>
         <tr><td><code>setXMP(_:)</code></td><td>Replace the XMP metadata stream.</td></tr>
-        <tr><td><code>overlayPage(_:content:)</code></td><td>Overlay a content-stream fragment onto a page (stamps/watermarks).</td></tr>
+        <tr><td><code>overlayPage(_:content:)</code></td><td>Overlay a content-stream fragment (passed as raw <code>[UInt8]</code> bytes, e.g. <code>Array("q … Q".utf8)</code>) onto a page (stamps/watermarks).</td></tr>
         <tr><td><code>fillTextField(name:value:) -&gt; Bool</code></td><td>Fill an AcroForm text field; returns whether it was found.</td></tr>
       </table>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("form.pdf"))
@@ -620,7 +620,8 @@ let signed = try Pdf.sign(pdf: pdf, keyDER: key, certDER: cert,
 let lt = try Pdf.addDss(pdf: signed, certs: [cert], crls: [crl])
 
 // B-LTA: add a document timestamp signed by a TSA key/cert
-let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert)</code></pre></div>
+let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert, date: Date())</code></pre></div>
+      <div class="note"><b>Pass an explicit <code>date</code>.</b> The core is deterministic, so there is no implicit “now”. If you omit <code>date</code> (or pass <code>nil</code>), the <code>/DocTimeStamp</code> is stamped with the Unix epoch (Dec&nbsp;31&nbsp;1969), which is meaningless for long-term validation. Supply the current <code>Date()</code> (or the intended timestamp time) so the B-LTA timestamp carries a real time.</div>
 
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>

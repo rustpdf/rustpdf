@@ -78,10 +78,11 @@ rustpdf-delphi ${VERSION}
 
 1. Add this folder to your Delphi/FPC unit search path and add  uses RustPdf;
 2. Deploy the native library for your platform next to your built executable:
-     lib/windows-x64/pdf_ffi.dll     -> beside your .exe (must match app bitness)
-     lib/macos-arm64/libpdf_ffi.dylib
+     lib/windows-x64/pdf_ffi.dll        -> beside your .exe (must match app bitness)
+     lib/macos-universal/libpdf_ffi.dylib   (single-arch builds: macos-arm64 / macos-x64)
      lib/linux-x64/libpdf_ffi.so
-   …or set the RUSTPDF_LIB environment variable to its full path.
+   The exact macOS folder name shipped in this archive is listed below under
+   "Bundled native libraries"; …or set RUSTPDF_LIB to the library's full path.
 3. Corporate features (PDF/A, signing, encryption, accessibility) need a license
    token: set RUSTPDF_LICENSE (or call Pdf.ActivateLicense). Basic output is free.
 

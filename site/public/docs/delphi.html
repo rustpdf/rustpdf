@@ -171,6 +171,7 @@
       <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle — free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
+      <div class="note"><b>Free each handle exactly once.</b> Like any Object Pascal object, a handle must not be freed twice or used after <code>.Free</code>. Using a freed handle raises <code>ERustPdf</code>, but calling <code>.Free</code> a <i>second</i> time is undefined behavior that can crash the process (the object memory is already gone). Stick to the <code>try…finally Doc.Free end</code> idiom and do not also free it elsewhere; if a variable may be freed on more than one path, use <code>FreeAndNil(Doc)</code> so a duplicate free becomes a harmless no-op.</div>
 
       <!-- DOWNLOAD -->
       <h2 id="download">Download</h2>

@@ -98,9 +98,9 @@ the archive out as:
 ```
 rustpdf-delphi-<version>/
   RustPdf.pas                       # the binding (add to your unit search path)
-  lib/windows-x64/pdf_ffi.dll       # one per platform you built
-  lib/macos-arm64/libpdf_ffi.dylib
-  lib/linux-x64/libpdf_ffi.so
+  lib/windows-x64/pdf_ffi.dll          # one per platform you built
+  lib/macos-universal/libpdf_ffi.dylib # official release ships a universal dylib
+  lib/linux-x64/libpdf_ffi.so          # (a local single-arch build is macos-arm64 / macos-x64)
   examples/smoke_test.dpr
   boss.json  README.md  INSTALL.txt  LICENSES.md
 ```
