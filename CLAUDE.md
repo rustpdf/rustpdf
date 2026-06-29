@@ -53,6 +53,10 @@ cargo run  -p pdf --example vector_graphics -- out.pdf
 
 `clippy` and `rustfmt` are installed as rustup components. Lints are strict: warnings fail CI (`RUSTFLAGS=-D warnings`), and `[workspace.lints]` in the root `Cargo.toml` warns on `clippy::all`.
 
+## Releasing — see `docs/RELEASING.md`
+
+Each of the ten bindings ships on its **own git tag** (`py-v*`, `node-v*`, `csharp-v*`, `go-v*`, `php-v*`, `ruby-v*`, `java-v*`, `swift-v*`, `rust-v*`, `delphi-v*`) that triggers its own `.github/workflows/release-<lang>.yml`. The full process, per-binding registry/secret matrix, and verification commands live in **`docs/RELEASING.md`** — read it before cutting a release. Three things bite every time: **(1) push tags ONE AT A TIME** — GitHub creates no push event (so no workflow runs, silently) when >3 tags are pushed in one `git push`; this is why the 0.3.0 tags existed with zero runs and nothing published. **(2)** every workflow refuses to publish unless the **`RUSTPDF_LICENSE_PUBKEY`** repo secret (the *production* Ed25519 pubkey) is set, so shipped libs reject the dev token and release smokes must exercise only the free surface (e.g. `ReleaseSmoke`, not the full `SmokeTest`). **(3)** the **Go** module tag `bindings/go/v*` is created **by the workflow** (at a commit that stages the native libs) — never push it by hand. Version is the workspace `[workspace.package] version` (crates inherit via `version.workspace = true`) plus each binding's own manifest. **Currently published on the latest release: Python(PyPI), Node(npm), Ruby(RubyGems), C#(NuGet), Swift+Delphi(GitHub Releases), Go(git tag). Java/Rust/PHP release workflows are disabled** (their `on: push tags` trigger is commented out) until their publishing infra exists — Java needs a Maven Central/Sonatype account, Rust needs the private registry finished (`CARGO_REGISTRY_INDEX`), PHP needs the Packagist webhook + `MIRROR_RELEASE_TOKEN`. Re-enable by uncommenting the trigger.
+
 ## Architecture — two layers, never blur them
 
 This separation is the core design decision (ADR `docs/adr/0001-porting-strategy.md`) and the most common way to get the design wrong:
