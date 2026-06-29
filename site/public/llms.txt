@@ -10,8 +10,9 @@
 
 ## What it does
 
-- **PDF/A** archival output: levels 1b, 2b, 2a, 3b, 3a (validated with veraPDF),
-  plus converting an existing PDF to PDF/A (basic profiles).
+- **PDF/A** archival output: levels 1b, 2b, 2a, 3b, 3a and 4 (including 4e and 4f;
+  PDF/A-4 is based on PDF 2.0), all validated with veraPDF, plus converting an
+  existing PDF to PDF/A (basic profiles).
 - **ZUGFeRD / Factur-X**: embed a Cross-Industry Invoice XML and mark the file
   PDF/A-3 with the Factur-X XMP (validated as PDF/A-3 with veraPDF).
 - **Digital signatures**: PKCS#7 detached, visible and multiple signatures, plus
@@ -80,6 +81,34 @@ static xcframework for macOS and iOS).
 - Pricing: https://rustpdf.dev/#pricing
 - Terms: https://rustpdf.dev/legal/terms.html
 - Privacy: https://rustpdf.dev/legal/privacy.html
+
+## Comparison pages
+
+- iText alternative: https://rustpdf.dev/itext-alternative
+- Aspose.PDF alternative: https://rustpdf.dev/aspose-alternative
+- PSPDFKit / Nutrient alternative: https://rustpdf.dev/pspdfkit-alternative
+
+## Task guides (feature hub then language)
+
+- Sign a PDF (hub): https://rustpdf.dev/sign-pdf
+  - Python: https://rustpdf.dev/sign-pdf/python
+  - C#: https://rustpdf.dev/sign-pdf/csharp
+  - Go: https://rustpdf.dev/sign-pdf/go
+  - PHP: https://rustpdf.dev/sign-pdf/php
+  - Ruby: https://rustpdf.dev/sign-pdf/ruby
+  - Node.js: https://rustpdf.dev/sign-pdf/node
+- Create PDF/A (hub): https://rustpdf.dev/pdf-a
+  - Python: https://rustpdf.dev/pdf-a/python
+  - Go: https://rustpdf.dev/pdf-a/go
+  - C#: https://rustpdf.dev/pdf-a/csharp
+- Encrypt a PDF (hub): https://rustpdf.dev/encrypt-pdf
+  - Python: https://rustpdf.dev/encrypt-pdf/python
+  - Go: https://rustpdf.dev/encrypt-pdf/go
+- Generate a PDF (hub): https://rustpdf.dev/generate-pdf
+- Merge PDFs (hub): https://rustpdf.dev/merge-pdf
+- Extract text (hub): https://rustpdf.dev/extract-text
+- Compress a PDF (hub): https://rustpdf.dev/compress-pdf
+- PDF forms (hub): https://rustpdf.dev/pdf-forms
 
 ## Notes for accurate citation
 

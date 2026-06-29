@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ruby · rust-pdf docs</title>
-  <meta name="description" content="Complete Ruby reference for rust-pdf: authoring, fonts & text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction. Install with gem install rustpdf." />
+  <meta name="description" content="Complete Ruby reference for rust-pdf: authoring, text, images, PDF/A, accessibility, forms, manipulation, encryption and digital signatures." />
   <link rel="canonical" href="https://rustpdf.dev/docs/ruby.html" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -34,7 +35,10 @@
         "url": "https://rustpdf.dev/docs/ruby.html",
         "inLanguage": "en",
         "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       }
     ]
   }
@@ -120,6 +124,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Ruby</h1>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: June 2026</p>
       <p class="docs-lead">The <code>rustpdf</code> gem wraps the rust-pdf C core with idiomatic, chainable classes over Ruby's built-in <a href="https://github.com/ruby/fiddle" rel="noopener">Fiddle</a> standard library (pure FFI, no native gem to compile). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>RustPdf::Document</code> authors a new PDF; <code>RustPdf::EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so call <code>close</code> when done to free it promptly (or let the GC do it).</div>
@@ -711,7 +716,7 @@ end</code></pre></div>
     </nav>
   </div>
 
-  <script src="/highlight.js"></script>
+  <script src="/highlight.js" defer></script>
   <script src="/docs/docs.js"></script>
   <script src="/consent.js" defer></script>
 </body>

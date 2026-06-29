@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PDF Timestamps &amp; Long-Term Validation (LTV), Explained | rust-pdf</title>
-  <meta name="description" content="PDF timestamps and LTV (long-term validation) explained: what a trusted timestamp is, how a DSS embeds certificates and CRLs so signatures stay verifiable for decades, the PAdES B-B to B-LT to B-LTA ladder, and how to build it with rust-pdf." />
+  <title>PDF Timestamps &amp; Long-Term Validation (LTV) | rust-pdf</title>
+  <meta name="description" content="PDF timestamps and LTV explained: what a trusted timestamp is, and how a DSS embeds certificates and CRLs so signatures stay verifiable for decades." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-timestamp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/pdf-timestamp",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF Timestamps and LTV", "description": "RFC 3161 trusted timestamps and Document Security Store (DSS) for long-term validation of PDF signatures." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -277,6 +281,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Long-term validity</p>
         <h1>PDF Timestamps &amp;<br /><span class="grad">Long-Term Validation</span></h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           A digital signature proves who signed. A <b>trusted timestamp</b> proves
           <em>when</em>, and that nothing changed since. <b>LTV</b> goes further: it
@@ -570,8 +575,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

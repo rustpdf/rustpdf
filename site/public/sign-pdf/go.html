@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in Go (PAdES) | rust-pdf</title>
-  <meta name="description" content="Digitally Sign a PDF in Go (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/go" />
   <meta property="og:title" content="Digitally Sign a PDF in Go (PAdES)" />
-  <meta property="og:description" content="Digitally Sign a PDF in Go (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in Go (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in Go (PAdES)" />
-  <meta name="twitter:description" content="Digitally Sign a PDF in Go (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in Go (PAdES)" />
   <script type="application/ld+json">
@@ -38,8 +39,8 @@
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "PAdES signatures",
-          "item": "https://rustpdf.dev/pades"
+          "name": "Sign PDF",
+          "item": "https://rustpdf.dev/sign-pdf"
         },
         {
           "@type": "ListItem",
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in Go (PAdES)",
-      "description": "Digitally Sign a PDF in Go (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.",
+      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go.",
       "url": "https://rustpdf.dev/sign-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Go is free. The same offline Ed25519 token unlocks signing across every language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a Go project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Digital signatures &middot; Go</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Go</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -157,7 +172,7 @@
         </div>
         <div class="cta-row" style="margin-top:32px">
           <a href="#how" class="btn btn-lg">See the Go code</a>
-          <a href="/pades" class="btn btn-ghost btn-lg">PAdES signatures, explained</a>
+          <a href="/sign-pdf" class="btn btn-ghost btn-lg">Sign PDF, explained</a>
         </div>
       </div>
     </section>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
             <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
+            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Sign a PDF in Go with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center muted narrow">Install with go get, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center"><code class="sp-install">go get github.com/rustpdf/rustpdf-go</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Go</span></div>
 <pre class="tab-pane active"><code>pdf, _ := os.ReadFile("contract.pdf")
@@ -217,6 +234,9 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
         <details><summary>Do I need a license to sign in Go?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Go is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
+        <details><summary>How does rust-pdf fit a Go project?</summary>
+          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        </details>
       </div>
     </section>
 
@@ -229,7 +249,7 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
-          <a href="/pades">PAdES signatures</a>
+          <a href="/sign-pdf">Sign PDF</a>
           <a href="/golang">rust-pdf for Go</a>
           <a href="/sign-pdf/php">Signing in PHP</a>
           <a href="/sign-pdf/ruby">Signing in Ruby</a>
@@ -261,8 +281,8 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

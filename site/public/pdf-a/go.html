@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in Go (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Create PDF/A in Go (Archival PDF). Generate archival-grade PDF/A from Go with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta name="description" content="Generate archival-grade PDF/A from Go with one method call." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/go" />
   <meta property="og:title" content="Create PDF/A in Go (Archival PDF)" />
-  <meta property="og:description" content="Create PDF/A in Go (Archival PDF). Generate archival-grade PDF/A from Go with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta property="og:description" content="Generate archival-grade PDF/A from Go with one method call." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in Go (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in Go (Archival PDF)" />
-  <meta name="twitter:description" content="Create PDF/A in Go (Archival PDF). Generate archival-grade PDF/A from Go with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta name="twitter:description" content="Generate archival-grade PDF/A from Go with one method call." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in Go (Archival PDF)" />
   <script type="application/ld+json">
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in Go (Archival PDF)",
-      "description": "Create PDF/A in Go (Archival PDF). Generate archival-grade PDF/A from Go with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.",
+      "description": "Generate archival-grade PDF/A from Go with one method call.",
       "url": "https://rustpdf.dev/pdf-a/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in Go is free. One offline token unlocks PDF/A in every supported language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a Go project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Long-term archiving &middot; Go</p>
         <h1>Create <span class="grad">PDF/A</span> in Go</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from Go with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
             <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
+            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Create PDF/A in Go with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center muted narrow">Install with go get, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center"><code class="sp-install">go get github.com/rustpdf/rustpdf-go</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Go</span></div>
 <pre class="tab-pane active"><code>doc, _ := rustpdf.New()
@@ -213,6 +230,9 @@ if err := doc.Save("report_pdfa.pdf"); err != nil {
         </details>
         <details><summary>Do I need a license to create PDF/A in Go?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Go is free. One offline token unlocks PDF/A in every supported language.</p>
+        </details>
+        <details><summary>How does rust-pdf fit a Go project?</summary>
+          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
         </details>
       </div>
     </section>
@@ -258,8 +278,8 @@ if err := doc.Save("report_pdfa.pdf"); err != nil {
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

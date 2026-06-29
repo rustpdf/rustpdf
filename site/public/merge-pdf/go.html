@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Merge PDF Files in Go | rust-pdf</title>
-  <meta name="description" content="Merge PDF Files in Go. Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta name="description" content="Combine, split, reorder and rotate PDF pages from Go." />
   <link rel="canonical" href="https://rustpdf.dev/merge-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/merge-pdf/go" />
   <meta property="og:title" content="Merge PDF Files in Go" />
-  <meta property="og:description" content="Merge PDF Files in Go. Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages from Go." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Merge PDF Files in Go" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Merge PDF Files in Go" />
-  <meta name="twitter:description" content="Merge PDF Files in Go. Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages from Go." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge PDF Files in Go" />
   <script type="application/ld+json">
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Merge PDF Files in Go",
-      "description": "Merge PDF Files in Go. Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.",
+      "description": "Combine, split, reorder and rotate PDF pages from Go.",
       "url": "https://rustpdf.dev/merge-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Go. You only need a license for the corporate features such as PDF/A, signatures and encryption."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a Go project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Manipulation &middot; Go</p>
         <h1>Merge <span class="grad">PDF</span> files in Go</h1>
         <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
             <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
+            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Merge PDFs in Go with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center muted narrow">Install with go get, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Go code from the reference docs.</p>
+        <p class="center"><code class="sp-install">go get github.com/rustpdf/rustpdf-go</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Go</span></div>
 <pre class="tab-pane active"><code>ad, _ := os.ReadFile("a.pdf")
@@ -216,6 +233,9 @@ _ = sub.Save("subset.pdf")</code></pre>
         </details>
         <details><summary>Is merging free?</summary>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Go. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
+        </details>
+        <details><summary>How does rust-pdf fit a Go project?</summary>
+          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
         </details>
       </div>
     </section>
@@ -259,8 +279,8 @@ _ = sub.Save("subset.pdf")</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

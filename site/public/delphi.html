@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Delphi &amp; Free Pascal — PDF/A, PAdES, AES-256 | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Delphi and Free Pascal. A single source unit, no native build. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>Delphi PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Delphi and Free Pascal. One source unit, no native build, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/delphi" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Delphi &amp; Free Pascal | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Delphi / FPC. A single source unit, no native build. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Delphi and Free Pascal" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Delphi and Free Pascal" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Delphi and Free Pascal" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Delphi and Free Pascal" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Delphi & Free Pascal",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "Object Pascal",
         "url": "https://rustpdf.dev/delphi",
         "softwareRequirements": "Delphi 10.x+ or Free Pascal 3.2+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -198,6 +202,58 @@ end;</code></pre>
       </div>
     </section>
 
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>VCL, FMX desktop and Windows services</h2>
+          <p class="muted">
+            <code>ToBytes</code> returns a <code>TBytes</code>, so a VCL or FireMonkey
+            app can write it to disk, push it into a <code>TMemoryStream</code> for a
+            preview control, or hand it to a print or email routine. The same unit runs
+            inside a Windows service or a console batch job that stamps PDF/A archives
+            overnight.
+          </p>
+          <p class="muted">
+            <code>RustPdf.pas</code> is one source unit that loads the shared library at
+            run time, with no headers and no native build on your machines. It compiles
+            on Delphi 10.x+ and FPC 3.2+ across Windows, Linux and macOS. Deployment is
+            just dropping the library beside your executable; the resolver also checks
+            the app directory and the current folder.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// VCL: build a PDF/A and save it
+Doc := TPdfDocument.Create;
+try
+  Doc.Pdfa(palA2B);
+  F := Doc.AddFontFile('Roboto-Regular.ttf');
+  Doc.AddPage.ShowText(F, 18, 72, 760, 'Invoice #1024', 0);
+  TFile.WriteAllBytes('invoice.pdf', Doc.ToBytes);
+finally
+  Doc.Free;
+end;</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Where to go next in Delphi</h2>
+        <p class="muted">
+          The Delphi and Free Pascal reference covers the full API, and the concept hubs
+          explain each standard, with the same behavior as every other binding.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:640px; text-align:left">
+          <li><a href="/docs/delphi.html">Delphi docs</a>: fonts, images, forms, manipulation, encryption and signing.</li>
+          <li><a href="/pdf-a">PDF/A</a> archival and <a href="/pdf-ua">PDF/UA</a> accessibility, explained.</li>
+          <li><a href="/pades">PAdES signatures</a> (B-B / B-LT / B-LTA) and how LTV works offline.</li>
+          <li><a href="/encrypt-pdf">Encrypt a PDF</a> and the <a href="/aes-256">AES-256</a> key derivation.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section">
       <div class="wrap narrow center">
@@ -219,6 +275,22 @@ end;</code></pre>
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Delphi PDF library FAQ</h2>
+        <details><summary>Does the same unit work on Delphi and Free Pascal?</summary>
+          <p>Yes. <code>RustPdf.pas</code> compiles under both Delphi 10.x+ and FPC 3.2+ using <code>{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}</code>, on Windows, Linux and macOS. There is no separate FPC fork to maintain.</p>
+        </details>
+        <details><summary>How do I deploy the native library?</summary>
+          <p>Drop the shared library next to your executable. The unit loads it at run time and the resolver checks the executable's own directory and the current folder, as well as the usual locations, so there is nothing to register and no installer step.</p>
+        </details>
+        <details><summary>Can I generate PDFs from multiple threads?</summary>
+          <p>Yes. Give each thread its own <code>TPdfDocument</code> or <code>TPdfEditable</code>; independent documents share no state. On FPC/Unix, include <code>cthreads</code> early in your program so the threading runtime is active.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -235,8 +307,8 @@ end;</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

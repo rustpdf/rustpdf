@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What Is ZUGFeRD / Factur-X? A Clear Guide to Hybrid E-Invoices, With Examples | rust-pdf</title>
-  <meta name="description" content="ZUGFeRD and Factur-X explained simply: what a hybrid e-invoice is, why one PDF carries both a human-readable invoice and machine-readable XML, the profiles (MINIMUM to EXTENDED / EN 16931), the German and French mandates, and how to generate valid Factur-X in any language with rust-pdf." />
+  <title>ZUGFeRD / Factur-X: Hybrid E-Invoices | rust-pdf</title>
+  <meta name="description" content="ZUGFeRD and Factur-X explained: what a hybrid e-invoice is, why one PDF carries both a readable invoice and machine-readable XML, plus EN 16931 profiles." />
   <link rel="canonical" href="https://rustpdf.dev/zugferd" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/zugferd",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "ZUGFeRD / Factur-X", "description": "Hybrid e-invoice standard: a PDF/A-3 carrying an embedded EN 16931 Cross-Industry Invoice XML." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -218,6 +222,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Hybrid e-invoicing</p>
         <h1>What is <span class="grad">ZUGFeRD / Factur-X</span>,<br />and why does it matter?</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           ZUGFeRD and Factur-X are two names for the same thing: a <b>hybrid
           electronic invoice</b>. It is a single PDF that a person can read and
@@ -615,8 +620,8 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

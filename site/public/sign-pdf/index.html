@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign PDFs Programmatically in Any Language | rust-pdf</title>
+  <meta name="description" content="Digitally sign PDFs in code with rust-pdf: PKCS#7 and PAdES B-B, B-LT and B-LTA signatures with incremental updates, in Go, Python, C#, PHP and Node." />
+  <link rel="canonical" href="https://rustpdf.dev/sign-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/sign-pdf" />
+  <meta property="og:title" content="Sign PDFs Programmatically in Any Language" />
+  <meta property="og:description" content="How to digitally sign PDFs in code: PKCS#7 and PAdES B-B, B-LT, B-LTA signatures with incremental updates, in Go, Python, C#, PHP, Ruby and Node." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Sign PDFs Programmatically in Any Language" />
+  <meta name="twitter:description" content="Digitally sign PDFs from code: PKCS#7 and PAdES signatures, incremental updates, offline LTV, in six languages." />
+  <meta property="og:image:alt" content="Sign PDFs programmatically in any language with rust-pdf" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Sign PDFs programmatically in any language with rust-pdf" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Sign a PDF", "item": "https://rustpdf.dev/sign-pdf" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Sign PDFs programmatically in any language",
+        "description": "How to digitally sign PDFs in code with rust-pdf: PKCS#7 detached and PAdES B-B, B-LT and B-LTA signatures, incremental updates that preserve the original bytes, bring-your-own key and certificate, and offline long-term validation.",
+        "url": "https://rustpdf.dev/sign-pdf",
+        "inLanguage": "en",
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I digitally sign a PDF in code?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pass the PDF bytes, your private key and your certificate to the sign function, and the library builds a PKCS#7 or PAdES signature and appends it as an incremental update. The same call exists in Go, Python, C#, PHP, Ruby and Node, all backed by one Rust core, so the output is identical regardless of language." }
+          },
+          {
+            "@type": "Question",
+            "name": "What signature formats does rust-pdf support?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It produces a standard PKCS#7 detached CMS signature by default, and switches to a PAdES baseline signature when you enable it. PAdES levels B-B, B-LT and B-LTA are supported offline, where B-LT adds a Document Security Store with certificates and revocation data, and B-LTA adds an RFC 3161 archive timestamp." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does signing change the original PDF?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf signs by appending an incremental update, so every original byte is preserved verbatim. This is what keeps earlier signatures valid when a second person signs the same file, and it is how the signature stays verifiable against the exact bytes that were sealed." }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I bring my own key and certificate?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. You supply the private key and the certificate in DER form, plus any chain certificates and revocation data. rust-pdf never generates or stores keys for you, so the cryptographic material stays entirely under your control, which is what makes the resulting signature legally meaningful." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /sign-pdf hub page (sg- prefix, animations respect reduced-motion) ===== */
+    .sg-lede { max-width: 760px; }
+    .sg-updated { font-size: .8rem; color: var(--muted); margin: 10px 0 0; }
+
+    /* hero: a document sealed with a verified badge */
+    .sg-scene { position: relative; height: 220px; max-width: 340px; margin: 32px auto 0; }
+    .sg-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 178px; height: 192px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.5); }
+    .sg-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .sg-paper .ln.s { width: 55%; }
+    .sg-sig { margin-top: auto; height: 44px; }
+    .sg-sig path { fill: none; stroke: var(--brand-2); stroke-width: 2.4; stroke-linecap: round;
+      stroke-dasharray: 320; stroke-dashoffset: 320; animation: sgDraw 4.6s ease-in-out infinite; }
+    @keyframes sgDraw { 0% { stroke-dashoffset: 320; } 55%,82% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 320; } }
+    .sg-badge { position: absolute; right: -8px; bottom: 8px; width: 54px; height: 54px; border-radius: 50%;
+      display: grid; place-items: center; color: var(--green); background: var(--panel-2);
+      border: 1px solid #1e3a2a; box-shadow: 0 10px 24px -10px rgba(52,211,153,.6);
+      animation: sgSeal 4.6s ease-in-out infinite; }
+    .sg-badge svg { width: 25px; height: 25px; }
+    @keyframes sgSeal { 0%,55% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; }
+      82% { transform: scale(1); opacity: 1; } 92%,100% { opacity: 0; } }
+
+    /* capability cards */
+    .sg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .sg-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .sg-card .ic { color: var(--brand-2); height: 28px; margin-bottom: 12px; }
+    .sg-card .ic svg { width: 28px; height: 28px; }
+    .sg-card h3 { margin: 0 0 6px; font-size: 1.06rem; }
+    .sg-card p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    /* language picker */
+    .sg-langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 30px; }
+    .sg-lang { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px; color: var(--text); text-decoration: none; transition: border-color .15s, transform .15s; }
+    .sg-lang:hover { border-color: #2a4060; transform: translateY(-2px); }
+    .sg-lang b { font-size: 1rem; }
+    .sg-lang span { color: var(--muted); font-size: .82rem; display: block; }
+    .sg-lang .badge { margin-left: auto; color: var(--brand-2); font-size: 1.1rem; }
+
+    /* LTV levels */
+    .sg-levels { max-width: 640px; margin: 30px auto 0; }
+    .sg-level { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 16px;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 12px 0; }
+    .sg-level .tag { font-weight: 800; color: var(--brand-2); font-variant-numeric: tabular-nums; font-size: .92rem; }
+    .sg-level h4 { margin: 0 0 3px; font-size: .98rem; }
+    .sg-level p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+    @media (max-width: 820px) {
+      .sg-grid, .sg-langs { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px) {
+      .sg-grid, .sg-langs { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sg-sig path { animation: none; stroke-dashoffset: 0; }
+      .sg-badge { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>&middot;</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Digital signatures</p>
+        <h1>Sign PDFs <span class="grad">programmatically</span>, in any language</h1>
+        <p class="sg-updated">Last updated: June 2026</p>
+        <p class="lede sg-lede">
+          A digital signature seals a PDF so anyone can prove who signed it and that not a
+          single byte changed afterward. rust-pdf adds that seal from code, the same way in
+          every language it supports, using one shared Rust core. This hub explains how
+          signing works and links to a step-by-step guide for each language.
+        </p>
+
+        <div class="sg-scene" aria-hidden="true">
+          <div class="sg-paper">
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span><span class="ln s"></span>
+            <svg class="sg-sig" viewBox="0 0 200 44"><path d="M8 32 q 12 -28 22 -8 q 6 16 14 4 q 6 -10 12 2 q 5 14 13 -2 q 8 -18 18 0 q 6 14 16 2 q 10 -14 22 -2 q 8 8 20 0 q 10 -8 22 -4"/></svg>
+          </div>
+          <div class="sg-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+        </div>
+
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#languages" class="btn btn-lg">Sign in your language</a>
+          <a href="#how" class="btn btn-ghost btn-lg">See the code</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT SIGNING DOES -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">What signing a PDF actually does</h2>
+        <p class="muted">
+          A scanned image of a handwritten signature is just a picture. It can be copied
+          onto any file and proves nothing. A real digital signature is cryptographic: your
+          private key produces a mathematical seal over the exact bytes of the document, and
+          anyone can verify that seal with the matching public certificate. If a single byte
+          changes after signing, verification fails. That is what gives you both proof of
+          identity and proof of integrity in one step.
+        </p>
+        <p class="muted">
+          rust-pdf builds the seal as a PKCS#7 detached CMS structure, the format that PDF
+          readers and signature validators expect. The digest is computed over a ByteRange
+          that covers the whole file except the slot reserved for the signature itself, so
+          the signature certifies everything around it. When you enable PAdES, the same
+          machinery switches to the ETSI baseline profile that the EU eIDAS regulation
+          references, adding the signed attributes a PAdES validator looks for.
+        </p>
+        <p class="muted">
+          For a plain-language explanation of PAdES, the wax-seal analogy, and the meaning
+          of each conformance level, read the deep dive at <a href="/pades">what is PAdES</a>.
+          This page stays focused on the practical task: getting a signed file out of your code.
+        </p>
+      </div>
+    </section>
+
+    <!-- CAPABILITIES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What you get</h2>
+        <p class="center muted narrow">
+          The same signing surface is exposed in every language binding.
+        </p>
+        <div class="sg-grid">
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            </div>
+            <h3>PKCS#7 and PAdES</h3>
+            <p>A standard detached CMS signature by default, or a PAdES baseline signature with the ESS signing-certificate attribute when you ask for it.</p>
+          </div>
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
+            </div>
+            <h3>Bytes preserved</h3>
+            <p>Signing appends an incremental update. The original file is left untouched, so existing signatures stay valid and the new seal certifies the exact bytes it covers.</p>
+          </div>
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>
+            </div>
+            <h3>Your keys, your control</h3>
+            <p>You bring the private key and certificate in DER form. rust-pdf never creates or stores keys, so the cryptographic material stays entirely yours.</p>
+          </div>
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>Offline long-term validation</h3>
+            <p>Extend a signature to B-LT with a Document Security Store, then to B-LTA with a real RFC 3161 timestamp, all without contacting an external service.</p>
+          </div>
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <h3>Visible and multiple signatures</h3>
+            <p>Stamp a visible signature appearance on a page, and let several people sign the same document in sequence without invalidating earlier signatures.</p>
+          </div>
+
+          <div class="sg-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h3>Verifiable everywhere</h3>
+            <p>The output validates in Adobe Reader, pdfsig and openssl cms. rust-pdf can also verify a signed file by recomputing the ByteRange digest and checking the embedded CMS.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- INCREMENTAL UPDATE -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Why incremental updates matter</h2>
+        <p class="muted">
+          Most PDF tools rewrite a file when they change it. That is fine for a draft, but
+          fatal for a signature, because a signature is a promise about a precise sequence
+          of bytes. Rewrite the file and that promise no longer matches anything.
+        </p>
+        <p class="muted">
+          rust-pdf never rewrites when signing. It appends only the new objects, the
+          signature dictionary, the signature widget and the form fields, then a fresh
+          cross-reference section chained to the old one. Everything that came before is
+          preserved verbatim. This is the property that lets two or three parties
+          countersign a contract, each new signature covering all the bytes up to its own
+          point, while every earlier signature continues to verify against the bytes that
+          existed when it was made.
+        </p>
+      </div>
+    </section>
+
+    <!-- LTV LEVELS -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">From a basic seal to long-term proof</h2>
+        <p class="center muted narrow">
+          The same three calls build up the PAdES baseline levels, entirely offline.
+        </p>
+        <div class="sg-levels">
+          <div class="sg-level reveal">
+            <span class="tag">B-B</span>
+            <div><h4>Basic signature</h4><p>The PKCS#7 or PAdES seal plus the signing certificate. Proves who signed and that nothing changed.</p></div>
+          </div>
+          <div class="sg-level reveal">
+            <span class="tag">B-LT</span>
+            <div><h4>Add validation material</h4><p>add_dss writes a Document Security Store with the certificates and revocation data, so the signature still checks years later.</p></div>
+          </div>
+          <div class="sg-level reveal">
+            <span class="tag">B-LTA</span>
+            <div><h4>Add an archive timestamp</h4><p>timestamp appends a real RFC 3161 timestamp token over the whole package, protecting it for the very long term.</p></div>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:20px">
+          rust-pdf supplies the timestamp from a self-issued authority for offline use.
+          You supply the certificates and revocation data, since those come from your own
+          trust chain.
+        </p>
+      </div>
+    </section>
+
+    <!-- LANGUAGE PICKER -->
+    <section id="languages" class="band">
+      <div class="wrap">
+        <h2 class="center">Sign a PDF in your language</h2>
+        <p class="center muted narrow">
+          Each guide walks through loading the file, supplying the key and certificate, and
+          writing a verified, signed PDF.
+        </p>
+        <div class="sg-langs">
+          <a class="sg-lang" href="/sign-pdf/go"><b>Go</b><span>go get and sign</span><span class="badge">&rarr;</span></a>
+          <a class="sg-lang" href="/sign-pdf/python"><b>Python</b><span>pip install and sign</span><span class="badge">&rarr;</span></a>
+          <a class="sg-lang" href="/sign-pdf/csharp"><b>C#</b><span>NuGet and sign</span><span class="badge">&rarr;</span></a>
+          <a class="sg-lang" href="/sign-pdf/php"><b>PHP</b><span>Composer and sign</span><span class="badge">&rarr;</span></a>
+          <a class="sg-lang" href="/sign-pdf/ruby"><b>Ruby</b><span>gem install and sign</span><span class="badge">&rarr;</span></a>
+          <a class="sg-lang" href="/sign-pdf/node"><b>Node.js</b><span>npm install and sign</span><span class="badge">&rarr;</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to sign a PDF with rust-pdf</h2>
+        <p class="center muted narrow">
+          Pass the PDF bytes, your private key and certificate (DER), and a flag for PAdES.
+          The signature is appended as an incremental update, then optionally extended.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+pdf  = open("contract.pdf", "rb").read()
+key  = open("signing-key.pkcs8.der", "rb").read()
+cert = open("signing-cert.der", "rb").read()
+
+signed = rustpdf.sign(pdf, key, cert, reason="Approved", pades=True)   # PAdES-B-B
+lt     = rustpdf.add_dss(signed, certs=[cert], crls=[crl])             # to B-LT
+lta    = rustpdf.timestamp(lt, tsa_key, tsa_cert)                      # to B-LTA
+open("contract.signed.pdf", "wb").write(lta)
+# Verify in a shell: pdfsig contract.signed.pdf  ->  "Signature is Valid."</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] signed = Pdf.Sign(pdf, keyDer, certDer, reason: "Approved", pades: true); // B-B
+byte[] lt     = Pdf.AddDss(signed, certs: new[]{ certDer }, crls: new[]{ crl }); // B-LT
+byte[] lta    = Pdf.Timestamp(lt, tsaKeyDer, tsaCertDer);                        // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+signed, _ := rustpdf.Sign(pdf, key, cert, rustpdf.SignOptions{Reason: "Approved", Pades: true})
+lt,  _    := rustpdf.AddDss(signed, [][]byte{cert}, [][]byte{crl})  // B-LT
+lta, _    := rustpdf.Timestamp(lt, tsaKey, tsaCert)                 // B-LTA</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { sign, addDss, timestamp } = require("rustpdf");
+
+const signed = sign(pdf, key, cert, { reason: "Approved", pades: true }); // B-B
+const lt     = addDss(signed, { certs: [cert], crls: [crl] });            // B-LT
+const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-LTA</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Signatures validated by:
+          <span>pdfsig</span><span>openssl&nbsp;cms</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Six language bindings share the same Rust core for signing: Go, Python, C#, PHP,
+          Ruby and Node.js. Full details in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- LICENSING -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Signing is a licensed corporate feature</h2>
+        <p class="muted">
+          Generating PDFs with rust-pdf is free. Digital signatures, long-term validation
+          and timestamps are part of the corporate license, gated in the core so the same
+          rule applies in every language. You can build and test signing with the bundled
+          developer token, then activate a production license when you ship. See the plans
+          on the <a href="/#pricing">pricing page</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Sign PDF FAQ</h2>
+        <details><summary>How do I digitally sign a PDF in code?</summary>
+          <p>Pass the PDF bytes, your private key and your certificate to the <code>sign</code> function, and the library builds a PKCS#7 or PAdES signature and appends it as an incremental update. The same call exists in Go, Python, C#, PHP, Ruby and Node, all backed by one Rust core, so the output is identical regardless of language.</p>
+        </details>
+        <details><summary>What signature formats does rust-pdf support?</summary>
+          <p>It produces a standard PKCS#7 detached CMS signature by default, and switches to a PAdES baseline signature when you enable it. PAdES levels B-B, B-LT and B-LTA are supported offline, where B-LT adds a Document Security Store with certificates and revocation data, and B-LTA adds an RFC 3161 archive timestamp.</p>
+        </details>
+        <details><summary>Does signing change the original PDF?</summary>
+          <p>No. rust-pdf signs by appending an incremental update, so every original byte is preserved verbatim. This is what keeps earlier signatures valid when a second person signs the same file, and it is how the signature stays verifiable against the exact bytes that were sealed.</p>
+        </details>
+        <details><summary>Do I bring my own key and certificate?</summary>
+          <p>Yes. You supply the private key and the certificate in DER form, plus any chain certificates and revocation data. rust-pdf never generates or stores keys for you, so the cryptographic material stays entirely under your control, which is what makes the resulting signature legally meaningful.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Sign PDFs in your language</h2>
+        <p class="muted">
+          One core, the same PKCS#7 and PAdES signatures across six languages. Prototype for
+          free, license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <!-- spoke-langs --><p class="center muted narrow" style="margin-top:8px">Sign a PDF in your language: <a href="/sign-pdf/go">Go</a>, <a href="/sign-pdf/python">Python</a>, <a href="/sign-pdf/csharp">C#</a>, <a href="/sign-pdf/php">PHP</a>, <a href="/sign-pdf/ruby">Ruby</a>, <a href="/sign-pdf/node">Node.js</a>.</p><!-- spoke-langs -->
+        <div class="sibling-langs">
+          <a href="/pades">What is PAdES?</a>
+          <a href="/generate-pdf">Generate a PDF</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/encrypt-pdf">Encrypt PDF</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>&middot;</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

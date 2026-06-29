@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Node.js &amp; TypeScript — PDF/A, PAdES, AES-256 | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Node.js and TypeScript. npm install rustpdf. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>Node.js PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Node.js and TypeScript. npm install rustpdf. No Chrome, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/nodejs" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Node.js &amp; TypeScript | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Node. npm install rustpdf. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Node.js and TypeScript" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Node.js and TypeScript" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Node.js and TypeScript" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Node.js and TypeScript" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Node.js & TypeScript",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": ["JavaScript", "TypeScript"],
         "url": "https://rustpdf.dev/nodejs",
         "softwareRequirements": "Node.js 18+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -188,7 +192,7 @@ doc.addPage();
 doc.showText(f, 26, 72, 760, "Invoice #1024");
 const bytes = doc.toBytes();           // archival-grade PDF
 
-// Encrypt with AES-256 — same offline license unlocks every feature:
+// Encrypt with AES-256 (same offline license unlocks every feature):
 const ed = EditableDoc.load(bytes);
 ed.encrypt({ owner: "owner-secret", method: Encryption.Aes256 });
 ed.save("secured.pdf");</code></pre>
@@ -197,6 +201,60 @@ ed.save("secured.pdf");</code></pre>
           The full Node / TypeScript reference (fonts, images, forms, manipulation,
           encryption and signatures) lives in the <a href="/docs/node.html">Node docs</a>.
         </p>
+      </div>
+    </section>
+
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Fits Express, Nest and serverless functions</h2>
+          <p class="muted">
+            <code>toBytes()</code> hands you a Node <code>Buffer</code>, so returning a
+            PDF is <code>res.type("application/pdf").send(buf)</code> in Express, a
+            <code>StreamableFile</code> in NestJS, or the body of a Lambda / Cloud
+            Functions response. You delete the Puppeteer fleet and the gigabytes of RAM
+            it needed per worker.
+          </p>
+          <p class="muted">
+            <code>npm install rustpdf</code> pulls prebuilt native binaries per platform
+            with no node-gyp, and ships <code>index.d.ts</code> so TypeScript gets full
+            types. It works the same from CommonJS <code>require</code> and ESM
+            <code>import</code>.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// Express: stream a PDF/A as the response
+import express from "express";
+import { Document, PdfaLevel } from "rustpdf";
+
+const app = express();
+app.get("/invoice.pdf", (_req, res) =&gt; {
+  const doc = new Document();
+  doc.pdfa(PdfaLevel.A2b);
+  const f = doc.addFontFile("Roboto-Regular.ttf");
+  doc.addPage();
+  doc.showText(f, 18, 72, 760, "Invoice #1024");
+  res.type("application/pdf").send(doc.toBytes());
+});</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Common PDF tasks in Node.js</h2>
+        <p class="muted">
+          Focused, copy-paste guides in JavaScript and TypeScript, all on the same Rust
+          core. Each one mirrors the API you already saw above.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:660px; text-align:left">
+          <li><a href="/generate-pdf/node">Generate a PDF in Node</a> and <a href="/sign-pdf/node">sign it</a> with PAdES.</li>
+          <li><a href="/pdf-a/node">Create PDF/A in Node</a> and <a href="/encrypt-pdf/node">encrypt with AES-256</a>.</li>
+          <li><a href="/merge-pdf/node">Merge PDFs</a>, <a href="/extract-text/node">extract text</a> and <a href="/compress-pdf/node">compress</a>.</li>
+          <li><a href="/pdf-forms/node">Fill PDF forms</a> in Node, plus concept hubs: <a href="/pdf-a">PDF/A</a>, <a href="/pades">PAdES</a>, <a href="/aes-256">AES-256</a>.</li>
+        </ul>
       </div>
     </section>
 
@@ -221,6 +279,22 @@ ed.save("secured.pdf");</code></pre>
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Node.js PDF library FAQ</h2>
+        <details><summary>Does it need node-gyp or a native build step?</summary>
+          <p>No. The package ships prebuilt native binaries per platform and loads them through a pure-FFI layer (Koffi), so <code>npm install rustpdf</code> never compiles anything. There is no Chromium download and no Puppeteer dependency.</p>
+        </details>
+        <details><summary>Does it work with TypeScript, ESM and CommonJS?</summary>
+          <p>Yes. It ships an <code>index.d.ts</code> for full TypeScript types and exports work from both <code>require</code> (CommonJS) and <code>import</code> (ESM). The same <code>Document</code> / <code>EditableDoc</code> shape is used either way.</p>
+        </details>
+        <details><summary>Is it a good fit for serverless and containers?</summary>
+          <p>Yes. The native core is small and runs fully offline, so cold starts stay low and no document leaves your function. Compared with a headless-Chrome approach, memory per invocation drops dramatically, which matters on Lambda and Cloud Run.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -237,8 +311,8 @@ ed.save("secured.pdf");</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

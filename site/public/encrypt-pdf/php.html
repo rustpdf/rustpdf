@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Encrypt a PDF in PHP (AES-256) | rust-pdf</title>
-  <meta name="description" content="Encrypt a PDF in PHP (AES-256). Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags." />
+  <meta name="description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
   <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/encrypt-pdf/php" />
   <meta property="og:title" content="Encrypt a PDF in PHP (AES-256)" />
-  <meta property="og:description" content="Encrypt a PDF in PHP (AES-256). Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags." />
+  <meta property="og:description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Encrypt a PDF in PHP (AES-256)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Encrypt a PDF in PHP (AES-256)" />
-  <meta name="twitter:description" content="Encrypt a PDF in PHP (AES-256). Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags." />
+  <meta name="twitter:description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Encrypt a PDF in PHP (AES-256)" />
   <script type="application/ld+json">
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Encrypt a PDF in PHP (AES-256)",
-      "description": "Encrypt a PDF in PHP (AES-256). Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.",
+      "description": "Password-protect a PDF from PHP with strong AES-256 encryption.",
       "url": "https://rustpdf.dev/encrypt-pdf/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Encryption is a corporate feature and needs an active license token. Basic generation in PHP is free. The same offline token enables encryption in every language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a PHP project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Encryption &middot; PHP</p>
         <h1>Encrypt a <span class="grad">PDF</span> in PHP</h1>
         <p class="lede sp-lede">Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
             <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
+            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Encrypt a PDF in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
 <pre class="tab-pane active"><code>use RustPdf\{EditableDoc, Encryption};
@@ -208,6 +225,9 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
         </details>
         <details><summary>Do I need a license to encrypt in PHP?</summary>
           <p>Encryption is a corporate feature and needs an active license token. Basic generation in PHP is free. The same offline token enables encryption in every language.</p>
+        </details>
+        <details><summary>How does rust-pdf fit a PHP project?</summary>
+          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
         </details>
       </div>
     </section>
@@ -253,8 +273,8 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

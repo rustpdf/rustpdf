@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Go (Golang) — PDF/A, PAdES, AES-256, PDF/UA | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Go. go get github.com/rustpdf/rustpdf-go. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>Go PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Go. go get github.com/rustpdf/rustpdf-go. Offline, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/golang" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Go (Golang) | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Go. go get github.com/rustpdf/rustpdf-go. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Go" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Go" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Go" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Go" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Go",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "Go",
         "url": "https://rustpdf.dev/golang",
         "softwareRequirements": "Go 1.21+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -200,6 +204,60 @@ data, _ := doc.ToBytes()                          // archival-grade, accessible 
       </div>
     </section>
 
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Fits Gin, Echo and your net/http handlers</h2>
+          <p class="muted">
+            <code>ToBytes()</code> returns a <code>[]byte</code>, so serving a PDF is a
+            <code>w.Write(data)</code> in a <code>net/http</code> handler, a Gin
+            <code>c.Data(...)</code> or an Echo <code>c.Blob(...)</code> with the
+            <code>application/pdf</code> content type. No temp files, no shelling out to
+            wkhtmltopdf, no headless browser to babysit.
+          </p>
+          <p class="muted">
+            The module ships a prebuilt static <code>libpdf_ffi.a</code> linked through
+            cgo, so <code>go get</code> is all you need. Each <code>Document</code> and
+            <code>EditableDoc</code> holds its own native handle, so building documents
+            in parallel goroutines is safe: give each goroutine its own handle and
+            <code>defer doc.Close()</code>.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// net/http: write a PDF/A directly to the response
+func invoice(w http.ResponseWriter, r *http.Request) {
+    doc, _ := rustpdf.New()
+    defer doc.Close()
+    doc.PdfaLevel(rustpdf.A2b)
+    f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+    doc.AddPage()
+    doc.ShowText(f, 18, 72, 760, "Invoice #1024", 0)
+    data, _ := doc.ToBytes()
+    w.Header().Set("Content-Type", "application/pdf")
+    w.Write(data)
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Common PDF tasks in Go</h2>
+        <p class="muted">
+          Focused, copy-paste guides in Go, all backed by the same Rust core. Pick a
+          task and the rest share the exact same API shape.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:660px; text-align:left">
+          <li><a href="/generate-pdf/go">Generate a PDF in Go</a> and <a href="/sign-pdf/go">sign it</a> with PAdES.</li>
+          <li><a href="/pdf-a/go">Create PDF/A in Go</a> and <a href="/encrypt-pdf/go">encrypt with AES-256</a>.</li>
+          <li><a href="/merge-pdf/go">Merge PDFs</a>, <a href="/extract-text/go">extract text</a> and <a href="/compress-pdf/go">compress</a>.</li>
+          <li><a href="/pdf-forms/go">Fill PDF forms</a> in Go, plus concept hubs: <a href="/pdf-a">PDF/A</a>, <a href="/pades">PAdES</a>, <a href="/aes-256">AES-256</a>.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section">
       <div class="wrap narrow center">
@@ -221,6 +279,22 @@ data, _ := doc.ToBytes()                          // archival-grade, accessible 
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Go PDF library FAQ</h2>
+        <details><summary>Does it use cgo, and do I need CGO_ENABLED=1?</summary>
+          <p>Yes. The binding links a prebuilt static <code>libpdf_ffi.a</code> through cgo, so builds need <code>CGO_ENABLED=1</code> and a C toolchain on the build machine. There is no Rust toolchain or PDF system tool to install; the native core is already compiled inside the module.</p>
+        </details>
+        <details><summary>Can I render documents concurrently across goroutines?</summary>
+          <p>Yes. Documents share no global state. Give each goroutine its own <code>Document</code> or <code>EditableDoc</code> and <code>defer</code> its <code>Close()</code>; then you can fan out invoice or statement generation across all cores safely.</p>
+        </details>
+        <details><summary>What about cross-compilation?</summary>
+          <p>Because it is cgo with a per-platform static library, you build for the target platform you intend to run on (Linux, macOS or Windows) rather than cross-compiling from a single host. The output is one self-contained binary with the PDF engine linked in.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -237,8 +311,8 @@ data, _ := doc.ToBytes()                          // archival-grade, accessible 
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

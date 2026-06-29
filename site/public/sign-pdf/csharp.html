@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in C# (PAdES) | rust-pdf</title>
-  <meta name="description" content="Digitally Sign a PDF in C# (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/csharp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/csharp" />
   <meta property="og:title" content="Digitally Sign a PDF in C# (PAdES)" />
-  <meta property="og:description" content="Digitally Sign a PDF in C# (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in C# (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in C# (PAdES)" />
-  <meta name="twitter:description" content="Digitally Sign a PDF in C# (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator." />
+  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in C# (PAdES)" />
   <script type="application/ld+json">
@@ -38,8 +39,8 @@
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "PAdES signatures",
-          "item": "https://rustpdf.dev/pades"
+          "name": "Sign PDF",
+          "item": "https://rustpdf.dev/sign-pdf"
         },
         {
           "@type": "ListItem",
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in C# (PAdES)",
-      "description": "Digitally Sign a PDF in C# (PAdES). Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.",
+      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#.",
       "url": "https://rustpdf.dev/sign-pdf/csharp",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Signing is a corporate feature, so it requires an active license token. Basic PDF generation in C# is free. The same offline Ed25519 token unlocks signing across every language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a C# project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Digital signatures &middot; C# and .NET</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in C#</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">C#</span>
@@ -157,7 +172,7 @@
         </div>
         <div class="cta-row" style="margin-top:32px">
           <a href="#how" class="btn btn-lg">See the C# code</a>
-          <a href="/pades" class="btn btn-ghost btn-lg">PAdES signatures, explained</a>
+          <a href="/sign-pdf" class="btn btn-ghost btn-lg">Sign PDF, explained</a>
         </div>
       </div>
     </section>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">.NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.</p>
             <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
+            <p class="muted">It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Sign a PDF in C# with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real C# code from the reference docs.</p>
+        <p class="center muted narrow">Install with NuGet, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real C# code from the reference docs.</p>
+        <p class="center"><code class="sp-install">dotnet add package RustPdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">C#</span></div>
 <pre class="tab-pane active"><code>using RustPdf;
@@ -215,6 +232,9 @@ File.WriteAllBytes("contract.signed.pdf", signed);
         <details><summary>Do I need a license to sign in C#?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in C# is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
+        <details><summary>How does rust-pdf fit a C# project?</summary>
+          <p>It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+        </details>
       </div>
     </section>
 
@@ -227,7 +247,7 @@ File.WriteAllBytes("contract.signed.pdf", signed);
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
-          <a href="/pades">PAdES signatures</a>
+          <a href="/sign-pdf">Sign PDF</a>
           <a href="/dotnet">rust-pdf for C#</a>
           <a href="/sign-pdf/go">Signing in Go</a>
           <a href="/sign-pdf/php">Signing in PHP</a>
@@ -256,8 +276,8 @@ File.WriteAllBytes("contract.signed.pdf", signed);
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

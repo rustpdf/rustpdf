@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in C# (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Create PDF/A in C# (Archival PDF). Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta name="description" content="Generate archival-grade PDF/A from C# with one method call." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/csharp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/csharp" />
   <meta property="og:title" content="Create PDF/A in C# (Archival PDF)" />
-  <meta property="og:description" content="Create PDF/A in C# (Archival PDF). Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta property="og:description" content="Generate archival-grade PDF/A from C# with one method call." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in C# (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in C# (Archival PDF)" />
-  <meta name="twitter:description" content="Create PDF/A in C# (Archival PDF). Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator." />
+  <meta name="twitter:description" content="Generate archival-grade PDF/A from C# with one method call." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in C# (Archival PDF)" />
   <script type="application/ld+json">
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in C# (Archival PDF)",
-      "description": "Create PDF/A in C# (Archival PDF). Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.",
+      "description": "Generate archival-grade PDF/A from C# with one method call.",
       "url": "https://rustpdf.dev/pdf-a/csharp",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in C# is free. One offline token unlocks PDF/A in every supported language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a C# project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Long-term archiving &middot; C# and .NET</p>
         <h1>Create <span class="grad">PDF/A</span> in C#</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">C#</span>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">.NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.</p>
             <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
+            <p class="muted">It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Create PDF/A in C# with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real C# code from the reference docs.</p>
+        <p class="center muted narrow">Install with NuGet, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real C# code from the reference docs.</p>
+        <p class="center"><code class="sp-install">dotnet add package RustPdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">C#</span></div>
 <pre class="tab-pane active"><code>using RustPdf;
@@ -211,6 +228,9 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
         </details>
         <details><summary>Do I need a license to create PDF/A in C#?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in C# is free. One offline token unlocks PDF/A in every supported language.</p>
+        </details>
+        <details><summary>How does rust-pdf fit a C# project?</summary>
+          <p>It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
         </details>
       </div>
     </section>
@@ -253,8 +273,8 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

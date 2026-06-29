@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Swift (iOS &amp; macOS) — PDF/A, PAdES, AES-256 | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Swift on iOS and macOS. SwiftPM, static xcframework. Runs on-device or on your servers, no per-document SaaS fees, no AGPL." />
+  <title>Swift PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Swift on iOS and macOS. SwiftPM static xcframework, on-device, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/swift" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Swift (iOS &amp; macOS) | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Swift. SwiftPM, static xcframework for macOS and iOS. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Swift on iOS and macOS" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Swift on iOS and macOS" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Swift on iOS and macOS" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Swift on iOS and macOS" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Swift",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, iOS",
+        "programmingLanguage": "Swift",
         "url": "https://rustpdf.dev/swift",
         "softwareRequirements": "Swift 5.7+ (macOS, iOS)",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -195,6 +199,59 @@ let bytes = try doc.toBytes()      // archival-grade PDF, links on macOS &amp; i
       </div>
     </section>
 
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>On-device apps and server-side Swift</h2>
+          <p class="muted">
+            <code>toBytes()</code> returns <code>[UInt8]</code>, which becomes a
+            <code>Data</code> for a SwiftUI <code>ShareLink</code>, a
+            <code>UIActivityViewController</code>, a Quick Look preview, or a write to
+            the app sandbox. Because the engine is fully offline, a privacy-sensitive
+            iOS app can produce a signed PDF/A contract without the document ever
+            leaving the device.
+          </p>
+          <p class="muted">
+            The same package compiles for server-side Swift, so a Vapor or Hummingbird
+            route can return the bytes as an <code>application/pdf</code> response. SwiftPM
+            links a static xcframework, so it works inside an app bundle with nothing to
+            <code>dlopen</code> and no sidecar library to ship.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// SwiftUI: build a PDF/A and share it
+import RustPdf
+
+func makeInvoice() throws -&gt; Data {
+    let doc = try Document()
+    try doc.pdfa(.a2b)
+    let f = try doc.addFont(path: "Roboto-Regular.ttf")
+    try doc.addPage()
+    try doc.showText(font: f, size: 18, x: 72, y: 760, "Invoice #1024")
+    return Data(try doc.toBytes())   // hand to ShareLink / write to disk
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Where to go next in Swift</h2>
+        <p class="muted">
+          The Swift reference covers the full API, and the concept hubs explain each
+          standard in depth, with the same behavior you get on every other binding.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:640px; text-align:left">
+          <li><a href="/docs/swift.html">Swift docs</a>: fonts, images, forms, manipulation, encryption and signing.</li>
+          <li><a href="/pdf-a">PDF/A</a> archival and <a href="/pdf-ua">PDF/UA</a> accessibility, explained.</li>
+          <li><a href="/pades">PAdES signatures</a> (B-B / B-LT / B-LTA) and how LTV works offline.</li>
+          <li><a href="/encrypt-pdf">Encrypt a PDF</a> and the <a href="/aes-256">AES-256</a> key derivation.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section">
       <div class="wrap narrow center">
@@ -215,6 +272,22 @@ let bytes = try doc.toBytes()      // archival-grade PDF, links on macOS &amp; i
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Swift PDF library FAQ</h2>
+        <details><summary>Does it work inside an iOS app bundle?</summary>
+          <p>Yes. SwiftPM links a static xcframework, so the engine is compiled into your app binary. There is no <code>dlopen</code> of an arbitrary path (which iOS forbids) and no sidecar dynamic library to ship in the bundle.</p>
+        </details>
+        <details><summary>How is this different from Apple's PDFKit?</summary>
+          <p>PDFKit renders, annotates and displays PDFs, but it does not produce PDF/A archives, qualified PAdES signatures or tagged PDF/UA. rust-pdf focuses on exactly those standards-grade outputs, and you can still hand the resulting bytes to PDFKit for on-screen preview.</p>
+        </details>
+        <details><summary>Can I run it in server-side Swift?</summary>
+          <p>Yes. The same package builds for macOS and Linux server targets, so a Vapor or Hummingbird service can generate, sign and encrypt documents and return the bytes as an <code>application/pdf</code> response, fully offline.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -231,8 +304,8 @@ let bytes = try doc.toBytes()      // archival-grade PDF, links on macOS &amp; i
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>
