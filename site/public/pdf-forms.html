@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What Are PDF Forms (AcroForm)? Create &amp; Fill PDFs in Code | rust-pdf</title>
-  <meta name="description" content="AcroForm and PDF forms explained clearly: field types (text, checkbox, radio, dropdown), how appearance streams work, authoring blank forms, filling programmatically, and flattening to a final read-only copy. Code examples in Python, C#, Go, and Node." />
+  <title>PDF Forms (AcroForm): Create &amp; Fill in Code | rust-pdf</title>
+  <meta name="description" content="AcroForm and PDF forms explained: field types (text, checkbox, radio, dropdown), authoring blank forms, filling them, and flattening to read-only." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-forms" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/pdf-forms",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF AcroForm", "description": "The interactive form layer of the PDF specification, allowing text fields, checkboxes, radio groups, and dropdowns that software can fill programmatically." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -316,6 +320,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Interactive documents</p>
         <h1>What are <span class="grad">PDF forms</span> (AcroForm)?<br />Create &amp; fill PDFs in code</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           An <b>AcroForm</b> is the interactive-form layer of the PDF
           specification. It adds fields a person can type into, tick, and
@@ -735,8 +740,8 @@ ed.save("form_filled.pdf");</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

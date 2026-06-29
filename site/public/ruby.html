@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Ruby — PDF/A, PAdES, AES-256, PDF/UA | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Ruby. gem install rustpdf. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>Ruby PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Ruby. gem install rustpdf. Runs on your servers, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Ruby | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Ruby. gem install rustpdf. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Ruby" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Ruby" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Ruby" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Ruby" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Ruby",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "Ruby",
         "url": "https://rustpdf.dev/ruby",
         "softwareRequirements": "Ruby 3.0+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -194,6 +198,55 @@ data = doc.to_bytes               # archival-grade, accessible PDF</code></pre>
       </div>
     </section>
 
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Fits Rails, Sinatra and Sidekiq</h2>
+          <p class="muted">
+            <code>to_bytes</code> returns a binary string, so a Rails controller serves
+            it with <code>send_data bytes, type: "application/pdf"</code>, and Sinatra
+            does the same with a <code>content_type</code> header. Generate invoices,
+            statements and contracts inline, or push the work to a Sidekiq or GoodJob
+            background job and store the result.
+          </p>
+          <p class="muted">
+            <code>gem install rustpdf</code> installs a platform gem with the native
+            core bundled and loaded through Ruby's Fiddle, so there is no native build
+            step and no C extension to compile. It drops into an existing Prawn codebase
+            wherever you actually need PDF/A, signatures or PDF/UA.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code># Rails: send a PDF/A from a controller action
+def invoice
+  doc = RustPdf::Document.new
+  doc.pdfa(RustPdf::Pdfa::A2B)
+  f = doc.add_font_file("Roboto-Regular.ttf")
+  doc.add_page.show_text(f, 18, 72, 760, "Invoice #1024")
+  send_data doc.to_bytes, type: "application/pdf", disposition: "inline"
+end</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Common PDF tasks in Ruby</h2>
+        <p class="muted">
+          Focused, copy-paste guides in Ruby, all backed by the same Rust core. Each one
+          uses the same <code>Document</code> / <code>EditableDoc</code> API.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:660px; text-align:left">
+          <li><a href="/generate-pdf/ruby">Generate a PDF in Ruby</a> and <a href="/sign-pdf/ruby">sign it</a> with PAdES.</li>
+          <li><a href="/pdf-a/ruby">Create PDF/A in Ruby</a> and <a href="/encrypt-pdf/ruby">encrypt with AES-256</a>.</li>
+          <li><a href="/merge-pdf/ruby">Merge PDFs</a>, <a href="/extract-text/ruby">extract text</a> and <a href="/compress-pdf/ruby">compress</a>.</li>
+          <li><a href="/pdf-forms/ruby">Fill PDF forms</a> in Ruby, plus concept hubs: <a href="/pdf-a">PDF/A</a>, <a href="/pades">PAdES</a>, <a href="/aes-256">AES-256</a>.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section">
       <div class="wrap narrow center">
@@ -215,6 +268,22 @@ data = doc.to_bytes               # archival-grade, accessible PDF</code></pre>
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Ruby PDF library FAQ</h2>
+        <details><summary>Does installing the gem compile a C extension?</summary>
+          <p>No. <code>gem install rustpdf</code> installs a platform gem with the native core already built, loaded at run time through Ruby's Fiddle. There is no <code>make</code>, no compiler toolchain and no system PDF tool required.</p>
+        </details>
+        <details><summary>How do I return the PDF from Rails?</summary>
+          <p><code>to_bytes</code> returns a binary string, so use <code>send_data doc.to_bytes, type: "application/pdf"</code> with <code>disposition: "inline"</code> to preview or <code>"attachment"</code> to download. For heavy reports, build it in a Sidekiq job and store or email the result.</p>
+        </details>
+        <details><summary>Can I keep using Prawn?</summary>
+          <p>Yes. Many teams keep Prawn for existing layouts and reach for rust-pdf exactly where Prawn stops: PDF/A archival, PAdES signatures, AES-256 encryption and tagged PDF/UA. They coexist in the same app.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -231,8 +300,8 @@ data = doc.to_bytes               # archival-grade, accessible PDF</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

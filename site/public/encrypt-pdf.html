@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Password-Protect &amp; Encrypt PDF Files in Code, Explained | rust-pdf</title>
-  <meta name="description" content="How to password-protect and encrypt PDF files in code: user vs owner passwords, AES-256 vs AES-128 vs RC4, permission restrictions, and working examples in Python, C#, Go, and Node.js with rust-pdf." />
+  <title>Encrypt &amp; Password-Protect PDFs in Code | rust-pdf</title>
+  <meta name="description" content="How to password-protect and encrypt PDF files in code: user vs owner passwords, AES-256 vs AES-128 vs RC4, and permission restrictions." />
   <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/encrypt-pdf",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF Encryption", "description": "PDF standard security handler: user and owner passwords, AES-256 (R6), AES-128, and RC4 encryption methods, permission restrictions." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -212,6 +216,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Encryption</p>
         <h1>Password-Protect &amp; <span class="grad">Encrypt PDF Files</span><br />in Code, Explained</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           PDF's standard security handler supports two passwords: a <b>user
           password</b> that genuinely encrypts the content so only the right
@@ -560,8 +565,8 @@ ed.save("encrypted.pdf");</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

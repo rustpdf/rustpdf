@@ -8,27 +8,35 @@ renders one SEO spoke page per (task, language) cell into public/<task>/<lang>.h
 Re-runnable: regenerates every page and rewrites the sitemap spoke block.
 No em-dashes in body copy (a repo hook forbids them); the script asserts this.
 """
-import re, html, json, os, sys
+import re, html, json, os, sys, datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # site/
 PUB = os.path.join(ROOT, "public")
 DOCS = os.path.join(PUB, "docs")
-TODAY = "2026-06-28"
+TODAY = datetime.date.today().isoformat()
+# Stable publish date for the spoke set (dateModified tracks the run via TODAY).
+PUBLISHED = "2026-02-01"
 
 # ---------------------------------------------------------------- languages
 LANGS = {
-    "go":     dict(name="Go",     long="Go",                  hub="/golang", docs="/docs/go.html",     hl="go",         install="go get github.com/rustpdf/rustpdf-go", aliases=["golang"],
-                   gap="Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper."),
-    "php":    dict(name="PHP",    long="PHP",                 hub="/php",    docs="/docs/php.html",    hl="php",        install="composer require rust-pdf/rustpdf", aliases=[],
-                   gap="PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly."),
-    "ruby":   dict(name="Ruby",   long="Ruby",                hub="/ruby",   docs="/docs/ruby.html",   hl="ruby",       install="gem install rustpdf", aliases=[],
-                   gap="Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby."),
-    "node":   dict(name="Node.js", long="Node.js and TypeScript", hub="/nodejs", docs="/docs/node.html", hl="javascript", install="npm install rustpdf", aliases=["nodejs"],
-                   gap="Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade."),
-    "python": dict(name="Python", long="Python",              hub="/python", docs="/docs/python.html", hl="python",     install="pip install rustpdf", aliases=[],
-                   gap="ReportLab handles layout (its strongest parts are paid) while pikepdf and pypdf cover slices, so archival PDF/A and signatures stay a recurring pain in Python."),
-    "csharp": dict(name="C#",     long="C# and .NET",         hub="/dotnet", docs="/docs/csharp.html", hl="csharp",     install="dotnet add package RustPdf", aliases=["dotnet"],
-                   gap=".NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid."),
+    "go":     dict(name="Go",     long="Go",                  hub="/golang", docs="/docs/go.html",     hl="go",         install="go get github.com/rustpdf/rustpdf-go", aliases=["golang"], pm="go get",
+                   gap="Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.",
+                   eco="The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."),
+    "php":    dict(name="PHP",    long="PHP",                 hub="/php",    docs="/docs/php.html",    hl="php",        install="composer require rust-pdf/rustpdf", aliases=[], pm="Composer",
+                   gap="PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.",
+                   eco="It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."),
+    "ruby":   dict(name="Ruby",   long="Ruby",                hub="/ruby",   docs="/docs/ruby.html",   hl="ruby",       install="gem install rustpdf", aliases=[], pm="RubyGems",
+                   gap="Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.",
+                   eco="It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."),
+    "node":   dict(name="Node.js", long="Node.js and TypeScript", hub="/nodejs", docs="/docs/node.html", hl="javascript", install="npm install rustpdf", aliases=["nodejs"], pm="npm",
+                   gap="Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.",
+                   eco="It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."),
+    "python": dict(name="Python", long="Python",              hub="/python", docs="/docs/python.html", hl="python",     install="pip install rustpdf", aliases=[], pm="pip",
+                   gap="ReportLab handles layout (its strongest parts are paid) while pikepdf and pypdf cover slices, so archival PDF/A and signatures stay a recurring pain in Python.",
+                   eco="It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image."),
+    "csharp": dict(name="C#",     long="C# and .NET",         hub="/dotnet", docs="/docs/csharp.html", hl="csharp",     install="dotnet add package RustPdf", aliases=["dotnet"], pm="NuGet",
+                   gap=".NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.",
+                   eco="It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."),
 }
 
 # docs section id -> task slug (the first code block of that section is harvested)
@@ -54,7 +62,7 @@ TASKS = {
         title="Digitally Sign a PDF in %L (PAdES)",
         h1='Digitally sign a <span class="grad">PDF</span> in %L',
         kw="sign a PDF in %l",
-        hub_url="/pades", hub_name="PAdES signatures",
+        hub_url="/sign-pdf", hub_name="Sign PDF",
         gated=True,
         validators=["pdfsig", "openssl", "qpdf"],
         lede="Add a cryptographic PKCS#7 or PAdES signature to a PDF from %L. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.",
@@ -180,7 +188,7 @@ TASKS = {
         title="Generate a PDF in %L",
         h1='Generate a <span class="grad">PDF</span> in %L',
         kw="generate a PDF in %l",
-        hub_url="/docs/", hub_name="Documentation",
+        hub_url="/generate-pdf", hub_name="Generate PDF",
         gated=False,
         validators=["qpdf", "mutool"],
         lede="Create PDFs programmatically from %L: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives %L a fast, memory-safe core with deterministic output.",
@@ -274,6 +282,7 @@ PAGE = """<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>%%TITLE%% | rust-pdf</title>
   <meta name="description" content="%%DESC%%" />
   <link rel="canonical" href="https://rustpdf.dev%%PATH%%" />
@@ -321,6 +330,7 @@ PAGE = """<!doctype html>
         <p class="eyebrow">%%EYEBROW%% &middot; %%LANGLONG%%</p>
         <h1>%%H1%%</h1>
         <p class="lede sp-lede">%%LEDE%%</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">%%LANGNAME%%</span>
@@ -343,6 +353,7 @@ PAGE = """<!doctype html>
           <div>
             <p class="muted">%%GAP%%</p>
             <p class="muted">%%WHYP%%</p>
+            <p class="muted">%%ECO%%</p>
           </div>
           <ul class="check-list">
 %%BULLETS%%
@@ -354,7 +365,8 @@ PAGE = """<!doctype html>
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">%%HOWTITLE%% with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real %%LANGNAME%% code from the reference docs.</p>
+        <p class="center muted narrow">Install with %%PM%%, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real %%LANGNAME%% code from the reference docs.</p>
+        <p class="center"><code class="sp-install">%%INSTALL%%</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">%%LANGNAME%%</span></div>
 <pre class="tab-pane active"><code>%%CODE%%</code></pre>
@@ -401,8 +413,8 @@ PAGE = """<!doctype html>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>
@@ -428,8 +440,24 @@ def render(task, lang, code):
     path = f"/{task}/{lang}"
     title = sub(t["title"])
     lede = sub(t["lede"])
-    desc = (sub(t["title"]) + ". " + sub(t["lede"]))[:300]
-    desc = re.sub(r"\s+", " ", desc).strip()
+    # Concise meta description (<=155 chars, whole sentences) so Google does not
+    # rewrite/truncate it in the SERP.
+    lede_clean = re.sub(r"\s+", " ", sub(t["lede"])).strip()
+    sentences = re.split(r"(?<=\.) ", lede_clean)
+    desc = sentences[0]
+    for s in sentences[1:]:
+        if len(desc) + 1 + len(s) <= 155:
+            desc += " " + s
+        else:
+            break
+    if len(desc) > 155:  # single very long first sentence: hard word-trim
+        desc = desc[:152].rsplit(" ", 1)[0].rstrip(",.;:") + "."
+
+    # A language-specific FAQ entry so the FAQ block is not identical across the
+    # sibling-language spokes of the same task (uniqueness signal).
+    eco_q = f"How does rust-pdf fit a {ln} project?"
+    eco_a = L["eco"]
+    faq_pairs = [(sub(q), sub(a)) for q, a in t["faq"]] + [(eco_q, eco_a)]
 
     # JSON-LD
     crumbs = [
@@ -437,23 +465,25 @@ def render(task, lang, code):
         {"@type": "ListItem", "position": 2, "name": t["hub_name"], "item": "https://rustpdf.dev" + t["hub_url"]},
         {"@type": "ListItem", "position": 3, "name": title, "item": "https://rustpdf.dev" + path},
     ]
-    faq_entities = [{"@type": "Question", "name": sub(q),
-                     "acceptedAnswer": {"@type": "Answer", "text": sub(a)}} for q, a in t["faq"]]
+    faq_entities = [{"@type": "Question", "name": q,
+                     "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faq_pairs]
     graph = {"@context": "https://schema.org", "@graph": [
         {"@type": "BreadcrumbList", "itemListElement": crumbs},
         {"@type": "TechArticle", "headline": title, "description": desc,
          "url": "https://rustpdf.dev" + path, "inLanguage": "en",
          "proficiencyLevel": "Beginner",
+         "datePublished": PUBLISHED, "dateModified": TODAY,
+         "author": {"@type": "Organization", "@id": "https://rustpdf.dev/#org"},
          "about": {"@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication"},
-         "publisher": {"@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io"}},
+         "publisher": {"@type": "Organization", "@id": "https://rustpdf.dev/#org"}},
         {"@type": "FAQPage", "mainEntity": faq_entities},
     ]}
     jsonld = json.dumps(graph, indent=2, ensure_ascii=False)
 
     bullets = "\n".join(f"            <li>{esc(sub(b))}</li>" for b in t["bullets"])
     faqhtml = "\n".join(
-        f"        <details><summary>{esc(sub(q))}</summary>\n          <p>{esc(sub(a))}</p>\n        </details>"
-        for q, a in t["faq"])
+        f"        <details><summary>{esc(q)}</summary>\n          <p>{esc(a)}</p>\n        </details>"
+        for q, a in faq_pairs)
 
     if t["gated"]:
         validators = ('        <div class="validators" style="text-align:center">Validated by: '
@@ -489,6 +519,7 @@ def render(task, lang, code):
         "%%LANGNAME%%": esc(ln), "%%SEAL%%": SEALS[task],
         "%%HUBURL%%": t["hub_url"], "%%HUBNAME%%": esc(t["hub_name"]),
         "%%GAP%%": esc(L["gap"]), "%%WHYP%%": esc(sub(t["why_p"])),
+        "%%ECO%%": esc(L["eco"]), "%%INSTALL%%": esc(L["install"]), "%%PM%%": esc(L["pm"]),
         "%%BULLETS%%": bullets,
         "%%HOWTITLE%%": esc(sub(HOWTITLE[task])),
         "%%CODE%%": esc(code), "%%VALIDATORS%%": validators, "%%LICNOTE%%": licnote,
@@ -537,8 +568,6 @@ def update_sitemap(paths):
         block.append("  <url>")
         block.append(f"    <loc>https://rustpdf.dev{p}</loc>")
         block.append(f"    <lastmod>{TODAY}</lastmod>")
-        block.append("    <changefreq>weekly</changefreq>")
-        block.append("    <priority>0.7</priority>")
         block.append("  </url>")
     block.append(MARK_B)
     blob = "\n".join(block)

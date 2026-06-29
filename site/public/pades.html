@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What Is PAdES? PDF Digital Signatures Explained, With Examples | rust-pdf</title>
-  <meta name="description" content="PAdES explained simply: what a PDF digital signature is, how it proves who signed and that nothing changed, the levels (B-B, B-T, B-LT, B-LTA), eIDAS and real examples, and how to sign PDFs in any language with rust-pdf." />
+  <title>What Is PAdES? PDF Digital Signatures Explained | rust-pdf</title>
+  <meta name="description" content="PAdES explained simply: what a PDF digital signature is, how it proves who signed and that nothing changed, plus the B-B, B-T, B-LT and B-LTA levels." />
   <link rel="canonical" href="https://rustpdf.dev/pades" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/pades",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PAdES", "description": "PDF Advanced Electronic Signatures, the ETSI profile of PDF digital signatures used under eIDAS." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -184,6 +188,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Digital signatures</p>
         <h1>What is <span class="grad">PAdES</span>,<br />and how do PDF signatures work?</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           A PAdES signature is a cryptographic seal inside a PDF. It proves three things
           at once: <b>who</b> signed, that the document has <b>not changed</b> by even a
@@ -471,8 +476,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What Is PDF/UA? Accessible PDF Explained, With Examples | rust-pdf</title>
-  <meta name="description" content="PDF/UA explained simply: what an accessible, tagged PDF is, how screen readers use the structure, why it is legally required (Section 508, ADA, EN 301 549), real examples, and how to create accessible PDF in any language with rust-pdf." />
+  <title>What Is PDF/UA? Accessible PDF Explained | rust-pdf</title>
+  <meta name="description" content="PDF/UA explained simply: what an accessible, tagged PDF is, how screen readers use the structure, and why it is legally required in many countries." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-ua" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/pdf-ua",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF/UA", "description": "ISO 14289, the accessibility standard for PDF (Universal Accessibility) based on tagged PDF." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -172,6 +176,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Accessibility</p>
         <h1>What is <span class="grad">PDF/UA</span>,<br />and what makes a PDF accessible?</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede concept-lede">
           PDF/UA is the standard for accessible PDF. Behind the visible page, an
           accessible file carries a <b>logical structure</b>: headings, lists, tables,
@@ -455,8 +460,8 @@ const bytes = doc.toBytes();</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

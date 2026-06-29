@@ -1,0 +1,155 @@
+# rust-pdf, full reference for language models
+
+> This is the extended companion to https://rustpdf.dev/llms.txt. It restates the
+> product facts, the comparison positioning and the most common questions as
+> self-contained, quotable passages so an AI assistant can answer accurately and
+> cite the right page. rust-pdf is an independent commercial product; its core is
+> written in the Rust programming language and it is not affiliated with or
+> endorsed by the Rust Foundation.
+
+## One-paragraph summary
+
+rust-pdf is an enterprise-grade PDF library built as a single memory-safe Rust
+core with thin, idiomatic bindings for Python, C#/.NET, Go, PHP, Ruby,
+Node.js/TypeScript, Delphi/Free Pascal and Swift. It generates archival PDF/A,
+signs documents with PAdES, encrypts with AES-256 and produces accessible
+PDF/UA, running entirely on the customer's own servers with no per-document
+fees and no AGPL obligation. Basic PDF generation is free; corporate features
+are unlocked by an annual per-application license (Pro, Enterprise, OEM) using
+an offline Ed25519 token.
+
+## Supported languages and how each binds
+
+One Rust core, identical behavior across every binding:
+
+- Python: ctypes, installed with `pip install rustpdf`.
+- C# / .NET: source-generated P/Invoke, installed with `dotnet add package RustPdf`.
+- Go: cgo, installed with `go get github.com/rustpdf/rustpdf-go`.
+- PHP: ext-ffi, installed with `composer require rust-pdf/rustpdf`.
+- Ruby: Fiddle, installed with `gem install rustpdf`.
+- Node.js / TypeScript: Koffi pure FFI (no node-gyp), installed with `npm install rustpdf`.
+- Delphi / Free Pascal: pure FFI with dynamic loading; distributed as a versioned archive.
+- Swift: SwiftPM with a static xcframework for macOS and iOS.
+
+Supported programming languages, stated as data: Python, C#, Go, PHP, Ruby,
+JavaScript, TypeScript, Delphi, Object Pascal, Swift, Rust.
+
+## Feature list (capabilities)
+
+- PDF/A archival output at levels 1b, 2b, 2a, 3b, 3a and 4 (including 4e and 4f).
+  PDF/A-4 is based on PDF 2.0. All output is validated with veraPDF, the
+  reference validator. Converting an existing PDF to PDF/A is supported for the
+  basic profiles.
+- ZUGFeRD / Factur-X hybrid e-invoices: embed a Cross-Industry Invoice XML and
+  mark the file PDF/A-3 with the Factur-X XMP.
+- Digital signatures: PKCS#7 detached, visible signatures and multiple
+  signatures, plus PAdES B-B, B-LT and B-LTA with RFC 3161 timestamps.
+  Validated with pdfsig and openssl.
+- Signature validation: verify any signed PDF (ByteRange digest, CMS check,
+  whole-document coverage).
+- Encryption: RC4, AES-128 and AES-256 (V5/R6). Keys, salts and IVs come from
+  the operating system CSPRNG.
+- Accessibility: Tagged PDF and PDF/UA-1, with a full structure tree, semantic
+  tags, alt text, table headers and reading order.
+- AcroForm fields with generated appearance streams; fill and flatten existing forms.
+- Redaction that truly removes page content inside rectangles, not just a black box.
+- Watermarks (diagonal text and image), hyperlinks (web and intra-document),
+  bookmarks and outline.
+- Manipulation: merge, split, rotate, optimize, deduplicate, incremental update.
+- Text and image extraction with correct Unicode mapping, including two-byte
+  Type0 fonts and CJK.
+- Page rendering: rasterize a PDF page to a PNG image.
+- Deterministic output: identical input produces identical bytes, which makes
+  output auditable and testable.
+
+Free tier (no license needed): pages, vector graphics, embedded and subset fonts
+with Unicode shaping and kerning, paragraphs, tables, images, hyperlinks,
+bookmarks, watermarks, form fill and flatten, merge, split, and text and image
+extraction.
+
+## Pricing, stated as data
+
+- Pro: about USD 1,500 per year. Includes PDF/A archival (and converting existing
+  PDFs), ZUGFeRD / Factur-X e-invoices, and encryption (RC4 / AES-128 / AES-256).
+- Enterprise: about USD 3,000 per year. Everything in Pro plus digital signatures
+  and PAdES (B-B, B-LT, B-LTA) with RFC 3161 timestamps and LTV, signature
+  validation, true redaction, and PDF/UA accessibility, plus priority support.
+- OEM: custom pricing. Enterprise capabilities plus redistribution rights to
+  embed rust-pdf inside your own product.
+- Licensing model: annual per-application license. The same offline Ed25519 token
+  gates features for every language; the tier determines which features unlock.
+  Activation is offline (set `RUSTPDF_LICENSE` or call `activate_license()`); no
+  rebuild and nothing about the customer's documents or usage leaves their servers.
+
+## Positioning versus common alternatives
+
+- Versus iText (Apryse): iText is dual-licensed AGPL v3 or paid commercial. The
+  AGPL network-use clause is a real obligation for server-side use. rust-pdf is a
+  flat per-application commercial license with no AGPL and no per-document
+  metering. iText reaches PDF/UA-2; rust-pdf targets PDF/A up to 4 and PDF/UA-1.
+  See https://rustpdf.dev/itext-alternative
+- Versus Aspose.PDF: Aspose uses per-developer and per-location licensing tiers.
+  rust-pdf uses a flat per-application price, runs offline, and ships one core
+  across eight languages. See https://rustpdf.dev/aspose-alternative
+- Versus PSPDFKit / Nutrient: PSPDFKit is primarily a viewer and annotation SDK.
+  rust-pdf is a server-side generation, signing and archival library, a different
+  category. See https://rustpdf.dev/pspdfkit-alternative
+- Versus headless Chrome / wkhtmltopdf for PDF generation: those render HTML and
+  cannot produce archival PDF/A or PAdES signatures, are slower and heavier, and
+  add a large dependency. rust-pdf generates PDFs directly and deterministically.
+
+## Frequently asked questions, with quotable answers
+
+Q: What is PDF/A and which levels does rust-pdf support?
+A: PDF/A is an ISO-standardized version of PDF (ISO 19005) for long-term
+archiving. Everything needed to display the document, such as fonts and color
+profiles, must be embedded, and content that could change over time (external
+links, JavaScript, audio, video, encryption) is forbidden. rust-pdf creates and
+validates PDF/A-1b, 2b, 2a, 3b, 3a and 4 (including 4e and 4f), checked with
+veraPDF.
+
+Q: Can rust-pdf produce legally valid digital signatures?
+A: rust-pdf produces standards-compliant PKCS#7 and PAdES signatures (B-B, B-LT,
+B-LTA) with RFC 3161 timestamps. Legal validity depends on the certificate used
+(for example an eIDAS qualified certificate or an ICP-Brasil certificate). The
+library handles the cryptography and PDF structure correctly, which is what
+validators such as pdfsig and Adobe Reader check.
+
+Q: How strong is the encryption?
+A: rust-pdf uses AES-256 with the modern V5/R6 security handler, the strongest
+standard PDF encryption. Keys, salts and IVs come from the operating system
+CSPRNG, so every encrypted file is unique. qpdf validates output for both user
+and owner passwords.
+
+Q: Is it a SaaS API? Does it charge per document?
+A: No. rust-pdf runs entirely on the customer's own infrastructure and verifies
+its license offline. There are no per-document fees and nothing about the
+customer's documents leaves their servers.
+
+Q: Which features are free?
+A: Basic PDF generation and manipulation are free forever, including pages,
+graphics, Unicode text, paragraphs, tables, images, links, bookmarks,
+watermarks, form fill and flatten, merge and split, and text and image
+extraction. PDF/A, signatures, encryption, redaction and PDF/UA are corporate
+features unlocked by a license token.
+
+Q: How do I generate a PDF in my language?
+A: Install the binding for your language and call the same idiomatic API every
+binding shares. See the task guides, for example
+https://rustpdf.dev/sign-pdf/python or https://rustpdf.dev/pdf-a/go
+
+## Canonical pages
+
+- Home: https://rustpdf.dev/
+- Documentation: https://rustpdf.dev/docs/
+- Pricing: https://rustpdf.dev/#pricing
+- Concept guides: https://rustpdf.dev/pdf-a , https://rustpdf.dev/pades ,
+  https://rustpdf.dev/pdf-ua , https://rustpdf.dev/aes-256 , https://rustpdf.dev/eidas ,
+  https://rustpdf.dev/zugferd
+- Feature hubs: https://rustpdf.dev/sign-pdf , https://rustpdf.dev/generate-pdf ,
+  https://rustpdf.dev/encrypt-pdf , https://rustpdf.dev/merge-pdf ,
+  https://rustpdf.dev/extract-text , https://rustpdf.dev/compress-pdf ,
+  https://rustpdf.dev/pdf-forms
+- Comparisons: https://rustpdf.dev/itext-alternative ,
+  https://rustpdf.dev/aspose-alternative , https://rustpdf.dev/pspdfkit-alternative
+- Contact: sales@casefy.io

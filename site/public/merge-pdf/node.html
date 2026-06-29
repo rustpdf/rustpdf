@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Merge PDF Files in Node.js | rust-pdf</title>
-  <meta name="description" content="Merge PDF Files in Node.js. Combine, split, reorder and rotate PDF pages from Node.js. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta name="description" content="Combine, split, reorder and rotate PDF pages from Node.js." />
   <link rel="canonical" href="https://rustpdf.dev/merge-pdf/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/merge-pdf/node" />
   <meta property="og:title" content="Merge PDF Files in Node.js" />
-  <meta property="og:description" content="Merge PDF Files in Node.js. Combine, split, reorder and rotate PDF pages from Node.js. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta property="og:description" content="Combine, split, reorder and rotate PDF pages from Node.js." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Merge PDF Files in Node.js" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Merge PDF Files in Node.js" />
-  <meta name="twitter:description" content="Merge PDF Files in Node.js. Combine, split, reorder and rotate PDF pages from Node.js. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output." />
+  <meta name="twitter:description" content="Combine, split, reorder and rotate PDF pages from Node.js." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge PDF Files in Node.js" />
   <script type="application/ld+json">
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Merge PDF Files in Node.js",
-      "description": "Merge PDF Files in Node.js. Combine, split, reorder and rotate PDF pages from Node.js. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.",
+      "description": "Combine, split, reorder and rotate PDF pages from Node.js.",
       "url": "https://rustpdf.dev/merge-pdf/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Node.js. You only need a license for the corporate features such as PDF/A, signatures and encryption."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a Node.js project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Manipulation &middot; Node.js and TypeScript</p>
         <h1>Merge <span class="grad">PDF</span> files in Node.js</h1>
         <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Node.js. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
             <p class="muted">Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.</p>
+            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Merge PDFs in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
 <pre class="tab-pane active"><code>const a = EditableDoc.loadFile("a.pdf");
@@ -215,6 +232,9 @@ a.close();</code></pre>
         </details>
         <details><summary>Is merging free?</summary>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Node.js. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
+        </details>
+        <details><summary>How does rust-pdf fit a Node.js project?</summary>
+          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
         </details>
       </div>
     </section>
@@ -258,8 +278,8 @@ a.close();</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for Python — PDF/A, PAdES, AES-256, PDF/UA | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in Python. pip install rustpdf. Runs on your servers — no per-document SaaS fees, no AGPL." />
+  <title>Python PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in Python. pip install rustpdf. Runs on your servers, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/python" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Python | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Python. pip install rustpdf. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for Python" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Python" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Python" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Python" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for Python",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "Python",
         "url": "https://rustpdf.dev/python",
         "softwareRequirements": "Python 3.8+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -189,10 +193,10 @@ with rustpdf.Document() as doc:
     f = doc.add_font_file("Roboto-Regular.ttf")
     doc.add_page()
     doc.show_text(f, 26, 72, 760, "Annual report", heading_level=1)
-    doc.show_text(f, 11, 72, 720, "Olá, açúcar — café")  # shaped, kerned, Unicode
+    doc.show_text(f, 11, 72, 720, "Olá, açúcar e café")  # shaped, kerned, Unicode
     data = doc.to_bytes()
 
-# Encrypt with AES-256, or sign with PAdES — same offline license:
+# Encrypt with AES-256, or sign with PAdES (same offline license):
 with rustpdf.EditableDoc.load(data) as ed:
     ed.encrypt(owner="owner-secret", method=rustpdf.Encryption.AES256)
     ed.save("secured.pdf")</code></pre>
@@ -201,6 +205,63 @@ with rustpdf.EditableDoc.load(data) as ed:
           The full Python reference (fonts, images, forms, manipulation, encryption
           and signatures) lives in the <a href="/docs/python.html">Python docs</a>.
         </p>
+      </div>
+    </section>
+
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Fits your Django, FastAPI or Flask stack</h2>
+          <p class="muted">
+            rust-pdf is a plain Python package: it builds a document in memory and
+            hands you <code>bytes</code>. That drops straight into a Django
+            <code>HttpResponse</code>, a FastAPI <code>StreamingResponse</code> or a
+            Flask <code>send_file</code>, with no temp files and no subprocess. Because
+            the native core releases the GIL on every call, a Celery, RQ or Dramatiq
+            worker can render statements and invoices across all your cores at once.
+          </p>
+          <p class="muted">
+            Install once with <code>pip install rustpdf</code>; the wheel bundles the
+            native core per platform, so there is nothing to compile in CI, containers
+            or serverless. It runs the same on a laptop, a Gunicorn worker and an AWS
+            Lambda image.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code># FastAPI: stream a PDF/A straight from a route
+from fastapi import FastAPI
+from fastapi.responses import Response
+import rustpdf
+
+app = FastAPI()
+
+@app.get("/invoice.pdf")
+def invoice():
+    with rustpdf.Document() as doc:
+        doc.pdfa(rustpdf.PdfaLevel.A2B)
+        f = doc.add_font_file("Roboto-Regular.ttf")
+        doc.add_page()
+        doc.show_text(f, 18, 72, 760, "Invoice #1024")
+        return Response(doc.to_bytes(), media_type="application/pdf")</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Common PDF tasks in Python</h2>
+        <p class="muted">
+          Each guide below is a focused, copy-paste walkthrough in Python, backed by
+          the same Rust core. Start with one task and grow into the rest.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:640px; text-align:left">
+          <li><a href="/sign-pdf/python">Sign a PDF in Python</a> with PKCS#7 / PAdES B-B.</li>
+          <li><a href="/pdf-a/python">Create PDF/A in Python</a> for archival and e-invoicing.</li>
+          <li><a href="/encrypt-pdf/python">Encrypt a PDF in Python</a> with AES-256 (R6).</li>
+          <li>Concept hubs: <a href="/pdf-a">PDF/A</a>, <a href="/pades">PAdES signatures</a>, <a href="/aes-256">AES-256</a>, <a href="/pdf-ua">PDF/UA</a>.</li>
+        </ul>
       </div>
     </section>
 
@@ -225,6 +286,22 @@ with rustpdf.EditableDoc.load(data) as ed:
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Python PDF library FAQ</h2>
+        <details><summary>Does it release the GIL for parallel rendering?</summary>
+          <p>Yes. The native core releases the GIL on every call, so threads, a Gunicorn/Uvicorn worker pool, or a Celery/RQ queue can render many documents at once and actually use every core. Each <code>Document</code> or <code>EditableDoc</code> owns its own handle, so give each task its own object.</p>
+        </details>
+        <details><summary>Will it work in Docker, AWS Lambda and serverless?</summary>
+          <p>Yes. <code>pip install rustpdf</code> pulls a prebuilt wheel with the native core bundled per platform, so there is nothing to compile in your image and no system PDF tools to install. It runs fully offline, which keeps cold starts small and documents inside your own environment.</p>
+        </details>
+        <details><summary>Can I use it from async views (FastAPI, Starlette)?</summary>
+          <p>Yes. Calls are synchronous and fast; for heavy documents in an async handler, offload to a thread (for example <code>asyncio.to_thread</code>) so you never block the event loop. The call returns plain <code>bytes</code>, ready to stream back in a response.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -241,8 +318,8 @@ with rustpdf.EditableDoc.load(data) as ed:
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

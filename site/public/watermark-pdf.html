@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Add Watermarks to PDF Files in Code, Explained | rust-pdf</title>
-  <meta name="description" content="How to add text or image watermarks to PDF files in code: opacity, rotation, color, and the difference between a visible stamp and real access control. Works in Python, C#, Go, Node and more." />
+  <meta name="description" content="How to add text or image watermarks to PDF files in code: opacity, rotation, color, and the difference between a visible stamp and access control." />
   <link rel="canonical" href="https://rustpdf.dev/watermark-pdf" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/watermark-pdf",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF watermarking", "description": "Stamping text or an image across every page of a PDF at a given opacity, rotation and color." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -211,6 +215,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Stamping</p>
         <h1>Add <span class="grad">Watermarks</span> to<br />PDF Files in Code</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede wm-lede">
           A watermark is text or an image stamped across every page as a visible
           overlay. Common for status labels like <b>DRAFT</b> or
@@ -554,8 +559,8 @@ ed.save("report_watermarked.pdf");</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

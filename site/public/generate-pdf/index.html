@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generate PDFs Programmatically in Code | rust-pdf</title>
+  <meta name="description" content="Generate PDFs in code with rust-pdf: vector graphics, embedded fonts, Unicode shaping, tables, images and deterministic output, in Go, PHP, Ruby and Node." />
+  <link rel="canonical" href="https://rustpdf.dev/generate-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/generate-pdf" />
+  <meta property="og:title" content="Generate PDFs Programmatically in Code" />
+  <meta property="og:description" content="How to generate PDFs in code: vector graphics, embedded fonts, Unicode shaping, tables, images and deterministic output, in Go, PHP, Ruby and Node." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Generate PDFs Programmatically in Code" />
+  <meta name="twitter:description" content="Author PDFs from code: vector graphics, shaped Unicode text, tables, images and byte-for-byte deterministic output, in four languages." />
+  <meta property="og:image:alt" content="Generate PDFs programmatically in code with rust-pdf" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Generate PDFs programmatically in code with rust-pdf" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Generate a PDF", "item": "https://rustpdf.dev/generate-pdf" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "Generate PDFs programmatically in code",
+        "description": "How to generate PDFs from code with rust-pdf: vector graphics, embedded and subset fonts with Unicode shaping and kerning, justified paragraphs, tables, images, links, bookmarks, watermarks, and deterministic byte-for-byte output.",
+        "url": "https://rustpdf.dev/generate-pdf",
+        "inLanguage": "en",
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I generate a PDF programmatically?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Create a document, add a page, embed a font, then draw text, vector graphics and images, and write the bytes out. With rust-pdf the same API is available in Go, PHP, Ruby and Node, all driven by one Rust core, so identical input produces identical output in every language." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is generating PDFs with rust-pdf free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does rust-pdf produce deterministic output?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf writes no timestamps and uses no hash-map ordering, so identical input always yields byte-for-byte identical output. This makes generated PDFs auditable and easy to test: you can diff two runs, or pin a checksum in a test, and trust that any difference reflects a real change in your data." }
+          },
+          {
+            "@type": "Question",
+            "name": "What kinds of text and images are supported?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Text is shaped with HarfBuzz-quality Unicode shaping and kerning, fonts are embedded and subset automatically, and paragraphs can be left, right, centered or justified. Images can be JPEG, which is embedded verbatim with no re-encoding, or PNG, including alpha transparency and 16-bit samples." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /generate-pdf hub page (gn- prefix, animations respect reduced-motion) ===== */
+    .gn-lede { max-width: 760px; }
+    .gn-updated { font-size: .8rem; color: var(--muted); margin: 10px 0 0; }
+
+    /* hero: blank page filling with content */
+    .gn-scene { position: relative; height: 220px; max-width: 320px; margin: 32px auto 0; }
+    .gn-paper { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 168px; height: 196px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(249,115,22,.5); }
+    .gn-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57);
+      transform-origin: left center; animation: gnGrow 4.4s ease-in-out infinite; }
+    .gn-paper .ln.s { width: 56%; }
+    .gn-paper .ln:nth-child(2) { animation-delay: .25s; }
+    .gn-paper .ln:nth-child(3) { animation-delay: .5s; }
+    .gn-paper .ln:nth-child(4) { animation-delay: .75s; }
+    .gn-rect { height: 40px; border-radius: 7px; border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(249,115,22,.18), rgba(99,179,237,.16));
+      animation: gnFade 4.4s ease-in-out 1s infinite; }
+    @keyframes gnGrow { 0%,8% { transform: scaleX(.2); opacity: .3; } 30%,100% { transform: scaleX(1); opacity: 1; } }
+    @keyframes gnFade { 0%,20% { opacity: 0; } 45%,100% { opacity: 1; } }
+
+    /* feature cards */
+    .gn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .gn-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .gn-card .ic { color: var(--brand-2); height: 28px; margin-bottom: 12px; }
+    .gn-card .ic svg { width: 28px; height: 28px; }
+    .gn-card h3 { margin: 0 0 6px; font-size: 1.06rem; }
+    .gn-card p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    /* language picker */
+    .gn-langs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; max-width: 620px; margin-left: auto; margin-right: auto; }
+    .gn-lang { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px; color: var(--text); text-decoration: none; transition: border-color .15s, transform .15s; }
+    .gn-lang:hover { border-color: #2a4060; transform: translateY(-2px); }
+    .gn-lang b { font-size: 1rem; }
+    .gn-lang span.sub { color: var(--muted); font-size: .82rem; display: block; }
+    .gn-lang .badge { margin-left: auto; color: var(--brand-2); font-size: 1.1rem; }
+
+    @media (max-width: 820px) {
+      .gn-grid { grid-template-columns: 1fr 1fr; }
+      .gn-langs { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .gn-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gn-paper .ln, .gn-rect { animation: none !important; transform: none; opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>&middot;</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Authoring</p>
+        <h1>Generate PDFs <span class="grad">programmatically</span></h1>
+        <p class="gn-updated">Last updated: June 2026</p>
+        <p class="lede gn-lede">
+          Building a PDF from scratch means turning your data into a real page: text in the
+          right font, vector shapes, images, tables and links. rust-pdf does all of that from
+          code, the same way in every language it supports, on one shared Rust core. The
+          authoring foundation is free, and the output is identical byte for byte across
+          languages. This hub explains what you can build and links to a guide per language.
+        </p>
+
+        <div class="gn-scene" aria-hidden="true">
+          <div class="gn-paper">
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span><span class="ln s"></span>
+            <span class="gn-rect"></span>
+          </div>
+        </div>
+
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#languages" class="btn btn-lg">Generate in your language</a>
+          <a href="#how" class="btn btn-ghost btn-lg">See the code</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE FOUNDATION -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">A free authoring foundation</h2>
+        <p class="muted">
+          Many PDF libraries put their best features behind a paywall and leave you with a
+          thin free tier that can barely place text. rust-pdf takes the opposite approach.
+          The entire authoring layer is free: you can lay out a full invoice, a styled report
+          or a multi-page catalog, embed your brand fonts, draw charts as vector graphics,
+          place photographs, and ship it to production without a license.
+        </p>
+        <p class="muted">
+          The foundation is built for correctness, not just for getting something onto the
+          page. Text is shaped the way a typesetting engine shapes it, fonts are embedded so
+          the file is self-contained, and every run is reproducible. The result is a PDF you
+          can put in front of an auditor, a regulator or a customer with confidence.
+        </p>
+      </div>
+    </section>
+
+    <!-- FEATURE GRID -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What you can build</h2>
+        <p class="center muted narrow">
+          Every piece below is part of the free core, exposed in each language binding.
+        </p>
+        <div class="gn-grid">
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7a2 2 0 0 1 2-2h2"/><path d="M14 5l6 6-8 8H6v-6z"/></svg>
+            </div>
+            <h3>Vector graphics</h3>
+            <p>Lines, rectangles, curves and fills with precise colors. Numbers are written in fixed notation, so the page geometry is exact and reproducible.</p>
+          </div>
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2"/><path d="M9 19h6"/><path d="M12 5v14"/></svg>
+            </div>
+            <h3>Embedded, subset fonts</h3>
+            <p>Your fonts are embedded and subset automatically, so files stay small and self-contained. Text is shaped with HarfBuzz-quality Unicode shaping and kerning.</p>
+          </div>
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h12M4 18h16"/></svg>
+            </div>
+            <h3>Justified paragraphs</h3>
+            <p>Greedy line breaking using real shaped widths, with left, right, center and full justification. Extra space is distributed evenly between words.</p>
+          </div>
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></svg>
+            </div>
+            <h3>Tables</h3>
+            <p>Stack rows that break across pages and repeat headers automatically, measured with the same paragraph engine that lays out body text.</p>
+          </div>
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </div>
+            <h3>Images</h3>
+            <p>JPEG is embedded verbatim with no re-encoding and no generation loss. PNG is supported with alpha transparency and 16-bit samples, including palette images.</p>
+          </div>
+
+          <div class="gn-card reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+            </div>
+            <h3>Links and bookmarks</h3>
+            <p>Add clickable links and an outline of bookmarks so readers can navigate a long document. Stamp watermarks across pages when you need them.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- DETERMINISTIC -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">Deterministic output you can audit</h2>
+        <p class="muted">
+          rust-pdf writes no timestamps and relies on no hash-map ordering. The object graph
+          is laid out in a stable, predictable sequence, so the same input always produces
+          byte-for-byte identical output. If you generate the same report twice, the two
+          files are exactly equal.
+        </p>
+        <p class="muted">
+          That property is more useful than it first sounds. You can pin a checksum in a test
+          and catch any accidental change to a template. You can diff two generated files and
+          see precisely what your data changed. You can reproduce a customer's exact document
+          months later for an audit. It is also the basis of an internal guarantee the project
+          keeps: the same drawing produces the same bytes whether it is run from Rust or from
+          a language binding, which is verified on every build.
+        </p>
+      </div>
+    </section>
+
+    <!-- MEMORY SAFE -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">A memory-safe Rust core</h2>
+        <p class="center muted narrow">
+          PDF generation often runs on a server, turning untrusted data into documents at
+          scale. A buffer overflow or a use-after-free in that path is a security incident.
+        </p>
+        <p class="muted">
+          rust-pdf is written in Rust, which rules out entire classes of memory-safety bugs
+          at compile time. There is no manual memory management to get wrong, no dangling
+          pointers, no data races in the document model. The language bindings are thin
+          wrappers over the same core, so Go, PHP, Ruby and Node all inherit that safety
+          rather than reimplementing PDF parsing and writing in each ecosystem. One core is
+          hardened once, and every language benefits.
+        </p>
+      </div>
+    </section>
+
+    <!-- LANGUAGE PICKER -->
+    <section id="languages" class="band">
+      <div class="wrap">
+        <h2 class="center">Generate a PDF in your language</h2>
+        <p class="center muted narrow">
+          Each guide walks through creating a document, adding a page, drawing content, and
+          writing the file.
+        </p>
+        <div class="gn-langs">
+          <a class="gn-lang" href="/generate-pdf/go"><b>Go</b><span class="sub">go get and generate</span><span class="badge">&rarr;</span></a>
+          <a class="gn-lang" href="/generate-pdf/php"><b>PHP</b><span class="sub">Composer and generate</span><span class="badge">&rarr;</span></a>
+          <a class="gn-lang" href="/generate-pdf/ruby"><b>Ruby</b><span class="sub">gem install and generate</span><span class="badge">&rarr;</span></a>
+          <a class="gn-lang" href="/generate-pdf/node"><b>Node.js</b><span class="sub">npm install and generate</span><span class="badge">&rarr;</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to generate a PDF with rust-pdf</h2>
+        <p class="center muted narrow">
+          Create a document, add a page, embed a font, draw, and write the bytes. The free
+          core needs no license.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+            <button class="tab" data-tab="ruby">Ruby</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+with rustpdf.Document() as doc:
+    f = doc.add_font_file("Roboto-Regular.ttf")   # embedded &amp; subset
+    doc.add_page()
+    doc.show_text(f, 22, 72, 760, "Quarterly report")
+    doc.show_text(f, 12, 72, 720, "Generated with rust-pdf")
+    doc.save("report.pdf")                         # free, no license needed</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+doc, _ := rustpdf.New()
+defer doc.Close()
+f, _ := doc.AddFontFile("Roboto-Regular.ttf")
+doc.AddPage()
+doc.ShowText(f, 22, 72, 760, "Quarterly report", 0)
+data, _ := doc.ToBytes()
+os.WriteFile("report.pdf", data, 0o644)</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { Document } = require("rustpdf");
+const fs = require("fs");
+
+const doc = new Document();
+const f = doc.addFontFile("Roboto-Regular.ttf");
+doc.addPage();
+doc.showText(f, 22, 72, 760, "Quarterly report");
+fs.writeFileSync("report.pdf", doc.toBytes());</code></pre>
+<pre class="tab-pane" data-pane="ruby"><code># gem install rustpdf
+require "rustpdf"
+
+doc = RustPdf::Document.new
+f = doc.add_font_file("Roboto-Regular.ttf")
+doc.add_page
+doc.show_text(f, 22, 72, 760, "Quarterly report")
+File.binwrite("report.pdf", doc.to_bytes)</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Structural integrity validated by:
+          <span>qpdf</span><span>mutool</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Generation is exposed across eight language bindings on one Rust core. Full details
+          in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- LICENSING -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Generation is free; corporate features are licensed</h2>
+        <p class="muted">
+          Authoring PDFs with rust-pdf costs nothing. Corporate features build on the same
+          core and are licensed: PDF/A archiving, digital signatures and encryption are gated
+          so the rule is identical in every language. Start free, then activate a license
+          when you need those capabilities. See the plans on the
+          <a href="/#pricing">pricing page</a>, or read the full API in the
+          <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+      <div class="wrap narrow">
+        <h2 class="center">Generate PDF FAQ</h2>
+        <details><summary>How do I generate a PDF programmatically?</summary>
+          <p>Create a document, add a page, embed a font, then draw text, vector graphics and images, and write the bytes out. With rust-pdf the same API is available in Go, PHP, Ruby and Node, all driven by one Rust core, so identical input produces identical output in every language.</p>
+        </details>
+        <details><summary>Is generating PDFs with rust-pdf free?</summary>
+          <p>Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language.</p>
+        </details>
+        <details><summary>Does rust-pdf produce deterministic output?</summary>
+          <p>Yes. rust-pdf writes no timestamps and uses no hash-map ordering, so identical input always yields byte-for-byte identical output. This makes generated PDFs auditable and easy to test: you can diff two runs, or pin a checksum in a test, and trust that any difference reflects a real change in your data.</p>
+        </details>
+        <details><summary>What kinds of text and images are supported?</summary>
+          <p>Text is shaped with HarfBuzz-quality Unicode shaping and kerning, fonts are embedded and subset automatically, and paragraphs can be left, right, centered or justified. Images can be JPEG, which is embedded verbatim with no re-encoding, or PNG, including alpha transparency and 16-bit samples.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Generate PDFs in your language</h2>
+        <p class="muted">
+          One core, the same authoring output across every language. Free to generate,
+          license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <!-- spoke-langs --><p class="center muted narrow" style="margin-top:8px">Generate a PDF in your language: <a href="/generate-pdf/go">Go</a>, <a href="/generate-pdf/php">PHP</a>, <a href="/generate-pdf/ruby">Ruby</a>, <a href="/generate-pdf/node">Node.js</a>.</p><!-- spoke-langs -->
+        <div class="sibling-langs">
+          <a href="/sign-pdf">Sign a PDF</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/merge-pdf">Merge and split PDFs</a>
+          <a href="/encrypt-pdf">Encrypt PDF</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>&middot;</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms.html">Terms</a>
+        <a href="/legal/privacy.html">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

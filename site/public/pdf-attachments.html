@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Embedded Files in PDF (PDF/A-3 Attachments), Explained | rust-pdf</title>
-  <meta name="description" content="How a PDF carries other files sealed inside it: the /Filespec structure, AFRelationship values, why PDF/A-3 is the archival level that permits arbitrary attachments, and how to embed files in any language with rust-pdf." />
+  <title>Embedded Files in PDF: PDF/A-3 Attachments | rust-pdf</title>
+  <meta name="description" content="How a PDF carries other files sealed inside it: the /Filespec structure, AFRelationship values, and why PDF/A-3 permits arbitrary attachments." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-attachments" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -40,7 +41,10 @@
         "url": "https://rustpdf.dev/pdf-attachments",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF embedded files / PDF/A-3 attachments", "description": "A PDF can carry other files sealed inside it as typed streams listed in the catalog /Names /EmbeddedFiles and /AF. PDF/A-3 is the archival level that explicitly permits arbitrary embedded files." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+        "datePublished": "2026-02-01",
+        "dateModified": "2026-06-29",
+        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
+        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
       },
       {
         "@type": "FAQPage",
@@ -189,6 +193,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Embedded files</p>
         <h1>Embedded Files in PDF:<br /><span class="grad">PDF/A-3 Attachments</span></h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
         <p class="lede at-lede">
           A PDF can carry other files sealed inside its binary structure: an XML invoice,
           a source spreadsheet, a dataset, a machine-readable twin of the visible page.
@@ -524,8 +529,8 @@ const bytes = doc.toBytes();</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

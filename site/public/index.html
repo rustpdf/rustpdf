@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>rust-pdf · enterprise PDF for every language</title>
   <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
   <link rel="canonical" href="https://rustpdf.dev/" />
@@ -30,10 +31,22 @@
         "@type": "Organization",
         "@id": "https://rustpdf.dev/#org",
         "name": "CaseFy Inc.",
-        "url": "https://casefy.io",
-        "logo": "https://rustpdf.dev/favicon.svg",
-        "sameAs": ["https://casefy.io"],
-        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift."
+        "url": "https://rustpdf.dev/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/og.png",
+          "width": 1200,
+          "height": 630
+        },
+        "sameAs": [
+          "https://casefy.io",
+          "https://github.com/rustpdf",
+          "https://pypi.org/project/rustpdf/",
+          "https://www.npmjs.com/package/rustpdf",
+          "https://rubygems.org/gems/rustpdf",
+          "https://pkg.go.dev/github.com/rustpdf/rustpdf-go"
+        ],
+        "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. rust-pdf is an independent commercial product and is not affiliated with or endorsed by the Rust Foundation or the Rust programming language project."
       },
       {
         "@type": "WebSite",
@@ -51,6 +64,9 @@
         "url": "https://rustpdf.dev/",
         "publisher": { "@id": "https://rustpdf.dev/#org" },
         "description": "One memory-safe core with idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. Generate PDF/A archival output, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA. Runs entirely on your servers.",
+        "programmingLanguage": [
+          "Python", "C#", "Go", "PHP", "Ruby", "JavaScript", "TypeScript", "Delphi", "Object Pascal", "Swift", "Rust"
+        ],
         "featureList": [
           "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4) and converting existing PDFs to PDF/A",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA) plus signature validation",
@@ -68,6 +84,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing",
           "offers": [
             {
@@ -76,6 +93,8 @@
               "price": "1500",
               "priceCurrency": "USD",
               "category": "Annual license",
+              "availability": "https://schema.org/InStock",
+              "priceValidUntil": "2026-12-31",
               "url": "https://rustpdf.dev/#pricing"
             },
             {
@@ -84,6 +103,8 @@
               "price": "3000",
               "priceCurrency": "USD",
               "category": "Annual license",
+              "availability": "https://schema.org/InStock",
+              "priceValidUntil": "2026-12-31",
               "url": "https://rustpdf.dev/#pricing"
             }
           ]
@@ -634,8 +655,8 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

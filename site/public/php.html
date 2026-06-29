@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Enterprise PDF Library for PHP — PDF/A, PAdES, AES-256, PDF/UA | rust-pdf</title>
-  <meta name="description" content="Generate archival PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA natively in PHP. composer require rust-pdf/rustpdf. Runs on your servers, no per-document SaaS fees, no AGPL." />
+  <title>PHP PDF Library: PDF/A, Sign, Encrypt | rust-pdf</title>
+  <meta name="description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and build accessible PDF/UA in PHP. composer require rust-pdf/rustpdf. Runs on your servers, no AGPL." />
   <link rel="canonical" href="https://rustpdf.dev/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -19,9 +20,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for PHP | rust-pdf" />
   <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for PHP. composer require rust-pdf/rustpdf. Offline, licensed per feature." />
-  <meta property="og:image:alt" content="rust-pdf — enterprise PDF for PHP" />
+  <meta property="og:image:alt" content="rust-pdf - enterprise PDF for PHP" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
-  <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for PHP" />
+  <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for PHP" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,9 +36,11 @@
       },
       {
         "@type": "SoftwareApplication",
+        "@id": "https://rustpdf.dev/#software",
         "name": "rust-pdf for PHP",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
+        "programmingLanguage": "PHP",
         "url": "https://rustpdf.dev/php",
         "softwareRequirements": "PHP 8.1+ with the FFI extension",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
@@ -56,6 +59,7 @@
           "lowPrice": "1500",
           "highPrice": "3000",
           "offerCount": "2",
+          "priceValidUntil": "2026-12-31",
           "url": "https://rustpdf.dev/#pricing"
         }
       }
@@ -196,6 +200,60 @@ $bytes = $doc->toBytes();          // archival-grade, accessible PDF</code></pre
       </div>
     </section>
 
+    <!-- ECOSYSTEM -->
+    <section class="section">
+      <div class="wrap grid-2">
+        <div>
+          <h2>Fits Laravel, Symfony and plain PHP</h2>
+          <p class="muted">
+            <code>toBytes()</code> returns a binary string, so streaming a PDF is a
+            Laravel <code>response($bytes)-&gt;header('Content-Type', 'application/pdf')</code>,
+            a Symfony <code>Response</code> with the same header, or a bare
+            <code>header()</code> + <code>echo</code> in any framework. No
+            <code>shell_exec</code> to wkhtmltopdf, no temp directory to clean up.
+          </p>
+          <p class="muted">
+            The package is pure PHP over the bundled FFI extension, so
+            <code>composer require rust-pdf/rustpdf</code> needs no native build. Enable
+            <code>ext-ffi</code> in <code>php.ini</code> and the native core for your
+            platform loads on first use, including under FPM and Octane.
+          </p>
+        </div>
+        <div class="tabs">
+<pre class="tab-pane active"><code>// Laravel: return a PDF/A from a controller
+use RustPdf\Document;
+use RustPdf\PdfaLevel;
+
+public function invoice()
+{
+    $doc = new Document();
+    $doc->pdfa(PdfaLevel::A2b);
+    $f = $doc->addFontFile('Roboto-Regular.ttf');
+    $doc->addPage()->showText($f, 18, 72, 760, 'Invoice #1024');
+    return response($doc->toBytes())
+        ->header('Content-Type', 'application/pdf');
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Common PDF tasks in PHP</h2>
+        <p class="muted">
+          Focused, copy-paste guides in PHP, all backed by the same Rust core. Each one
+          uses the same fluent <code>Document</code> / <code>EditableDoc</code> API.
+        </p>
+        <ul class="check-list narrow" style="margin:26px auto 0; max-width:660px; text-align:left">
+          <li><a href="/generate-pdf/php">Generate a PDF in PHP</a> and <a href="/sign-pdf/php">sign it</a> with PAdES.</li>
+          <li><a href="/pdf-a/php">Create PDF/A in PHP</a> and <a href="/encrypt-pdf/php">encrypt with AES-256</a>.</li>
+          <li><a href="/merge-pdf/php">Merge PDFs</a>, <a href="/extract-text/php">extract text</a> and <a href="/compress-pdf/php">compress</a>.</li>
+          <li><a href="/pdf-forms/php">Fill PDF forms</a> in PHP, plus concept hubs: <a href="/pdf-a">PDF/A</a>, <a href="/pades">PAdES</a>, <a href="/aes-256">AES-256</a>.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section class="section">
       <div class="wrap narrow center">
@@ -217,6 +275,22 @@ $bytes = $doc->toBytes();          // archival-grade, accessible PDF</code></pre
         </div>
       </div>
     </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PHP PDF library FAQ</h2>
+        <details><summary>What do I need to install besides Composer?</summary>
+          <p>PHP 8.1+ with the FFI extension enabled (<code>ffi.enable</code> in <code>php.ini</code>). The Composer package is pure PHP and carries the native core per platform, so there is no native build, no PECL compile and no system PDF tool to install.</p>
+        </details>
+        <details><summary>Does it work under PHP-FPM, Octane and Swoole?</summary>
+          <p>Yes. The native core loads on first use within the worker process and stays resident, which suits long-lived FPM and Octane / Swoole workers. Each <code>Document</code> is independent, so concurrent requests do not share state.</p>
+        </details>
+        <details><summary>How do I send the PDF from Laravel or Symfony?</summary>
+          <p><code>toBytes()</code> returns a binary string. Wrap it in a Laravel <code>response()</code> or a Symfony <code>Response</code> with <code>Content-Type: application/pdf</code> (and a <code>Content-Disposition</code> header for downloads). No files touch disk unless you choose to save them.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -233,8 +307,8 @@ $bytes = $doc->toBytes();          // archival-grade, accessible PDF</code></pre
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

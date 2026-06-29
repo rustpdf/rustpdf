@@ -21,6 +21,25 @@ const publicDir = path.join(__dirname, "..", "public");
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", true);
+
+// --- Security headers + HTTPS enforcement ------------------------------------
+// Cloudflare sits in front, but we set HSTS and the standard security headers at
+// the origin too (defense in depth; Cloudflare passes them through) and redirect
+// any plain-HTTP hit to HTTPS as a safety net. Also enable "Always Use HTTPS" in
+// the Cloudflare dashboard so the edge handles http:// before it reaches origin.
+app.use((req, res, next) => {
+  res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  const proto = req.headers["x-forwarded-proto"];
+  if (proto && proto !== "https" && req.method === "GET") {
+    return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+  }
+  next();
+});
 
 // --- Stripe webhook: MUST receive the raw body, so mount it before json() ----
 app.post(
@@ -228,8 +247,43 @@ app.get(["/docs/swift.html", "/docs/swift"], (_req, res) => {
   }
 });
 
+// --- Feature hubs that also have a spoke subdirectory ------------------------
+// e.g. both `pdf-a.html` and the `pdf-a/` directory exist. express.static would
+// see the directory first, 301 the canonical extensionless URL `/pdf-a` to
+// `/pdf-a/`, find no index there and return 404 — silently dropping the hub page
+// from the index. Serve the hub .html explicitly (200 at the canonical URL)
+// BEFORE the static handler runs. /pdf-a/<lang> spokes are unaffected.
+const HUBS_WITH_SUBDIR = [
+  "pdf-a", "encrypt-pdf", "merge-pdf", "extract-text", "compress-pdf", "pdf-forms",
+];
+for (const slug of HUBS_WITH_SUBDIR) {
+  app.get([`/${slug}`, `/${slug}/`], (_req, res) =>
+    res.sendFile(path.join(publicDir, `${slug}.html`)));
+}
+// sign-pdf and generate-pdf have spoke directories but no concept page of their
+// own; serve the dedicated hub index we generate into each directory.
+app.get(["/sign-pdf", "/sign-pdf/"], (_req, res) =>
+  res.sendFile(path.join(publicDir, "sign-pdf", "index.html")));
+app.get(["/generate-pdf", "/generate-pdf/"], (_req, res) =>
+  res.sendFile(path.join(publicDir, "generate-pdf", "index.html")));
+
 // --- Static site -------------------------------------------------------------
-app.use(express.static(publicDir, { extensions: ["html"] }));
+app.use(
+  express.static(publicDir, {
+    extensions: ["html"],
+    setHeaders(res, filePath) {
+      // Fingerprinted/rarely-changing assets: cache hard for a year. Fonts,
+      // images and the favicon never change at a given URL. CSS/JS are not
+      // content-hashed yet, so give them a safe one-day TTL (still 6x the old
+      // 4h) — bump to a year once they carry a ?v= or hashed filename.
+      if (/\.(woff2?|ttf|otf|png|jpe?g|gif|webp|svg|ico)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (/\.(css|js)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=86400");
+      }
+    },
+  }),
+);
 app.get("/success", (_req, res) => res.sendFile(path.join(publicDir, "success.html")));
 app.get("/cancel", (_req, res) => res.sendFile(path.join(publicDir, "cancel.html")));
 // /zugferd is the canonical hybrid-e-invoice page; serve the same page for the

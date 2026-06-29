@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Generate a PDF in Ruby | rust-pdf</title>
-  <meta name="description" content="Generate a PDF in Ruby. Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Ruby a fast, memory-safe core with deterministic output." />
+  <meta name="description" content="Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
   <link rel="canonical" href="https://rustpdf.dev/generate-pdf/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/generate-pdf/ruby" />
   <meta property="og:title" content="Generate a PDF in Ruby" />
-  <meta property="og:description" content="Generate a PDF in Ruby. Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Ruby a fast, memory-safe core with deterministic output." />
+  <meta property="og:description" content="Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Generate a PDF in Ruby" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Generate a PDF in Ruby" />
-  <meta name="twitter:description" content="Generate a PDF in Ruby. Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Ruby a fast, memory-safe core with deterministic output." />
+  <meta name="twitter:description" content="Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Generate a PDF in Ruby" />
   <script type="application/ld+json">
@@ -38,8 +39,8 @@
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Documentation",
-          "item": "https://rustpdf.dev/docs/"
+          "name": "Generate PDF",
+          "item": "https://rustpdf.dev/generate-pdf"
         },
         {
           "@type": "ListItem",
@@ -52,10 +53,16 @@
     {
       "@type": "TechArticle",
       "headline": "Generate a PDF in Ruby",
-      "description": "Generate a PDF in Ruby. Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Ruby a fast, memory-safe core with deterministic output.",
+      "description": "Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and.",
       "url": "https://rustpdf.dev/generate-pdf/ruby",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org"
+      },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
@@ -63,8 +70,7 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io"
+        "@id": "https://rustpdf.dev/#org"
       }
     },
     {
@@ -92,6 +98,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "One memory-safe, high-performance Rust core is exposed to Ruby through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does rust-pdf fit a Ruby project?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."
           }
         }
       ]
@@ -147,6 +161,7 @@
         <p class="eyebrow">Authoring &middot; Ruby</p>
         <h1>Generate a <span class="grad">PDF</span> in Ruby</h1>
         <p class="lede sp-lede">Create PDFs programmatically from Ruby: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives Ruby a fast, memory-safe core with deterministic output.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Ruby</span>
@@ -157,7 +172,7 @@
         </div>
         <div class="cta-row" style="margin-top:32px">
           <a href="#how" class="btn btn-lg">See the Ruby code</a>
-          <a href="/docs/" class="btn btn-ghost btn-lg">Documentation, explained</a>
+          <a href="/generate-pdf" class="btn btn-ghost btn-lg">Generate PDF, explained</a>
         </div>
       </div>
     </section>
@@ -169,6 +184,7 @@
           <div>
             <p class="muted">Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.</p>
             <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
+            <p class="muted">It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -182,7 +198,8 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Generate a PDF in Ruby with rust-pdf</h2>
-        <p class="center muted narrow">Install the package, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Ruby code from the reference docs.</p>
+        <p class="center muted narrow">Install with RubyGems, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Ruby code from the reference docs.</p>
+        <p class="center"><code class="sp-install">gem install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Ruby</span></div>
 <pre class="tab-pane active"><code>require "rustpdf"
@@ -213,6 +230,9 @@ doc.close</code></pre>
         <details><summary>Why a Rust core for Ruby?</summary>
           <p>One memory-safe, high-performance Rust core is exposed to Ruby through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
         </details>
+        <details><summary>How does rust-pdf fit a Ruby project?</summary>
+          <p>It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+        </details>
       </div>
     </section>
 
@@ -225,7 +245,7 @@ doc.close</code></pre>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
-          <a href="/docs/">Documentation</a>
+          <a href="/generate-pdf">Generate PDF</a>
           <a href="/ruby">rust-pdf for Ruby</a>
           <a href="/generate-pdf/go">Generation in Go</a>
           <a href="/generate-pdf/php">Generation in PHP</a>
@@ -255,8 +275,8 @@ doc.close</code></pre>
     </div>
   </footer>
 
-  <script src="/highlight.js"></script>
-  <script src="/app.js"></script>
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>
