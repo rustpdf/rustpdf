@@ -293,7 +293,7 @@ f = doc.add_font_file("Roboto-Regular.ttf")
 doc.add_page.show_text(f, 20, 72, 760, "Archival report")
 doc.save("report_pdfa.pdf")     # raises RustPdf::Error without a license granting PDF/A
 doc.close</code></pre></div>
-      <div class="note">PDF/A requires the title to be set for valid metadata: call <code>info(title: …)</code>.</div>
+      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>info(title: …)</code>.</div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>attach_file</code> before serializing.</div>
 
       <!-- TAGGED -->
@@ -442,7 +442,7 @@ subset = a.extract_pages([0, 2])    # pages 1 and 3
 subset.save("subset.pdf")
 subset.close
 a.close</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorder_pages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorder_pages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -583,7 +583,7 @@ File.binwrite("contract.lta.pdf", lta)</code></pre></div>
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>RustPdf.verify_signatures(data) → Array&lt;Hash&gt;</code></div>
-      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code> and <code>"signer"</code> (both <code>nil</code> when absent), plus <code>"sub_filter"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned.</p>
+      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code> and <code>"signer"</code> (both <code>nil</code> when absent), plus <code>"sub_filter"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("contract.signed.pdf")
 RustPdf.verify_signatures(data).each do |sig|
   puts "#{sig['signer']} valid: #{sig['is_valid']} " \

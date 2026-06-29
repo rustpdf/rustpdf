@@ -66,8 +66,12 @@ fn run_content(reader: &PdfReader, content: &[u8], resources: &Dict, out: &mut S
             Token::Keyword(kw) => {
                 match kw.as_slice() {
                     b"BT" => {
-                        text_y = None;
-                        wrote_on_line = false;
+                        // A new text object resets the text matrix, but the on-page
+                        // baseline is absolute: do NOT clear `text_y`/`wrote_on_line`
+                        // here, or a downward baseline step between two consecutive
+                        // text objects (each its own `BT … Tm … ET`, which is exactly
+                        // how every `show_text` is emitted) would never be detected
+                        // and the two lines would be concatenated with no separator.
                     }
                     b"Tf" => {
                         if let Some(Operand::Name(name)) = nth_from_end(&operands, 1) {

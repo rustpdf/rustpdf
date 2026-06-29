@@ -68,6 +68,46 @@ fn unicode_text_embeds_subsets_and_extracts() {
 }
 
 #[test]
+fn separate_text_blocks_get_a_line_break_in_extraction() {
+    // Each `page.text(...)` starts a new page item, emitted as its own
+    // `BT … Tm … ET`. Two such blocks at different baselines must extract as two
+    // lines — not glued together — matching pdftotext's "line inference".
+    // Regression: the `BT` handler used to clear the vertical-position state,
+    // so the downward step between blocks was never detected (lines concatenated).
+    let mut doc = Document::new();
+    let font = doc
+        .add_font_file(assets().join("Roboto-Regular.ttf"))
+        .unwrap();
+    let page = doc.add_page();
+    page.text(font, 14.0).at(72.0, 740.0).show("FIRST LINE");
+    page.text(font, 14.0).at(72.0, 700.0).show("SECOND LINE");
+    let bytes = doc.to_bytes().unwrap();
+
+    let extracted = pdf::extract_text(&bytes).unwrap();
+    assert!(
+        extracted.contains("FIRST LINE") && extracted.contains("SECOND LINE"),
+        "both lines must survive: {extracted:?}"
+    );
+    assert!(
+        !extracted.contains("FIRST LINESECOND LINE"),
+        "separate baselines must not be glued together: {extracted:?}"
+    );
+    // Same baseline twice must NOT introduce a spurious break.
+    let mut doc2 = Document::new();
+    let font2 = doc2
+        .add_font_file(assets().join("Roboto-Regular.ttf"))
+        .unwrap();
+    let page2 = doc2.add_page();
+    page2.text(font2, 14.0).at(72.0, 700.0).show("AAA");
+    page2.text(font2, 14.0).at(200.0, 700.0).show("BBB");
+    let same_line = pdf::extract_text(doc2.to_bytes().unwrap()).unwrap();
+    assert!(
+        !same_line.contains('\n') || !same_line.trim().contains('\n'),
+        "same baseline should not force a line break: {same_line:?}"
+    );
+}
+
+#[test]
 fn paragraph_wraps_and_extracts_full_text() {
     let path = std::env::temp_dir().join("rustpdf_text_paragraph.pdf");
     let mut doc = Document::new();
