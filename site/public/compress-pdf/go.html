@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Compress and Optimize a PDF in Go | rust-pdf</title>
-  <meta name="description" content="Shrink PDF file size from Go." />
+  <meta name="description" content="Shrink and optimize PDFs losslessly in Go. go get the cgo module, dedupe objects and pack object streams, then serve smaller files from a net/http or chi handler." />
   <link rel="canonical" href="https://rustpdf.dev/compress-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/compress-pdf/go" />
   <meta property="og:title" content="Compress and Optimize a PDF in Go" />
-  <meta property="og:description" content="Shrink PDF file size from Go." />
+  <meta property="og:description" content="Shrink and optimize PDFs losslessly in Go. go get the cgo module, dedupe objects and pack object streams, then serve smaller files from a net/http or chi handler." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Compress and Optimize a PDF in Go" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Compress and Optimize a PDF in Go" />
-  <meta name="twitter:description" content="Shrink PDF file size from Go." />
+  <meta name="twitter:description" content="Shrink and optimize PDFs losslessly in Go. go get the cgo module, dedupe objects and pack object streams, then serve smaller files from a net/http or chi handler." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Compress and Optimize a PDF in Go" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Compress and Optimize a PDF in Go",
-      "description": "Shrink PDF file size from Go.",
+      "description": "Shrink and optimize PDFs losslessly in Go. go get the cgo module, dedupe objects and pack object streams, then serve smaller files from a net/http or chi handler.",
       "url": "https://rustpdf.dev/compress-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/compress-pdf/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/compress-pdf/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "How do I deploy the shared library alongside my Go binary?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Ship libpdf_ffi next to the executable: the macOS dylib resolves through its install-name and the Linux .so through an -rpath, or simply drop both into a multi-stage scratch or distroless image. There is no daemon to run, so Optimize and Compact execute in-process inside your service."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Optimization &middot; Go</p>
         <h1>Compress a <span class="grad">PDF</span> in Go</h1>
         <p class="lede sp-lede">Shrink PDF file size from Go. rust-pdf drops unreferenced objects, Flate-compresses uncompressed streams, dedupes byte-identical objects, and can pack everything into object streams with a cross-reference stream.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">Optimization is lossless structural cleanup: nothing in the rendered page changes, the file just carries less weight. Combine optimize (dedupe and compress) with compact (object and xref streams) for the smallest valid output, ideal before archiving, emailing or serving documents at scale.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">PDFs that a Go service archives, emails or serves at scale are often bloated with uncompressed streams and duplicated objects. Go ships no tool to slim them, and the usual fix — re-rendering through an external converter — quietly degrades the page and costs a process spawn per file.</p>
+            <p class="muted">rust-pdf optimizes losslessly: it drops unreferenced objects, Flate-compresses raw streams and dedupes byte-identical objects, then optionally packs everything into an object stream with a cross-reference stream. The rendered page is untouched and the smaller output still passes qpdf and mutool.</p>
+            <p class="muted">Deployment stays simple even though the engine is native: ship libpdf_ffi beside the binary — resolved by the macOS install-name or a Linux -rpath — or bake both into a multi-stage scratch image. With no daemon to manage, the optimize step runs in-process inside your existing HTTP service.</p>
           </div>
           <ul class="check-list">
             <li>Drop unreferenced objects, Flate-compress streams and dedupe identical objects.</li>
@@ -211,7 +238,7 @@ _ = ed.Save("small.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Go. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -227,18 +254,18 @@ _ = ed.Save("small.pdf")</code></pre>
         <details><summary>Is optimization free?</summary>
           <p>Yes. Optimize and compact are part of the free tier in Go. No license is needed.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>How do I deploy the shared library alongside my Go binary?</summary>
+          <p>Ship libpdf_ffi next to the executable: the macOS dylib resolves through its install-name and the Linux .so through an -rpath, or simply drop both into a multi-stage scratch or distroless image. There is no daemon to run, so Optimize and Compact execute in-process inside your service.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Compress and Optimize a PDF in Go</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Serve leaner PDFs from your Go apps</h2>
+        <p class="muted">One Rust core, the same lossless optimization in every language. Optimize and compact are free in Go — ship smaller files without a token.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -252,7 +279,7 @@ _ = ed.Save("small.pdf")</code></pre>
           <a href="/encrypt-pdf/go">Encryption in Go</a>
           <a href="/merge-pdf/go">Merging in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -265,8 +292,8 @@ _ = ed.Save("small.pdf")</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

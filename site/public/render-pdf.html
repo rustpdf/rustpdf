@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Render a PDF page to an image, a clear guide" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Render a PDF Page to an Image", "item": "https://rustpdf.dev/render-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Render a PDF Page to an Image",
+          "item": "https://rustpdf.dev/render-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Render a PDF Page to an Image (PDF to PNG), Explained",
+      "description": "A plain-language explanation of how rendering a PDF page to a raster image works: a content-stream interpreter executes the page operators, painting text as real glyph outlines, filling and stroking vector paths, compositing embedded images, resolving color spaces and transparency, then encoding the result as a PNG at the requested resolution.",
+      "url": "https://rustpdf.dev/render-pdf",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF rendering",
+        "description": "Rasterizing a PDF page into a bitmap image (PNG) for thumbnails, previews and image export."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Render a PDF Page to an Image (PDF to PNG), Explained",
-        "description": "A plain-language explanation of how rendering a PDF page to a raster image works: a content-stream interpreter executes the page operators, painting text as real glyph outlines, filling and stroking vector paths, compositing embedded images, resolving color spaces and transparency, then encoding the result as a PNG at the requested resolution.",
-        "url": "https://rustpdf.dev/render-pdf",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF rendering", "description": "Rasterizing a PDF page into a bitmap image (PNG) for thumbnails, previews and image export." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I render a PDF page to an image?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Call render_page_to_png (Python), Pdf.RenderPageToPng (C#), rustpdf.RenderPageToPng (Go), or renderPageToPng (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is a Pro feature, so a valid license must be active." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does it need a headless browser or external tool?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. The rasterizer is written in pure Rust on top of tiny-skia. There is no Chromium, no Ghostscript, no PDFium and no C dependency. It ships inside the same single library as the rest of the bindings, so deployment stays a single artifact." }
-          },
-          {
-            "@type": "Question",
-            "name": "What does the renderer support?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Vector fills and strokes with clipping, real glyph outlines for embedded and CID fonts, raster images including JPEG and soft masks, DeviceGray, RGB, CMYK, Indexed, ICCBased, Separation and DeviceN color spaces, Form XObjects, constant alpha and blend modes, and axial and radial shadings. Page rotation and crop box are honored." }
-          },
-          {
-            "@type": "Question",
-            "name": "What resolution does it produce?",
-            "acceptedAnswer": { "@type": "Answer", "text": "You choose. The DPI argument scales the output: 72 DPI gives one pixel per point (the PDF's natural size), 150 DPI is good for previews, 300 DPI for print-quality rasters. The bitmap dimensions are the page size in points multiplied by DPI divided by 72." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is page rendering free?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Basic PDF generation is free. Page rendering is a Pro feature, bundled with PDF/A and encryption in the self-serve Pro tier, and also included in Enterprise. Without an active license the call returns a license error and produces no image." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/render-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/render-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I render a PDF page to an image?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Call render_page_to_png (Python), Pdf.RenderPageToPng (C#), rustpdf.RenderPageToPng (Go), or renderPageToPng (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is a Pro feature, so a valid license must be active."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it need a headless browser or external tool?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The rasterizer is written in pure Rust on top of tiny-skia. There is no Chromium, no Ghostscript, no PDFium and no C dependency. It ships inside the same single library as the rest of the bindings, so deployment stays a single artifact."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does the renderer support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Vector fills and strokes with clipping, real glyph outlines for embedded and CID fonts, raster images including JPEG and soft masks, DeviceGray, RGB, CMYK, Indexed, ICCBased, Separation and DeviceN color spaces, Form XObjects, constant alpha and blend modes, and axial and radial shadings. Page rotation and crop box are honored."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What resolution does it produce?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You choose. The DPI argument scales the output: 72 DPI gives one pixel per point (the PDF's natural size), 150 DPI is good for previews, 300 DPI for print-quality rasters. The bitmap dimensions are the page size in points multiplied by DPI divided by 72."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is page rendering free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Basic PDF generation is free. Page rendering is a Pro feature, bundled with PDF/A and encryption in the self-serve Pro tier, and also included in Enterprise. Without an active license the call returns a license error and produces no image."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -256,7 +314,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Rendering PDFs</p>
         <h1>Render a <span class="grad">PDF Page to an Image</span><br />PDF to PNG</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede rp-lede">
           Sometimes you do not want the document, you want a picture of it: a
           thumbnail for a list, a preview in a viewer, a flat image to drop into
@@ -557,8 +615,8 @@ fs.writeFileSync("page1.png", png);</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

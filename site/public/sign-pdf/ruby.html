@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in Ruby (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Ruby." />
+  <meta name="description" content="gem install rustpdf and add a PAdES signature to a PDF from Ruby with your own PEM or PKCS#12 key, signing inside a Rails request or a Sidekiq background job." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/ruby" />
   <meta property="og:title" content="Digitally Sign a PDF in Ruby (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Ruby." />
+  <meta property="og:description" content="gem install rustpdf and add a PAdES signature to a PDF from Ruby with your own PEM or PKCS#12 key, signing inside a Rails request or a Sidekiq background job." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in Ruby (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in Ruby (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Ruby." />
+  <meta name="twitter:description" content="gem install rustpdf and add a PAdES signature to a PDF from Ruby with your own PEM or PKCS#12 key, signing inside a Rails request or a Sidekiq background job." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in Ruby (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in Ruby (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from Ruby.",
+      "description": "gem install rustpdf and add a PAdES signature to a PDF from Ruby with your own PEM or PKCS#12 key, signing inside a Rails request or a Sidekiq background job.",
       "url": "https://rustpdf.dev/sign-pdf/ruby",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/ruby#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/ruby"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Ruby project?",
+          "name": "What key formats does signing accept in Ruby?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."
+            "text": "Pass the private key as PKCS#8 DER and the certificate as X.509 DER. If you hold a PEM file or a PKCS#12 bundle, convert it once with Ruby's openssl module, then call RustPdf.sign from a Rails request or an ActiveJob worker."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Digital signatures &middot; Ruby</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Ruby</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from Ruby. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Ruby</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Ruby needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.</p>
-            <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+            <p class="muted">Prawn can lay out a contract beautifully, but it cannot sign one, so Ruby shops have historically driven OpenSSL by hand or shelled out to a Java tool just to attach a PKCS#7 blob to the bytes. rust-pdf assembles the signature itself.</p>
+            <p class="muted">A real digital signature proves who approved a document and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, signs through a non-destructive incremental update so earlier signatures stay valid, and supports PAdES B-B, B-LT and B-LTA for long-term validation.</p>
+            <p class="muted">Read your PEM or PKCS#12 with Ruby's openssl module, convert it to PKCS#8 and X.509 DER, then call <code>RustPdf.sign</code> from a Rails request or an ActiveJob worker; wrap it in begin/rescue so a missing Signatures license surfaces as a handled <code>RustPdf::Error</code>.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -214,7 +241,7 @@ File.binwrite("contract.signed.pdf", signed)
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
         <p class="center muted narrow" style="margin-top:18px">Ruby basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
 
@@ -230,18 +257,18 @@ File.binwrite("contract.signed.pdf", signed)
         <details><summary>Do I need a license to sign in Ruby?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Ruby is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Ruby project?</summary>
-          <p>It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+        <details><summary>What key formats does signing accept in Ruby?</summary>
+          <p>Pass the private key as PKCS#8 DER and the certificate as X.509 DER. If you hold a PEM file or a PKCS#12 bundle, convert it once with Ruby's openssl module, then call RustPdf.sign from a Rails request or an ActiveJob worker.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in Ruby (PAdES)</h2>
+        <h2>Bring trusted digital signatures to your Ruby stack</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/ruby.html" class="btn btn-lg">Read the Ruby docs</a>
+          <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -257,7 +284,7 @@ File.binwrite("contract.signed.pdf", signed)
           <a href="/merge-pdf/ruby">Merging in Ruby</a>
           <a href="/extract-text/ruby">Text extraction in Ruby</a>
           <a href="/compress-pdf/ruby">Compression in Ruby</a>
-          <a href="/docs/ruby.html">Ruby docs</a>
+          <a href="/docs/ruby">Ruby docs</a>
         </div>
       </div>
     </section>
@@ -270,8 +297,8 @@ File.binwrite("contract.signed.pdf", signed)
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

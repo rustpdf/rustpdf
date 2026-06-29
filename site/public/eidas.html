@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="What is eIDAS — qualified electronic signatures for PDF explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "What is eIDAS?", "item": "https://rustpdf.dev/eidas" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What is eIDAS?",
+          "item": "https://rustpdf.dev/eidas"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "What is eIDAS? Qualified electronic signatures for PDF, explained",
+      "description": "A plain-language guide to EU Regulation 910/2014 (eIDAS): the three signature tiers (SES, AES, QES), how PAdES makes a PDF signature advanced and qualified-capable, long-term validation (LTV), and how to produce PAdES B-B / B-LT / B-LTA with rust-pdf.",
+      "url": "https://rustpdf.dev/eidas",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "eIDAS",
+        "description": "EU Regulation 910/2014 on electronic identification and trust services, governing the legal status of electronic signatures across EU member states."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "What is eIDAS? Qualified electronic signatures for PDF, explained",
-        "description": "A plain-language guide to EU Regulation 910/2014 (eIDAS): the three signature tiers (SES, AES, QES), how PAdES makes a PDF signature advanced and qualified-capable, long-term validation (LTV), and how to produce PAdES B-B / B-LT / B-LTA with rust-pdf.",
-        "url": "https://rustpdf.dev/eidas",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "eIDAS", "description": "EU Regulation 910/2014 on electronic identification and trust services, governing the legal status of electronic signatures across EU member states." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is eIDAS?",
-            "acceptedAnswer": { "@type": "Answer", "text": "eIDAS stands for electronic IDentification, Authentication and trust Services. It is EU Regulation 910/2014, which creates a single legal framework for electronic signatures across all EU member states. Under eIDAS, an electronic signature is admissible as evidence in court and cannot be denied legal effect solely because it is electronic. It defines three tiers of signature: SES, AES and QES, each with increasing requirements and legal weight." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between SES, AES and QES?",
-            "acceptedAnswer": { "@type": "Answer", "text": "SES (Simple Electronic Signature) is any electronic mark: a scanned image, a checkbox, or a typed name. It has no tamper-evidence and proves little. AES (Advanced Electronic Signature) must be uniquely linked to the signer, capable of identifying them, created with data under the signer's sole control, and capable of detecting any subsequent change to the signed document. QES (Qualified Electronic Signature) is an AES that additionally uses a qualified certificate from a Qualified Trust Service Provider (QTSP) listed on an EU Trusted List and is created on a Qualified Signature Creation Device (QSCD). QES is legally equivalent to a handwritten signature across the EU." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is rust-pdf's signature a qualified (QES) signature?",
-            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf produces the cryptographic PAdES container (B-B, B-LT, and B-LTA) that satisfies the technical requirements of an Advanced Electronic Signature. Reaching QES additionally requires a qualified certificate issued by a QTSP and a QSCD hardware token (both of which you supply). If you sign with a qualified certificate from an EU Trusted List provider, the resulting PAdES signature is QES. rust-pdf handles the cryptography and the PDF packaging; the key and certificate you provide determine the trust level." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is PAdES and how does it relate to eIDAS?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PAdES (PDF Advanced Electronic Signatures, ETSI EN 319 142) is the PDF profile of AdES, the family of Advanced Electronic Signature formats recognised under eIDAS. PAdES defines exactly how an electronic signature must be embedded in a PDF to satisfy the legal requirements of eIDAS, including tamper-evidence, signer identity, sole-control proofs, and long-term verifiability. Using PAdES is what elevates a PDF signature from a simple electronic mark (SES) to advanced (AES) or, with a qualified certificate, qualified (QES)." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I keep a PDF signature valid long-term?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Certificates expire, and a verifier checking a signature years later may find that the signing certificate has since been revoked or expired. PAdES Long-Term Validation (LTV) solves this by embedding the evidence at signing time. PAdES-B-LT adds a Document Security Store (DSS) containing the certificate chain and revocation data (CRLs or OCSP responses) so the signature can be verified even if the original infrastructure is gone. PAdES-B-LTA adds a trusted document timestamp over everything, creating a tamper-evident time-seal. rust-pdf produces B-LT via add_dss and B-LTA via timestamp. See the timestamps page for detail." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/eidas#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/eidas"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is eIDAS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "eIDAS stands for electronic IDentification, Authentication and trust Services. It is EU Regulation 910/2014, which creates a single legal framework for electronic signatures across all EU member states. Under eIDAS, an electronic signature is admissible as evidence in court and cannot be denied legal effect solely because it is electronic. It defines three tiers of signature: SES, AES and QES, each with increasing requirements and legal weight."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between SES, AES and QES?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SES (Simple Electronic Signature) is any electronic mark: a scanned image, a checkbox, or a typed name. It has no tamper-evidence and proves little. AES (Advanced Electronic Signature) must be uniquely linked to the signer, capable of identifying them, created with data under the signer's sole control, and capable of detecting any subsequent change to the signed document. QES (Qualified Electronic Signature) is an AES that additionally uses a qualified certificate from a Qualified Trust Service Provider (QTSP) listed on an EU Trusted List and is created on a Qualified Signature Creation Device (QSCD). QES is legally equivalent to a handwritten signature across the EU."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is rust-pdf's signature a qualified (QES) signature?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "rust-pdf produces the cryptographic PAdES container (B-B, B-LT, and B-LTA) that satisfies the technical requirements of an Advanced Electronic Signature. Reaching QES additionally requires a qualified certificate issued by a QTSP and a QSCD hardware token (both of which you supply). If you sign with a qualified certificate from an EU Trusted List provider, the resulting PAdES signature is QES. rust-pdf handles the cryptography and the PDF packaging; the key and certificate you provide determine the trust level."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is PAdES and how does it relate to eIDAS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PAdES (PDF Advanced Electronic Signatures, ETSI EN 319 142) is the PDF profile of AdES, the family of Advanced Electronic Signature formats recognised under eIDAS. PAdES defines exactly how an electronic signature must be embedded in a PDF to satisfy the legal requirements of eIDAS, including tamper-evidence, signer identity, sole-control proofs, and long-term verifiability. Using PAdES is what elevates a PDF signature from a simple electronic mark (SES) to advanced (AES) or, with a qualified certificate, qualified (QES)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I keep a PDF signature valid long-term?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Certificates expire, and a verifier checking a signature years later may find that the signing certificate has since been revoked or expired. PAdES Long-Term Validation (LTV) solves this by embedding the evidence at signing time. PAdES-B-LT adds a Document Security Store (DSS) containing the certificate chain and revocation data (CRLs or OCSP responses) so the signature can be verified even if the original infrastructure is gone. PAdES-B-LTA adds a trusted document timestamp over everything, creating a tamper-evident time-seal. rust-pdf produces B-LT via add_dss and B-LTA via timestamp. See the timestamps page for detail."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -291,7 +349,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Trust &amp; e-signatures</p>
         <h1>What is <span class="grad">eIDAS</span>?<br />Qualified electronic signatures for PDF</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           eIDAS is EU Regulation 910/2014, the law that gives electronic signatures
           legal standing across all EU member states. It defines three tiers of trust
@@ -719,8 +777,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

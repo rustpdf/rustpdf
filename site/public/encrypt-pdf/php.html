@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Encrypt a PDF in PHP (AES-256) | rust-pdf</title>
-  <meta name="description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
+  <meta name="description" content="composer require rust-pdf/rustpdf, then lock any PDF with AES-256 from a Laravel controller or Symfony command — owner and user passwords, no qpdf shell-out." />
   <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/encrypt-pdf/php" />
   <meta property="og:title" content="Encrypt a PDF in PHP (AES-256)" />
-  <meta property="og:description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf, then lock any PDF with AES-256 from a Laravel controller or Symfony command — owner and user passwords, no qpdf shell-out." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Encrypt a PDF in PHP (AES-256)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Encrypt a PDF in PHP (AES-256)" />
-  <meta name="twitter:description" content="Password-protect a PDF from PHP with strong AES-256 encryption." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf, then lock any PDF with AES-256 from a Laravel controller or Symfony command — owner and user passwords, no qpdf shell-out." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Encrypt a PDF in PHP (AES-256)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Encrypt a PDF in PHP (AES-256)",
-      "description": "Password-protect a PDF from PHP with strong AES-256 encryption.",
+      "description": "composer require rust-pdf/rustpdf, then lock any PDF with AES-256 from a Laravel controller or Symfony command — owner and user passwords, no qpdf shell-out.",
       "url": "https://rustpdf.dev/encrypt-pdf/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/encrypt-pdf/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/encrypt-pdf/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Do I need to enable the FFI extension in php.ini, and does this work on shared hosting?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "rust-pdf reaches its native core through PHP's ext-ffi, so you set ffi.enable=true in php.ini and the platform cdylib must be readable by the process. That rules out most locked-down shared hosting, but it works on any VPS, Docker image or Laravel Forge box where you control php.ini. Encryption then runs in-process, with no plaintext temp file left on disk."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Encryption &middot; PHP</p>
         <h1>Encrypt a <span class="grad">PDF</span> in PHP</h1>
         <p class="lede sp-lede">Password-protect a PDF from PHP with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">Sensitive PDFs — bank statements, payslips, medical records — should never sit unprotected on disk or ride along as an email attachment. PHP's older PDF libraries offer no real encryption, and bolting on a qpdf shell-out means another binary to install, sandbox and audit.</p>
+            <p class="muted">rust-pdf applies AES-256 (the V5/R6 security handler) at output, deriving the key, salts and IVs from the operating-system CSPRNG so every file is unique. From a Laravel controller you load the document, call encrypt() with an owner or user password and an optional read-only permission mode, then save — qpdf validates both password paths, and AES-128 and legacy RC4 remain available.</p>
+            <p class="muted">Installation is composer require rust-pdf/rustpdf plus PHP's ext-ffi enabled in php.ini; the encryption itself runs in-process, so there is no SaaS round-trip and no temporary plaintext file written to disk. A missing or expired license surfaces as a PdfException you can catch in middleware and turn into a clean 4xx.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Encrypt a PDF in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Pull in the package with Composer, then call the same idiomatic API every rust-pdf binding shares. The encryption snippet below is verbatim from the PHP reference.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -209,8 +236,8 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
    -&gt;save('secured.pdf');          // throws PdfException without an Encryption license</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">PHP basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Basic PDF generation in PHP is free; encryption is a corporate feature unlocked by a single offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete encryption API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -226,18 +253,18 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
         <details><summary>Do I need a license to encrypt in PHP?</summary>
           <p>Encryption is a corporate feature and needs an active license token. Basic generation in PHP is free. The same offline token enables encryption in every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Do I need to enable the FFI extension in php.ini, and does this work on shared hosting?</summary>
+          <p>rust-pdf reaches its native core through PHP's ext-ffi, so you set <code>ffi.enable=true</code> in php.ini and the platform cdylib must be readable by the process. That rules out most locked-down shared hosting, but it works on any VPS, Docker image or Laravel Forge box where you control php.ini. Encryption then runs in-process, with no plaintext temp file left on disk.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Encrypt a PDF in PHP (AES-256)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Ship password-protected PDFs from your PHP stack</h2>
+        <p class="muted">One Rust core, identical bytes in every language. Encrypt freely while you build, and activate a feature license when the secured files go to production.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -253,7 +280,7 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
           <a href="/merge-pdf/php">Merging in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
           <a href="/compress-pdf/php">Compression in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -266,8 +293,8 @@ $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

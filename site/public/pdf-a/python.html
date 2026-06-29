@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in Python (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Generate archival-grade PDF/A from Python with one method call." />
+  <meta name="description" content="pip install rustpdf and generate archival PDF/A-1b through A-4 from a FastAPI or Celery job — fonts auto-embedded, sRGB ICC and XMP added, output validated by veraPDF." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/python" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/python" />
   <meta property="og:title" content="Create PDF/A in Python (Archival PDF)" />
-  <meta property="og:description" content="Generate archival-grade PDF/A from Python with one method call." />
+  <meta property="og:description" content="pip install rustpdf and generate archival PDF/A-1b through A-4 from a FastAPI or Celery job — fonts auto-embedded, sRGB ICC and XMP added, output validated by veraPDF." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in Python (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in Python (Archival PDF)" />
-  <meta name="twitter:description" content="Generate archival-grade PDF/A from Python with one method call." />
+  <meta name="twitter:description" content="pip install rustpdf and generate archival PDF/A-1b through A-4 from a FastAPI or Celery job — fonts auto-embedded, sRGB ICC and XMP added, output validated by veraPDF." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in Python (Archival PDF)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in Python (Archival PDF)",
-      "description": "Generate archival-grade PDF/A from Python with one method call.",
+      "description": "pip install rustpdf and generate archival PDF/A-1b through A-4 from a FastAPI or Celery job — fonts auto-embedded, sRGB ICC and XMP added, output validated by veraPDF.",
       "url": "https://rustpdf.dev/pdf-a/python",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a/python#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a/python"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Python project?",
+          "name": "Does the pip wheel work on Alpine Linux?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image."
+            "text": "Yes, but pick the right wheel. The default manylinux wheels are built against glibc; Alpine and other musl-based images need the musl wheel of rustpdf so the bundled native library links correctly. Once the matching wheel is installed, generating PDF/A in a small Alpine container needs no Ghostscript, veraPDF or other system package at runtime."
           }
         }
       ]
@@ -160,8 +187,8 @@
       <div class="wrap">
         <p class="eyebrow">Long-term archiving &middot; Python</p>
         <h1>Create <span class="grad">PDF/A</span> in Python</h1>
-        <p class="lede sp-lede">Generate archival-grade PDF/A from Python with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="lede sp-lede">pip install rustpdf and generate archival PDF/A-1b through A-4 from a FastAPI or Celery job — fonts auto-embedded, sRGB ICC and XMP added, output validated by veraPDF. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Python</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Python needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">ReportLab handles layout (its strongest parts are paid) while pikepdf and pypdf cover slices, so archival PDF/A and signatures stay a recurring pain in Python.</p>
-            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image.</p>
+            <p class="muted">PDF/A seals everything a renderer needs inside the file — fonts, the sRGB ICC profile, an output intent and XMP metadata — so a document opens identically decades from now. rust-pdf exposes each conformance level explicitly: <code>PdfaLevel.A2B</code> for visual fidelity, an <code>a</code>-level for an accessible tagged tree, or a <code>3</code>/<code>4f</code>-level when you must embed source files such as a ZUGFeRD or Factur-X invoice XML.</p>
+            <p class="muted">The one rule that trips up Python developers is fonts: PDF/A forbids the standard-14 shortcut, so every glyph must come from an embedded program. With rust-pdf you call <code>add_font_file</code> with a TTF/OTF once and the subset, the <code>/CIDSet</code> and the metadata are written automatically — there is no separate font-registration step or external Ghostscript pass to maintain.</p>
+            <p class="muted">Generation is pure in-process work, so a FastAPI endpoint or a Celery worker can build a report and return the <code>doc.save(...)</code> bytes with no system PDF toolchain in the image. To prove conformance in CI, run the output through veraPDF (<code>-f 2b</code> or <code>-f 2a</code>); qpdf and mutool cover the structural layer.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -213,7 +240,7 @@ with Document() as doc:
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">Python basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Python reference in the <a href="/docs/python.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Python reference in the <a href="/docs/python">documentation</a>.</p>
       </div>
     </section>
 
@@ -229,18 +256,18 @@ with Document() as doc:
         <details><summary>Do I need a license to create PDF/A in Python?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Python is free. One offline token unlocks PDF/A in every supported language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Python project?</summary>
-          <p>It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image.</p>
+        <details><summary>Does the pip wheel work on Alpine Linux?</summary>
+          <p>Yes, but pick the right wheel. The default manylinux wheels are built against glibc; Alpine and other musl-based images need the musl wheel of <code>rustpdf</code> so the bundled native library links correctly. Once the matching wheel is installed, generating PDF/A in a small Alpine container needs no Ghostscript, veraPDF or other system package at runtime.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create PDF/A in Python (Archival PDF)</h2>
+        <h2>Start creating PDF/A in Python</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/python.html" class="btn btn-lg">Read the Python docs</a>
+          <a href="/docs/python" class="btn btn-lg">Read the Python docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -253,7 +280,7 @@ with Document() as doc:
           <a href="/pdf-a/csharp">PDF/A in C#</a>
           <a href="/sign-pdf/python">Signing in Python</a>
           <a href="/encrypt-pdf/python">Encryption in Python</a>
-          <a href="/docs/python.html">Python docs</a>
+          <a href="/docs/python">Python docs</a>
         </div>
       </div>
     </section>
@@ -266,8 +293,8 @@ with Document() as doc:
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -24,54 +24,105 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Generate PDFs programmatically in code with rust-pdf" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Generate a PDF", "item": "https://rustpdf.dev/generate-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Generate a PDF",
+          "item": "https://rustpdf.dev/generate-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Generate PDFs programmatically in code",
+      "description": "How to generate PDFs from code with rust-pdf: vector graphics, embedded and subset fonts with Unicode shaping and kerning, justified paragraphs, tables, images, links, bookmarks, watermarks, and deterministic byte-for-byte output.",
+      "url": "https://rustpdf.dev/generate-pdf",
+      "inLanguage": "en",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Generate PDFs programmatically in code",
-        "description": "How to generate PDFs from code with rust-pdf: vector graphics, embedded and subset fonts with Unicode shaping and kerning, justified paragraphs, tables, images, links, bookmarks, watermarks, and deterministic byte-for-byte output.",
-        "url": "https://rustpdf.dev/generate-pdf",
-        "inLanguage": "en",
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I generate a PDF programmatically?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Create a document, add a page, embed a font, then draw text, vector graphics and images, and write the bytes out. With rust-pdf the same API is available in Go, PHP, Ruby and Node, all driven by one Rust core, so identical input produces identical output in every language." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is generating PDFs with rust-pdf free?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does rust-pdf produce deterministic output?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rust-pdf writes no timestamps and uses no hash-map ordering, so identical input always yields byte-for-byte identical output. This makes generated PDFs auditable and easy to test: you can diff two runs, or pin a checksum in a test, and trust that any difference reflects a real change in your data." }
-          },
-          {
-            "@type": "Question",
-            "name": "What kinds of text and images are supported?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Text is shaped with HarfBuzz-quality Unicode shaping and kerning, fonts are embedded and subset automatically, and paragraphs can be left, right, centered or justified. Images can be JPEG, which is embedded verbatim with no re-encoding, or PNG, including alpha transparency and 16-bit samples." }
-          }
-        ]
+      "@id": "https://rustpdf.dev/generate-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/generate-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I generate a PDF programmatically?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Create a document, add a page, embed a font, then draw text, vector graphics and images, and write the bytes out. With rust-pdf the same API is available in Go, PHP, Ruby and Node, all driven by one Rust core, so identical input produces identical output in every language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is generating PDFs with rust-pdf free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does rust-pdf produce deterministic output?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. rust-pdf writes no timestamps and uses no hash-map ordering, so identical input always yields byte-for-byte identical output. This makes generated PDFs auditable and easy to test: you can diff two runs, or pin a checksum in a test, and trust that any difference reflects a real change in your data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What kinds of text and images are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Text is shaped with HarfBuzz-quality Unicode shaping and kerning, fonts are embedded and subset automatically, and paragraphs can be left, right, centered or justified. Images can be JPEG, which is embedded verbatim with no re-encoding, or PNG, including alpha transparency and 16-bit samples."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -148,7 +199,7 @@
       <div class="wrap">
         <p class="eyebrow">Authoring</p>
         <h1>Generate PDFs <span class="grad">programmatically</span></h1>
-        <p class="gn-updated">Last updated: June 2026</p>
+        <p class="gn-updated">Last updated: 2026-06-29</p>
         <p class="lede gn-lede">
           Building a PDF from scratch means turning your data into a real page: text in the
           right font, vector shapes, images, tables and links. rust-pdf does all of that from
@@ -435,8 +486,8 @@ File.binwrite("report.pdf", doc.to_bytes)</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

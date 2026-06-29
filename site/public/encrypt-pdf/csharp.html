@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Encrypt a PDF in C# (AES-256) | rust-pdf</title>
-  <meta name="description" content="Password-protect a PDF from C# with strong AES-256 encryption." />
+  <meta name="description" content="Encrypt a PDF in C# with AES-256: dotnet add package RustPdf, then call EditableDoc.Encrypt inside a using block from an ASP.NET Core endpoint, no native build." />
   <link rel="canonical" href="https://rustpdf.dev/encrypt-pdf/csharp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/encrypt-pdf/csharp" />
   <meta property="og:title" content="Encrypt a PDF in C# (AES-256)" />
-  <meta property="og:description" content="Password-protect a PDF from C# with strong AES-256 encryption." />
+  <meta property="og:description" content="Encrypt a PDF in C# with AES-256: dotnet add package RustPdf, then call EditableDoc.Encrypt inside a using block from an ASP.NET Core endpoint, no native build." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Encrypt a PDF in C# (AES-256)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Encrypt a PDF in C# (AES-256)" />
-  <meta name="twitter:description" content="Password-protect a PDF from C# with strong AES-256 encryption." />
+  <meta name="twitter:description" content="Encrypt a PDF in C# with AES-256: dotnet add package RustPdf, then call EditableDoc.Encrypt inside a using block from an ASP.NET Core endpoint, no native build." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Encrypt a PDF in C# (AES-256)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Encrypt a PDF in C# (AES-256)",
-      "description": "Password-protect a PDF from C# with strong AES-256 encryption.",
+      "description": "Encrypt a PDF in C# with AES-256: dotnet add package RustPdf, then call EditableDoc.Encrypt inside a using block from an ASP.NET Core endpoint, no native build.",
       "url": "https://rustpdf.dev/encrypt-pdf/csharp",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/encrypt-pdf/csharp#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/encrypt-pdf/csharp"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a C# project?",
+          "name": "Does this work with ASP.NET Core and NativeAOT?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."
+            "text": "Yes. The binding reaches the native core through source-generated [LibraryImport] P/Invoke, which is trim- and NativeAOT-safe, and a NativeLibrary.SetDllImportResolver hook finds the library inside the published runtimes/<rid>/native folder. Encrypt from a minimal-API handler or controller and dispose the EditableDoc with a using block so the native handle is released on every request."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Encryption &middot; C# and .NET</p>
         <h1>Encrypt a <span class="grad">PDF</span> in C#</h1>
         <p class="lede sp-lede">Password-protect a PDF from C# with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">C#</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why C# and .NET needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">.NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.</p>
-            <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
-            <p class="muted">It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+            <p class="muted">Run <code>dotnet add package RustPdf</code> and the NuGet package carries the native core next to your managed assemblies. A <code>NativeLibrary.SetDllImportResolver</code> hook locates it under <code>runtimes/&lt;rid&gt;/native</code>, the build output, or a <code>RUSTPDF_LIB</code> override, so an ASP.NET Core app loads it with no MSBuild wiring or native toolchain on the developer machine.</p>
+            <p class="muted">Encryption touches the payloads you least want leaking — statements, medical records, signed contracts — so it belongs in a request pipeline that disposes deterministically. <code>EditableDoc.LoadFile</code> wraps an <code>IDisposable</code> native handle; a <code>using</code> block frees the document the instant the response is written, even when the endpoint throws. AES-256 (V5/R6) draws its key, salts and IVs from the OS CSPRNG, with AES-128 and legacy RC4 also available.</p>
+            <p class="muted">The same call deploys unchanged to a <code>mcr.microsoft.com/dotnet/aspnet:8.0</code> container, a <code>dotnet publish --self-contained</code> bundle, or a Worker Service. P/Invoke is source-generated with <code>[LibraryImport]</code>, so it is trim- and NativeAOT-friendly as long as the matching <code>runtimes/&lt;rid&gt;/native</code> payload travels with the publish output; a missing Encryption license surfaces as a catchable <code>PdfException</code>.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -211,7 +238,7 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">C# basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp">documentation</a>.</p>
       </div>
     </section>
 
@@ -227,18 +254,18 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
         <details><summary>Do I need a license to encrypt in C#?</summary>
           <p>Encryption is a corporate feature and needs an active license token. Basic generation in C# is free. The same offline token enables encryption in every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a C# project?</summary>
-          <p>It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+        <details><summary>Does this work with ASP.NET Core and NativeAOT?</summary>
+          <p>Yes. The binding reaches the native core through source-generated <code>[LibraryImport]</code> P/Invoke, which is trim- and NativeAOT-safe, and a <code>NativeLibrary.SetDllImportResolver</code> hook finds the library inside the published <code>runtimes/&lt;rid&gt;/native</code> folder. Encrypt from a minimal-API handler or controller and dispose the <code>EditableDoc</code> with a <code>using</code> block so the native handle is released on every request.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Encrypt a PDF in C# (AES-256)</h2>
+        <h2>Ship password-protected PDFs from your .NET stack</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/csharp.html" class="btn btn-lg">Read the C# docs</a>
+          <a href="/docs/csharp" class="btn btn-lg">Read the C# docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -251,7 +278,7 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
           <a href="/encrypt-pdf/python">Encryption in Python</a>
           <a href="/sign-pdf/csharp">Signing in C#</a>
           <a href="/pdf-a/csharp">PDF/A in C#</a>
-          <a href="/docs/csharp.html">C# docs</a>
+          <a href="/docs/csharp">C# docs</a>
         </div>
       </div>
     </section>
@@ -264,8 +291,8 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

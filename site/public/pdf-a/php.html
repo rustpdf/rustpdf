@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in PHP (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Generate archival-grade PDF/A from PHP with one method call." />
+  <meta name="description" content="composer require rust-pdf/rustpdf to emit veraPDF-valid PDF/A from a Symfony command or Laravel queue — fonts embedded, ICC profile and XMP metadata added for you." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/php" />
   <meta property="og:title" content="Create PDF/A in PHP (Archival PDF)" />
-  <meta property="og:description" content="Generate archival-grade PDF/A from PHP with one method call." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf to emit veraPDF-valid PDF/A from a Symfony command or Laravel queue — fonts embedded, ICC profile and XMP metadata added for you." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in PHP (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in PHP (Archival PDF)" />
-  <meta name="twitter:description" content="Generate archival-grade PDF/A from PHP with one method call." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf to emit veraPDF-valid PDF/A from a Symfony command or Laravel queue — fonts embedded, ICC profile and XMP metadata added for you." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in PHP (Archival PDF)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in PHP (Archival PDF)",
-      "description": "Generate archival-grade PDF/A from PHP with one method call.",
+      "description": "composer require rust-pdf/rustpdf to emit veraPDF-valid PDF/A from a Symfony command or Laravel queue — fonts embedded, ICC profile and XMP metadata added for you.",
       "url": "https://rustpdf.dev/pdf-a/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Can I turn an HTML invoice into PDF/A in a Symfony command?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "rust-pdf does not render HTML; you build the page with the Document API and call pdfa(), which is exactly what keeps the output deterministic and veraPDF-valid. A Symfony console command or scheduled task is the natural home for archival batch jobs, and the library embeds the fonts itself, so there is no wkhtmltopdf to install or sandbox."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Long-term archiving &middot; PHP</p>
         <h1>Create <span class="grad">PDF/A</span> in PHP</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from PHP with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">PDF/A is mandated for e-invoicing, court filings and public-sector archives precisely because it forbids anything that could render differently in ten years: external fonts, unmanaged colour, encryption. Most PHP PDF stacks cannot produce a conformant file at all.</p>
+            <p class="muted">rust-pdf embeds and subsets every font, attaches the sRGB ICC profile and an output intent, writes XMP metadata kept in sync with the document info, and enforces the rest of the rule set. It covers A-1b through A-3a and the PDF 2.0-based A-4 family, and veraPDF — the open-source reference validator — confirms conformance.</p>
+            <p class="muted">A Symfony console command or scheduled task is the obvious place to batch archival exports; everything runs in-process, so you retire the wkhtmltopdf or TCPDF pipeline and its install footprint. composer require and ext-ffi are the only prerequisites, and the absence of a license raises a catchable PdfException.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Create PDF/A in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Add the package with Composer, then call the same idiomatic API every binding shares. The PDF/A snippet below is real PHP from the reference docs.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -212,8 +239,8 @@ $doc-&gt;addPage()
     -&gt;save('report_pdfa.pdf');   // throws PdfException without a PDF/A license</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">PHP basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Generation in PHP is free; PDF/A is a corporate feature enabled by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete PDF/A API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -229,18 +256,18 @@ $doc-&gt;addPage()
         <details><summary>Do I need a license to create PDF/A in PHP?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in PHP is free. One offline token unlocks PDF/A in every supported language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Can I turn an HTML invoice into PDF/A in a Symfony command?</summary>
+          <p>rust-pdf does not render HTML; you build the page with the Document API and call <code>pdfa()</code>, which is exactly what keeps the output deterministic and veraPDF-valid. A Symfony console command or scheduled task is the natural home for archival batch jobs, and the library embeds the fonts itself, so there is no wkhtmltopdf to install or sandbox.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create PDF/A in PHP (Archival PDF)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Make your PHP documents last for decades</h2>
+        <p class="muted">One Rust core, the same archival output in every language. Build and validate PDF/A locally, and activate a license token when conformant files ship.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -256,7 +283,7 @@ $doc-&gt;addPage()
           <a href="/merge-pdf/php">Merging in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
           <a href="/compress-pdf/php">Compression in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -269,8 +296,8 @@ $doc-&gt;addPage()
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

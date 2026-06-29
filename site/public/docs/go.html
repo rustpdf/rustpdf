@@ -6,42 +6,97 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Go · rust-pdf docs</title>
   <meta name="description" content="Complete Go reference for rust-pdf: authoring, text, images, PDF/A, accessibility, forms, manipulation, encryption and digital signatures." />
-  <link rel="canonical" href="https://rustpdf.dev/docs/go.html" />
+  <link rel="canonical" href="https://rustpdf.dev/docs/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
   <meta property="og:title" content="Go · rust-pdf docs" />
   <meta property="og:description" content="Complete Go reference: authoring, PDF/A, accessibility, forms, manipulation, encryption and signatures. go get github.com/rustpdf/rustpdf-go." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:alt" content="rust-pdf Go documentation" />
   <meta name="twitter:image:alt" content="rust-pdf Go documentation" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://rustpdf.dev/docs/" },
-          { "@type": "ListItem", "position": 3, "name": "Go", "item": "https://rustpdf.dev/docs/go.html" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://rustpdf.dev/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Go",
+          "item": "https://rustpdf.dev/docs/go"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "rust-pdf for Go",
+      "description": "Complete Go reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction.",
+      "url": "https://rustpdf.dev/docs/go",
+      "inLanguage": "en",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "rust-pdf",
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
-      {
-        "@type": "TechArticle",
-        "headline": "rust-pdf for Go",
-        "description": "Complete Go reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures and text extraction.",
-        "url": "https://rustpdf.dev/docs/go.html",
-        "inLanguage": "en",
-        "about": { "@type": "SoftwareApplication", "name": "rust-pdf", "applicationCategory": "DeveloperApplication" },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
-      }
-    ]
-  }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/docs/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/docs/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
+      },
+      "proficiencyLevel": "Intermediate"
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <link rel="stylesheet" href="/docs/docs.css" />
@@ -66,13 +121,13 @@
     <!-- LEFT NAV -->
     <aside class="docs-side">
       <h4>Language</h4>
-      <a href="/docs/python.html" class="lang-pill">Python</a>
-      <a href="/docs/go.html" class="lang-pill" style="color:var(--brand-2)">● Go</a>
-      <a href="/docs/node.html" class="lang-pill">Node / TypeScript</a>
-      <a href="/docs/ruby.html" class="lang-pill">Ruby</a>
-      <a href="/docs/delphi.html" class="lang-pill">Delphi / Free Pascal</a>
-      <a href="/docs/swift.html" class="lang-pill">Swift</a>
-      <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
+      <a href="/docs/python" class="lang-pill">Python</a>
+      <a href="/docs/go" class="lang-pill" style="color:var(--brand-2)">● Go</a>
+      <a href="/docs/node" class="lang-pill">Node / TypeScript</a>
+      <a href="/docs/ruby" class="lang-pill">Ruby</a>
+      <a href="/docs/delphi" class="lang-pill">Delphi / Free Pascal</a>
+      <a href="/docs/swift" class="lang-pill">Swift</a>
+      <a href="/docs/csharp" class="lang-pill">C# / .NET</a>
       <a class="soon">PHP (soon)</a>
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
@@ -125,7 +180,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Go</h1>
-      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: June 2026</p>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
       <p class="docs-lead">The <code>rustpdf-go</code> module wraps the rust-pdf C core with idiomatic Go types over <b>cgo</b>. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library is statically linked from a prebuilt archive bundled per platform, so <code>go get</code> + <code>go build</code> just works — no separate native install.</p>
 
       <div class="note"><b>Two types do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so <code>defer d.Close()</code> to free it promptly. Methods return an <code>error</code> (not the receiver), so they don't chain.</div>

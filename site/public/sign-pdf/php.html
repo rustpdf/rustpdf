@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in PHP (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from PHP." />
+  <meta name="description" content="composer require rust-pdf/rustpdf and add a PAdES or PKCS#7 signature to a PDF from a Laravel job — bring your own key and certificate, verified by pdfsig." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/php" />
   <meta property="og:title" content="Digitally Sign a PDF in PHP (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from PHP." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf and add a PAdES or PKCS#7 signature to a PDF from a Laravel job — bring your own key and certificate, verified by pdfsig." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in PHP (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in PHP (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from PHP." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf and add a PAdES or PKCS#7 signature to a PDF from a Laravel job — bring your own key and certificate, verified by pdfsig." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in PHP (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in PHP (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from PHP.",
+      "description": "composer require rust-pdf/rustpdf and add a PAdES or PKCS#7 signature to a PDF from a Laravel job — bring your own key and certificate, verified by pdfsig.",
       "url": "https://rustpdf.dev/sign-pdf/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Can I sign with a PKCS#12 / .pfx certificate in PHP?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "The signer takes a PKCS#8 private key and an X.509 certificate as DER byte strings. If you hold a .pfx or .p12, split it once with openssl (pkcs12 -nocerts for the key, -clcerts -nokeys for the cert) and convert the PEM to DER, then pass both to Pdf::sign. The usual pattern is a queued Laravel job so signing never blocks the web request."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Digital signatures &middot; PHP</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in PHP</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from PHP. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">A scanned signature image proves nothing. A cryptographic signature binds a named certificate to the exact bytes of the document and reveals whether a single byte changed afterwards — the difference between decoration and legal evidence.</p>
+            <p class="muted">rust-pdf signs through a non-destructive incremental update, building the detached CMS by hand to control the ByteRange. It supports PKCS#7 and PAdES B-B, plus B-LT and B-LTA for long-term validation, and accepts your own PKCS#8 key and X.509 certificate as DER, so the signing material never leaves your own infrastructure.</p>
+            <p class="muted">Because the call is pure CPU work, the natural pattern is a queued Laravel job or Symfony Messenger handler that signs after upload and never blocks the web request. There is no openssl or Java signing service to orchestrate: composer require pulls in the binding, ext-ffi bridges to the core, and pdfsig confirms the result on the shell.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Sign a PDF in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Pull in the package with Composer, then use the same idiomatic API shared by every rust-pdf binding. The signing snippet below is taken straight from the PHP reference.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -215,8 +242,8 @@ file_put_contents('contract.signed.pdf', $signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
-        <p class="center muted narrow" style="margin-top:18px">PHP basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Generation is free in PHP; signing is a corporate feature that one offline license token unlocks. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete signing API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -232,18 +259,18 @@ file_put_contents('contract.signed.pdf', $signed);
         <details><summary>Do I need a license to sign in PHP?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in PHP is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Can I sign with a PKCS#12 / .pfx certificate in PHP?</summary>
+          <p>The signer takes a PKCS#8 private key and an X.509 certificate as DER byte strings. If you hold a .pfx or .p12, split it once with openssl (<code>pkcs12 -nocerts</code> for the key, <code>-clcerts -nokeys</code> for the cert) and convert the PEM to DER, then pass both to <code>Pdf::sign</code>. The usual pattern is a queued Laravel job so signing never blocks the web request.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in PHP (PAdES)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Put verifiable signatures into your PHP workflow</h2>
+        <p class="muted">One Rust core, the same signatures in every language. Develop against the full signing API, and activate a license token when you put signed documents into production.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -259,7 +286,7 @@ file_put_contents('contract.signed.pdf', $signed);
           <a href="/merge-pdf/php">Merging in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
           <a href="/compress-pdf/php">Compression in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -272,8 +299,8 @@ file_put_contents('contract.signed.pdf', $signed);
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

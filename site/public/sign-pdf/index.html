@@ -24,54 +24,105 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Sign PDFs programmatically in any language with rust-pdf" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Sign a PDF", "item": "https://rustpdf.dev/sign-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Sign a PDF",
+          "item": "https://rustpdf.dev/sign-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Sign PDFs programmatically in any language",
+      "description": "How to digitally sign PDFs in code with rust-pdf: PKCS#7 detached and PAdES B-B, B-LT and B-LTA signatures, incremental updates that preserve the original bytes, bring-your-own key and certificate, and offline long-term validation.",
+      "url": "https://rustpdf.dev/sign-pdf",
+      "inLanguage": "en",
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Sign PDFs programmatically in any language",
-        "description": "How to digitally sign PDFs in code with rust-pdf: PKCS#7 detached and PAdES B-B, B-LT and B-LTA signatures, incremental updates that preserve the original bytes, bring-your-own key and certificate, and offline long-term validation.",
-        "url": "https://rustpdf.dev/sign-pdf",
-        "inLanguage": "en",
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I digitally sign a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Pass the PDF bytes, your private key and your certificate to the sign function, and the library builds a PKCS#7 or PAdES signature and appends it as an incremental update. The same call exists in Go, Python, C#, PHP, Ruby and Node, all backed by one Rust core, so the output is identical regardless of language." }
-          },
-          {
-            "@type": "Question",
-            "name": "What signature formats does rust-pdf support?",
-            "acceptedAnswer": { "@type": "Answer", "text": "It produces a standard PKCS#7 detached CMS signature by default, and switches to a PAdES baseline signature when you enable it. PAdES levels B-B, B-LT and B-LTA are supported offline, where B-LT adds a Document Security Store with certificates and revocation data, and B-LTA adds an RFC 3161 archive timestamp." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does signing change the original PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf signs by appending an incremental update, so every original byte is preserved verbatim. This is what keeps earlier signatures valid when a second person signs the same file, and it is how the signature stays verifiable against the exact bytes that were sealed." }
-          },
-          {
-            "@type": "Question",
-            "name": "Do I bring my own key and certificate?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. You supply the private key and the certificate in DER form, plus any chain certificates and revocation data. rust-pdf never generates or stores keys for you, so the cryptographic material stays entirely under your control, which is what makes the resulting signature legally meaningful." }
-          }
-        ]
+      "@id": "https://rustpdf.dev/sign-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I digitally sign a PDF in code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Pass the PDF bytes, your private key and your certificate to the sign function, and the library builds a PKCS#7 or PAdES signature and appends it as an incremental update. The same call exists in Go, Python, C#, PHP, Ruby and Node, all backed by one Rust core, so the output is identical regardless of language."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What signature formats does rust-pdf support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It produces a standard PKCS#7 detached CMS signature by default, and switches to a PAdES baseline signature when you enable it. PAdES levels B-B, B-LT and B-LTA are supported offline, where B-LT adds a Document Security Store with certificates and revocation data, and B-LTA adds an RFC 3161 archive timestamp."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does signing change the original PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. rust-pdf signs by appending an incremental update, so every original byte is preserved verbatim. This is what keeps earlier signatures valid when a second person signs the same file, and it is how the signature stays verifiable against the exact bytes that were sealed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I bring my own key and certificate?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You supply the private key and the certificate in DER form, plus any chain certificates and revocation data. rust-pdf never generates or stores keys for you, so the cryptographic material stays entirely under your control, which is what makes the resulting signature legally meaningful."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -158,7 +209,7 @@
       <div class="wrap">
         <p class="eyebrow">Digital signatures</p>
         <h1>Sign PDFs <span class="grad">programmatically</span>, in any language</h1>
-        <p class="sg-updated">Last updated: June 2026</p>
+        <p class="sg-updated">Last updated: 2026-06-29</p>
         <p class="lede sg-lede">
           A digital signature seals a PDF so anyone can prove who signed it and that not a
           single byte changed afterward. rust-pdf adds that seal from code, the same way in
@@ -460,8 +511,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Extract Text From a PDF in Node.js | rust-pdf</title>
-  <meta name="description" content="Pull the text out of any PDF from Node.js." />
+  <meta name="description" content="After npm install rustpdf, extract Unicode text from any PDF in an Express or serverless handler: pass the file in as a Node Buffer and get a string back." />
   <link rel="canonical" href="https://rustpdf.dev/extract-text/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/extract-text/node" />
   <meta property="og:title" content="Extract Text From a PDF in Node.js" />
-  <meta property="og:description" content="Pull the text out of any PDF from Node.js." />
+  <meta property="og:description" content="After npm install rustpdf, extract Unicode text from any PDF in an Express or serverless handler: pass the file in as a Node Buffer and get a string back." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Extract Text From a PDF in Node.js" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Extract Text From a PDF in Node.js" />
-  <meta name="twitter:description" content="Pull the text out of any PDF from Node.js." />
+  <meta name="twitter:description" content="After npm install rustpdf, extract Unicode text from any PDF in an Express or serverless handler: pass the file in as a Node Buffer and get a string back." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Extract Text From a PDF in Node.js" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Extract Text From a PDF in Node.js",
-      "description": "Pull the text out of any PDF from Node.js.",
+      "description": "After npm install rustpdf, extract Unicode text from any PDF in an Express or serverless handler: pass the file in as a Node Buffer and get a string back.",
       "url": "https://rustpdf.dev/extract-text/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/extract-text/node#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/extract-text/node"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Node.js project?",
+          "name": "Is extractText synchronous, and how do I run it without blocking?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
+            "text": "extractText runs in process and returns the string directly, so for large batches in an Express or serverless handler you await it inside an async job or hand it to a worker thread. There is no child process to manage, since the Koffi binding calls the native core directly."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Extraction &middot; Node.js and TypeScript</p>
         <h1>Extract <span class="grad">text</span> from a PDF in Node.js</h1>
         <p class="lede sp-lede">Pull the text out of any PDF from Node.js. rust-pdf walks the content stream, maps shown glyph codes back to Unicode through each font's ToUnicode map, and infers spaces and line breaks, including two-byte Type0 fonts and CJK.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Pulling text out of a PDF in Node is usually delegated to a spawned CLI like pdftotext, which means temp files, process overhead and brittle parsing of its output.</p>
             <p class="muted">Reliable extraction is harder than it looks: codes in the stream are font-specific and must be mapped to Unicode, and spacing has to be inferred from positioning. rust-pdf does both, so the text you get back is the text a human reads, ready for search, indexing or data pipelines.</p>
-            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+            <p class="muted">extractText takes the PDF as a Node Buffer and returns a plain string, so you read with fs.promises.readFile, await the call in a pipeline, and push the text to a search index or queue. extractImagesToDir writes rasters to a folder and returns the count; both run in-process through the Koffi binding with no node-gyp and no spawned CLI.</p>
           </div>
           <ul class="check-list">
             <li>Maps glyph codes to Unicode via each font's ToUnicode map, including two-byte Type0 and CJK.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Extract text in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install from npm, read the file into a Buffer, and call extractText. The snippet below is real Node.js from the reference docs.</p>
         <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
@@ -209,8 +236,8 @@ const n = rustpdf.extractImagesToDir(data, "out_images/");   // returns how many
 console.log(`wrote ${n} image(s)`);</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdftotext</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Node.js. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Text and image extraction are part of the free tier in Node.js — no license token needed.</p>
+        <p class="center muted narrow" style="margin-top:22px">The full Node.js extraction reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
 
@@ -226,18 +253,18 @@ console.log(`wrote ${n} image(s)`);</code></pre>
         <details><summary>Is text extraction free?</summary>
           <p>Yes. Text and image extraction are part of the free tier in Node.js. No license token is required.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Node.js project?</summary>
-          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+        <details><summary>Is extractText synchronous, and how do I run it without blocking?</summary>
+          <p>extractText runs in process and returns the string directly, so for large batches in an Express or serverless handler you await it inside an async job or hand it to a worker thread. There is no child process to manage, since the Koffi binding calls the native core directly.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Extract Text From a PDF in Node.js</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Turn PDFs into searchable text in your pipeline</h2>
+        <p class="muted">One Rust core, the same Unicode extraction in every language. Extraction is free; license the corporate features only when you ship them.</p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -251,7 +278,7 @@ console.log(`wrote ${n} image(s)`);</code></pre>
           <a href="/encrypt-pdf/node">Encryption in Node.js</a>
           <a href="/merge-pdf/node">Merging in Node.js</a>
           <a href="/compress-pdf/node">Compression in Node.js</a>
-          <a href="/docs/node.html">Node.js docs</a>
+          <a href="/docs/node">Node.js docs</a>
         </div>
       </div>
     </section>
@@ -264,8 +291,8 @@ console.log(`wrote ${n} image(s)`);</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

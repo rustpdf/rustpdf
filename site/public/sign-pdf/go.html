@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in Go (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
+  <meta name="description" content="Add a PKCS#7 or PAdES signature to a PDF in Go. go get the module, load a PEM or PKCS#12 key in your chi handler, and sign via a non-destructive incremental update." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/go" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/go" />
   <meta property="og:title" content="Digitally Sign a PDF in Go (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
+  <meta property="og:description" content="Add a PKCS#7 or PAdES signature to a PDF in Go. go get the module, load a PEM or PKCS#12 key in your chi handler, and sign via a non-destructive incremental update." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in Go (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in Go (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go." />
+  <meta name="twitter:description" content="Add a PKCS#7 or PAdES signature to a PDF in Go. go get the module, load a PEM or PKCS#12 key in your chi handler, and sign via a non-destructive incremental update." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in Go (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in Go (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go.",
+      "description": "Add a PKCS#7 or PAdES signature to a PDF in Go. go get the module, load a PEM or PKCS#12 key in your chi handler, and sign via a non-destructive incremental update.",
       "url": "https://rustpdf.dev/sign-pdf/go",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/go#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/go"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Go project?",
+          "name": "Can I sign with a PEM or PKCS#12 key in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons."
+            "text": "Yes. Decode a PEM with encoding/pem or open a .p12 with crypto/x509, then marshal the private key to PKCS#8 DER and the certificate to its raw DER bytes — exactly the two inputs Sign expects. The CMS and ByteRange handling then run in the Rust core."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Digital signatures &middot; Go</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Go</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from Go. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Go</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Go's PDF story is fragmented: gofpdf is archived and unipdf is commercial, so production-grade output usually means a paid dependency or a brittle wrapper.</p>
-            <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+            <p class="muted">A signed contract leaving a Go service has to prove who approved it and that nothing changed afterwards. Hand-rolling the CMS and ByteRange math in Go is a well-known way to ship signatures that Adobe Reader quietly marks invalid, so most teams reach for an external tool or give up on PAdES.</p>
+            <p class="muted">rust-pdf assembles the detached PKCS#7/CMS by hand to control the ByteRange precisely, supports PAdES B-B plus B-LT and B-LTA for long-term validation, and signs through an incremental update so the original bytes and any earlier signatures stay intact.</p>
+            <p class="muted">You bring the key material from Go: decode a PEM with encoding/pem or open a PKCS#12 with crypto/x509, marshal it to PKCS#8 DER, and pass it with the certificate to Sign. The heavy cryptography then executes in the Rust core, away from Go's reflection and garbage collector.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -218,7 +245,7 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
         <p class="center muted narrow" style="margin-top:18px">Go basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
 
@@ -234,18 +261,18 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
         <details><summary>Do I need a license to sign in Go?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Go is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Go project?</summary>
-          <p>The binding ships as a normal cgo module, so it drops into a standard Go service (Gin, Echo, chi or the stdlib net/http) with a single import and no runtime daemon. Output is deterministic, which pairs well with Go's table-driven tests and golden-file comparisons.</p>
+        <details><summary>Can I sign with a PEM or PKCS#12 key in Go?</summary>
+          <p>Yes. Decode a PEM with encoding/pem or open a .p12 with crypto/x509, then marshal the private key to PKCS#8 DER and the certificate to its raw DER bytes — exactly the two inputs Sign expects. The CMS and ByteRange handling then run in the Rust core.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in Go (PAdES)</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Put verifiable signatures into your Go pipeline</h2>
+        <p class="muted">One Rust core, the same standards-compliant signatures in every language. Build for free in Go; add a license token to sign and timestamp in production.</p>
         <div class="cta-row">
-          <a href="/docs/go.html" class="btn btn-lg">Read the Go docs</a>
+          <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -261,7 +288,7 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
           <a href="/merge-pdf/go">Merging in Go</a>
           <a href="/extract-text/go">Text extraction in Go</a>
           <a href="/compress-pdf/go">Compression in Go</a>
-          <a href="/docs/go.html">Go docs</a>
+          <a href="/docs/go">Go docs</a>
         </div>
       </div>
     </section>
@@ -274,8 +301,8 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

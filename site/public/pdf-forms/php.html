@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create and Fill PDF Forms in PHP | rust-pdf</title>
-  <meta name="description" content="Build interactive AcroForm fields from PHP (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta name="description" content="composer require rust-pdf/rustpdf to build, fill and flatten AcroForm fields from a Laravel controller — appearance streams generated, no NeedAppearances hack." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-forms/php" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-forms/php" />
   <meta property="og:title" content="Create and Fill PDF Forms in PHP" />
-  <meta property="og:description" content="Build interactive AcroForm fields from PHP (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta property="og:description" content="composer require rust-pdf/rustpdf to build, fill and flatten AcroForm fields from a Laravel controller — appearance streams generated, no NeedAppearances hack." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create and Fill PDF Forms in PHP" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create and Fill PDF Forms in PHP" />
-  <meta name="twitter:description" content="Build interactive AcroForm fields from PHP (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and." />
+  <meta name="twitter:description" content="composer require rust-pdf/rustpdf to build, fill and flatten AcroForm fields from a Laravel controller — appearance streams generated, no NeedAppearances hack." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create and Fill PDF Forms in PHP" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create and Fill PDF Forms in PHP",
-      "description": "Build interactive AcroForm fields from PHP (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and.",
+      "description": "composer require rust-pdf/rustpdf to build, fill and flatten AcroForm fields from a Laravel controller — appearance streams generated, no NeedAppearances hack.",
       "url": "https://rustpdf.dev/pdf-forms/php",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-forms/php#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-forms/php"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a PHP project?",
+          "name": "Can I fill an uploaded form in a Laravel controller and flatten it?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale."
+            "text": "Yes. Load the PDF with EditableDoc, set each field by its (possibly dotted) name, then flatten so the values become static content before you stream or store the file. It runs in the FPM request or a queued job, with no pdftk fill_form step to shell out to."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Forms &middot; PHP</p>
         <h1>Create and fill <span class="grad">PDF forms</span> in PHP</h1>
         <p class="lede sp-lede">Build interactive AcroForm fields from PHP (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and flatten them later. No NeedAppearances hack required.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">PHP</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PHP's classic libraries (TCPDF, FPDF) predate modern PDF and have no real PDF/A, no PAdES signatures and no AES-256, while the commercial alternatives are costly.</p>
-            <p class="muted">rust-pdf generates a full AcroForm with appearance streams baked in, so fields render correctly everywhere without relying on the viewer. Names support dotted hierarchy for grouped fields, and an existing form can be filled programmatically and flattened into static content.</p>
-            <p class="muted">It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+            <p class="muted">Onboarding packets, consent sheets and government applications are interactive PDF forms, and the usual PHP answer (pdftk for filling, a viewer hack for display) is brittle and adds yet another binary to the stack.</p>
+            <p class="muted">rust-pdf authors a complete AcroForm with an appearance stream generated for every widget, so text fields, checkboxes, radio groups and dropdowns render correctly in every viewer without the NeedAppearances flag. Field names support dotted hierarchy, and an existing form can be filled by name and flattened into static content.</p>
+            <p class="muted">Both authoring and filling run in-process from a Laravel controller or queued job: load with EditableDoc, set fields, flatten and stream the result, with no pdftk to shell out to. composer require brings in the binding and ext-ffi bridges the native core, keeping the whole flow inside PHP.</p>
           </div>
           <ul class="check-list">
             <li>Text fields, checkboxes, radio groups and dropdowns with generated appearance streams.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Build a form in PHP with rust-pdf</h2>
-        <p class="center muted narrow">Install with Composer, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real PHP code from the reference docs.</p>
+        <p class="center muted narrow">Bring in the package with Composer, then call the same idiomatic API every binding shares. The form-building snippet below is real PHP from the reference docs.</p>
         <p class="center"><code class="sp-install">composer require rust-pdf/rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">PHP</span></div>
@@ -215,8 +242,8 @@ $doc-&gt;addPage()
     -&gt;save('form.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in PHP. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full PHP reference in the <a href="/docs/php.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Form authoring and filling are part of the free PHP tier — no license token required.</p>
+        <p class="center muted narrow" style="margin-top:22px">The complete forms API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
 
@@ -232,18 +259,18 @@ $doc-&gt;addPage()
         <details><summary>Is form authoring free?</summary>
           <p>Yes. Creating, filling and flattening AcroForm fields is part of the free tier in PHP.</p>
         </details>
-        <details><summary>How does rust-pdf fit a PHP project?</summary>
-          <p>It installs through Composer and runs on the FFI extension, so a Laravel or Symfony job can produce archival PDFs without shelling out to wkhtmltopdf or a paid SaaS. Generation runs in-process, so there is no separate service to deploy and scale.</p>
+        <details><summary>Can I fill an uploaded form in a Laravel controller and flatten it?</summary>
+          <p>Yes. Load the PDF with <code>EditableDoc</code>, set each field by its (possibly dotted) name, then flatten so the values become static content before you stream or store the file. It runs in the FPM request or a queued job, with no pdftk fill_form step to shell out to.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create and Fill PDF Forms in PHP</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Automate PDF form workflows from PHP</h2>
+        <p class="muted">One Rust core, the same forms in every language. Authoring, filling and flattening are free — you license only corporate features like PDF/A, signing and encryption.</p>
         <div class="cta-row">
-          <a href="/docs/php.html" class="btn btn-lg">Read the PHP docs</a>
+          <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -257,7 +284,7 @@ $doc-&gt;addPage()
           <a href="/encrypt-pdf/php">Encryption in PHP</a>
           <a href="/merge-pdf/php">Merging in PHP</a>
           <a href="/extract-text/php">Text extraction in PHP</a>
-          <a href="/docs/php.html">PHP docs</a>
+          <a href="/docs/php">PHP docs</a>
         </div>
       </div>
     </section>
@@ -270,8 +297,8 @@ $doc-&gt;addPage()
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

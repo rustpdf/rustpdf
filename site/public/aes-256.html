@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="What is AES-256 — PDF encryption explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "What is AES-256?", "item": "https://rustpdf.dev/aes-256" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What is AES-256?",
+          "item": "https://rustpdf.dev/aes-256"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "What is AES-256? PDF encryption explained",
+      "description": "A plain-language explanation of AES-256 and PDF encryption: what encryption is, why a 256-bit key is effectively unbreakable, user and owner passwords and permissions, and how to encrypt a PDF.",
+      "url": "https://rustpdf.dev/aes-256",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "AES-256",
+        "description": "The Advanced Encryption Standard with a 256-bit key, used for strong PDF encryption (V5/R6)."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "What is AES-256? PDF encryption explained",
-        "description": "A plain-language explanation of AES-256 and PDF encryption: what encryption is, why a 256-bit key is effectively unbreakable, user and owner passwords and permissions, and how to encrypt a PDF.",
-        "url": "https://rustpdf.dev/aes-256",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "AES-256", "description": "The Advanced Encryption Standard with a 256-bit key, used for strong PDF encryption (V5/R6)." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is AES-256?",
-            "acceptedAnswer": { "@type": "Answer", "text": "AES-256 is the Advanced Encryption Standard using a 256-bit key. AES is the worldwide standard for symmetric encryption, adopted by governments and banks, and 256-bit is its strongest common key size. For PDF it is used in the modern V5/R6 security handler. Encrypting with AES-256 scrambles the document so that only someone with the correct password or key can read it." }
-          },
-          {
-            "@type": "Question",
-            "name": "Why is a 256-bit key considered unbreakable?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A 256-bit key has 2 to the power of 256 possible values, about 1.1 times 10 to the 77th power. That is more combinations than there are atoms in the observable universe. Trying every key by brute force, even with all the computers on Earth running for the age of the universe, would not get close. There is no known practical attack on correctly used AES-256, which is why it is trusted for top-secret data." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is the difference between a user password and an owner password?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A user password is required to open and read the document at all. An owner password leaves the document openable but restricts what can be done with it, such as printing, copying text or editing, through permission flags. You can set either or both. With rust-pdf you pass user and owner passwords and an optional read-only flag." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is RC4 or AES-128 still safe for PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "RC4 is legacy and considered broken, so it should not be used for new documents. AES-128 is still strong. AES-256 is the recommended choice today and is what rust-pdf uses by default. rust-pdf can read and write RC4, AES-128 and AES-256, but AES-256 with the V5/R6 handler is the safest option." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can a PDF be both encrypted and PDF/A?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. PDF/A forbids encryption, because an archived document must remain openable far into the future without a password or key. Encryption and archiving are opposite goals: encryption restricts access now, archiving guarantees access later. If you need both confidentiality in transit and an archival copy, keep them as separate steps." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/aes-256#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/aes-256"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is AES-256?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AES-256 is the Advanced Encryption Standard using a 256-bit key. AES is the worldwide standard for symmetric encryption, adopted by governments and banks, and 256-bit is its strongest common key size. For PDF it is used in the modern V5/R6 security handler. Encrypting with AES-256 scrambles the document so that only someone with the correct password or key can read it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is a 256-bit key considered unbreakable?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A 256-bit key has 2 to the power of 256 possible values, about 1.1 times 10 to the 77th power. That is more combinations than there are atoms in the observable universe. Trying every key by brute force, even with all the computers on Earth running for the age of the universe, would not get close. There is no known practical attack on correctly used AES-256, which is why it is trusted for top-secret data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between a user password and an owner password?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A user password is required to open and read the document at all. An owner password leaves the document openable but restricts what can be done with it, such as printing, copying text or editing, through permission flags. You can set either or both. With rust-pdf you pass user and owner passwords and an optional read-only flag."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is RC4 or AES-128 still safe for PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "RC4 is legacy and considered broken, so it should not be used for new documents. AES-128 is still strong. AES-256 is the recommended choice today and is what rust-pdf uses by default. rust-pdf can read and write RC4, AES-128 and AES-256, but AES-256 with the V5/R6 handler is the safest option."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can a PDF be both encrypted and PDF/A?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. PDF/A forbids encryption, because an archived document must remain openable far into the future without a password or key. Encryption and archiving are opposite goals: encryption restricts access now, archiving guarantees access later. If you need both confidentiality in transit and an archival copy, keep them as separate steps."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -186,7 +244,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Encryption</p>
         <h1>What is <span class="grad">AES-256</span>,<br />and how does PDF encryption work?</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           Encryption scrambles a document so that only someone with the right password or
           key can read it. AES-256 is the strongest common form of that lock, the same
@@ -445,8 +503,8 @@ ed.save("secured.pdf");</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -23,74 +23,103 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf — a C# PDF library for .NET" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "C# / .NET", "item": "https://rustpdf.dev/dotnet" }
-        ]
-      },
-      {
-        "@type": "SoftwareApplication",
-        "name": "rust-pdf for C# / .NET",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Linux, macOS, Windows",
-        "url": "https://rustpdf.dev/dotnet",
-        "softwareRequirements": ".NET 8+",
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "A C# PDF library for .NET: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
-        "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
-          "AES-256 encryption",
-          "PDF/UA accessibility (Tagged PDF)",
-          "AcroForm fields",
-          "Merge, split, text extraction"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "1500",
-          "highPrice": "3000",
-          "offerCount": "2",
-          "url": "https://rustpdf.dev/#pricing"
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "C# / .NET",
+          "item": "https://rustpdf.dev/dotnet"
         }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "rust-pdf for C# / .NET",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://rustpdf.dev/dotnet",
+      "softwareRequirements": ".NET 8+",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Does this C# PDF library do HTML-to-PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No, and that is deliberate. rust-pdf renders PDFs natively from a C# document model instead of driving a headless Chromium browser. That keeps memory use low, output deterministic, and PDF/A and PDF/UA conformance precise, which a browser print path cannot guarantee." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is the C# PDF library free?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does it need a browser, JVM or any runtime besides .NET?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. It is a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There is no Chromium process, no JVM and nothing to compile, just dotnet add package RustPdf." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is it AGPL like iTextSharp / iText?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source." }
-          },
-          {
-            "@type": "Question",
-            "name": "Which .NET versions are supported?",
-            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure." }
+      "description": "A C# PDF library for .NET: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
+      "featureList": [
+        "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
+        "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+        "AES-256 encryption",
+        "PDF/UA accessibility (Tagged PDF)",
+        "AcroForm fields",
+        "Merge, split, text extraction"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "1500",
+        "highPrice": "3000",
+        "offerCount": "2",
+        "url": "https://rustpdf.dev/#pricing",
+        "priceValidUntil": "2027-12-31"
+      },
+      "@id": "https://rustpdf.dev/#software"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does this C# PDF library do HTML-to-PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, and that is deliberate. rust-pdf renders PDFs natively from a C# document model instead of driving a headless Chromium browser. That keeps memory use low, output deterministic, and PDF/A and PDF/UA conformance precise, which a browser print path cannot guarantee."
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the C# PDF library free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it need a browser, JVM or any runtime besides .NET?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There is no Chromium process, no JVM and nothing to compile, just dotnet add package RustPdf."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it AGPL like iTextSharp / iText?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which .NET versions are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <style>
     /* ===== /dotnet landing page (scoped) ===== */
@@ -133,7 +162,7 @@
       <nav class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
-        <a href="/docs/csharp.html">Docs</a>
+        <a href="/docs/csharp">Docs</a>
         <a href="/#pricing">Pricing</a>
         <a href="/#faq">FAQ</a>
       </nav>
@@ -159,7 +188,7 @@
           <div class="tabs"><pre class="tab-pane active"><code>dotnet add package RustPdf</code></pre></div>
         </div>
         <div class="cta-row">
-          <a href="/docs/csharp.html" class="btn btn-lg">Read the .NET docs</a>
+          <a href="/docs/csharp" class="btn btn-lg">Read the .NET docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
@@ -448,7 +477,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           you go to production.
         </p>
         <div class="cta-row">
-          <a href="/docs/csharp.html" class="btn btn-lg">Read the .NET docs</a>
+          <a href="/docs/csharp" class="btn btn-lg">Read the .NET docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
       </div>
@@ -486,9 +515,9 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
       <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
-        <a href="/docs/csharp.html">.NET docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/docs/csharp">.NET docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

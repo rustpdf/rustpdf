@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Extract Text From a PDF in Ruby | rust-pdf</title>
-  <meta name="description" content="Pull the text out of any PDF from Ruby." />
+  <meta name="description" content="gem install rustpdf and pull Unicode text and images out of any PDF from Ruby, mapping glyphs back through ToUnicode, inside a Rails request or a Sidekiq job." />
   <link rel="canonical" href="https://rustpdf.dev/extract-text/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/extract-text/ruby" />
   <meta property="og:title" content="Extract Text From a PDF in Ruby" />
-  <meta property="og:description" content="Pull the text out of any PDF from Ruby." />
+  <meta property="og:description" content="gem install rustpdf and pull Unicode text and images out of any PDF from Ruby, mapping glyphs back through ToUnicode, inside a Rails request or a Sidekiq job." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Extract Text From a PDF in Ruby" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Extract Text From a PDF in Ruby" />
-  <meta name="twitter:description" content="Pull the text out of any PDF from Ruby." />
+  <meta name="twitter:description" content="gem install rustpdf and pull Unicode text and images out of any PDF from Ruby, mapping glyphs back through ToUnicode, inside a Rails request or a Sidekiq job." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Extract Text From a PDF in Ruby" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Extract Text From a PDF in Ruby",
-      "description": "Pull the text out of any PDF from Ruby.",
+      "description": "gem install rustpdf and pull Unicode text and images out of any PDF from Ruby, mapping glyphs back through ToUnicode, inside a Rails request or a Sidekiq job.",
       "url": "https://rustpdf.dev/extract-text/ruby",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/extract-text/ruby#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/extract-text/ruby"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Ruby project?",
+          "name": "Is extraction fast enough for a Sidekiq indexing job?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."
+            "text": "Yes. RustPdf.extract_text runs in-process through Fiddle with no external pdftotext subprocess, so a Sidekiq or ActiveJob worker can pull UTF-8 text and feed it straight into Elasticsearch or pg_search without spawning a CLI per file."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Extraction &middot; Ruby</p>
         <h1>Extract <span class="grad">text</span> from a PDF in Ruby</h1>
         <p class="lede sp-lede">Pull the text out of any PDF from Ruby. rust-pdf walks the content stream, maps shown glyph codes back to Unicode through each font's ToUnicode map, and infers spaces and line breaks, including two-byte Type0 fonts and CJK.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Ruby</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Ruby needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.</p>
-            <p class="muted">Reliable extraction is harder than it looks: codes in the stream are font-specific and must be mapped to Unicode, and spacing has to be inferred from positioning. rust-pdf does both, so the text you get back is the text a human reads, ready for search, indexing or data pipelines.</p>
-            <p class="muted">It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+            <p class="muted">Prawn only writes PDFs, so reading one in Ruby has meant adding pdf-reader or piping files through a pdftotext process on the server. rust-pdf parses the content stream itself and hands the text straight back.</p>
+            <p class="muted">Reliable extraction is harder than it looks: codes in the stream are font-specific and must be mapped back through each ToUnicode CMap, and spacing has to be inferred from glyph positioning. rust-pdf does both, including two-byte Type0 and CJK, so you get the text a human reads, ready for search or data pipelines.</p>
+            <p class="muted">Call <code>RustPdf.extract_text</code> from a Sidekiq indexing worker or a Rails search action and you get a UTF-8 string ready for Elasticsearch or pg_search; the gem binds through Fiddle, so there is no external pdftotext process to spawn, manage or rescue per file.</p>
           </div>
           <ul class="check-list">
             <li>Maps glyph codes to Unicode via each font's ToUnicode map, including two-byte Type0 and CJK.</li>
@@ -210,7 +237,7 @@ puts "wrote #{n} image(s)"</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdftotext</span></div>
         <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Ruby. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
 
@@ -226,18 +253,18 @@ puts "wrote #{n} image(s)"</code></pre>
         <details><summary>Is text extraction free?</summary>
           <p>Yes. Text and image extraction are part of the free tier in Ruby. No license token is required.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Ruby project?</summary>
-          <p>It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+        <details><summary>Is extraction fast enough for a Sidekiq indexing job?</summary>
+          <p>Yes. RustPdf.extract_text runs in-process through Fiddle with no external pdftotext subprocess, so a Sidekiq or ActiveJob worker can pull UTF-8 text and feed it straight into Elasticsearch or pg_search without spawning a CLI per file.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Extract Text From a PDF in Ruby</h2>
+        <h2>Turn your PDFs into searchable Ruby data</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/ruby.html" class="btn btn-lg">Read the Ruby docs</a>
+          <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -251,7 +278,7 @@ puts "wrote #{n} image(s)"</code></pre>
           <a href="/encrypt-pdf/ruby">Encryption in Ruby</a>
           <a href="/merge-pdf/ruby">Merging in Ruby</a>
           <a href="/compress-pdf/ruby">Compression in Ruby</a>
-          <a href="/docs/ruby.html">Ruby docs</a>
+          <a href="/docs/ruby">Ruby docs</a>
         </div>
       </div>
     </section>
@@ -264,8 +291,8 @@ puts "wrote #{n} image(s)"</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

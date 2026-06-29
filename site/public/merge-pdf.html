@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Merge and split PDF files programmatically with rust-pdf" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Merge and Split PDFs", "item": "https://rustpdf.dev/merge-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Merge and Split PDFs",
+          "item": "https://rustpdf.dev/merge-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Merge and Split PDF Files Programmatically, Explained",
+      "description": "How to merge PDF files and split PDFs in code, with examples in Python, C#, Go, and Node.js. Covers merge, split/extract, reorder, delete, and rotate operations.",
+      "url": "https://rustpdf.dev/merge-pdf",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF page operations",
+        "description": "Programmatic PDF merge, split, reorder, delete, and rotate using rust-pdf."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Merge and Split PDF Files Programmatically, Explained",
-        "description": "How to merge PDF files and split PDFs in code, with examples in Python, C#, Go, and Node.js. Covers merge, split/extract, reorder, delete, and rotate operations.",
-        "url": "https://rustpdf.dev/merge-pdf",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF page operations", "description": "Programmatic PDF merge, split, reorder, delete, and rotate using rust-pdf." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I merge PDFs in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load both files into EditableDoc objects, call merge() on the first with the second as argument, then save. rust-pdf renumbers the second document's objects by an offset and deep-remaps every cross-reference so nothing collides. The result is a single valid PDF containing all pages from both files." }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I split a PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Call extract_pages() with a list of 0-based page indices. rust-pdf performs a reachability pass to collect only the objects those pages need, then renumbers them compactly into a brand-new PDF. Pages not in the list are not carried over." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I reorder or delete pages?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. reorder_pages() takes a list of page indices in the desired output order. delete_page() removes a single page by its 0-based index. Both are list operations on the flattened page list and take effect when you call save() or to_bytes()." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does merging break internal references?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. rust-pdf renumbers every object in the second document by an offset before merging, then deep-remaps all object references recursively. Cross-references that were valid before remain valid in the merged file." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I rotate pages?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. rotate_page(index, degrees) rotates a single page by 90, 180, or 270 degrees. The rotation is recorded in the page dictionary and respected by all PDF viewers." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/merge-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/merge-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I merge PDFs in code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Load both files into EditableDoc objects, call merge() on the first with the second as argument, then save. rust-pdf renumbers the second document's objects by an offset and deep-remaps every cross-reference so nothing collides. The result is a single valid PDF containing all pages from both files."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I split a PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Call extract_pages() with a list of 0-based page indices. rust-pdf performs a reachability pass to collect only the objects those pages need, then renumbers them compactly into a brand-new PDF. Pages not in the list are not carried over."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I reorder or delete pages?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. reorder_pages() takes a list of page indices in the desired output order. delete_page() removes a single page by its 0-based index. Both are list operations on the flattened page list and take effect when you call save() or to_bytes()."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does merging break internal references?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. rust-pdf renumbers every object in the second document by an offset before merging, then deep-remaps all object references recursively. Cross-references that were valid before remain valid in the merged file."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I rotate pages?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. rotate_page(index, degrees) rotates a single page by 90, 180, or 270 degrees. The rotation is recorded in the page dictionary and respected by all PDF viewers."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -331,7 +389,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Page operations</p>
         <h1>Merge and Split PDFs <span class="grad">Programmatically</span></h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede ms-lede">
           A merge appends all pages of one PDF after another into a single file.
           A split pulls any chosen set of pages into its own new PDF.
@@ -743,6 +801,7 @@ doc.extractPages([0, 1, 2]).save("chapter1.pdf");</code></pre>
           <a href="/extract-text">Extract text</a>
           <a href="/pdf-a">What is PDF/A?</a>
           <a href="/encrypt-pdf">Encrypt PDF</a>
+          <a href="/watermark-pdf">Watermark a PDF</a>
           <a href="/docs/">All languages</a>
         </div>
       </div>
@@ -756,8 +815,8 @@ doc.extractPages([0, 1, 2]).save("chapter1.pdf");</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

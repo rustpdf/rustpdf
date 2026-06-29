@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in Ruby (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Generate archival-grade PDF/A from Ruby with one method call." />
+  <meta name="description" content="gem install rustpdf and emit archival PDF/A from Ruby with embedded fonts and an ICC profile, validated by veraPDF, straight from a Rails job or a Sidekiq worker." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/ruby" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/ruby" />
   <meta property="og:title" content="Create PDF/A in Ruby (Archival PDF)" />
-  <meta property="og:description" content="Generate archival-grade PDF/A from Ruby with one method call." />
+  <meta property="og:description" content="gem install rustpdf and emit archival PDF/A from Ruby with embedded fonts and an ICC profile, validated by veraPDF, straight from a Rails job or a Sidekiq worker." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in Ruby (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in Ruby (Archival PDF)" />
-  <meta name="twitter:description" content="Generate archival-grade PDF/A from Ruby with one method call." />
+  <meta name="twitter:description" content="gem install rustpdf and emit archival PDF/A from Ruby with embedded fonts and an ICC profile, validated by veraPDF, straight from a Rails job or a Sidekiq worker." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in Ruby (Archival PDF)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in Ruby (Archival PDF)",
-      "description": "Generate archival-grade PDF/A from Ruby with one method call.",
+      "description": "gem install rustpdf and emit archival PDF/A from Ruby with embedded fonts and an ICC profile, validated by veraPDF, straight from a Rails job or a Sidekiq worker.",
       "url": "https://rustpdf.dev/pdf-a/ruby",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a/ruby#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a/ruby"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Ruby project?",
+          "name": "Does the gem install on system Ruby on macOS?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted."
+            "text": "Yes. rust-pdf publishes a universal-darwin gem that carries the prebuilt native library, so it installs and loads on the stock macOS Ruby without a Rust toolchain or a compile step, which keeps your archiving jobs deployable."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Long-term archiving &middot; Ruby</p>
         <h1>Create <span class="grad">PDF/A</span> in Ruby</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from Ruby with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Ruby</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Ruby needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Prawn generates beautiful PDFs but has no PDF/A, no digital signatures, no AES-256 and no PDF/UA, so the regulated features have simply been missing from Ruby.</p>
-            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+            <p class="muted">Prawn output is fine for a one-off download, but it is not archival: no embedded ICC profile, no XMP identifier, nothing veraPDF will accept. Ruby teams that owe a regulator long-term files have had to post-process every PDF through Ghostscript.</p>
+            <p class="muted">PDF/A seals every font and colour profile inside the file so it renders identically decades from now, which is why e-invoicing, public-sector, legal and healthcare archives mandate it. rust-pdf produces and validates A-1b, 2b, 2a, 3b, 3a and the PDF 2.0-based A-4, subsetting and embedding fonts for you.</p>
+            <p class="muted">The native lib ships inside the platform gem and loads over Fiddle, so an archiving job on Sidekiq can call <code>doc.pdfa</code>, embed a TTF with <code>add_font_file</code> and rescue <code>RustPdf::Error</code> if the PDF/A license is not active, with no Ghostscript pass anywhere in the pipeline.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -211,7 +238,7 @@ doc.close</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">Ruby basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
 
@@ -227,18 +254,18 @@ doc.close</code></pre>
         <details><summary>Do I need a license to create PDF/A in Ruby?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Ruby is free. One offline token unlocks PDF/A in every supported language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Ruby project?</summary>
-          <p>It installs as a gem and binds through Fiddle from the standard library, so a Rails controller or a background Sidekiq job can call it directly. You keep Prawn for what it does well and reach for rust-pdf when a document has to be archival, signed or encrypted.</p>
+        <details><summary>Does the gem install on system Ruby on macOS?</summary>
+          <p>Yes. rust-pdf publishes a universal-darwin gem that carries the prebuilt native library, so it installs and loads on the stock macOS Ruby without a Rust toolchain or a compile step, which keeps your archiving jobs deployable.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create PDF/A in Ruby (Archival PDF)</h2>
+        <h2>Make your Ruby documents last for decades</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/ruby.html" class="btn btn-lg">Read the Ruby docs</a>
+          <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -254,7 +281,7 @@ doc.close</code></pre>
           <a href="/merge-pdf/ruby">Merging in Ruby</a>
           <a href="/extract-text/ruby">Text extraction in Ruby</a>
           <a href="/compress-pdf/ruby">Compression in Ruby</a>
-          <a href="/docs/ruby.html">Ruby docs</a>
+          <a href="/docs/ruby">Ruby docs</a>
         </div>
       </div>
     </section>
@@ -267,8 +294,8 @@ doc.close</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

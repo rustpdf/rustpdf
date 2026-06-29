@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Create PDF/A in C# (Archival PDF) | rust-pdf</title>
-  <meta name="description" content="Generate archival-grade PDF/A from C# with one method call." />
+  <meta name="description" content="Create archival PDF/A in C#: dotnet add package RustPdf, call Document.Pdfa with embedded fonts from a .NET Worker Service, validated end-to-end by veraPDF." />
   <link rel="canonical" href="https://rustpdf.dev/pdf-a/csharp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pdf-a/csharp" />
   <meta property="og:title" content="Create PDF/A in C# (Archival PDF)" />
-  <meta property="og:description" content="Generate archival-grade PDF/A from C# with one method call." />
+  <meta property="og:description" content="Create archival PDF/A in C#: dotnet add package RustPdf, call Document.Pdfa with embedded fonts from a .NET Worker Service, validated end-to-end by veraPDF." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Create PDF/A in C# (Archival PDF)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Create PDF/A in C# (Archival PDF)" />
-  <meta name="twitter:description" content="Generate archival-grade PDF/A from C# with one method call." />
+  <meta name="twitter:description" content="Create archival PDF/A in C#: dotnet add package RustPdf, call Document.Pdfa with embedded fonts from a .NET Worker Service, validated end-to-end by veraPDF." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Create PDF/A in C# (Archival PDF)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Create PDF/A in C# (Archival PDF)",
-      "description": "Generate archival-grade PDF/A from C# with one method call.",
+      "description": "Create archival PDF/A in C#: dotnet add package RustPdf, call Document.Pdfa with embedded fonts from a .NET Worker Service, validated end-to-end by veraPDF.",
       "url": "https://rustpdf.dev/pdf-a/csharp",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-a/csharp#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-a/csharp"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a C# project?",
+          "name": "Which .NET runtimes and operating systems are supported?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."
+            "text": "rust-pdf targets .NET 8 and later and runs anywhere the native core builds — Windows, Linux and macOS, on x64 or arm64. The NuGet package vendors the matching runtimes/<rid>/native payload and a NativeLibrary.SetDllImportResolver hook locates it, so a Linux container and an arm64 Mac both work with no code changes. Validate the archived output with veraPDF in any of those environments."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Long-term archiving &middot; C# and .NET</p>
         <h1>Create <span class="grad">PDF/A</span> in C#</h1>
         <p class="lede sp-lede">Generate archival-grade PDF/A from C# with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">C#</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why C# and .NET needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">.NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.</p>
-            <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+            <p class="muted">Archival mandates rarely arrive one file at a time — e-invoice batches, end-of-month statement runs, case-file exports. A <code>BackgroundService</code> or hosted Worker is the natural home: each <code>Document</code> is <code>IDisposable</code>, so a <code>using</code> per file releases the native handle and keeps a long-running queue from leaking. <code>Document.Pdfa(PdfaLevel.A2b)</code> — or <code>A2a</code>, <code>A3b</code>, <code>A4</code> — picks the conformance level per job.</p>
+            <p class="muted">PDF/A forbids external dependencies, so every glyph must travel inside the file. <code>AddFontFile</code> embeds and subsets your TrueType or OpenType font automatically, while the core seals in the sRGB ICC profile, the output intent, the XMP packet and a document ID; the a-levels additionally build a tagged structure tree for accessibility. Drop in a font missing a needed codepoint and veraPDF will flag it — the conformance claim is checked, not asserted.</p>
+            <p class="muted">The NuGet package carries the native library and a <code>NativeLibrary.SetDllImportResolver</code> hook finds it under <code>runtimes/&lt;rid&gt;/native</code>, so the same archiving service runs on Windows and inside a <code>dotnet/aspnet:8.0</code> container. Wire veraPDF into CI against the service's output; PDF/A is a licensed feature, so <code>Save</code> throws a catchable <code>PdfException</code> when the token is absent.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -213,7 +240,7 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
         <p class="center muted narrow" style="margin-top:18px">C# basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp">documentation</a>.</p>
       </div>
     </section>
 
@@ -229,18 +256,18 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
         <details><summary>Do I need a license to create PDF/A in C#?</summary>
           <p>PDF/A is a corporate feature and requires an active license token. Basic generation in C# is free. One offline token unlocks PDF/A in every supported language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a C# project?</summary>
-          <p>It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+        <details><summary>Which .NET runtimes and operating systems are supported?</summary>
+          <p>rust-pdf targets .NET 8 and later and runs anywhere the native core builds — Windows, Linux and macOS, on x64 or arm64. The NuGet package vendors the matching <code>runtimes/&lt;rid&gt;/native</code> payload and a <code>NativeLibrary.SetDllImportResolver</code> hook locates it, so a Linux container and an arm64 Mac both work with no code changes. Validate the archived output with veraPDF in any of those environments.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Create PDF/A in C# (Archival PDF)</h2>
+        <h2>Generate compliant archives from your .NET services</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/csharp.html" class="btn btn-lg">Read the C# docs</a>
+          <a href="/docs/csharp" class="btn btn-lg">Read the C# docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -253,7 +280,7 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
           <a href="/pdf-a/python">PDF/A in Python</a>
           <a href="/sign-pdf/csharp">Signing in C#</a>
           <a href="/encrypt-pdf/csharp">Encryption in C#</a>
-          <a href="/docs/csharp.html">C# docs</a>
+          <a href="/docs/csharp">C# docs</a>
         </div>
       </div>
     </section>
@@ -266,8 +293,8 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

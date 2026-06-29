@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Digitally Sign a PDF in C# (PAdES) | rust-pdf</title>
-  <meta name="description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
+  <meta name="description" content="Digitally sign a PDF in C# with PAdES: dotnet add package RustPdf, load a PFX via X509Certificate2 and call Pdf.Sign from an ASP.NET Core Web API endpoint." />
   <link rel="canonical" href="https://rustpdf.dev/sign-pdf/csharp" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/sign-pdf/csharp" />
   <meta property="og:title" content="Digitally Sign a PDF in C# (PAdES)" />
-  <meta property="og:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
+  <meta property="og:description" content="Digitally sign a PDF in C# with PAdES: dotnet add package RustPdf, load a PFX via X509Certificate2 and call Pdf.Sign from an ASP.NET Core Web API endpoint." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Digitally Sign a PDF in C# (PAdES)" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Digitally Sign a PDF in C# (PAdES)" />
-  <meta name="twitter:description" content="Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#." />
+  <meta name="twitter:description" content="Digitally sign a PDF in C# with PAdES: dotnet add package RustPdf, load a PFX via X509Certificate2 and call Pdf.Sign from an ASP.NET Core Web API endpoint." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Digitally Sign a PDF in C# (PAdES)" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Digitally Sign a PDF in C# (PAdES)",
-      "description": "Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#.",
+      "description": "Digitally sign a PDF in C# with PAdES: dotnet add package RustPdf, load a PFX via X509Certificate2 and call Pdf.Sign from an ASP.NET Core Web API endpoint.",
       "url": "https://rustpdf.dev/sign-pdf/csharp",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/sign-pdf/csharp#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/sign-pdf/csharp"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a C# project?",
+          "name": "Can I sign with an X509Certificate2 or .pfx in .NET?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."
+            "text": "Yes. Load your credential with new X509Certificate2(cred.pfx, password), export the certificate as DER via Export(X509ContentType.Cert) and the RSA private key as PKCS#8 DER, then pass both byte arrays to Pdf.Sign. The library builds the detached CMS itself, so you never pull in BouncyCastle, and pdfsig and Adobe Reader confirm the result is valid."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Digital signatures &middot; C# and .NET</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in C#</h1>
         <p class="lede sp-lede">Add a cryptographic PKCS#7 or PAdES signature to a PDF from C#. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">C#</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why C# and .NET needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">.NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.</p>
-            <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+            <p class="muted">Most .NET shops already hold their signing credential as a <code>.pfx</code> or in the Windows certificate store. Load it with <code>X509Certificate2</code>, export the pieces rust-pdf expects — <code>cert.Export(X509ContentType.Cert)</code> for the X.509 DER and the private key as PKCS#8 DER — and hand both byte arrays to <code>Pdf.Sign</code>. No PEM juggling and no OpenSSL shell-out.</p>
+            <p class="muted">Signing is a static <code>Pdf.Sign</code> call that returns the signed bytes, which slots straight into a Web API controller or minimal-API handler that streams the result back as <code>application/pdf</code>. Because the core appends an incremental update, the original document is preserved byte for byte and any earlier signature stays valid; <code>pades: true</code> switches the subfilter to <code>ETSI.CAdES.detached</code> for B-B, and you can follow with a DSS and an RFC 3161 timestamp for B-LT and B-LTA.</p>
+            <p class="muted">The native library ships inside the NuGet package and is located at runtime by a <code>NativeLibrary.SetDllImportResolver</code> hook, so the same code signs on a developer's Windows box and inside a <code>dotnet/aspnet:8.0</code> Linux container with no rebuild. Signing is gated by a <code>Signatures</code> license; without it <code>Pdf.Sign</code> throws a <code>PdfException</code> you can map to an HTTP error response.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -216,7 +243,7 @@ File.WriteAllBytes("contract.signed.pdf", signed);
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
         <p class="center muted narrow" style="margin-top:18px">C# basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp">documentation</a>.</p>
       </div>
     </section>
 
@@ -232,18 +259,18 @@ File.WriteAllBytes("contract.signed.pdf", signed);
         <details><summary>Do I need a license to sign in C#?</summary>
           <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in C# is free. The same offline Ed25519 token unlocks signing across every language.</p>
         </details>
-        <details><summary>How does rust-pdf fit a C# project?</summary>
-          <p>It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale.</p>
+        <details><summary>Can I sign with an X509Certificate2 or .pfx in .NET?</summary>
+          <p>Yes. Load your credential with <code>new X509Certificate2("cred.pfx", password)</code>, export the certificate as DER via <code>Export(X509ContentType.Cert)</code> and the RSA private key as PKCS#8 DER, then pass both byte arrays to <code>Pdf.Sign</code>. The library builds the detached CMS itself, so you never pull in BouncyCastle, and pdfsig and Adobe Reader confirm the result is valid.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Digitally Sign a PDF in C# (PAdES)</h2>
+        <h2>Bring PAdES signatures to your .NET API</h2>
         <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
         <div class="cta-row">
-          <a href="/docs/csharp.html" class="btn btn-lg">Read the C# docs</a>
+          <a href="/docs/csharp" class="btn btn-lg">Read the C# docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -256,7 +283,7 @@ File.WriteAllBytes("contract.signed.pdf", signed);
           <a href="/sign-pdf/python">Signing in Python</a>
           <a href="/pdf-a/csharp">PDF/A in C#</a>
           <a href="/encrypt-pdf/csharp">Encryption in C#</a>
-          <a href="/docs/csharp.html">C# docs</a>
+          <a href="/docs/csharp">C# docs</a>
         </div>
       </div>
     </section>
@@ -269,8 +296,8 @@ File.WriteAllBytes("contract.signed.pdf", signed);
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -24,44 +24,58 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf — enterprise PDF for Java" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Java", "item": "https://rustpdf.dev/java" }
-        ]
-      },
-      {
-        "@type": "SoftwareApplication",
-        "name": "rust-pdf for Java",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Linux, macOS, Windows",
-        "url": "https://rustpdf.dev/java",
-        "softwareRequirements": "Java 17+",
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for Java: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, added as a single Maven dependency and bound through JNA, running entirely on your own servers.",
-        "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
-          "AES-256 encryption",
-          "PDF/UA accessibility (Tagged PDF)",
-          "AcroForm fields",
-          "Merge, split, text extraction"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "1500",
-          "highPrice": "3000",
-          "offerCount": "2",
-          "url": "https://rustpdf.dev/#pricing"
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Java",
+          "item": "https://rustpdf.dev/java"
         }
-      }
-    ]
-  }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "rust-pdf for Java",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://rustpdf.dev/java",
+      "softwareRequirements": "Java 17+",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
+      },
+      "description": "An enterprise PDF library for Java: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, added as a single Maven dependency and bound through JNA, running entirely on your own servers.",
+      "featureList": [
+        "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+        "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+        "AES-256 encryption",
+        "PDF/UA accessibility (Tagged PDF)",
+        "AcroForm fields",
+        "Merge, split, text extraction"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "1500",
+        "highPrice": "3000",
+        "offerCount": "2",
+        "url": "https://rustpdf.dev/#pricing",
+        "priceValidUntil": "2027-12-31"
+      },
+      "@id": "https://rustpdf.dev/#software"
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
@@ -228,8 +242,8 @@ try (Document doc = new Document()) {
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

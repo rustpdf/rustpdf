@@ -23,57 +23,107 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Extract images from PDF programmatically — a clear guide" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Extract Images from PDF", "item": "https://rustpdf.dev/extract-images" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Extract Images from PDF",
+          "item": "https://rustpdf.dev/extract-images"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Extract Images from PDF Programmatically, Explained",
+      "description": "A plain-language explanation of how PDF image extraction works: walking /Resources /XObject, returning JPEGs byte-for-byte verbatim as .jpg with zero generation loss, decoding everything else to .png with correct color space and alpha mask handling, and safely skipping codecs that cannot be losslessly converted.",
+      "url": "https://rustpdf.dev/extract-images",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF image extraction",
+        "description": "Programmatic recovery of raster images embedded in PDF files, preserving JPEG fidelity and handling transparency."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Extract Images from PDF Programmatically, Explained",
-        "description": "A plain-language explanation of how PDF image extraction works: walking /Resources /XObject, returning JPEGs byte-for-byte verbatim as .jpg with zero generation loss, decoding everything else to .png with correct color space and alpha mask handling, and safely skipping codecs that cannot be losslessly converted.",
-        "url": "https://rustpdf.dev/extract-images",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF image extraction", "description": "Programmatic recovery of raster images embedded in PDF files, preserving JPEG fidelity and handling transparency." },
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+      "publisher": {
+        "@type": "Organization",
+        "name": "CaseFy Inc.",
+        "url": "https://casefy.io",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I extract images from a PDF?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Call extract_images_to_dir (Python), Pdf.ExtractImagesToDir (C#), rustpdf.ExtractImagesToDir (Go), or extractImagesToDir (Node) with the PDF bytes and an output directory path. The library walks every page's /Resources /XObject tree, including nested Form XObjects, and writes each raster image into the directory. JPEGs come out as .jpg files, everything else as .png." }
-          },
-          {
-            "@type": "Question",
-            "name": "Are JPEGs re-encoded (lossy)?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. JPEG images (stored with /Filter /DCTDecode in the PDF) are returned verbatim, byte-for-byte, without decoding or re-encoding. The output .jpg file is the exact same compressed data that was embedded in the PDF, so there is zero generation loss." }
-          },
-          {
-            "@type": "Question",
-            "name": "What formats are output?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Two formats: .jpg for images stored as JPEG (/DCTDecode), and .png for everything else. PNG output honors the image's color space (DeviceGray, RGB, CMYK converted to RGB, Indexed, or ICCBased), so the colors you see match what was in the PDF." }
-          },
-          {
-            "@type": "Question",
-            "name": "Are transparency and alpha masks preserved?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. When a PDF image has a separate /SMask (soft mask) stream and the dimensions and bit depth match, the mask is merged into the output as the alpha channel, producing a Gray+Alpha or RGBA PNG. The transparency information is not discarded." }
-          },
-          {
-            "@type": "Question",
-            "name": "Which images cannot be extracted?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Images stored with JPEG 2000 (/JPXDecode), CCITT fax (/CCITTFaxDecode), or JBIG2 (/JBIG2Decode) compression cannot be cleanly converted to PNG, so they are skipped rather than emitted corrupt. The function returns a count of the images it did write; skipped images are not included." }
-          }
-        ]
+      "@id": "https://rustpdf.dev/extract-images#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/extract-images"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I extract images from a PDF?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Call extract_images_to_dir (Python), Pdf.ExtractImagesToDir (C#), rustpdf.ExtractImagesToDir (Go), or extractImagesToDir (Node) with the PDF bytes and an output directory path. The library walks every page's /Resources /XObject tree, including nested Form XObjects, and writes each raster image into the directory. JPEGs come out as .jpg files, everything else as .png."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are JPEGs re-encoded (lossy)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. JPEG images (stored with /Filter /DCTDecode in the PDF) are returned verbatim, byte-for-byte, without decoding or re-encoding. The output .jpg file is the exact same compressed data that was embedded in the PDF, so there is zero generation loss."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What formats are output?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Two formats: .jpg for images stored as JPEG (/DCTDecode), and .png for everything else. PNG output honors the image's color space (DeviceGray, RGB, CMYK converted to RGB, Indexed, or ICCBased), so the colors you see match what was in the PDF."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are transparency and alpha masks preserved?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. When a PDF image has a separate /SMask (soft mask) stream and the dimensions and bit depth match, the mask is merged into the output as the alpha channel, producing a Gray+Alpha or RGBA PNG. The transparency information is not discarded."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which images cannot be extracted?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Images stored with JPEG 2000 (/JPXDecode), CCITT fax (/CCITTFaxDecode), or JBIG2 (/JBIG2Decode) compression cannot be cleanly converted to PNG, so they are skipped rather than emitted corrupt. The function returns a count of the images it did write; skipped images are not included."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -585,8 +635,8 @@ console.log(`${n} images written`);</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

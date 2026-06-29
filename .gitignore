@@ -31,3 +31,7 @@ bindings/java/src/main/resources/win32-*/
 
 # impeccable (design skill) local state + critique snapshots
 .impeccable/
+
+# brand rasters generated from SVG sources (square logo + OG image) — keep tracked
+!site/public/logo.png
+!site/public/og.png

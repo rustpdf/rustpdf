@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Add watermarks to PDF files in code - rust-pdf guide" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Add Watermarks to PDF Files in Code", "item": "https://rustpdf.dev/watermark-pdf" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Add Watermarks to PDF Files in Code",
+          "item": "https://rustpdf.dev/watermark-pdf"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Add Watermarks to PDF Files in Code, Explained",
+      "description": "A plain-language guide to PDF watermarking: what a watermark is, text vs image stamps, the options (opacity, rotation, color, size), why a visible mark is not DRM, and how to apply one in any language with rust-pdf.",
+      "url": "https://rustpdf.dev/watermark-pdf",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF watermarking",
+        "description": "Stamping text or an image across every page of a PDF at a given opacity, rotation and color."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "Add Watermarks to PDF Files in Code, Explained",
-        "description": "A plain-language guide to PDF watermarking: what a watermark is, text vs image stamps, the options (opacity, rotation, color, size), why a visible mark is not DRM, and how to apply one in any language with rust-pdf.",
-        "url": "https://rustpdf.dev/watermark-pdf",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF watermarking", "description": "Stamping text or an image across every page of a PDF at a given opacity, rotation and color." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "How do I add a watermark to a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load the existing PDF into an EditableDoc and call watermark_text with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift." }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I use an image as a watermark?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use watermark_image_file (or WatermarkImageFile in C# and Go) and pass the path to your image file along with the target width, height and opacity. This is useful for stamping a faint logo or brand mark across every page." }
-          },
-          {
-            "@type": "Question",
-            "name": "What options can I set (opacity, rotation, color)?",
-            "acceptedAnswer": { "@type": "Answer", "text": "For a text watermark you can set the text string, font size, RGB color as three floats between 0 and 1, opacity as a float between 0 and 1, and rotation in degrees. The classic diagonal stamp uses 45 degrees and an opacity of around 0.15 to 0.25 so the underlying content stays readable. For an image watermark you set width, height and opacity." }
-          },
-          {
-            "@type": "Question",
-            "name": "Does the watermark appear when printing?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Yes. The watermark is applied directly to the page content stream, so it is part of the PDF itself. It appears on screen in any viewer and is included when the document is printed, just like any other content on the page." }
-          },
-          {
-            "@type": "Question",
-            "name": "Is a watermark a form of protection?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A visible watermark deters casual misuse and makes copied documents attributable, but it is not access control. A determined party can remove or obscure a visible overlay. If you need to restrict who can open, copy or print a document, pair the watermark with encryption using encrypt_with AES-256. The two work well together: the watermark deters, the encryption enforces." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/watermark-pdf#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/watermark-pdf"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I add a watermark to a PDF in code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Load the existing PDF into an EditableDoc and call watermark_text with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use an image as a watermark?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Use watermark_image_file (or WatermarkImageFile in C# and Go) and pass the path to your image file along with the target width, height and opacity. This is useful for stamping a faint logo or brand mark across every page."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What options can I set (opacity, rotation, color)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For a text watermark you can set the text string, font size, RGB color as three floats between 0 and 1, opacity as a float between 0 and 1, and rotation in degrees. The classic diagonal stamp uses 45 degrees and an opacity of around 0.15 to 0.25 so the underlying content stays readable. For an image watermark you set width, height and opacity."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the watermark appear when printing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The watermark is applied directly to the page content stream, so it is part of the PDF itself. It appears on screen in any viewer and is included when the document is printed, just like any other content on the page."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a watermark a form of protection?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A visible watermark deters casual misuse and makes copied documents attributable, but it is not access control. A determined party can remove or obscure a visible overlay. If you need to restrict who can open, copy or print a document, pair the watermark with encryption using encrypt_with AES-256. The two work well together: the watermark deters, the encryption enforces."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -215,7 +273,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Stamping</p>
         <h1>Add <span class="grad">Watermarks</span> to<br />PDF Files in Code</h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede wm-lede">
           A watermark is text or an image stamped across every page as a visible
           overlay. Common for status labels like <b>DRAFT</b> or
@@ -552,8 +610,8 @@ ed.save("report_watermarked.pdf");</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

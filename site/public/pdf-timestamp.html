@@ -24,60 +24,118 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="PDF Timestamps and Long-Term Validation explained" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "PDF Timestamps &amp; LTV", "item": "https://rustpdf.dev/pdf-timestamp" }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "PDF Timestamps &amp; LTV",
+          "item": "https://rustpdf.dev/pdf-timestamp"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "PDF Timestamps and Long-Term Validation (LTV), Explained",
+      "description": "A plain-language explanation of trusted timestamps in PDF: what an RFC 3161 token proves, why signatures stop validating over time, how a Document Security Store (DSS) embeds the evidence needed to verify a signature years later, and how to build the full PAdES B-B, B-LT, B-LTA ladder.",
+      "url": "https://rustpdf.dev/pdf-timestamp",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF Timestamps and LTV",
+        "description": "RFC 3161 trusted timestamps and Document Security Store (DSS) for long-term validation of PDF signatures."
       },
-      {
-        "@type": "TechArticle",
-        "headline": "PDF Timestamps and Long-Term Validation (LTV), Explained",
-        "description": "A plain-language explanation of trusted timestamps in PDF: what an RFC 3161 token proves, why signatures stop validating over time, how a Document Security Store (DSS) embeds the evidence needed to verify a signature years later, and how to build the full PAdES B-B, B-LT, B-LTA ladder.",
-        "url": "https://rustpdf.dev/pdf-timestamp",
-        "inLanguage": "en",
-        "about": { "@type": "Thing", "name": "PDF Timestamps and LTV", "description": "RFC 3161 trusted timestamps and Document Security Store (DSS) for long-term validation of PDF signatures." },
-        "datePublished": "2026-02-01",
-        "dateModified": "2026-06-29",
-        "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" },
-        "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org" }
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is a PDF timestamp?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A PDF timestamp is an RFC 3161 token issued by a Time Stamping Authority (TSA) that proves a document or signature existed at a specific moment and has not changed since. In PDF it is stored as a /DocTimeStamp entry whose /Contents holds a CMS SignedData encapsulating a TSTInfo structure. The TSTInfo messageImprint is the SHA-256 hash of the signed byte range, so any change to the document invalidates the token." }
-          },
-          {
-            "@type": "Question",
-            "name": "What is LTV / a DSS?",
-            "acceptedAnswer": { "@type": "Answer", "text": "LTV stands for long-term validation. A Document Security Store (DSS) is an entry in the PDF catalog that embeds the certificates and CRLs needed to verify a signature directly inside the file. A verifier can check the entire chain without making any network requests, even after the issuer's revocation service goes offline or the certificate expires, because all the evidence is self-contained." }
-          },
-          {
-            "@type": "Question",
-            "name": "Why do signatures stop validating over time?",
-            "acceptedAnswer": { "@type": "Answer", "text": "A normal digital signature relies on the signer's certificate being valid at the time of signing and on a live revocation check (OCSP or CRL) to confirm it was not revoked. Once the certificate expires, the issuer's CA is decommissioned, or the revocation service goes offline, a verifier has no way to confirm the signature was made with a valid credential. The DSS solves this by capturing the revocation evidence at the time of signing and embedding it in the file." }
-          },
-          {
-            "@type": "Question",
-            "name": "What are B-LT and B-LTA?",
-            "acceptedAnswer": { "@type": "Answer", "text": "B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and the revocation data you provide (CRLs and certificates) embedded in the PDF. rust-pdf embeds the CRLs and certs you supply; it does not fetch OCSP responses automatically. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering." }
-          },
-          {
-            "@type": "Question",
-            "name": "Do I need a trusted TSA?",
-            "acceptedAnswer": { "@type": "Answer", "text": "For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow." }
-          }
-        ]
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/pdf-timestamp#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/pdf-timestamp"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a PDF timestamp?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A PDF timestamp is an RFC 3161 token issued by a Time Stamping Authority (TSA) that proves a document or signature existed at a specific moment and has not changed since. In PDF it is stored as a /DocTimeStamp entry whose /Contents holds a CMS SignedData encapsulating a TSTInfo structure. The TSTInfo messageImprint is the SHA-256 hash of the signed byte range, so any change to the document invalidates the token."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is LTV / a DSS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "LTV stands for long-term validation. A Document Security Store (DSS) is an entry in the PDF catalog that embeds the certificates and CRLs needed to verify a signature directly inside the file. A verifier can check the entire chain without making any network requests, even after the issuer's revocation service goes offline or the certificate expires, because all the evidence is self-contained."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do signatures stop validating over time?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A normal digital signature relies on the signer's certificate being valid at the time of signing and on a live revocation check (OCSP or CRL) to confirm it was not revoked. Once the certificate expires, the issuer's CA is decommissioned, or the revocation service goes offline, a verifier has no way to confirm the signature was made with a valid credential. The DSS solves this by capturing the revocation evidence at the time of signing and embedding it in the file."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are B-LT and B-LTA?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and the revocation data you provide (CRLs and certificates) embedded in the PDF. rust-pdf embeds the CRLs and certs you supply; it does not fetch OCSP responses automatically. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a trusted TSA?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
   <style>
@@ -281,7 +339,7 @@
       <div class="wrap">
         <p class="eyebrow">Concept &middot; Long-term validity</p>
         <h1>PDF Timestamps &amp;<br /><span class="grad">Long-Term Validation</span></h1>
-        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           A digital signature proves who signed. A <b>trusted timestamp</b> proves
           <em>when</em>, and that nothing changed since. <b>LTV</b> goes further: it
@@ -568,8 +626,8 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

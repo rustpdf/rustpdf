@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <title>Compress and Optimize a PDF in Node.js | rust-pdf</title>
-  <meta name="description" content="Shrink PDF file size from Node.js." />
+  <meta name="description" content="Run npm install rustpdf to losslessly shrink a PDF from an Express route or Lambda, deduping objects and packing them into object and cross-reference streams." />
   <link rel="canonical" href="https://rustpdf.dev/compress-pdf/node" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/compress-pdf/node" />
   <meta property="og:title" content="Compress and Optimize a PDF in Node.js" />
-  <meta property="og:description" content="Shrink PDF file size from Node.js." />
+  <meta property="og:description" content="Run npm install rustpdf to losslessly shrink a PDF from an Express route or Lambda, deduping objects and packing them into object and cross-reference streams." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Compress and Optimize a PDF in Node.js" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Compress and Optimize a PDF in Node.js" />
-  <meta name="twitter:description" content="Shrink PDF file size from Node.js." />
+  <meta name="twitter:description" content="Run npm install rustpdf to losslessly shrink a PDF from an Express route or Lambda, deduping objects and packing them into object and cross-reference streams." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Compress and Optimize a PDF in Node.js" />
   <script type="application/ld+json">
@@ -53,7 +53,7 @@
     {
       "@type": "TechArticle",
       "headline": "Compress and Optimize a PDF in Node.js",
-      "description": "Shrink PDF file size from Node.js.",
+      "description": "Run npm install rustpdf to losslessly shrink a PDF from an Express route or Lambda, deduping objects and packing them into object and cross-reference streams.",
       "url": "https://rustpdf.dev/compress-pdf/node",
       "inLanguage": "en",
       "proficiencyLevel": "Beginner",
@@ -61,16 +61,43 @@
       "dateModified": "2026-06-29",
       "author": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
       },
       "about": {
         "@type": "SoftwareApplication",
         "name": "rust-pdf",
-        "applicationCategory": "DeveloperApplication"
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
       },
       "publisher": {
         "@type": "Organization",
-        "@id": "https://rustpdf.dev/#org"
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/compress-pdf/node#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/compress-pdf/node"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
       }
     },
     {
@@ -102,10 +129,10 @@
         },
         {
           "@type": "Question",
-          "name": "How does rust-pdf fit a Node.js project?",
+          "name": "Does the binding add much weight to a serverless bundle?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment."
+            "text": "No. The Koffi binding is pure FFI with no node-gyp and no headless-Chrome dependency, so it stays a small prebuilt native library you drop into a Lambda layer or container image — handy when you are optimizing PDFs to fit upload and response size limits."
           }
         }
       ]
@@ -161,7 +188,7 @@
         <p class="eyebrow">Optimization &middot; Node.js and TypeScript</p>
         <h1>Compress a <span class="grad">PDF</span> in Node.js</h1>
         <p class="lede sp-lede">Shrink PDF file size from Node.js. rust-pdf drops unreferenced objects, Flate-compresses uncompressed streams, dedupes byte-identical objects, and can pack everything into object streams with a cross-reference stream.</p>
-        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: June 2026</p>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
             <span class="sp-badge">Node.js</span>
@@ -182,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Node typically reaches for heavy wrappers or headless Chrome for anything past basic output, which is slow, fragile and never archival-grade.</p>
+            <p class="muted">Shrinking a PDF in Node typically means spawning Ghostscript or qpdf, which adds a heavyweight binary to the image and a child process to every request.</p>
             <p class="muted">Optimization is lossless structural cleanup: nothing in the rendered page changes, the file just carries less weight. Combine optimize (dedupe and compress) with compact (object and xref streams) for the smallest valid output, ideal before archiving, emailing or serving documents at scale.</p>
-            <p class="muted">It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+            <p class="muted">Run optimize().compact(true) before you store or email a document to cut payload size where serverless response and attachment limits bite. The pure-FFI Koffi binding has no node-gyp and no headless-Chrome footprint, so it stays a small native dependency in a Lambda layer or container image, and optimization is lossless so output still passes qpdf.</p>
           </div>
           <ul class="check-list">
             <li>Drop unreferenced objects, Flate-compress streams and dedupe identical objects.</li>
@@ -198,7 +225,7 @@
     <section id="how" class="section">
       <div class="wrap">
         <h2 class="center">Compress a PDF in Node.js with rust-pdf</h2>
-        <p class="center muted narrow">Install with npm, then call the same idiomatic API every rust-pdf binding shares. The snippet below is real Node.js code from the reference docs.</p>
+        <p class="center muted narrow">Install from npm, then chain optimize and compact on a loaded document. The snippet below is real Node.js from the reference docs.</p>
         <p class="center"><code class="sp-install">npm install rustpdf</code></p>
         <div class="tabs">
           <div class="tab-bar"><span class="tab active">Node.js</span></div>
@@ -208,8 +235,8 @@ ed.save("small.pdf");
 ed.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Node.js. No license required.</p>
-        <p class="center muted narrow" style="margin-top:22px">Full Node.js reference in the <a href="/docs/node.html">documentation</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Optimization and compaction are part of the free tier in Node.js — no license token needed.</p>
+        <p class="center muted narrow" style="margin-top:22px">The full Node.js optimization reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
 
@@ -225,18 +252,18 @@ ed.close();</code></pre>
         <details><summary>Is optimization free?</summary>
           <p>Yes. Optimize and compact are part of the free tier in Node.js. No license is needed.</p>
         </details>
-        <details><summary>How does rust-pdf fit a Node.js project?</summary>
-          <p>It installs from npm with bundled TypeScript types and uses a pure-FFI binding (Koffi, no node-gyp build step), so it fits an Express or NestJS API or a serverless function. Replacing a headless-Chrome render path removes a large, memory-hungry dependency from the deployment.</p>
+        <details><summary>Does the binding add much weight to a serverless bundle?</summary>
+          <p>No. The Koffi binding is pure FFI with no node-gyp and no headless-Chrome dependency, so it stays a small prebuilt native library you drop into a Lambda layer or container image — handy when you are optimizing PDFs to fit upload and response size limits.</p>
         </details>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap narrow center">
-        <h2>Compress and Optimize a PDF in Node.js</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <h2>Send lighter PDFs without touching how they look</h2>
+        <p class="muted">One Rust core, the same lossless optimization in every language. Compression is free; license the corporate features only when you ship them.</p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node.js docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -250,7 +277,7 @@ ed.close();</code></pre>
           <a href="/encrypt-pdf/node">Encryption in Node.js</a>
           <a href="/merge-pdf/node">Merging in Node.js</a>
           <a href="/extract-text/node">Text extraction in Node.js</a>
-          <a href="/docs/node.html">Node.js docs</a>
+          <a href="/docs/node">Node.js docs</a>
         </div>
       </div>
     </section>
@@ -263,8 +290,8 @@ ed.close();</code></pre>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>

@@ -24,47 +24,62 @@
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Node.js and TypeScript" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
-          { "@type": "ListItem", "position": 2, "name": "Node.js", "item": "https://rustpdf.dev/nodejs" }
-        ]
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://rustpdf.dev/#software",
-        "name": "rust-pdf for Node.js & TypeScript",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Linux, macOS, Windows",
-        "programmingLanguage": ["JavaScript", "TypeScript"],
-        "url": "https://rustpdf.dev/nodejs",
-        "softwareRequirements": "Node.js 18+",
-        "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for Node.js and TypeScript: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with npm install rustpdf, running entirely on your own servers.",
-        "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
-          "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
-          "AES-256 encryption",
-          "PDF/UA accessibility (Tagged PDF)",
-          "AcroForm fields",
-          "Merge, split, text extraction"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "1500",
-          "highPrice": "3000",
-          "offerCount": "2",
-          "priceValidUntil": "2026-12-31",
-          "url": "https://rustpdf.dev/#pricing"
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Node.js",
+          "item": "https://rustpdf.dev/nodejs"
         }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://rustpdf.dev/#software",
+      "name": "rust-pdf for Node.js & TypeScript",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "programmingLanguage": [
+        "JavaScript",
+        "TypeScript"
+      ],
+      "url": "https://rustpdf.dev/nodejs",
+      "softwareRequirements": "Node.js 18+",
+      "publisher": {
+        "@id": "https://rustpdf.dev/#org"
+      },
+      "description": "An enterprise PDF library for Node.js and TypeScript: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with npm install rustpdf, running entirely on your own servers.",
+      "featureList": [
+        "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
+        "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
+        "AES-256 encryption",
+        "PDF/UA accessibility (Tagged PDF)",
+        "AcroForm fields",
+        "Merge, split, text extraction"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "1500",
+        "highPrice": "3000",
+        "offerCount": "2",
+        "priceValidUntil": "2027-12-31",
+        "url": "https://rustpdf.dev/#pricing"
       }
-    ]
-  }
+    }
+  ]
+}
   </script>
   <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
@@ -76,7 +91,7 @@
       <nav class="nav-links">
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
-        <a href="/docs/node.html">Docs</a>
+        <a href="/docs/node">Docs</a>
         <a href="/#pricing">Pricing</a>
         <a href="/#faq">FAQ</a>
       </nav>
@@ -102,7 +117,7 @@
           <div class="tabs"><pre class="tab-pane active"><code>npm install rustpdf</code></pre></div>
         </div>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
@@ -199,7 +214,7 @@ ed.save("secured.pdf");</code></pre>
         </div>
         <p class="center muted narrow" style="margin-top:22px">
           The full Node / TypeScript reference (fonts, images, forms, manipulation,
-          encryption and signatures) lives in the <a href="/docs/node.html">Node docs</a>.
+          encryption and signatures) lives in the <a href="/docs/node">Node docs</a>.
         </p>
       </div>
     </section>
@@ -268,7 +283,7 @@ app.get("/invoice.pdf", (_req, res) =&gt; {
           production.
         </p>
         <div class="cta-row">
-          <a href="/docs/node.html" class="btn btn-lg">Read the Node docs</a>
+          <a href="/docs/node" class="btn btn-lg">Read the Node docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="sibling-langs">
@@ -303,9 +318,9 @@ app.get("/invoice.pdf", (_req, res) =&gt; {
       <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
       <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
       <nav class="footer-links">
-        <a href="/docs/node.html">Node docs</a>
-        <a href="/legal/terms.html">Terms</a>
-        <a href="/legal/privacy.html">Privacy</a>
+        <a href="/docs/node">Node docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
         <a href="mailto:sales@casefy.io">Contact</a>
       </nav>
     </div>
