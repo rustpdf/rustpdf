@@ -286,17 +286,26 @@ const sendPage = (res, ...parts) => {
 const HUBS_WITH_SUBDIR = [
   "pdf-a", "encrypt-pdf", "merge-pdf", "extract-text", "compress-pdf", "pdf-forms",
 ];
+// One route matches both `/slug` and `/slug/` (Express routing is non-strict, so
+// a separate `/slug/` route would ALSO match `/slug` and 301 it to itself — an
+// infinite loop). Redirect the trailing-slash form to the canonical `/slug`;
+// serve the hub page at the canonical URL.
 for (const slug of HUBS_WITH_SUBDIR) {
-  // `/slug/` (trailing slash) 301s to the canonical `/slug`; canonical serves 200.
-  app.get(`/${slug}/`, (_req, res) => res.redirect(301, `/${slug}`));
-  app.get(`/${slug}`, (_req, res) => sendPage(res, `${slug}.html`));
+  app.get([`/${slug}`, `/${slug}/`], (req, res) => {
+    if (req.path.endsWith("/")) return res.redirect(301, `/${slug}`);
+    sendPage(res, `${slug}.html`);
+  });
 }
 // sign-pdf and generate-pdf have spoke directories but no concept page of their
 // own; serve the dedicated hub index we generate into each directory.
-app.get("/sign-pdf/", (_req, res) => res.redirect(301, "/sign-pdf"));
-app.get("/sign-pdf", (_req, res) => sendPage(res, "sign-pdf", "index.html"));
-app.get("/generate-pdf/", (_req, res) => res.redirect(301, "/generate-pdf"));
-app.get("/generate-pdf", (_req, res) => sendPage(res, "generate-pdf", "index.html"));
+app.get(["/sign-pdf", "/sign-pdf/"], (req, res) => {
+  if (req.path.endsWith("/")) return res.redirect(301, "/sign-pdf");
+  sendPage(res, "sign-pdf", "index.html");
+});
+app.get(["/generate-pdf", "/generate-pdf/"], (req, res) => {
+  if (req.path.endsWith("/")) return res.redirect(301, "/generate-pdf");
+  sendPage(res, "generate-pdf", "index.html");
+});
 
 // --- Static site -------------------------------------------------------------
 app.use(
