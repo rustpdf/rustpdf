@@ -134,6 +134,7 @@
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>require "rustpdf"
 puts RustPdf.version   # native library version</code></pre></div>
       <div class="note">On a platform without a prebuilt gem, point <code>RUSTPDF_LIB</code> at a <code>libpdf_ffi</code> you built yourself (<code>cargo build -p pdf-ffi --release</code>) and the loader will use it.</div>
+      <div class="note"><b>macOS system Ruby.</b> The platform gems are tagged <code>arm64-darwin</code> / <code>x86_64-linux</code> / <code>aarch64-linux</code> / <code>x64-mingw-ucrt</code>. The Ruby that ships <i>with macOS</i> reports its platform as <code>universal-darwin</code>, which RubyGems does <b>not</b> match against <code>arm64-darwin</code>, so <code>gem install rustpdf</code> fails with <i>"Could not find a valid gem 'rustpdf'"</i>. Use a per-arch Ruby from <code>rbenv</code>, <code>asdf</code> or Homebrew (these report <code>arm64-darwin-XX</code> and match), or point <code>RUSTPDF_LIB</code> at a <code>libpdf_ffi</code> you built yourself.</div>
 
       <!-- QUICKSTART -->
       <h2 id="quickstart">Quick start</h2>
@@ -409,6 +410,7 @@ ed.close
 sec = RustPdf::EditableDoc.load_file("secured.pdf", password: "user-or-owner-pw")
 sec.save("plain.pdf")
 sec.close</code></pre></div>
+      <div class="note"><b>Damaged input is recovered, not rejected.</b> Like qpdf, <code>load</code> runs a recovery scan over a malformed or truncated PDF instead of raising, so a badly damaged file can load with fewer pages than expected (even <code>page_count == 0</code>) and no error. When loading untrusted or possibly-corrupt input, check <code>page_count</code> before saving or processing.</div>
 
       <!-- ED PAGES -->
       <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
@@ -525,6 +527,7 @@ ed.encrypt(method: RustPdf::Cipher::AES256, owner: "owner-secret", read_only: tr
 ed.save("secured.pdf")          # raises RustPdf::Error without an Encryption license
 ed.close</code></pre></div>
       <p>See the <a href="#enums"><code>Cipher</code></a> enum for RC4 / AES-128 / AES-256.</p>
+      <div class="note"><b><code>read_only</code> is not confidentiality.</b> It only sets the permission bits (<code>/P</code>), which cooperating readers honour but the format does not enforce. Real confidentiality comes from a non-empty <b>user</b> password plus a strong cipher (prefer AES-256): the content is then unreadable without the password. A document encrypted with only an owner password (no user password) still opens for anyone; <code>read_only</code> alone restricts nothing cryptographically.</div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>

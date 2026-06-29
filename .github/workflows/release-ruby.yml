@@ -61,6 +61,10 @@ jobs:
             target: aarch64-apple-darwin
             runner: macos-14
             lib: libpdf_ffi.dylib
+          - plat: x86_64-darwin
+            target: x86_64-apple-darwin
+            runner: macos-14
+            lib: libpdf_ffi.dylib
           - plat: x64-mingw-ucrt
             target: x86_64-pc-windows-msvc
             runner: windows-latest
@@ -101,19 +105,54 @@ jobs:
           path: out/${{ matrix.lib }}
           retention-days: 1
 
+  # ---- Phase 1b: lipo the two macOS slices into one universal cdylib --------
+  # The Ruby that ships WITH macOS reports its platform as `universal-darwin`,
+  # which RubyGems' older resolver (the system Ruby 2.6 bundles RubyGems 3.0.x)
+  # fails to satisfy from the per-arch `arm64-darwin` / `x86_64-darwin` gems even
+  # though the platform technically matches — `gem install rustpdf` then errors
+  # with "Could not find a valid gem 'rustpdf'". Publishing a `universal-darwin`
+  # gem carrying a fat (arm64+x86_64) dylib gives that resolver an exact-cpu
+  # match, and as a bonus serves Intel Macs (x86_64-darwin) from one gem.
+  universal:
+    name: lipo universal-darwin
+    needs: build
+    runs-on: macos-14
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cdylib-arm64-darwin
+          path: arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: cdylib-x86_64-darwin
+          path: x86_64
+      - name: lipo into a universal dylib
+        run: |
+          mkdir -p out
+          lipo -create -output out/libpdf_ffi.dylib \
+            arm64/libpdf_ffi.dylib x86_64/libpdf_ffi.dylib
+          lipo -info out/libpdf_ffi.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdylib-universal-darwin
+          path: out/libpdf_ffi.dylib
+          retention-days: 1
+
   # ---- Phase 2: build + push one gem per platform ---------------------------
   gem:
     name: gem ${{ matrix.plat }}
-    needs: build
+    needs: [build, universal]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { plat: x86_64-linux,   lib: libpdf_ffi.so }
-          - { plat: aarch64-linux,  lib: libpdf_ffi.so }
-          - { plat: arm64-darwin,   lib: libpdf_ffi.dylib }
-          - { plat: x64-mingw-ucrt, lib: pdf_ffi.dll }
+          - { plat: x86_64-linux,      lib: libpdf_ffi.so }
+          - { plat: aarch64-linux,     lib: libpdf_ffi.so }
+          - { plat: arm64-darwin,      lib: libpdf_ffi.dylib }
+          - { plat: x86_64-darwin,     lib: libpdf_ffi.dylib }
+          - { plat: universal-darwin,  lib: libpdf_ffi.dylib }
+          - { plat: x64-mingw-ucrt,    lib: pdf_ffi.dll }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
