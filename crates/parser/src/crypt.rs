@@ -62,12 +62,20 @@ impl Decryptor {
 
         let length_bits = encrypt.get("Length").and_then(int).unwrap_or(40);
         let o = string_bytes(encrypt.get("O")).unwrap_or_default();
+        let u = string_bytes(encrypt.get("U")).unwrap_or_default();
         let p = encrypt.get("P").and_then(int).unwrap_or(0) as i32 as u32;
         let encrypt_metadata = encrypt
             .get("EncryptMetadata")
             .map(|o| !matches!(o, Object::Bool(false)))
             .unwrap_or(true);
+        let n = if r == 2 {
+            5
+        } else {
+            (length_bits as usize / 8).clamp(5, 16)
+        };
+        let cipher = detect_cipher(encrypt, v);
 
+        // Algorithm 2: derive the file key treating `password` as the user password.
         let key = compute_key(
             password,
             &o,
@@ -77,9 +85,37 @@ impl Decryptor {
             r,
             encrypt_metadata,
         );
-        let cipher = detect_cipher(encrypt, v);
+        // Algorithm 6: authenticate by recomputing /U and comparing to the stored value.
+        if authenticate_user(&key, id0, &u, r) {
+            return Ok(Decryptor { key, cipher });
+        }
 
-        Ok(Decryptor { key, cipher })
+        // Algorithm 7: maybe it's the owner password — recover the user password
+        // from /O, re-derive the file key, and authenticate again.
+        if let Some(user_pw) = recover_user_password(password, &o, n, r) {
+            let key = compute_key(
+                &user_pw,
+                &o,
+                p,
+                id0,
+                length_bits as usize,
+                r,
+                encrypt_metadata,
+            );
+            if authenticate_user(&key, id0, &u, r) {
+                return Ok(Decryptor { key, cipher });
+            }
+        }
+
+        // Some legacy files carry no usable /U (e.g. empty); only then fall back to
+        // the unauthenticated key so we don't regress on malformed-but-openable docs.
+        if u.is_empty() {
+            return Ok(Decryptor { key, cipher });
+        }
+
+        Err(PdfError::Encryption(
+            "wrong password (user or owner) for RC4/AES-128 document".into(),
+        ))
     }
 
     /// Decrypt the bytes of object `(num, gen)` in place.
@@ -175,6 +211,70 @@ fn compute_key(
     }
     key.truncate(n);
     key
+}
+
+/// Algorithm 4 (R2) / 5 (R3+) + 6: recompute `/U` from the file key and compare
+/// it to the stored value to authenticate the user password.
+fn authenticate_user(file_key: &[u8], id0: &[u8], stored_u: &[u8], revision: i64) -> bool {
+    if revision == 2 {
+        // Algorithm 4: /U = RC4(file_key, PAD); compare all 32 bytes.
+        let computed = rc4(file_key, &PAD);
+        stored_u.len() >= 32 && computed[..32] == stored_u[..32]
+    } else {
+        // Algorithm 5: RC4 chain over MD5(PAD || id0). Only the first 16 bytes are
+        // meaningful (Algorithm 6 compares the first 16).
+        let mut h = Md5::new();
+        h.update(PAD);
+        h.update(id0);
+        let mut data = h.finalize().to_vec();
+        data = rc4(file_key, &data);
+        for i in 1..=19u8 {
+            let key: Vec<u8> = file_key.iter().map(|b| b ^ i).collect();
+            data = rc4(&key, &data);
+        }
+        stored_u.len() >= 16 && data[..16] == stored_u[..16]
+    }
+}
+
+/// Algorithm 7: recover the padded user password from `/O` using the owner
+/// password, mirroring how `/O` is built (Algorithm 3). Returns the 32-byte
+/// padded user password, suitable as input to [`compute_key`].
+fn recover_user_password(owner_pw: &[u8], o: &[u8], n: usize, revision: i64) -> Option<Vec<u8>> {
+    if o.len() < 32 {
+        return None;
+    }
+    // Owner key (Algorithm 3, steps a–d): MD5(pad(owner)), then 50 full-key
+    // re-hashes for R3+, truncated to n.
+    let mut padded = [0u8; 32];
+    let take = owner_pw.len().min(32);
+    padded[..take].copy_from_slice(&owner_pw[..take]);
+    padded[take..].copy_from_slice(&PAD[..32 - take]);
+    let mut key = {
+        let mut h = Md5::new();
+        h.update(padded);
+        h.finalize().to_vec()
+    };
+    if revision >= 3 {
+        for _ in 0..50 {
+            let mut h = Md5::new();
+            h.update(&key);
+            key = h.finalize().to_vec();
+        }
+    }
+    key.truncate(n);
+
+    // Reverse the RC4 chain that produced /O.
+    let mut data = o[..32].to_vec();
+    if revision == 2 {
+        data = rc4(&key, &data);
+    } else {
+        for i in (1..=19u8).rev() {
+            let k: Vec<u8> = key.iter().map(|b| b ^ i).collect();
+            data = rc4(&k, &data);
+        }
+        data = rc4(&key, &data);
+    }
+    Some(data)
 }
 
 /// RC4 stream cipher (used both for decryption and key setup).

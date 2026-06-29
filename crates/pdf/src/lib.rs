@@ -156,6 +156,9 @@ pub enum BuildError {
     Parse(String),
     /// A corporate feature was used without a valid license.
     License(LicenseError),
+    /// The document is structurally invalid and cannot be serialized
+    /// (e.g. no pages, or a PDF/A-4f profile with no embedded file).
+    Invalid(String),
 }
 
 impl std::fmt::Display for BuildError {
@@ -165,6 +168,7 @@ impl std::fmt::Display for BuildError {
             BuildError::Write(e) => write!(f, "{e}"),
             BuildError::Parse(e) => write!(f, "{e}"),
             BuildError::License(e) => write!(f, "{e}"),
+            BuildError::Invalid(e) => write!(f, "{e}"),
         }
     }
 }
@@ -817,6 +821,22 @@ impl Document {
         }
         if self.tagged {
             require(Feature::Accessibility)?;
+        }
+
+        // A valid PDF must have at least one page; an empty /Pages tree is
+        // rejected by qpdf/mutool ("malformed page tree").
+        if self.pages.is_empty() {
+            return Err(BuildError::Invalid(
+                "document has no pages; add at least one page before serializing".into(),
+            ));
+        }
+
+        // PDF/A-4f (ISO 19005-4) requires at least one embedded file; without
+        // one veraPDF reports the file non-conformant.
+        if self.pdfa == Some(PdfaLevel::A4f) && self.attachments.is_empty() {
+            return Err(BuildError::Invalid(
+                "PDF/A-4f requires at least one embedded file; call attach_file() first".into(),
+            ));
         }
 
         // Step 0: resolve each page's items, laying out paragraphs (needs the

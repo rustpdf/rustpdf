@@ -189,6 +189,24 @@ fn pdfa4f_embeds_file_with_conformance_marker() {
 }
 
 #[test]
+fn pdfa4f_without_attachment_is_rejected() {
+    // ISO 19005-4 requires PDF/A-4f to carry at least one embedded file; emitting
+    // one without an attachment would fail veraPDF, so we reject it up front.
+    lic();
+    let mut doc = Document::new().pdfa_with(PdfaLevel::A4f);
+    let f = doc.add_font_file(FONT).unwrap();
+    doc.add_page()
+        .text(f, 16.0)
+        .at(72.0, 740.0)
+        .show("sem anexo");
+    let err = doc.to_bytes().unwrap_err();
+    assert!(
+        matches!(err, pdf::BuildError::Invalid(_)),
+        "expected Invalid, got {err:?}"
+    );
+}
+
+#[test]
 fn pdf20_plain_document_header() {
     // PDF 2.0 without PDF/A: just the header + catalog /Version.
     use pdf::Version;

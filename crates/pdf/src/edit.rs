@@ -130,14 +130,25 @@ impl EditableDoc {
     }
 
     /// Reorder pages by a permutation of current indices.
+    ///
+    /// `new_order` must be a true permutation of `0..page_count` — every index
+    /// exactly once. An invalid argument (wrong length, out-of-range, or a
+    /// repeated index) is rejected and leaves the page order untouched, rather
+    /// than producing a malformed page tree (duplicated/dropped pages).
     pub fn reorder_pages(&mut self, new_order: &[usize]) {
-        let reordered: Vec<u32> = new_order
-            .iter()
-            .filter_map(|&i| self.page_order.get(i).copied())
-            .collect();
-        if reordered.len() == self.page_order.len() {
-            self.page_order = reordered;
+        let n = self.page_order.len();
+        if new_order.len() != n {
+            return;
         }
+        // Verify it is a genuine permutation of 0..n (each index used once).
+        let mut seen = vec![false; n];
+        for &i in new_order {
+            match seen.get_mut(i) {
+                Some(slot) if !*slot => *slot = true,
+                _ => return, // out-of-range or duplicate index
+            }
+        }
+        self.page_order = new_order.iter().map(|&i| self.page_order[i]).collect();
     }
 
     // ---- 6.1 merge --------------------------------------------------------

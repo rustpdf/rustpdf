@@ -65,7 +65,9 @@ impl ExtractedImage {
     /// Write the image into `dir` using [`ExtractedImage::file_name`], returning
     /// the path written.
     pub fn save_in(&self, dir: impl AsRef<Path>) -> std::io::Result<PathBuf> {
-        let path = dir.as_ref().join(self.file_name());
+        let dir = dir.as_ref();
+        std::fs::create_dir_all(dir)?;
+        let path = dir.join(self.file_name());
         std::fs::write(&path, &self.data)?;
         Ok(path)
     }

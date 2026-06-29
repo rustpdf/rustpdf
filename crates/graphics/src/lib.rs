@@ -103,38 +103,41 @@ impl Content {
     // ---- device colors (2.4) ----------------------------------------------
 
     /// `rg` — set the non-stroking (fill) color in DeviceRGB.
+    ///
+    /// Components are clamped to the valid `0.0..=1.0` range; out-of-range values
+    /// are illegal per the PDF spec and would fail PDF/A validation.
     pub fn set_fill_rgb(&mut self, r: f64, g: f64, b: f64) -> &mut Self {
-        self.nums(&[r, g, b]);
+        self.nums(&[clamp01(r), clamp01(g), clamp01(b)]);
         self.kw("rg")
     }
 
     /// `RG` — set the stroking color in DeviceRGB.
     pub fn set_stroke_rgb(&mut self, r: f64, g: f64, b: f64) -> &mut Self {
-        self.nums(&[r, g, b]);
+        self.nums(&[clamp01(r), clamp01(g), clamp01(b)]);
         self.kw("RG")
     }
 
     /// `g` — set the non-stroking color in DeviceGray.
     pub fn set_fill_gray(&mut self, gray: f64) -> &mut Self {
-        self.nums(&[gray]);
+        self.nums(&[clamp01(gray)]);
         self.kw("g")
     }
 
     /// `G` — set the stroking color in DeviceGray.
     pub fn set_stroke_gray(&mut self, gray: f64) -> &mut Self {
-        self.nums(&[gray]);
+        self.nums(&[clamp01(gray)]);
         self.kw("G")
     }
 
     /// `k` — set the non-stroking color in DeviceCMYK.
     pub fn set_fill_cmyk(&mut self, c: f64, m: f64, y: f64, k: f64) -> &mut Self {
-        self.nums(&[c, m, y, k]);
+        self.nums(&[clamp01(c), clamp01(m), clamp01(y), clamp01(k)]);
         self.kw("k")
     }
 
     /// `K` — set the stroking color in DeviceCMYK.
     pub fn set_stroke_cmyk(&mut self, c: f64, m: f64, y: f64, k: f64) -> &mut Self {
-        self.nums(&[c, m, y, k]);
+        self.nums(&[clamp01(c), clamp01(m), clamp01(y), clamp01(k)]);
         self.kw("K")
     }
 
@@ -430,6 +433,15 @@ pub enum TextPart {
     Adjust(f64),
 }
 
+/// Clamp a color component to the valid `0.0..=1.0` range (NaN maps to 0.0).
+fn clamp01(v: f64) -> f64 {
+    if v.is_nan() {
+        0.0
+    } else {
+        v.clamp(0.0, 1.0)
+    }
+}
+
 fn hex_digit(nibble: u8) -> u8 {
     match nibble {
         0..=9 => b'0' + nibble,
@@ -493,6 +505,15 @@ mod tests {
             .set_stroke_gray(0.25)
             .set_fill_cmyk(0.0, 1.0, 1.0, 0.0);
         assert_eq!(text(&c), "1 0 0.5 rg\n0.25 G\n0 1 1 0 k\n");
+    }
+
+    #[test]
+    fn colors_are_clamped_to_unit_range() {
+        let mut c = Content::new();
+        c.set_fill_rgb(5.0, -2.0, 0.5)
+            .set_stroke_gray(2.0)
+            .set_fill_cmyk(-1.0, 1.5, 0.5, 0.0);
+        assert_eq!(text(&c), "1 0 0.5 rg\n1 G\n0 1 0.5 0 k\n");
     }
 
     #[test]

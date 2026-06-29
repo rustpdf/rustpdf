@@ -122,6 +122,28 @@ fn recovers_from_corruption_without_panic() {
 }
 
 #[test]
+fn wrong_password_is_rejected() {
+    // A wrong password must be rejected for every revision, not silently accepted
+    // (RC4/AES-128 R2–R4 previously skipped user authentication). The empty
+    // password still opens these fixtures.
+    for name in [
+        "enc_rc4_40.pdf",
+        "enc_rc4_128.pdf",
+        "enc_aes128.pdf",
+        "enc_aes256.pdf",
+    ] {
+        assert!(
+            PdfReader::parse_with_password(fixture(name), b"definitely-wrong").is_err(),
+            "{name}: wrong password should be rejected"
+        );
+        assert!(
+            PdfReader::parse(fixture(name)).is_ok(),
+            "{name}: empty password should still open"
+        );
+    }
+}
+
+#[test]
 fn reads_rc4_and_aes_encrypted() {
     // Empty user password; decryption must yield readable content streams.
     for name in [

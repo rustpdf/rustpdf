@@ -77,6 +77,45 @@ fn rotate_reorder_delete() {
 }
 
 #[test]
+fn reorder_pages_rejects_invalid_permutation() {
+    let original = sample(3);
+
+    // A genuine permutation is applied: all three pages survive exactly once.
+    let mut ok = EditableDoc::load(&original).unwrap();
+    ok.reorder_pages(&[2, 1, 0]);
+    let text = pdf::extract_text(ok.to_bytes().unwrap()).unwrap();
+    for p in ["Página 1", "Página 2", "Página 3"] {
+        assert_eq!(text.matches(p).count(), 1, "valid reorder lost {p}");
+    }
+
+    // Invalid arguments (duplicate, wrong length, out-of-range, repeated) are
+    // rejected and leave the page order intact — no malformed page tree.
+    for bad in [
+        &[0usize, 0, 1][..], // duplicate index 0, drops page 2
+        &[0, 1][..],         // wrong length
+        &[0, 1, 3][..],      // index 3 out of range
+        &[0, 1, 1][..],      // repeated index 1
+    ] {
+        let mut d = EditableDoc::load(&original).unwrap();
+        d.reorder_pages(bad);
+        assert_eq!(d.page_count(), 3, "page count changed for {bad:?}");
+        let text = pdf::extract_text(d.to_bytes().unwrap()).unwrap();
+        for p in ["Página 1", "Página 2", "Página 3"] {
+            assert_eq!(text.matches(p).count(), 1, "{p} corrupted by {bad:?}");
+        }
+    }
+}
+
+#[test]
+fn empty_document_is_rejected() {
+    let err = Document::new().to_bytes().unwrap_err();
+    assert!(
+        matches!(err, pdf::BuildError::Invalid(_)),
+        "expected Invalid, got {err:?}"
+    );
+}
+
+#[test]
 fn text_extraction_matches_content() {
     let pdf = sample(2);
     let text = pdf::extract_text(&pdf).unwrap();

@@ -10,10 +10,13 @@ final class EditableDoc
     private \FFI $ffi;
     private ?\FFI\CData $h;
 
-    private function __construct(\FFI\CData $handle)
+    private function __construct(?\FFI\CData $handle)
     {
         $this->ffi = Ffi::get();
-        if (\FFI::isNull($handle)) {
+        // A failed native load returns a NULL pointer, which PHP-FFI surfaces as
+        // PHP null. Accept it here (nullable param) so we raise a clean
+        // PdfException with the core's message — not a cryptic TypeError.
+        if ($handle === null || \FFI::isNull($handle)) {
             throw new PdfException(Ffi::lastError());
         }
         $this->h = $handle;

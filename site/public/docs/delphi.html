@@ -254,6 +254,7 @@ end;</code></pre></div>
         <tr><td><code>ToBytes</code></td><td>Render the document to <code>TBytes</code>.</td></tr>
         <tr><td><code>SaveToFile(Path)</code></td><td>Render and write to a file.</td></tr>
       </table>
+      <div class="note"><b>Validity.</b> A document must have at least one page — serializing an empty document raises an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
 
       <!-- GRAPHICS -->
       <h2 id="graphics">Pages &amp; vector graphics</h2>
@@ -276,7 +277,7 @@ Doc.SaveToFile('shapes.pdf');</code></pre></div>
 
       <!-- TEXT -->
       <h2 id="text">Fonts &amp; text</h2>
-      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly). Register a font once, then reference it by its integer id.</p>
+      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly, provided the embedded font covers those characters). Register a font once, then reference it by its integer id.</p>
       <div class="api"><code>AddFontFile(Path): Integer</code> &nbsp; <code>AddFont(Data: TBytes): Integer</code></div>
       <div class="api"><code>ShowText(Font, Size, X, Y, Text, HeadingLevel = 0)</code></div>
       <p><code>HeadingLevel</code> (1–6) tags the run as <code>H1</code>–<code>H6</code> in an accessible document (see <a href="#tagged">Accessibility</a>); leave <code>0</code> for ordinary text. Strings cross the boundary as UTF-8.</p>
@@ -287,6 +288,8 @@ Doc.AddPage;
 Doc.ShowText(Regular, 28, 72, 760, 'Invoice #1024');
 Doc.ShowText(Regular, 12, 72, 720, '日本語 · Ελληνικά · العربية');
 Doc.SaveToFile('text.pdf');</code></pre></div>
+      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped — they render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
+      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>#0</code>) character — it truncates the string at the FFI boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
 
       <!-- PARAGRAPHS -->
       <h2 id="paragraphs">Paragraphs</h2>
@@ -342,6 +345,7 @@ Doc.ShowText(F, 11, 72, 690, 'Body paragraph of the section…');
 Chart := Doc.AddImageFile('chart.png');
 Doc.Figure(Chart, 72, 520, 300, 150, 'Revenue grew 18% year over year');
 Doc.SaveToFile('accessible.pdf');</code></pre></div>
+      <div class="note"><b>Figures need a tagged document.</b> <code>Figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
 
       <!-- ATTACHMENTS -->
       <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
@@ -354,6 +358,7 @@ Doc.AddPage;
 Doc.ShowText(F, 18, 72, 760, 'Invoice 1024');
 Doc.AttachFile('invoice.xml', 'text/xml', Xml, afSource, 'Structured invoice data');
 Doc.SaveToFile('einvoice.pdf');</code></pre></div>
+      <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>AttachFile</code> before serializing.</div>
 
       <!-- FACTURX -->
       <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
@@ -476,6 +481,7 @@ try
 finally
   A.Free; B.Free;
 end;</code></pre></div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -648,7 +654,7 @@ else
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. <code>ExtractImagesToDir</code> returns how many images were written.</p>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist. <code>ExtractImagesToDir</code> returns how many images were written.</p>
       <div class="api"><code>Pdf.ExtractText(PdfBytes: TBytes): string</code> <span class="badge free">free</span></div>
       <div class="api"><code>Pdf.ExtractImagesToDir(PdfBytes: TBytes; Dir: string): NativeUInt</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var N: NativeUInt;
@@ -718,7 +724,7 @@ WriteBytes('page1.png', Png);</code></pre></div>
 
       <!-- ERRORS -->
       <h2 id="errors">Error handling</h2>
-      <p>Every failing native call raises <code>ERustPdf</code> (a <code>Exception</code>) carrying the <code>Status</code> (a <code>TPdfStatus</code>) and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too.</p>
+      <p>Every failing native call raises <code>ERustPdf</code> (a <code>Exception</code>) carrying the <code>Status</code> (a <code>TPdfStatus</code>) and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation&rsquo;s own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same &ldquo;requires a valid license&rdquo; message.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>try
   Doc.Pdfa.SetInfo('x', '', '', '', '');
   Doc.AddPage;

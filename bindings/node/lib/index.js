@@ -123,7 +123,7 @@ const f = {
   freeDoc: lib.func('void pdf_document_free(void *doc)'),
   addPage: lib.func('int pdf_document_add_page(void *doc)'),
   addPageSized: lib.func('int pdf_document_add_page_sized(void *doc, double w, double h)'),
-  pageCount: lib.func('int pdf_document_page_count(void *doc)'),
+  docPageCount: lib.func('int pdf_document_page_count(void *doc)'),
   setFillRgb: lib.func('int pdf_page_set_fill_rgb(void *doc, double r, double g, double b)'),
   setStrokeRgb: lib.func('int pdf_page_set_stroke_rgb(void *doc, double r, double g, double b)'),
   setLineWidth: lib.func('int pdf_page_set_line_width(void *doc, double w)'),
@@ -424,7 +424,7 @@ class Document {
     return this;
   }
 
-  get pageCount() { return f.pageCount(this._ptr); }
+  get pageCount() { return f.docPageCount(this._ptr); }
   toBytes() { const h = this._ptr; return takeBytes((o, n) => f.write(h, o, n)); }
   save(path) { check(f.save(this._ptr, path)); }
 }
