@@ -19,8 +19,11 @@ name: release-java
 # of truth in bindings/java/pom.xml.
 
 on:
-  push:
-    tags: ["java-v*"]
+  # DISABLED until a Maven Central / Sonatype account exists and its secrets
+  # (MAVEN_CENTRAL_USERNAME/PASSWORD, MAVEN_GPG_*) are set. See docs/RELEASING.md.
+  # Re-enable by uncommenting the tag trigger.
+  # push:
+  #   tags: ["java-v*"]
   workflow_dispatch:
 
 permissions:

@@ -18,8 +18,11 @@ name: release-rust
 # version is the single source of truth in bindings/rust/Cargo.toml.
 
 on:
-  push:
-    tags: ["rust-v*"]
+  # DISABLED until the private cargo registry is finished and its secrets
+  # (CARGO_REGISTRY_INDEX, CARGO_REGISTRY_TOKEN) are set. See docs/RELEASING.md.
+  # Re-enable by uncommenting the tag trigger.
+  # push:
+  #   tags: ["rust-v*"]
   workflow_dispatch:
     inputs:
       version:
