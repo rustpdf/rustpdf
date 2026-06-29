@@ -70,8 +70,6 @@
       <a href="/docs/php.html" class="lang-pill">PHP</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#download">Download</a>
       <a href="#install">Installation</a>
@@ -123,7 +121,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Delphi / Free Pascal</h1>
-      <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
+      <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle — free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
 
@@ -738,7 +736,7 @@ end;</code></pre></div>
         <tr><td><code>Pdf.ActivateLicense(Token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Swift, C#, Go, PHP, Ruby, Node and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Swift, C#, Go, PHP, Ruby and Node: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

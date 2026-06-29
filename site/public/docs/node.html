@@ -70,8 +70,6 @@
       <a href="/docs/php.html" class="lang-pill">PHP</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
@@ -123,7 +121,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Node.js / TypeScript</h1>
-      <p class="docs-lead">The <code>rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over <a href="https://koffi.dev" rel="noopener">Koffi</a> (pure FFI, no node-gyp, no native build). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. Ships with TypeScript types.</p>
+      <p class="docs-lead">The <code>rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over <a href="https://koffi.dev" rel="noopener">Koffi</a> (pure FFI, no node-gyp, no native build). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. Ships with TypeScript types.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so call <code>close()</code> when done to free it promptly.</div>
 
@@ -728,7 +726,7 @@ try {
         <tr><td><code>rustpdf.activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Delphi / Free Pascal, Swift, C#, Go, PHP, Ruby and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Delphi / Free Pascal, Swift, C#, Go, PHP and Ruby: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

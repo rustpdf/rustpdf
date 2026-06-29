@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Compress and Optimize PDF Files in Code, Explained | rust-pdf</title>
-  <meta name="description" content="How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift." />
+  <meta name="description" content="How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift." />
   <link rel="canonical" href="https://rustpdf.dev/compress-pdf" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -18,7 +18,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Compress and Optimize PDF Files in Code, Explained" />
-  <meta name="twitter:description" content="What optimize() and compact() do, why it is lossless, and code examples in nine languages." />
+  <meta name="twitter:description" content="What optimize() and compact() do, why it is lossless, and code examples in eight languages." />
   <meta property="og:image:alt" content="Compress and optimize PDF files in code — explained" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="Compress and optimize PDF files in code — explained" />
@@ -36,7 +36,7 @@
       {
         "@type": "TechArticle",
         "headline": "Compress and optimize PDF files in code, explained",
-        "description": "How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift.",
+        "description": "How to compress and optimize PDF files programmatically: what optimize() and compact() do, why the compression is lossless, how embedded JPEGs stay verbatim, and code examples in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift.",
         "url": "https://rustpdf.dev/compress-pdf",
         "inLanguage": "en",
         "about": { "@type": "Thing", "name": "PDF optimization", "description": "Lossless structural compression of PDF files: dropping unused objects, deduplicating identical objects, Flate-compressing streams, and packing into object streams." },
@@ -48,7 +48,7 @@
           {
             "@type": "Question",
             "name": "How do I compress a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a /ObjStm and emit a /XRef stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a /ObjStm and emit a /XRef stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift." }
           },
           {
             "@type": "Question",
@@ -651,8 +651,8 @@ ed.save("small.pdf");</code></pre>
           <span>qpdf</span><span>mutool</span>
         </div>
         <p class="center muted narrow" style="margin-top:22px">
-          rust-pdf covers nine language bindings from one Rust core: Python, C#/.NET, Go,
-          Node.js, Java, PHP, Ruby, Delphi, and Swift. Full details in the
+          rust-pdf covers eight language bindings from one Rust core: Python, C#/.NET, Go,
+          Node.js, PHP, Ruby, Delphi, and Swift. Full details in the
           <a href="/docs/">documentation</a>.
         </p>
       </div>
@@ -663,7 +663,7 @@ ed.save("small.pdf");</code></pre>
       <div class="wrap narrow">
         <h2 class="center">PDF compression FAQ</h2>
         <details><summary>How do I compress a PDF in code?</summary>
-          <p>Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a <code>/ObjStm</code> and emit a <code>/XRef</code> stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, Java, PHP, Ruby, Delphi, and Swift.</p>
+          <p>Load your PDF into an EditableDoc, call optimize() to drop unused objects, deduplicate byte-identical objects, and Flate-compress uncompressed streams, then optionally call compact(true) to pack objects into a <code>/ObjStm</code> and emit a <code>/XRef</code> stream. Save or export the result. rust-pdf provides this API in Python, C#, Go, Node, PHP, Ruby, Delphi, and Swift.</p>
         </details>
         <details><summary>Is the compression lossless?</summary>
           <p>Yes. optimize() and compact() are purely structural operations. Text, vector graphics, and every pixel of embedded images come out identical to the original. The library does not perform image down-sampling, colour-depth reduction, or quality reduction of any kind.</p>
@@ -685,7 +685,7 @@ ed.save("small.pdf");</code></pre>
       <div class="wrap narrow center">
         <h2>Compress PDF files in your language</h2>
         <p class="muted">
-          One Rust core. Nine language bindings. Lossless structural optimization in every
+          One Rust core. Eight language bindings. Lossless structural optimization in every
           one. Prototype for free; license the corporate features when you ship.
         </p>
         <div class="cta-row">

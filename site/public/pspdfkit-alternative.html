@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PSPDFKit / Nutrient Alternative: rust-pdf for Server-Side PDF Generation and Signing | rust-pdf</title>
-  <meta name="description" content="An honest comparison of rust-pdf and PSPDFKit (now Nutrient). PSPDFKit leads in document viewers and annotation UIs; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, nine languages and flat published pricing." />
+  <meta name="description" content="An honest comparison of rust-pdf and PSPDFKit (now Nutrient). PSPDFKit leads in document viewers and annotation UIs; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, eight languages and flat published pricing." />
   <link rel="canonical" href="https://rustpdf.dev/pspdfkit-alternative" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -12,13 +12,13 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/pspdfkit-alternative" />
   <meta property="og:title" content="PSPDFKit / Nutrient Alternative: rust-pdf" />
-  <meta property="og:description" content="PSPDFKit leads in viewers and annotation; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, nine languages and flat pricing." />
+  <meta property="og:description" content="PSPDFKit leads in viewers and annotation; rust-pdf is the server-side alternative for generating and signing compliant PDFs, with PAdES B-LTA, Factur-X, eight languages and flat pricing." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="PSPDFKit / Nutrient Alternative: rust-pdf" />
-  <meta name="twitter:description" content="The server-side alternative for generating and signing compliant PDFs: PAdES B-LTA, Factur-X, nine languages, flat published pricing." />
+  <meta name="twitter:description" content="The server-side alternative for generating and signing compliant PDFs: PAdES B-LTA, Factur-X, eight languages, flat published pricing." />
   <meta property="og:image:alt" content="rust-pdf as a PSPDFKit / Nutrient alternative for server-side PDF work" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf as a PSPDFKit / Nutrient alternative for server-side PDF work" />
@@ -58,7 +58,7 @@
           {
             "@type": "Question",
             "name": "What can rust-pdf do that PSPDFKit cannot?",
-            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover." }
+            "acceptedAnswer": { "@type": "Answer", "text": "rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing, as publicly documented, stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover." }
           },
           {
             "@type": "Question",
@@ -170,7 +170,7 @@
           eSign user interfaces across web and mobile. rust-pdf is not that. It is the
           <b>server-side alternative</b> for the other half of the job: generating and
           signing compliant PDFs. Where they overlap, rust-pdf adds <b>PAdES B-LTA</b>,
-          <b>Factur-X</b>, <b>nine languages</b> and <b>flat published pricing</b>.
+          <b>Factur-X</b>, <b>eight languages</b> and <b>flat published pricing</b>.
           Here is the honest line between them.
         </p>
         <div class="pk-versus" aria-hidden="true">
@@ -214,7 +214,7 @@
         <p class="muted">
           The two products overlap on the <b>server side</b>: producing PDFs, signing
           them, validating PDF/A and encrypting. That is the whole of what rust-pdf
-          does, and it does it in nine languages, fully offline, with deeper signature
+          does, and it does it in eight languages, fully offline, with deeper signature
           leveling and e-invoicing. This page compares only that overlap, fairly.
         </p>
       </div>
@@ -236,11 +236,11 @@
           <div class="pk-diff reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
             <h3>PAdES B-LTA and Factur-X</h3>
-            <p>rust-pdf signs through long-term-archival B-LTA and produces ZUGFeRD and Factur-X invoices. PSPDFKit's signing stops at B-LT and it has no e-invoicing.</p>
+            <p>rust-pdf signs through long-term-archival B-LTA and produces ZUGFeRD and Factur-X invoices. Based on its public documentation, PSPDFKit's signing stops at B-LT and it does not market e-invoicing.</p>
           </div>
           <div class="pk-diff reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></div>
-            <h3>Nine server languages</h3>
+            <h3>Eight server languages</h3>
             <p>Including PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover, all from one core with identical output.</p>
           </div>
           <div class="pk-diff reveal">
@@ -266,10 +266,10 @@
           </thead>
           <tbody>
             <tr><td>Primary purpose</td><td><b>Viewing, annotation and eSign UIs</b> plus Document Engine</td><td>Server-side PDF generation, signing and compliance</td></tr>
-            <tr><td>Platforms and languages</td><td>Web, iOS, Android, Flutter, React Native, .NET, plus server SDKs (.NET, Java, Python, Node)</td><td><b>Nine bindings: Python, C#, Go, PHP, Ruby, Node, Java, Delphi, Swift</b></td></tr>
+            <tr><td>Platforms and languages</td><td>Web, iOS, Android, Flutter, React Native, .NET, plus server SDKs (.NET, Java, Python, Node)</td><td><b>Eight bindings: Python, C#, Go, PHP, Ruby, Node, Delphi, Swift</b></td></tr>
             <tr><td>Interactive viewer and annotation UI</td><td><b>Yes, best in class</b></td><td>No, out of scope</td></tr>
             <tr><td>PDF/A</td><td>Validate and convert</td><td>Generate 1b to 4</td></tr>
-            <tr><td>PAdES signatures</td><td>B-B, B-T, B-LT (B-LTA not supported)</td><td><span class="y">B-B, B-LT, B-LTA</span> + LTV</td></tr>
+            <tr><td>PAdES signatures</td><td>B-B, B-T, B-LT (B-LTA not publicly documented)</td><td><span class="y">B-B, B-LT, B-LTA</span> + LTV</td></tr>
             <tr><td>PDF/UA accessibility</td><td>Yes</td><td>Yes (UA-1)</td></tr>
             <tr><td>Encryption</td><td>AES-128, AES-256</td><td>RC4, AES-128, AES-256</td></tr>
             <tr><td>ZUGFeRD / Factur-X</td><td>No</td><td><span class="y">Yes</span></td></tr>
@@ -343,11 +343,11 @@
     <!-- HOW (code) -->
     <section id="how" class="section">
       <div class="wrap">
-        <h2 class="center">Factur-X e-invoices, which PSPDFKit does not offer</h2>
+        <h2 class="center">Factur-X e-invoices, which PSPDFKit does not market</h2>
         <p class="center muted narrow">
           One call embeds the EN 16931 invoice XML, switches the document to PDF/A-3,
           and writes the Factur-X identification into the metadata. The output is
-          checked by veraPDF, in four of the nine rust-pdf languages.
+          checked by veraPDF, in four of the eight rust-pdf languages.
         </p>
         <div class="tabs" id="code-tabs">
           <div class="tab-bar">
@@ -424,7 +424,7 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
           <p>No. rust-pdf generates, signs, encrypts and processes PDFs on the server. It has no viewer or annotation user interface. Browser rendering and annotation are core PSPDFKit strengths.</p>
         </details>
         <details><summary>What can rust-pdf do that PSPDFKit cannot?</summary>
-          <p>rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover.</p>
+          <p>rust-pdf signs at PAdES B-LTA, while PSPDFKit's signing, as publicly documented, stops at B-LT. rust-pdf also produces ZUGFeRD and Factur-X e-invoices, which PSPDFKit does not market, and it ships bindings for PHP, Ruby, Go and Delphi, which PSPDFKit's server SDKs do not cover.</p>
         </details>
         <details><summary>How does rust-pdf pricing compare to PSPDFKit?</summary>
           <p>rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. PSPDFKit pricing is quote-only, typically annual or multi-year with a three-year commitment being common. Independent third-party estimates put it in the tens of thousands of dollars per year.</p>
@@ -444,7 +444,7 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
         <h2>Try rust-pdf on your server</h2>
         <p class="muted">
           Prototype for free, then license the corporate features when you ship. One
-          core that generates, signs and validates compliant PDFs across nine
+          core that generates, signs and validates compliant PDFs across eight
           languages, entirely on your own infrastructure.
         </p>
         <div class="cta-row">

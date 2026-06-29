@@ -48,7 +48,7 @@
           {
             "@type": "Question",
             "name": "How do I add a watermark to a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load the existing PDF into an EditableDoc and call watermark_text with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Load the existing PDF into an EditableDoc and call watermark_text with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift." }
           },
           {
             "@type": "Question",
@@ -488,8 +488,8 @@ ed.save("report_watermarked.pdf");</code></pre>
           <span>qpdf</span><span>mutool</span>
         </div>
         <p class="center muted narrow" style="margin-top:22px">
-          The same API is available in Python, C#/.NET, Go, Node.js, Java, PHP,
-          Ruby, Delphi, and Swift. One Rust core, nine languages. See the
+          The same API is available in Python, C#/.NET, Go, Node.js, PHP,
+          Ruby, Delphi, and Swift. One Rust core, eight languages. See the
           <a href="/docs/">documentation</a> for the full reference.
         </p>
       </div>
@@ -500,7 +500,7 @@ ed.save("report_watermarked.pdf");</code></pre>
       <div class="wrap narrow">
         <h2 class="center">Watermark FAQ</h2>
         <details><summary>How do I add a watermark to a PDF in code?</summary>
-          <p>Load the existing PDF into an <code>EditableDoc</code> and call <code>watermark_text</code> with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift.</p>
+          <p>Load the existing PDF into an <code>EditableDoc</code> and call <code>watermark_text</code> with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift.</p>
         </details>
         <details><summary>Can I use an image as a watermark?</summary>
           <p>Yes. Use <code>watermark_image_file</code> (or <code>WatermarkImageFile</code> in C# and Go) and pass the path to your image file along with the target width, height and opacity. This is useful for stamping a faint logo or brand mark across every page.</p>
@@ -522,7 +522,7 @@ ed.save("report_watermarked.pdf");</code></pre>
       <div class="wrap narrow center">
         <h2>Stamp watermarks across PDFs in your language</h2>
         <p class="muted">
-          One Rust core, nine language bindings. Prototype for free, license the
+          One Rust core, eight language bindings. Prototype for free, license the
           corporate features when you ship.
         </p>
         <div class="cta-row">

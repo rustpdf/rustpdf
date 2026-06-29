@@ -70,8 +70,6 @@
       <a href="/docs/swift.html" class="lang-pill">Swift</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
       <a class="soon">PHP (soon)</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
@@ -123,7 +121,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Go</h1>
-      <p class="docs-lead">The <code>rustpdf-go</code> module wraps the rust-pdf C core with idiomatic Go types over <b>cgo</b>. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library is statically linked from a prebuilt archive bundled per platform, so <code>go get</code> + <code>go build</code> just works — no separate native install.</p>
+      <p class="docs-lead">The <code>rustpdf-go</code> module wraps the rust-pdf C core with idiomatic Go types over <b>cgo</b>. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library is statically linked from a prebuilt archive bundled per platform, so <code>go get</code> + <code>go build</code> just works — no separate native install.</p>
 
       <div class="note"><b>Two types do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so <code>defer d.Close()</code> to free it promptly. Methods return an <code>error</code> (not the receiver), so they don't chain.</div>
 
@@ -752,7 +750,7 @@ if err := doc.Save("out.pdf"); err != nil {
         <tr><td><code>rustpdf.ActivateLicense(token string) error</code></td><td>Activate a license token (returns an error on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Ruby, Delphi / Free Pascal, Swift, C#, PHP and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Ruby, Delphi / Free Pascal, Swift, C# and PHP: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

@@ -1,7 +1,7 @@
 # rust-pdf
 
 > Enterprise-grade PDF library sold as one memory-safe core with thin, idiomatic
-> bindings for Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift. It generates archival PDF/A,
+> bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. It generates archival PDF/A,
 > signs documents with PAdES, encrypts with AES-256, and produces accessible
 > PDF/UA — running entirely on the customer's own servers (offline, no
 > per-document SaaS fees, no AGPL). Basic PDF generation is free; the corporate
@@ -33,14 +33,14 @@
 
 One Rust core, identical behavior across bindings: Python (ctypes), C#/.NET
 (P/Invoke), Go (cgo), PHP (ext-ffi), Ruby (Fiddle), Node/TypeScript (Koffi),
-Java (JNA), Delphi/Free Pascal (pure FFI, dynamic loading) and Swift (SwiftPM,
+Delphi/Free Pascal (pure FFI, dynamic loading) and Swift (SwiftPM,
 static xcframework for macOS and iOS).
 
 ## Pricing & licensing
 
 - Sold as an **annual per-application license** in three tiers:
   - **Pro** — PDF/A archival (incl. converting existing PDFs), ZUGFeRD / Factur-X
-    e-invoices, and encryption (RC4 / AES-128 / AES-256). ~USD 1,490/year.
+    e-invoices, and encryption (RC4 / AES-128 / AES-256). ~USD 1,500/year.
   - **Enterprise** — everything in Pro plus digital signatures/PAdES (B-B/B-LT/B-LTA)
     with RFC 3161 timestamps + LTV, signature validation, true redaction, and
     PDF/UA accessibility, plus priority support. ~USD 3,000/year.
@@ -62,7 +62,6 @@ static xcframework for macOS and iOS).
 - Go landing page: https://rustpdf.dev/golang
 - PHP landing page: https://rustpdf.dev/php
 - Ruby landing page: https://rustpdf.dev/ruby
-- Java landing page: https://rustpdf.dev/java
 - Delphi / Free Pascal landing page: https://rustpdf.dev/delphi
 - Swift landing page: https://rustpdf.dev/swift
 - What is PDF/A? (concept guide): https://rustpdf.dev/pdf-a

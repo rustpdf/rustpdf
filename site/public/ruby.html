@@ -41,9 +41,9 @@
         "url": "https://rustpdf.dev/ruby",
         "softwareRequirements": "Ruby 3.0+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for Ruby: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with gem install rustpdf, running entirely on your own servers.",
+        "description": "An enterprise PDF library for Ruby: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with gem install rustpdf, running entirely on your own servers.",
         "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
           "AES-256 encryption",
           "PDF/UA accessibility (Tagged PDF)",
@@ -160,12 +160,14 @@
           <div class="card pro reveal">
             <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
             <ul>
-              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f archival</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
               <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
               <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
               <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
               <li><b>AcroForm</b>: fields with generated appearances</li>
+              <li><b>Validate &amp; convert</b>: verify signatures, PDF→PDF/A, ZUGFeRD/Factur-X</li>
+              <li><b>Process</b>: redaction, image extraction, form fill/flatten, page→PNG</li>
             </ul>
           </div>
         </div>

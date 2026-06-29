@@ -41,9 +41,9 @@
         "url": "https://rustpdf.dev/dotnet",
         "softwareRequirements": ".NET 8+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "A C# PDF library for .NET: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
+        "description": "A C# PDF library for .NET: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with dotnet add package RustPdf, running entirely on your own servers.",
         "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
           "AES-256 encryption",
           "PDF/UA accessibility (Tagged PDF)",
@@ -75,7 +75,7 @@
           {
             "@type": "Question",
             "name": "Does it need a browser, JVM or any runtime besides .NET?",
-            "acceptedAnswer": { "@type": "Answer", "text": "No. It is a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There is no Chromium process, no Java runtime and nothing to compile, just dotnet add package RustPdf." }
+            "acceptedAnswer": { "@type": "Answer", "text": "No. It is a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There is no Chromium process, no JVM and nothing to compile, just dotnet add package RustPdf." }
           },
           {
             "@type": "Question",
@@ -116,7 +116,7 @@
     .dn-matrix tbody tr.us td { background: rgba(249,115,22,.06); }
     .dn-wrap-x { overflow-x: auto; }
 
-    /* nine-languages row */
+    /* eight-languages row */
     .dn-langs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 28px; }
     .dn-langs a { background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
       padding: 9px 18px; font-size: .9rem; font-weight: 600; color: #cbd5e1; text-decoration: none;
@@ -363,10 +363,10 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
             <tr class="us"><td><b>License to ship closed source</b></td><td class="yes">Commercial per-app</td><td>Commercial</td><td class="no">AGPL or paid</td><td>Free &lt;$1M, else paid</td></tr>
             <tr class="us"><td><b>Per-document / metered fees</b></td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td></tr>
             <tr class="us"><td><b>Runs fully offline</b></td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-            <tr class="us"><td><b>PDF/A 1b–3a</b></td><td class="yes">Yes</td><td>Partial</td><td class="yes">Yes</td><td class="no">No</td></tr>
+            <tr class="us"><td><b>PDF/A 1b–3a + A-4/4e/4f</b></td><td class="yes">Yes</td><td>Partial</td><td class="yes">Yes</td><td class="no">No</td></tr>
             <tr class="us"><td><b>PAdES B-B/B-LT/B-LTA</b></td><td class="yes">Yes</td><td>Basic</td><td class="yes">Yes</td><td class="no">No</td></tr>
             <tr class="us"><td><b>PDF/UA tagged structure</b></td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">No</td></tr>
-            <tr class="us"><td><b>Same engine in other languages</b></td><td class="yes">9 bindings</td><td class="no">.NET only</td><td>Java/.NET</td><td class="no">.NET only</td></tr>
+            <tr class="us"><td><b>Same engine in other languages</b></td><td class="yes">8 bindings</td><td class="no">.NET only</td><td>Java/.NET</td><td class="no">.NET only</td></tr>
           </tbody>
         </table>
         </div>
@@ -407,6 +407,8 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
               <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
               <li><b>Accessibility</b>: Tagged PDF / PDF/UA-1</li>
               <li><b>AcroForm</b>: fields with generated appearances</li>
+              <li><b>Validate &amp; convert</b>: verify signatures, PDF→PDF/A, ZUGFeRD/Factur-X</li>
+              <li><b>Process</b>: redaction, image extraction, form fill/flatten, page→PNG</li>
             </ul>
           </div>
         </div>
@@ -416,16 +418,15 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
     <!-- ONE ENGINE -->
     <section class="band">
       <div class="wrap narrow center">
-        <h2>One engine. Nine languages. Identical bytes.</h2>
+        <h2>One engine. Eight languages. Identical bytes.</h2>
         <p class="muted">
           The C# package wraps the exact same Rust core as every other binding, so a
           PDF generated from .NET is <b>byte-identical</b> to one generated from
-          Python, Java or Go. Standardize one document pipeline across your whole
+          Python or Go. Standardize one document pipeline across your whole
           stack and license it once.
         </p>
         <div class="dn-langs">
           <a href="/python">Python</a>
-          <a href="/java">Java</a>
           <a href="/golang">Go</a>
           <a href="/nodejs">Node.js</a>
           <a href="/php">PHP</a>
@@ -464,7 +465,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           <p>Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility.</p>
         </details>
         <details><summary>Does it need a browser, JVM or any runtime besides .NET?</summary>
-          <p>No. It's a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There's no Chromium process, no Java runtime and nothing to compile, just <code>dotnet add package RustPdf</code>.</p>
+          <p>No. It's a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There's no Chromium process, no JVM and nothing to compile, just <code>dotnet add package RustPdf</code>.</p>
         </details>
         <details><summary>Is it AGPL like iTextSharp / iText?</summary>
           <p>No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source.</p>
@@ -473,7 +474,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           <p>rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure.</p>
         </details>
         <details><summary>How is the output validated?</summary>
-          <p>Independently: veraPDF (PDF/A 1b–3a and PDF/UA-1), <code>pdfsig</code> and <code>openssl&nbsp;cms</code> for signatures, and qpdf/mutool for structure, all in CI, not "conformance marketing".</p>
+          <p>Independently: veraPDF (PDF/A 1b–3a + A-4/4e/4f and PDF/UA-1), <code>pdfsig</code> and <code>openssl&nbsp;cms</code> for signatures, and qpdf/mutool for structure, all in CI, not "conformance marketing".</p>
         </details>
       </div>
     </section>

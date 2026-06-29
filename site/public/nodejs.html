@@ -41,9 +41,9 @@
         "url": "https://rustpdf.dev/nodejs",
         "softwareRequirements": "Node.js 18+",
         "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" },
-        "description": "An enterprise PDF library for Node.js and TypeScript: archival PDF/A (1b–3a), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with npm install rustpdf, running entirely on your own servers.",
+        "description": "An enterprise PDF library for Node.js and TypeScript: archival PDF/A (1b–3a + A-4/4e/4f), digital signatures and PAdES (B-B/B-LT/B-LTA), AES-256 encryption and accessible PDF/UA. One memory-safe Rust core, installed with npm install rustpdf, running entirely on your own servers.",
         "featureList": [
-          "PDF/A archival (1b, 2b, 2a, 3b, 3a)",
+          "PDF/A archival (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f)",
           "Digital signatures and PAdES (B-B, B-LT, B-LTA)",
           "AES-256 encryption",
           "PDF/UA accessibility (Tagged PDF)",
@@ -161,7 +161,7 @@
           <div class="card pro reveal">
             <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
             <ul>
-              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
+              <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f archival</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
               <li><b>PAdES</b>: B-B / B-LT / B-LTA + RFC 3161 timestamps</li>
               <li><b>Encryption</b>: RC4 / AES-128 / AES-256 (R6)</li>
@@ -190,7 +190,7 @@ const bytes = doc.toBytes();           // archival-grade PDF
 
 // Encrypt with AES-256 — same offline license unlocks every feature:
 const ed = EditableDoc.load(bytes);
-ed.encrypt({ owner: "owner-secret", method: Encryption.AES256 });
+ed.encrypt({ owner: "owner-secret", method: Encryption.Aes256 });
 ed.save("secured.pdf");</code></pre>
         </div>
         <p class="center muted narrow" style="margin-top:22px">

@@ -68,7 +68,7 @@
           {
             "@type": "Question",
             "name": "How do I create a valid ZUGFeRD / Factur-X file?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as factur-x.xml with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example doc.facturx(xml, FacturxProfile.EN16931), in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as factur-x.xml with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example doc.facturx(xml, FacturxProfile.EN16931), in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF." }
           }
         ]
       }
@@ -573,7 +573,7 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
           <p>Profiles describe how much structured data the XML carries. MINIMUM and BASIC WL hold only header totals, with no line items. BASIC adds line items. EN 16931 (also called Comfort) is the full European semantic core and is the common interoperable level for B2B. EXTENDED adds further fields for complex or cross-border cases. You pick the profile that matches what your recipient and your jurisdiction require.</p>
         </details>
         <details><summary>How do I create a valid ZUGFeRD / Factur-X file?</summary>
-          <p>Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as <code>factur-x.xml</code> with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example <code>doc.facturx(xml, FacturxProfile.EN16931)</code>, in Python, C#, Go, Node, Java, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF.</p>
+          <p>Render the visible invoice as PDF/A-3, embed the Cross-Industry Invoice XML as <code>factur-x.xml</code> with the correct AFRelationship, and write the Factur-X identification into the XMP metadata at the chosen profile. With rust-pdf this is one call, for example <code>doc.facturx(xml, FacturxProfile.EN16931)</code>, in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift. The output validates as PDF/A-3 plus Factur-X under veraPDF.</p>
         </details>
       </div>
     </section>
@@ -583,7 +583,7 @@ const bytes = doc.toBytes();                      // hybrid invoice</code></pre>
       <div class="wrap narrow center">
         <h2>Generate ZUGFeRD / Factur-X invoices in your language</h2>
         <p class="muted">
-          One core, the same hybrid e-invoice output across nine languages.
+          One core, the same hybrid e-invoice output across eight languages.
           Prototype for free, license the corporate features when you ship.
         </p>
         <div class="cta-row">

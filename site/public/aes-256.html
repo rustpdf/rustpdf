@@ -374,7 +374,7 @@ ed.Save("secured.pdf")</code></pre>
 const { EditableDoc, Encryption } = require("rustpdf");
 
 const ed = EditableDoc.load(bytes);
-ed.encrypt({ owner: "owner-secret", method: Encryption.AES256, readOnly: true });
+ed.encrypt({ owner: "owner-secret", method: Encryption.Aes256, readOnly: true });
 ed.save("secured.pdf");</code></pre>
         </div>
         <div class="validators" style="text-align:center">
@@ -415,7 +415,7 @@ ed.save("secured.pdf");</code></pre>
       <div class="wrap ae-narrow center">
         <h2>Encrypt PDFs in your language</h2>
         <p class="muted">
-          One core, the same AES-256 encryption across nine languages. Encryption is part
+          One core, the same AES-256 encryption across eight languages. Encryption is part
           of the Pro and Enterprise licenses.
         </p>
         <div class="cta-row">

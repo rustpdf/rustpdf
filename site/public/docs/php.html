@@ -70,7 +70,6 @@
       <a href="/docs/swift.html" class="lang-pill">Swift</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
-      <a href="/java" class="lang-pill">Java</a>
 
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
@@ -123,7 +122,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>PHP</h1>
-      <p class="docs-lead">The <code>rust-pdf/rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over PHP's built-in <a href="https://www.php.net/manual/en/book.ffi.php" rel="noopener">FFI</a> extension (PHP 8.1+, no compilation). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
+      <p class="docs-lead">The <code>rust-pdf/rustpdf</code> package wraps the rust-pdf C core with idiomatic, chainable classes over PHP's built-in <a href="https://www.php.net/manual/en/book.ffi.php" rel="noopener">FFI</a> extension (PHP 8.1+, no compilation). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle freed automatically on destruction; call <code>close()</code> to free it promptly.</div>
 
@@ -180,7 +179,8 @@ file_put_contents('out.pdf', $data);</code></pre></div>
   "post-install-cmd": "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib",
   "post-update-cmd":  "@php vendor/rust-pdf/rustpdf/bin/rustpdf-install-lib"
 }</code></pre></div>
-      <div class="note">Set <code>RUSTPDF_NO_DOWNLOAD=1</code> to forbid the network fetch; you must then supply the library through <code>RUSTPDF_LIB</code>. Prebuilt platforms: macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows (x86_64).</div>
+      <div class="note">Set <code>RUSTPDF_NO_DOWNLOAD=1</code> to forbid the network fetch; you must then supply the library through <code>RUSTPDF_LIB</code>. Prebuilt platforms: macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows (x86_64).
+      <p style="margin-bottom:0"><b>If the auto-download is unavailable for your version</b> (the prebuilt native-library release for that exact version hasn't been published yet), the reliable path is to build or download <code>libpdf_ffi</code> once and point <code>RUSTPDF_LIB</code> at it — step 1 always wins.</p></div>
 
       <!-- LICENSING -->
       <h2 id="licensing">Licensing &amp; activation</h2>
@@ -700,7 +700,7 @@ try {
         <tr><td><code>Pdf::activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go, Ruby and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go and Ruby: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

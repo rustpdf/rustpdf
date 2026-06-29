@@ -70,8 +70,6 @@
       <a href="/docs/php.html" class="lang-pill">PHP</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
@@ -122,7 +120,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Ruby</h1>
-      <p class="docs-lead">The <code>rustpdf</code> gem wraps the rust-pdf C core with idiomatic, chainable classes over Ruby's built-in <a href="https://github.com/ruby/fiddle" rel="noopener">Fiddle</a> standard library (pure FFI, no native gem to compile). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
+      <p class="docs-lead">The <code>rustpdf</code> gem wraps the rust-pdf C core with idiomatic, chainable classes over Ruby's built-in <a href="https://github.com/ruby/fiddle" rel="noopener">Fiddle</a> standard library (pure FFI, no native gem to compile). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>RustPdf::Document</code> authors a new PDF; <code>RustPdf::EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so call <code>close</code> when done to free it promptly (or let the GC do it).</div>
 
@@ -665,7 +663,7 @@ end</code></pre></div>
         <tr><td><code>RustPdf.activate_license(token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go, PHP and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go and PHP: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

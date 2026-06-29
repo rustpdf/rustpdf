@@ -70,8 +70,6 @@
       <a href="/docs/php.html" class="lang-pill">PHP</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
       <a href="/docs/csharp.html" class="lang-pill">C# / .NET</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#download">Download</a>
       <a href="#install">Installation</a>
@@ -123,7 +121,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Swift</h1>
-      <p class="docs-lead">The <code>RustPdf</code> package wraps the rust-pdf core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. It ships as a SwiftPM package with a static <b>xcframework</b>, so it links into <b>macOS</b> and <b>iOS</b> apps with nothing to bundle alongside.</p>
+      <p class="docs-lead">The <code>RustPdf</code> package wraps the rust-pdf core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. It ships as a SwiftPM package with a static <b>xcframework</b>, so it links into <b>macOS</b> and <b>iOS</b> apps with nothing to bundle alongside.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both are reference types that own a native handle, released automatically in <code>deinit</code>. Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> enum. Every fallible call <code>throws</code> a <code>PdfError</code>.</p></div>
 
@@ -664,7 +662,7 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
         <tr><td><code>Pdf.activateLicense(_:)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, C#, Go, PHP, Ruby, Node, Java and Delphi: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, C#, Go, PHP, Ruby, Node and Delphi: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

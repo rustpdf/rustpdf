@@ -48,7 +48,7 @@
           {
             "@type": "Question",
             "name": "How do I password-protect a PDF in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Load the PDF as an EditableDoc, call encrypt with your chosen user and owner passwords and method AES256, then save. With rust-pdf in Python: ed = rustpdf.EditableDoc.load(data); ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256); ed.save('encrypted.pdf'). The same API is available in C#, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Load the PDF as an EditableDoc, call encrypt with your chosen user and owner passwords and method AES256, then save. With rust-pdf in Python: ed = rustpdf.EditableDoc.load(data); ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256); ed.save('encrypted.pdf'). The same API is available in C#, Go, Node.js, PHP, Ruby, Delphi, and Swift." }
           },
           {
             "@type": "Question",
@@ -449,7 +449,7 @@
         <h2 class="center">How to encrypt a PDF with rust-pdf</h2>
         <p class="center muted narrow">
           Load, set passwords and method, save. AES-256 is recommended. The same
-          API works across all nine language bindings.
+          API works across all eight language bindings.
         </p>
         <div class="tabs" id="code-tabs">
           <div class="tab-bar">
@@ -504,7 +504,7 @@ ed.save("encrypted.pdf");</code></pre>
       <div class="wrap narrow">
         <h2 class="center">PDF encryption FAQ</h2>
         <details><summary>How do I password-protect a PDF in code?</summary>
-          <p>Load the PDF as an <code>EditableDoc</code>, call <code>encrypt</code> with your chosen user and owner passwords and method <code>AES256</code>, then save. With rust-pdf in Python: <code>ed = rustpdf.EditableDoc.load(data)</code>; <code>ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256)</code>; <code>ed.save('encrypted.pdf')</code>. The same API is available in C#, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift.</p>
+          <p>Load the PDF as an <code>EditableDoc</code>, call <code>encrypt</code> with your chosen user and owner passwords and method <code>AES256</code>, then save. With rust-pdf in Python: <code>ed = rustpdf.EditableDoc.load(data)</code>; <code>ed.encrypt(user='open-me', owner='full-control', method=rustpdf.Encryption.AES256)</code>; <code>ed.save('encrypted.pdf')</code>. The same API is available in C#, Go, Node.js, PHP, Ruby, Delphi, and Swift.</p>
         </details>
         <details><summary>What is the difference between a user and owner password?</summary>
           <p>The user password (also called the open password) is required to open and view the document. Without it, a reader cannot display the content. The owner password (also called the permissions password) controls what a user who has opened the document is allowed to do, such as printing or copying text. A document can set either password, both, or neither. Setting only an owner password does not encrypt the content, just the permission flags.</p>
@@ -526,8 +526,8 @@ ed.save("encrypted.pdf");</code></pre>
       <div class="wrap narrow center">
         <h2>Encrypt PDF files in your language</h2>
         <p class="muted">
-          One Rust core, AES-256 encryption across nine languages: Python, C#/.NET,
-          Go, Node.js, Java, PHP, Ruby, Delphi, and Swift. Prototype for free,
+          One Rust core, AES-256 encryption across eight languages: Python, C#/.NET,
+          Go, Node.js, PHP, Ruby, Delphi, and Swift. Prototype for free,
           license the corporate features when you ship.
         </p>
         <div class="cta-row">

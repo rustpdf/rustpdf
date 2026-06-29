@@ -70,8 +70,6 @@
       <a href="/docs/swift.html" class="lang-pill">Swift</a>
       <a href="/docs/php.html" class="lang-pill">PHP</a>
       <a href="/docs/go.html" class="lang-pill">Go</a>
-      <a href="/java" class="lang-pill">Java</a>
-
       <h4>Getting started</h4>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
@@ -122,7 +120,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>C# / .NET</h1>
-      <p class="docs-lead">The <code>RustPdf</code> NuGet package wraps the rust-pdf C core with idiomatic, chainable classes over source-generated P/Invoke (<code>LibraryImport</code>). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library ships inside the package for every runtime — no native build.</p>
+      <p class="docs-lead">The <code>RustPdf</code> NuGet package wraps the rust-pdf C core with idiomatic, chainable classes over source-generated P/Invoke (<code>LibraryImport</code>). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library ships inside the package for every runtime — no native build.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both implement <code>IDisposable</code> and hold a native handle, so wrap them in <code>using</code> to free it promptly.</div>
 
@@ -685,7 +683,7 @@ catch (PdfException e)
         <tr><td><code>Pdf.ActivateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
-      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Ruby, Delphi / Free Pascal, Swift, Go, PHP and Java: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Ruby, Delphi / Free Pascal, Swift, Go and PHP: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
     </main>
 
     <!-- RIGHT TOC -->

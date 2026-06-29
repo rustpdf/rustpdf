@@ -63,7 +63,7 @@
           {
             "@type": "Question",
             "name": "What are B-LT and B-LTA?",
-            "acceptedAnswer": { "@type": "Answer", "text": "B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and current revocation information (CRLs or OCSP responses) embedded in the PDF. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering." }
+            "acceptedAnswer": { "@type": "Answer", "text": "B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and the revocation data you provide (CRLs and certificates) embedded in the PDF. rust-pdf embeds the CRLs and certs you supply; it does not fetch OCSP responses automatically. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering." }
           },
           {
             "@type": "Question",
@@ -501,9 +501,11 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
         <p class="center muted narrow" style="margin-top:22px">
           rust-pdf builds the standards-compliant RFC 3161 container and DSS offline.
           For production you supply a <b>trusted TSA</b> key and certificate (any
-          qualified TSA from your national Trusted List) and real revocation data from
-          your CA. The dev example uses a self-issued TSA, which is sufficient for
-          testing the full workflow. Full details in the <a href="/docs/">documentation</a>.
+          qualified TSA from your national Trusted List) and the revocation data
+          (CRLs and certificates) you obtain from your CA: rust-pdf embeds what you
+          pass in and does not fetch OCSP responses automatically. The dev example
+          uses a self-issued TSA, which is sufficient for testing the full workflow.
+          Full details in the <a href="/docs/">documentation</a>.
         </p>
       </div>
     </section>
@@ -522,7 +524,7 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
           <p>A normal digital signature relies on the signer's certificate being valid at the time of signing and on a live revocation check (OCSP or CRL) to confirm it was not revoked. Once the certificate expires, the issuer's CA is decommissioned, or the revocation service goes offline, a verifier has no way to confirm the signature was made with a valid credential. The DSS solves this by capturing the revocation evidence at the time of signing and embedding it in the file.</p>
         </details>
         <details><summary>What are B-LT and B-LTA?</summary>
-          <p>B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and current revocation information (CRLs or OCSP responses) embedded in the PDF. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering.</p>
+          <p>B-LT (PAdES Baseline with Long-Term validation data) is a PAdES signature that includes a DSS with the signer's certificate chain and the revocation data you provide (CRLs and certificates) embedded in the PDF. rust-pdf embeds the CRLs and certs you pass to <code>add_dss</code>; it does not fetch OCSP responses automatically. B-LTA adds an archival document timestamp over the whole file including the DSS, proving the validation data itself existed at a certain time and sealing the document against future tampering.</p>
         </details>
         <details><summary>Do I need a trusted TSA?</summary>
           <p>For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow.</p>
@@ -535,7 +537,7 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <div class="wrap narrow center">
         <h2>Add LTV timestamps in your language</h2>
         <p class="muted">
-          One Rust core, nine language bindings: Python, C#/.NET, Go, Node.js, Java,
+          One Rust core, eight language bindings: Python, C#/.NET, Go, Node.js,
           PHP, Ruby, Delphi, Swift. Prototype for free, license the corporate features
           when you ship.
         </p>

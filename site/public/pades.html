@@ -403,7 +403,9 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
           <span>pdfsig</span><span>openssl&nbsp;cms</span>
         </div>
         <p class="center muted narrow" style="margin-top:22px">
-          Visible signatures, multiple signers and timestamp details are in the
+          rust-pdf also <b>verifies</b> signed PDFs: it recomputes the ByteRange digest,
+          checks the embedded CMS signature, and confirms the signature covers the whole
+          document. Visible signatures, multiple signers and timestamp details are in the
           <a href="/docs/">documentation</a>.
         </p>
       </div>
@@ -436,7 +438,7 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
       <div class="wrap narrow center">
         <h2>Sign PDFs in your language</h2>
         <p class="muted">
-          One core, the same PAdES signatures across nine languages. Signatures and
+          One core, the same PAdES signatures across eight languages. Signatures and
           long-term validation are part of the Enterprise license.
         </p>
         <div class="cta-row">

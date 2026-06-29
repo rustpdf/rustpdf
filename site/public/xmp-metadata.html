@@ -53,12 +53,12 @@
           {
             "@type": "Question",
             "name": "How is XMP different from the Info dictionary?",
-            "acceptedAnswer": { "@type": "Answer", "text": "The /Info dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A requires both to be present and to agree with each other. rust-pdf builds both from a single source so they are always in sync." }
+            "acceptedAnswer": { "@type": "Answer", "text": "The /Info dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A-1, A-2 and A-3 require both to be present and to agree with each other; PDF/A-4 (PDF 2.0) drops the /Info dictionary entirely and keeps metadata only in the XMP. rust-pdf builds both from a single source so, where both exist, they are always in sync." }
           },
           {
             "@type": "Question",
             "name": "Why does PDF/A require XMP?",
-            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The pdfaid conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. PDF/A section 6.7.3 also requires the XMP and /Info dictionary to be kept in sync so there is no ambiguity." }
+            "acceptedAnswer": { "@type": "Answer", "text": "PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The pdfaid conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. For PDF/A-1, A-2 and A-3, section 6.7.3 also requires the XMP and /Info dictionary to be kept in sync so there is no ambiguity; PDF/A-4 omits /Info and relies on the XMP alone." }
           },
           {
             "@type": "Question",
@@ -68,7 +68,7 @@
           {
             "@type": "Question",
             "name": "How do I set PDF metadata in code?",
-            "acceptedAnswer": { "@type": "Answer", "text": "With rust-pdf, call set_info on an EditableDoc to set individual fields like Title or Author, or call set_xmp with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all nine supported languages: Python, C#/.NET, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift." }
+            "acceptedAnswer": { "@type": "Answer", "text": "With rust-pdf, call set_info on an EditableDoc to set individual fields like Title or Author, or call set_xmp with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all eight supported languages: Python, C#/.NET, Go, Node.js, PHP, Ruby, Delphi, and Swift." }
           }
         ]
       }
@@ -432,9 +432,11 @@
           </div>
         </div>
         <p class="center muted narrow" style="margin-top:26px">
-          Modern PDFs use XMP. PDF/A requires <b>both</b> to be present and
-          consistent: the same title and author must appear in both places, and
-          neither may contradict the other.
+          Modern PDFs use XMP. PDF/A-1, A-2 and A-3 require <b>both</b> to be
+          present and consistent: the same title and author must appear in both
+          places, and neither may contradict the other. PDF/A-4 (built on
+          PDF&nbsp;2.0) is the exception: it omits the <code>/Info</code>
+          dictionary entirely, so the metadata lives only in the XMP packet.
         </p>
       </div>
     </section>
@@ -453,7 +455,7 @@
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
             <h3>PDF/A</h3>
             <span class="schema-tag pdfa">pdfaid:part / pdfaid:conformance</span>
-            <p>The <code>pdfaid</code> namespace tells validators the conformance level (1b, 2b, 2a, 3b, 3a). Without it, a PDF that follows every other rule still fails PDF/A. See <a href="/pdf-a">What is PDF/A?</a></p>
+            <p>The <code>pdfaid</code> namespace tells validators the conformance level (1b, 2b, 2a, 3b, 3a, 4, 4e, 4f). Without it, a PDF that follows every other rule still fails PDF/A. See <a href="/pdf-a">What is PDF/A?</a></p>
           </div>
           <div class="xm-tile reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></div>
@@ -494,11 +496,15 @@
       <div class="wrap narrow">
         <h2 class="center">Keeping /Info and XMP in sync</h2>
         <p class="muted">
-          PDF/A section 6.7.3 is strict: every field that appears in both the
-          <code>/Info</code> dictionary and the XMP must carry the same value.
-          If the title in <code>/Info</code> says "Draft" and the XMP says
-          "Final", the file fails conformance. This is a common authoring mistake
-          when metadata is set in two separate places by two separate code paths.
+          PDF/A-1, A-2 and A-3 (section 6.7.3) are strict: every field that
+          appears in both the <code>/Info</code> dictionary and the XMP must
+          carry the same value. If the title in <code>/Info</code> says "Draft"
+          and the XMP says "Final", the file fails conformance. This is a common
+          authoring mistake when metadata is set in two separate places by two
+          separate code paths. PDF/A-4 sidesteps the problem by dropping
+          <code>/Info</code> altogether: in a PDF/A-4 file the XMP is the single
+          metadata source, and rust-pdf omits the <code>/Info</code> dictionary
+          accordingly.
         </p>
         <div class="xm-note">
           <span class="xm-note-icon">
@@ -592,16 +598,16 @@ ed.save("document_meta.pdf");</code></pre>
           <p>XMP (Extensible Metadata Platform) is an XML metadata packet embedded directly inside a PDF file. It describes the document in a machine-readable way: title, author, creation and modification dates, subject, keywords, and arbitrary custom schemas. Because it is embedded in the file itself, the metadata travels with the document and can be read by any conforming PDF reader or document management system without opening the page content.</p>
         </details>
         <details><summary>How is XMP different from the Info dictionary?</summary>
-          <p>The <code>/Info</code> dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A requires both to be present and to agree with each other. rust-pdf builds both from a single source so they are always in sync and can never disagree.</p>
+          <p>The <code>/Info</code> dictionary is an older PDF structure that stores basic fields (Title, Author, CreationDate, and so on) as key-value pairs inside the PDF trailer. XMP is a modern XML-based alternative that is extensible, richer, and standardised. Modern and archival PDFs use XMP. PDF/A-1, A-2 and A-3 require both to be present and to agree with each other; PDF/A-4 (PDF 2.0) drops the <code>/Info</code> dictionary entirely and keeps metadata only in the XMP. rust-pdf builds both from a single source so, where both exist, they are always in sync and can never disagree.</p>
         </details>
         <details><summary>Why does PDF/A require XMP?</summary>
-          <p>PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The <code>pdfaid</code> conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. PDF/A section 6.7.3 also requires the XMP and <code>/Info</code> dictionary to be kept in sync so there is no ambiguity between the two metadata sources.</p>
+          <p>PDF/A is the archival PDF standard and it requires XMP so that metadata is stored in a standardised, open, machine-readable format that remains accessible in the future. The <code>pdfaid</code> conformance identifier in the XMP tells any reader or validator which part and conformance level the file adheres to. For PDF/A-1, A-2 and A-3, section 6.7.3 also requires the XMP and <code>/Info</code> dictionary to be kept in sync so there is no ambiguity between the two metadata sources; PDF/A-4 omits <code>/Info</code> and relies on the XMP alone.</p>
         </details>
         <details><summary>How do XMP and standards like ZUGFeRD / PDF/UA relate?</summary>
           <p>XMP is the declaration layer that every modern PDF standard uses to announce its conformance. PDF/A writes the <code>pdfaid</code> identifier, ZUGFeRD and Factur-X add the <code>fx</code> schema with document type, version and profile, and PDF/UA adds the <code>pdfuaid</code> identifier. Any validator (veraPDF, Acrobat, a DMS) checks XMP first to know which rules to apply. Without the correct XMP identifiers, a file fails conformance even if all the structural rules are met.</p>
         </details>
         <details><summary>How do I set PDF metadata in code?</summary>
-          <p>With rust-pdf, call <code>set_info</code> on an <code>EditableDoc</code> to set individual fields like Title or Author, or call <code>set_xmp</code> with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all nine supported languages: Python, C#/.NET, Go, Node.js, Java, PHP, Ruby, Delphi, and Swift.</p>
+          <p>With rust-pdf, call <code>set_info</code> on an <code>EditableDoc</code> to set individual fields like Title or Author, or call <code>set_xmp</code> with a full custom XMP packet in bytes to embed your own XML. Both methods are available across all eight supported languages: Python, C#/.NET, Go, Node.js, PHP, Ruby, Delphi, and Swift.</p>
         </details>
       </div>
     </section>
@@ -611,7 +617,7 @@ ed.save("document_meta.pdf");</code></pre>
       <div class="wrap narrow center">
         <h2>Set and embed XMP metadata in your language</h2>
         <p class="muted">
-          One Rust core, nine language bindings, and a single source of truth for
+          One Rust core, eight language bindings, and a single source of truth for
           your metadata. Prototype for free, license the corporate features when
           you ship.
         </p>

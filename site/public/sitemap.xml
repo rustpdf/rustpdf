@@ -43,12 +43,6 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://rustpdf.dev/java</loc>
-    <lastmod>2026-06-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
     <loc>https://rustpdf.dev/delphi</loc>
     <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
