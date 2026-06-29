@@ -350,8 +350,8 @@ struct AlphaMap {
 impl AlphaMap {
     fn at(&self, x: u32, y: u32, dst_w: u32, dst_h: u32) -> u8 {
         // Nearest-neighbour resample if soft-mask dims differ from the image.
-        let sx = if dst_w > 0 { x * self.w / dst_w } else { 0 };
-        let sy = if dst_h > 0 { y * self.h / dst_h } else { 0 };
+        let sx = (x * self.w).checked_div(dst_w).unwrap_or(0);
+        let sy = (y * self.h).checked_div(dst_h).unwrap_or(0);
         self.data
             .get(
                 (sy.min(self.h.saturating_sub(1)) * self.w + sx.min(self.w.saturating_sub(1)))
