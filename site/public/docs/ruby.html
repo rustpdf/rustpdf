@@ -322,6 +322,7 @@ doc.attach_file("invoice.xml", "text/xml", xml,
                 description: "Structured invoice data")
 doc.save("einvoice.pdf")
 doc.close</code></pre></div>
+      <div class="note"><b>The licence gate is on PDF/A, not on <code>attach_file</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attach_file</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
 
       <!-- FACTURX -->
       <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
@@ -577,7 +578,7 @@ File.binwrite("contract.lta.pdf", lta)</code></pre></div>
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>RustPdf.verify_signatures(data) → Array&lt;Hash&gt;</code></div>
-      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code>, <code>"sub_filter"</code>, <code>"signer"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned.</p>
+      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code> and <code>"signer"</code> (both <code>nil</code> when absent), plus <code>"sub_filter"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("contract.signed.pdf")
 RustPdf.verify_signatures(data).each do |sig|
   puts "#{sig['signer']} valid: #{sig['is_valid']} " \

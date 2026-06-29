@@ -347,6 +347,7 @@ $doc-&gt;addPage()
                  AFRelationship::Source, 'Structured invoice data')
     -&gt;save('einvoice.pdf');</code></pre></div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>attachFile</code> before serializing.</div>
+      <div class="note"><b>The licence gate is on PDF/A, not on <code>attachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
 
       <!-- FACTURX -->
       <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
@@ -608,7 +609,7 @@ file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf::verifySignatures(data: string): array</code></div>
-      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. An empty array means the document is unsigned.</p>
+      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. The <code>field_name</code> and <code>signer</code> may be null when absent. An empty array means the document is unsigned.</p>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
 
 $data = file_get_contents('contract.signed.pdf');

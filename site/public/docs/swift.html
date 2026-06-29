@@ -349,6 +349,7 @@ try doc.attachFile(name: "invoice.xml", mime: "text/xml", data: xml,
                    relationship: .source, description: "Structured invoice data")
 try doc.save(to: "einvoice.pdf")</code></pre></div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>attachFile</code> before serializing.</div>
+      <div class="note"><b>The licence gate is on PDF/A, not on <code>attachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
 
       <!-- FACTURX -->
       <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
@@ -578,7 +579,7 @@ let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert)</co
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf.verifySignatures(_ data: [UInt8]) -&gt; [SignatureReport]</code></div>
-      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. An empty array means the document is unsigned.</p>
+      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. Note that <code>fieldName</code> and <code>signer</code> are optional (<code>String?</code>) and <code>nil</code> when absent. An empty array means the document is unsigned.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("contract.signed.pdf")
 for sig in try Pdf.verifySignatures(data) {
     print(sig.signer ?? "?", "valid:", sig.isValid,
