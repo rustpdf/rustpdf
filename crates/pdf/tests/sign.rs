@@ -92,21 +92,38 @@ fn byte_range_covers_everything_except_contents() {
 fn contents_is_valid_cms_signed_data() {
     let signed = pdf::sign(&sample(), &signer(), &SignOptions::default()).unwrap();
     let [_, l0, s1, _] = parse_byte_range(&signed);
-    // Hex between the angle brackets, trimming trailing zero padding.
+    // Hex between the angle brackets. The placeholder is zero-padded on the
+    // right, so decode all the bytes and slice off exactly the DER object's
+    // self-described length (trimming trailing '0' chars is wrong: a CMS that
+    // legitimately ends in a 0x00 byte would lose a byte and fail to parse).
     let lt = l0; // index of '<'
     let hex = &signed[lt + 1..s1 - 1];
-    let hex_str = std::str::from_utf8(hex).unwrap().trim_end_matches('0');
-    let hex_str = if hex_str.len() % 2 == 1 {
-        &hex_str[..hex_str.len() - 1]
-    } else {
-        hex_str
-    };
-    let der: Vec<u8> = (0..hex_str.len())
+    let hex_str = std::str::from_utf8(hex).unwrap();
+    let hex_str = &hex_str[..hex_str.len() - hex_str.len() % 2];
+    let all: Vec<u8> = (0..hex_str.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&hex_str[i..i + 2], 16).unwrap())
         .collect();
+    // DER length = header (tag + length-of-length) + content length.
+    let der_len = {
+        assert!(
+            all.len() > 2 && all[0] == 0x30,
+            "Contents is not a DER SEQUENCE"
+        );
+        let l = all[1];
+        if l < 0x80 {
+            2 + l as usize
+        } else {
+            let n = (l & 0x7f) as usize;
+            let len = all[2..2 + n]
+                .iter()
+                .fold(0usize, |a, &b| (a << 8) | b as usize);
+            2 + n + len
+        }
+    };
+    let der = &all[..der_len];
 
-    let ci = ContentInfo::from_der(&der).expect("Contents is valid DER CMS");
+    let ci = ContentInfo::from_der(der).expect("Contents is valid DER CMS");
     // It must be a SignedData content type, and re-encode losslessly.
     assert_eq!(ci.content_type, const_oid::db::rfc5911::ID_SIGNED_DATA);
     assert!(ci.to_der().is_ok());

@@ -392,7 +392,15 @@ impl<'a> Renderer<'a> {
             }
             b"Tj" => {
                 if let Some(Object::String(s)) = ops.first() {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"'" => {
@@ -401,7 +409,15 @@ impl<'a> Renderer<'a> {
                     .pre_concat(Transform::from_translate(0.0, -gs.leading));
                 ts.tm = ts.tlm;
                 if let Some(Object::String(s)) = ops.first() {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"\"" => {
@@ -412,12 +428,28 @@ impl<'a> Renderer<'a> {
                     .pre_concat(Transform::from_translate(0.0, -gs.leading));
                 ts.tm = ts.tlm;
                 if let Some(Object::String(s)) = ops.get(2) {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active);
+                    self.show_text(
+                        s.as_bytes(),
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"TJ" => {
                 if let Some(Object::Array(arr)) = ops.first() {
-                    self.show_text_array(arr, gs, ts, text_clip, text_clip_active);
+                    self.show_text_array(
+                        arr,
+                        gs,
+                        ts,
+                        text_clip,
+                        text_clip_active,
+                        resources,
+                        depth,
+                    );
                 }
             }
             b"d0" | b"d1" => {}
@@ -536,6 +568,7 @@ impl<'a> Renderer<'a> {
 
     // ---- text ----
 
+    #[allow(clippy::too_many_arguments)]
     fn show_text_array(
         &mut self,
         arr: &[Object],
@@ -543,12 +576,20 @@ impl<'a> Renderer<'a> {
         ts: &mut TextState,
         text_clip: &mut PathBuilder,
         text_clip_active: &mut bool,
+        resources: &Dict,
+        depth: u32,
     ) {
         for el in arr {
             match el {
-                Object::String(s) => {
-                    self.show_text(s.as_bytes(), gs, ts, text_clip, text_clip_active)
-                }
+                Object::String(s) => self.show_text(
+                    s.as_bytes(),
+                    gs,
+                    ts,
+                    text_clip,
+                    text_clip_active,
+                    resources,
+                    depth,
+                ),
                 Object::Integer(_) | Object::Real(_) => {
                     let adj = num(el).unwrap_or(0.0);
                     let tx = -adj / 1000.0 * gs.font_size * gs.h_scale;
@@ -559,6 +600,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn show_text(
         &mut self,
         bytes: &[u8],
@@ -566,6 +608,8 @@ impl<'a> Renderer<'a> {
         ts: &mut TextState,
         text_clip: &mut PathBuilder,
         text_clip_active: &mut bool,
+        resources: &Dict,
+        depth: u32,
     ) {
         let Some(font) = gs.font.clone() else {
             return;
@@ -573,6 +617,7 @@ impl<'a> Renderer<'a> {
         let fs = gs.font_size;
         let upem = font.units_per_em().max(1.0);
         let mode = gs.render_mode;
+        let is_type3 = font.type3().is_some();
         let glyphs = font.decode(bytes);
         for g in glyphs {
             // Render matrix: base · ctm · Tm · [fs·Th 0 0 fs 0 rise] · (1/upem)
@@ -583,6 +628,20 @@ impl<'a> Renderer<'a> {
                 .pre_concat(ts.tm)
                 .pre_concat(param);
             let glyph_to_device = trm.pre_concat(Transform::from_scale(1.0 / upem, 1.0 / upem));
+
+            if is_type3 {
+                if !mode.invisible() && fs != 0.0 {
+                    self.draw_type3_glyph(&font, g.gid as u8, gs, ts, param, resources, depth);
+                }
+                // Advance, then skip the outline path below.
+                let w0 = g.width;
+                let mut tx = (w0 * fs + gs.char_spacing) * gs.h_scale;
+                if g.is_space {
+                    tx += gs.word_spacing * gs.h_scale;
+                }
+                ts.tm = ts.tm.pre_concat(Transform::from_translate(tx, 0.0));
+                continue;
+            }
 
             if !mode.invisible() && fs != 0.0 {
                 if let Some(path) = glyph_path(&font, g.gid) {
@@ -620,6 +679,37 @@ impl<'a> Renderer<'a> {
             }
             ts.tm = ts.tm.pre_concat(Transform::from_translate(tx, 0.0));
         }
+    }
+
+    /// Draw one Type 3 glyph by executing its CharProc content stream, mapped to
+    /// device space by `base · ctm · Tm · param · FontMatrix`. Uncolored (`d1`)
+    /// glyphs inherit the current fill color; colored (`d0`) ones set their own.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_type3_glyph(
+        &mut self,
+        font: &LoadedFont,
+        code: u8,
+        gs: &GState,
+        ts: &TextState,
+        param: Transform,
+        resources: &Dict,
+        depth: u32,
+    ) {
+        let Some(t3) = font.type3() else {
+            return;
+        };
+        let Some(proc) = t3.char_proc(code) else {
+            return;
+        };
+        let fm = t3.font_matrix;
+        let fmx = pdf_matrix(fm[0], fm[1], fm[2], fm[3], fm[4], fm[5]);
+        let mut sub = gs.clone();
+        // run() prefixes self.base, so set sub.ctm = ctm · Tm · param · FontMatrix.
+        sub.ctm = gs.ctm.pre_concat(ts.tm).pre_concat(param).pre_concat(fmx);
+        sub.font = None; // CharProcs don't show text; avoid accidental recursion.
+        let res = t3.resources.clone().unwrap_or_else(|| resources.clone());
+        let proc = proc.to_vec();
+        self.run(&proc, &res, sub, depth + 1);
     }
 
     // ---- fonts ----

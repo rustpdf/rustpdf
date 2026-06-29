@@ -1,7 +1,7 @@
 {
   "name": "rustpdf",
   "description": "Delphi / Free Pascal binding for rust-pdf — enterprise PDF (PDF/A, PAdES signatures, AES-256, PDF/UA) over one Rust core.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "homepage": "https://rustpdf.dev",
   "mainsrc": ".",
   "projects": [],

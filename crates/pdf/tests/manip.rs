@@ -166,6 +166,32 @@ fn fill_text_field_sets_value_and_generates_appearance() {
     assert!(!text.contains("/NeedAppearances true"));
 }
 
+#[test]
+fn extract_text_reads_form_field_value_filled_and_flattened() {
+    let form = build_form_pdf();
+
+    // Filled (interactive): the value lives in the widget's `/AP` appearance
+    // stream — extract_text now reads annotation appearances.
+    let mut filled = EditableDoc::load(&form).unwrap();
+    filled.fill_text_field("name", "Ada Lovelace");
+    let filled = filled.to_bytes().unwrap();
+    assert!(
+        pdf::extract_text(&filled).unwrap().contains("Ada Lovelace"),
+        "extract_text missed the filled form-field value (annotation appearance)"
+    );
+
+    // Flattened: the appearance is baked into the page via a Form XObject drawn
+    // with `Do` — extract_text now recurses into Form XObjects.
+    let mut flat = EditableDoc::load(&form).unwrap();
+    flat.fill_text_field("name", "Ada Lovelace");
+    flat.flatten_forms();
+    let flat = flat.to_bytes().unwrap();
+    assert!(
+        pdf::extract_text(&flat).unwrap().contains("Ada Lovelace"),
+        "extract_text missed the flattened form-field value (Form XObject)"
+    );
+}
+
 /// A tiny one-page PDF with a single AcroForm text field named "name".
 fn build_form_pdf() -> Vec<u8> {
     let mut w = writer::Document::new(writer::PdfVersion::V1_7);
