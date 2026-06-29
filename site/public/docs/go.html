@@ -522,6 +522,16 @@ defer ed.Close()
 fmt.Println(ed.PageCount())</code></pre></div>
       <div class="note"><b>Corrupt or truncated input.</b> A badly damaged file (truncated mid-stream, for example) may still load via the recovery scan but recover <b>zero pages</b>, and <code>Load</code> returns no error in that case. Serializing a zero-page document returns an error ("document has no pages") instead of writing an invalid file, but check <code>PageCount() &gt; 0</code> after loading untrusted input before relying on it.</div>
 
+      <p>To open a password-protected document, pass the user <i>or</i> owner password. The wrong password returns an <code>*Error</code> rather than loading garbage.</p>
+      <div class="api"><code>rustpdf.LoadWithPassword(data []byte, password string) (*EditableDoc, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("secured.pdf")
+ed, err := rustpdf.LoadWithPassword(data, "owner-secret")
+if err != nil {
+	log.Fatal(err)   // *Error on a wrong password
+}
+defer ed.Close()
+fmt.Println(ed.PageCount())</code></pre></div>
+
       <!-- ED PAGES -->
       <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
       <table>
