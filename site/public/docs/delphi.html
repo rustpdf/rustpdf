@@ -398,6 +398,7 @@ Buttons[1].Rect := PdfRect(140, 580, 156, 596); Buttons[1].ExportValue := 'annua
 Doc.RadioGroup('billing', 0, Buttons, 1);
 Doc.SaveToFile('form.pdf');</code></pre></div>
       <p>Fill and flatten fields later with <a href="#ed-forms"><code>TPdfEditable</code></a>.</p>
+      <div class="note"><b>Page index and rectangle are validated.</b> A field (or internal link) whose <code>page</code> does not exist, or whose rectangle is degenerate (<code>x1 &lt; x0</code> or zero area), is rejected when the document is serialized: <code>ToBytes</code>/<code>Save</code> raise <code>ERustPdf</code> ("targets page index N…" / "degenerate rectangle…") instead of producing an invisible, never-appearing widget. Pass a 0-based page index that exists and a rectangle with <code>x1 &gt; x0</code> and <code>y1 &gt; y0</code>.</div>
 
       <!-- LINKS -->
       <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
@@ -459,6 +460,7 @@ try
 finally
   Ed.Free;
 end;</code></pre></div>
+      <div class="note"><b>Corrupt or truncated input.</b> A badly damaged file (truncated mid-stream, for example) may still load via the recovery scan but recover <b>zero pages</b>, and <code>Load</code> does not raise in that case. Serializing a zero-page document raises <code>ERustPdf</code> ("document has no pages") instead of writing an invalid file, but check <code>PageCount &gt; 0</code> after loading untrusted input before relying on it.</div>
 
       <!-- ED PAGES -->
       <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
@@ -597,6 +599,7 @@ finally
   Ed.Free;
 end;</code></pre></div>
       <p>See the <a href="#enums"><code>TEncryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+      <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (cross-checked against qpdf for all three ciphers). The read-only permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat read-only as a hint to well-behaved viewers, not as an access control.</div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>
