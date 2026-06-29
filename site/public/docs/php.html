@@ -588,6 +588,7 @@ $signed = Pdf::sign($pdf, $keyDer, $certDer,
     name: 'Jane Doe', pades: true);
 file_put_contents('contract.signed.pdf', $signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+      <div class="note"><b>"Signature is Valid" vs. "Certificate isn't Trusted" are two separate checks.</b> The cryptographic check (<code>Pdf::verifySignatures</code> returning <code>is_valid</code>, and pdfsig's "Signature Validation: Signature is Valid.") proves the bytes were not tampered with. The trust check is independent: a self-signed or test certificate makes pdfsig also print "Certificate issuer isn't Trusted." That is expected and does <b>not</b> mean the signature is invalid. To make the trust check pass, sign with a certificate chaining to a CA in the verifier's trust store.</div>
 
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
