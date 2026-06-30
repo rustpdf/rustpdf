@@ -599,6 +599,29 @@ func TestFullSurface(t *testing.T) {
 			t.Fatalf("placed text missing from extraction: %q", txt)
 		}
 	}
+
+	// 21. Issue #50: draw_image stamps an in-memory PNG onto an existing page.
+	{
+		ed, err := Load(plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+		if ok := ed.DrawImage(0, makePNG(t), 100, 100, 144, 144, 30); !ok {
+			t.Fatal("draw_image: page should exist")
+		}
+		// Out-of-range page returns false (no panic, no content).
+		if ok := ed.DrawImage(9, makePNG(t), 0, 0, 10, 10, 0); ok {
+			t.Fatal("draw_image on missing page should return false")
+		}
+		out, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(out) < 8 || string(out[1:4]) != "PDF" {
+			t.Fatalf("draw_image output not a PDF: %d bytes", len(out))
+		}
+	}
 }
 
 // makePNG encodes a tiny solid-color PNG in memory.

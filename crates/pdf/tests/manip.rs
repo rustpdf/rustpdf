@@ -310,3 +310,27 @@ fn build_form_pdf() -> Vec<u8> {
     let _ = Reference::new(1);
     w.write().unwrap()
 }
+
+/// A page whose `/MediaBox` is only on the `/Pages` node (PyFPDF-style
+/// inheritance) must keep a resolvable box after an `EditableDoc` round-trip.
+/// `finalize()` rebuilds a flat `/Pages` carrying only Type/Kids/Count, so the
+/// inherited attributes are pushed down onto the leaf page — otherwise the
+/// round-tripped file has no `/MediaBox` anywhere and our rasterizer fails with
+/// "no usable MediaBox" (regression for the C# `render_page_to_png` report).
+#[test]
+fn editable_roundtrip_preserves_inherited_mediabox() {
+    let bytes = include_bytes!("fixtures/inherited_mediabox.pdf");
+    let out = EditableDoc::load(bytes.as_slice())
+        .unwrap()
+        .to_bytes()
+        .unwrap();
+
+    let reader = parser::PdfReader::parse(&out).unwrap();
+    let page = &reader.pages()[0];
+    // The leaf page now carries its own /MediaBox (pushed down on finalize),
+    // so it is self-contained and renders without relying on inheritance.
+    match page.get("MediaBox") {
+        Some(Object::Array(a)) => assert_eq!(a.len(), 4, "MediaBox must have 4 entries"),
+        other => panic!("leaf page lost its /MediaBox after round-trip: {other:?}"),
+    }
+}

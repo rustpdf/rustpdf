@@ -608,13 +608,15 @@ ed.close();</code></pre></div>
       <p>Place a filled rectangle or a line of text at exact coordinates on a page, for stamping a value into a form, masking a region, or adding a small note. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1).</p>
       <div class="api"><code>fillRect(pageIndex, x, y, width, height, color = [1, 1, 1], opacity = 1.0) → boolean</code></div>
       <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0) → boolean</code></div>
-      <p>Both return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. A common pattern: read the page geometry, white-out a region with an opaque rectangle, then place your value over it.</p>
+      <div class="api"><code>drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0) → boolean</code></div>
+      <p>All three return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text or image counter-clockwise about its anchor <code>(x, y)</code>. <code>drawImage</code> takes raw JPEG/PNG image bytes (a Buffer or Uint8Array) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. A common pattern: read the page geometry, white-out a region with an opaque rectangle, then place your value over it.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("form.pdf");
 const { width, height } = rustpdf.measurePage(fs.readFileSync("form.pdf"), 0);
 
 // mask a region with an opaque white box, then stamp a value over it
 ed.fillRect(0, 60, height - 100, 200, 24, [1, 1, 1], 1.0);
 ed.placeText(0, 64, height - 94, "APPROVED", 18, [0, 0, 0], 0.0);
+ed.drawImage(0, fs.readFileSync("logo.png"), 64, height - 150, 120, 48);
 ed.save("stamped.pdf");
 ed.close();</code></pre></div>
 

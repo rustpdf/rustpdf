@@ -290,8 +290,27 @@ impl LoadedFont {
         let descriptor = reader
             .resolve_dict(font_dict.get("FontDescriptor").unwrap_or(&Object::Null))
             .cloned();
-        let (program, _embedded) = load_program(reader, descriptor.as_ref(), bold);
+        let (program, embedded) = load_program(reader, descriptor.as_ref(), bold);
         let units_per_em = program.units_per_em() as f32;
+
+        // A **symbolic** TrueType font (FontDescriptor flag bit 3) with no
+        // `/Encoding` addresses its embedded program directly: the character
+        // code is looked up in the font's own (3,0) symbol or (1,0) Macintosh
+        // cmap, NOT translated through Standard/WinAnsi to a Unicode value
+        // (PDF 32000-1 §9.6.6.4). These subset fonts (e.g. Aptos from Office)
+        // remap text to a compact code range whose meaning lives only in that
+        // built-in cmap, so the Unicode path resolves the wrong glyph (or none,
+        // then falls back to code-as-gid garbage). Only trust this for an
+        // embedded program — a non-embedded fallback (Roboto) has a normal
+        // Unicode cmap and must use the encoding path.
+        let flags = descriptor
+            .as_ref()
+            .and_then(|d| d.get("Flags"))
+            .and_then(int)
+            .unwrap_or(0);
+        let symbolic = flags & 0x4 != 0 && flags & 0x20 == 0;
+        let has_encoding = font_dict.get("Encoding").is_some();
+        let prefer_raw = embedded && symbolic && !has_encoding;
 
         // Build code → Unicode from the encoding, then code → gid via cmap.
         let code_to_unicode = build_encoding(reader, font_dict);
@@ -300,31 +319,43 @@ impl LoadedFont {
             let face = program.face();
             for (code, slot) in gids.iter_mut().enumerate() {
                 let uni = code_to_unicode[code];
-                let gid = uni
-                    .and_then(|u| face.glyph_index(u))
-                    .or_else(|| {
-                        // symbolic: try the raw byte, then the 0xF000 PUA range.
-                        char::from_u32(code as u32)
-                            .and_then(|c| face.glyph_index(c))
-                            .or_else(|| face.glyph_index(char::from_u32(0xF000 + code as u32)?))
-                    })
-                    .map(|g| g.0)
-                    .unwrap_or(code as u16);
+                let by_unicode = || uni.and_then(|u| face.glyph_index(u));
+                let by_raw = || cmap_raw_gid(&face, code as u32);
+                let gid = if prefer_raw {
+                    by_raw().or_else(by_unicode)
+                } else {
+                    by_unicode().or_else(by_raw)
+                }
+                .map(|g| g.0)
+                .unwrap_or(code as u16);
                 *slot = gid;
             }
         }
 
-        // Widths.
+        // Widths: prefer the font's `/Widths` array. For any code it does not
+        // cover — e.g. a bare standard-14 Helvetica emitted with no `/Widths`
+        // (the writer relies on the viewer's built-in AFM metrics) — fall back
+        // to the program's own glyph advance (`hmtx`) instead of a flat 0.5em.
+        // A constant advance makes narrow glyphs (i, l, space) over-advance and
+        // wide ones cramp, so proportional text renders with ragged gaps
+        // ("For Si gn"). The fallback program (Roboto) approximates Helvetica's
+        // advances closely; an embedded font gives exact metrics.
         let first = font_dict.get("FirstChar").and_then(int).unwrap_or(0);
         let widths_arr = match font_dict.get("Widths").map(|o| reader.resolve(o)) {
             Some(Object::Array(a)) => a.iter().filter_map(num).collect::<Vec<f32>>(),
             _ => Vec::new(),
         };
         let mut widths = Box::new([0.5f32; 256]);
-        for (i, w) in widths_arr.iter().enumerate() {
-            let code = first as usize + i;
-            if code < 256 {
-                widths[code] = w / 1000.0;
+        {
+            let face = program.face();
+            let upem = units_per_em.max(1.0);
+            for (code, slot) in widths.iter_mut().enumerate() {
+                let i = code as i64 - first;
+                if i >= 0 && (i as usize) < widths_arr.len() {
+                    *slot = widths_arr[i as usize] / 1000.0;
+                } else if let Some(adv) = face.glyph_hor_advance(ttf_parser::GlyphId(gids[code])) {
+                    *slot = adv as f32 / upem;
+                }
             }
         }
 
@@ -340,6 +371,39 @@ impl LoadedFont {
             type3: None,
         })
     }
+}
+
+/// Look up a raw character `code` directly in the embedded program's cmap,
+/// preferring the (3,0) Microsoft Symbol subtable (trying the `0xF000` PUA
+/// alias first, then the bare code), then the (1,0) Macintosh subtable, then
+/// any Unicode subtable. Used for symbolic simple TrueType fonts whose codes
+/// index the built-in cmap rather than a Unicode encoding.
+fn cmap_raw_gid(face: &ttf_parser::Face, code: u32) -> Option<ttf_parser::GlyphId> {
+    let cmap = face.tables().cmap?;
+    let mut mac = None;
+    let mut uni = None;
+    for sub in cmap.subtables {
+        match (sub.platform_id, sub.encoding_id) {
+            (ttf_parser::PlatformId::Windows, 0) => {
+                if let Some(g) = sub
+                    .glyph_index(0xF000 + (code & 0xFF))
+                    .or_else(|| sub.glyph_index(code))
+                {
+                    return Some(g);
+                }
+            }
+            (ttf_parser::PlatformId::Macintosh, 0) if mac.is_none() => {
+                mac = sub.glyph_index(code);
+            }
+            (ttf_parser::PlatformId::Windows, 1) | (ttf_parser::PlatformId::Unicode, _)
+                if uni.is_none() =>
+            {
+                uni = sub.glyph_index(code);
+            }
+            _ => {}
+        }
+    }
+    mac.or(uni)
 }
 
 /// Load an embedded font program (FontFile2 TrueType / FontFile3 CFF-OpenType),
@@ -554,5 +618,35 @@ fn num(o: &Object) -> Option<f32> {
         Object::Integer(n) => Some(*n as f32),
         Object::Real(r) => Some(*r as f32),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use parser::PdfReader;
+
+    /// A subset **symbolic** TrueType font (Office "Aptos", `Flags & 4`, no
+    /// `/Encoding`) addresses glyphs through its embedded (1,0) Macintosh cmap,
+    /// which maps the compact code range directly to subset gids. The old path
+    /// translated code→Standard→Unicode and missed (the font has no Unicode
+    /// cmap), then fell back to code-as-gid garbage. Pin the direct-cmap path:
+    /// the embedded table maps code 33→gid 35 and code 61→gid 21.
+    #[test]
+    fn symbolic_truetype_maps_code_via_embedded_cmap() {
+        let bytes = include_bytes!("../tests/fixtures/symbolic_tt_aptos.pdf");
+        let reader = PdfReader::parse(bytes.as_slice()).unwrap();
+        let pages = reader.pages();
+        let res = reader
+            .resolve_dict(pages[0].get("Resources").unwrap())
+            .unwrap();
+        let fonts = reader.resolve_dict(res.get("Font").unwrap()).unwrap();
+        let (_name, fref) = fonts.iter().next().unwrap();
+        let fd = reader.resolve_dict(fref).unwrap();
+
+        let lf = LoadedFont::load(&reader, fd).expect("font loads");
+        let gids = lf.simple_gids.as_ref().expect("simple font has gid table");
+        assert_eq!(gids[33], 35, "code 33 must map to gid 35 via the Mac cmap");
+        assert_eq!(gids[61], 21, "code 61 must map to gid 21 via the Mac cmap");
     }
 }

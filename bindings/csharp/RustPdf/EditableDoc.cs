@@ -194,11 +194,50 @@ public sealed class EditableDoc : IDisposable
     /// rotated page). Coordinates are in the page's visible space. Returns whether
     /// the page existed.</summary>
     public bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0,
-        (double R, double G, double B)? color = null, double rotationDeg = 0.0)
+        (double R, double G, double B)? color = null, double rotationDeg = 0.0,
+        Align align = Align.Left)
     {
         var (r, g, b) = color ?? (0.0, 0.0, 0.0);
-        Pdf.Check(Native.pdf_editable_place_text(
-            H, pageIndex, x, y, text, size, r, g, b, rotationDeg, out int found));
+        Pdf.Check(Native.pdf_editable_place_text_aligned(
+            H, pageIndex, x, y, text, size, r, g, b, rotationDeg, (int)align, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Draw <paramref name="text"/> over an opaque background box
+    /// <c>[x, y, x+width, y+height]</c>: fills the box in <paramref name="bgColor"/>,
+    /// then writes the text (standard Helvetica, <paramref name="size"/> points,
+    /// <paramref name="textColor"/>) horizontally aligned per <paramref name="align"/>
+    /// and vertically centered within the box. The classic use is masking a
+    /// placeholder and stamping the real value over it without hand-computing the
+    /// baseline. Coordinates are in the page's visible space (origin lower-left, y up).
+    /// Returns whether the page existed.</summary>
+    public bool MaskedText(int pageIndex, double x, double y, double width, double height,
+        string text, double size = 12.0,
+        (double R, double G, double B)? textColor = null,
+        (double R, double G, double B)? bgColor = null,
+        Align align = Align.Left)
+    {
+        var (tr, tg, tb) = textColor ?? (0.0, 0.0, 0.0);
+        var (br, bg, bb) = bgColor ?? (1.0, 1.0, 1.0);
+        Pdf.Check(Native.pdf_editable_masked_text(
+            H, pageIndex, x, y, width, height, text, size,
+            tr, tg, tb, br, bg, bb, (int)align, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Draw an image (PNG or JPEG bytes — dispatched on the file
+    /// signature) onto page <paramref name="pageIndex"/> with its lower-left corner
+    /// at <paramref name="x"/>,<paramref name="y"/>, scaled to
+    /// <paramref name="width"/>×<paramref name="height"/> points and rotated
+    /// <paramref name="rotationDeg"/> degrees counter-clockwise about that corner.
+    /// Coordinates are in the page's visible space (origin lower-left, honoring
+    /// <c>/Rotate</c>). Returns whether the page existed.</summary>
+    public bool DrawImage(int pageIndex, byte[] image, double x, double y,
+        double width, double height, double rotationDeg = 0.0)
+    {
+        Pdf.Check(Native.pdf_editable_draw_image(
+            H, pageIndex, image, (nuint)image.Length, x, y, width, height,
+            rotationDeg, out int found));
         return found != 0;
     }
 

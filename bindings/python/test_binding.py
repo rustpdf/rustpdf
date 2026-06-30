@@ -152,6 +152,14 @@ def exercise_full_surface() -> None:
     written = list(Path(out_dir).iterdir())
     assert len(written) == n_images, f"count {n_images} != files {written}"
 
+    # 7a. Draw an image onto an existing page (issue #50).
+    with rustpdf.EditableDoc.load(plain) as ed:
+        assert ed.draw_image(0, _tiny_png(), 72, 600, 64, 48, 0.0), "draw_image page missing"
+        assert not ed.draw_image(9, _tiny_png(), 0, 0, 1, 1), "out-of-range should be False"
+        stamped = ed.to_bytes()
+    stamp_dir = tempfile.mkdtemp(prefix="rustpdf_stamp_")
+    assert rustpdf.extract_images_to_dir(stamped, stamp_dir) >= 1, "stamped image not embedded"
+
     # 8. Page rendering (Pro): rasterize a page to PNG (license already active).
     assert rustpdf.page_count(with_img) == 1
     png = rustpdf.render_page_to_png(with_img, page=0, dpi=72.0)

@@ -568,12 +568,14 @@ ed.Save("stamped.pdf");</code></pre></div>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>bool FillRect(int pageIndex, double x, double y, double width, double height, (double R, double G, double B)? color = null, double opacity = 1.0)</code></div>
       <div class="api"><code>bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0, (double R, double G, double B)? color = null, double rotationDeg = 0.0)</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="api"><code>bool DrawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg = 0.0)</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("invoice.pdf");
 PageGeometry g = Pdf.MeasurePage(data, 0);          // read the page geometry first
 using var ed = EditableDoc.Load(data);
 ed.FillRect(0, 400, g.Height - 60, 120, 18);        // mask: default opaque white
 ed.PlaceText(0, 404, g.Height - 56, "PAID", size: 12, color: (0.0, 0.5, 0.0));
+ed.DrawImage(0, File.ReadAllBytes("logo.png"), 404, g.Height - 120, 120, 48);
 ed.Save("stamped.pdf");</code></pre></div>
 
       <!-- ED REDACT -->

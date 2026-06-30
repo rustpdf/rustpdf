@@ -236,6 +236,7 @@ const f = {
   // Stamping (issue #45 P1): fill a rectangle / place a line of text on a page.
   edFillRect: lib.func('int pdf_editable_fill_rect(void *ed, int index, double x, double y, double width, double height, double r, double g, double b, double opacity, _Out_ int *found)'),
   edPlaceText: lib.func('int pdf_editable_place_text(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, _Out_ int *found)'),
+  edDrawImage: lib.func('int pdf_editable_draw_image(void *ed, int index, const uint8_t *data, size_t len, double x, double y, double width, double height, double rotation_deg, _Out_ int *found)'),
 
   // Tier 2: signature verification (module-level)
   verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
@@ -808,6 +809,15 @@ class EditableDoc {
     const [r, g, b] = color;
     const found = [0];
     check(f.edPlaceText(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, found));
+    return found[0] !== 0;
+  }
+  // Stamp an image (PNG or JPEG bytes) onto an existing page. The image's
+  // lower-left corner lands at (x, y) and is scaled to width x height points;
+  // `rotationDeg` rotates it counter-clockwise about that corner.
+  drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0) {
+    const b = asBuf(image);
+    const found = [0];
+    check(f.edDrawImage(this._ptr, pageIndex, b, b.length, x, y, width, height, rotationDeg, found));
     return found[0] !== 0;
   }
 

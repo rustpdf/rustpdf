@@ -233,7 +233,7 @@ var
   Geos: TArray<TPageGeometry>;
   Geo: TPageGeometry;
   RotEd, PlaceEd: TPdfEditable;
-  RotBytes, PlaceBytes: TBytes;
+  RotBytes, PlaceBytes, DrawImgBytes: TBytes;
   Ovw: TPdfOverview;
 {$IFDEF UNIX}
   Signer: TOpenSslSigner;
@@ -681,6 +681,23 @@ begin
   Assert(TextContains(Pdf.ExtractText(PlaceBytes), 'PLACED-HERE'),
     'placed text is extractable');
   Writeln(Format('fill_rect + place_text ok (%d bytes)', [Length(PlaceBytes)]));
+
+  { 15. DrawImage (issue #50). Stamp a small PNG onto an existing page and
+    confirm it round-trips to a valid, larger document; a missing page -> false. }
+  PlaceEd := TPdfEditable.Load(PlainBytes);
+  try
+    Assert(PlaceEd.DrawImage(0, TinyPng, 72, 600, 144, 144, 0.0),
+      'draw_image on page 0 succeeds');
+    Assert(not PlaceEd.DrawImage(99, TinyPng, 0, 0, 10, 10, 0.0),
+      'draw_image on a missing page -> false');
+    DrawImgBytes := PlaceEd.ToBytes;
+  finally
+    PlaceEd.Free;
+  end;
+  Assert((Length(DrawImgBytes) > Length(PlainBytes)) and
+         StartsWith(DrawImgBytes, TEncoding.ASCII.GetBytes('%PDF')),
+    'draw_image output is a valid, larger PDF');
+  Writeln(Format('draw_image ok (%d bytes)', [Length(DrawImgBytes)]));
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

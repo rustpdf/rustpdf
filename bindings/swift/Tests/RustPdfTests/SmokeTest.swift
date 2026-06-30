@@ -386,6 +386,18 @@ final class SmokeTest: XCTestCase {
         // substring, never an empty one.
         XCTAssertTrue(try Pdf.extractText(drawn).contains("STAMPED"),
                       "placed text should be extractable")
+
+        // 21. Draw an image onto an existing page (issue #50).
+        do {
+            let ed = try EditableDoc(loading: pdfa)
+            XCTAssertTrue(ed.drawImage(0, image: Self.tinyPNG, x: 72, y: 600,
+                                       width: 64, height: 64), "draw_image page existed")
+            XCTAssertFalse(ed.drawImage(99, image: Self.tinyPNG, x: 0, y: 0,
+                                        width: 1, height: 1), "draw_image missing page")
+            let stamped = try ed.toBytes()
+            XCTAssertTrue(stamped.count > 8 && stamped[0] == 0x25 && stamped[1] == 0x50,
+                          "serialized PDF with drawn image")
+        }
     }
 
     /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).

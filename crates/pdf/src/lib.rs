@@ -16,6 +16,7 @@ mod flow;
 mod font;
 mod form;
 mod geometry;
+mod helvetica;
 mod image;
 mod inspect;
 mod outline;
@@ -113,7 +114,7 @@ pub(crate) fn require(feature: Feature) -> Result<(), LicenseError> {
 
 pub use edit::{ConvertError, EditableDoc, WatermarkOptions};
 pub use encrypt::{Encryption, Permissions};
-pub use extract::{extract_text, page_text};
+pub use extract::{extract_page_text, extract_text, page_text};
 pub use extract_image::{extract_images, ExtractedImage, ImageFormat};
 pub use find::{find_text, FindOptions, TextHit};
 pub use flow::{Report, Table};

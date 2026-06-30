@@ -438,4 +438,20 @@ let plain;
   console.log(`fillRect + placeText ok (${out.length} bytes)`);
 }
 
+// 21. Stamp an image onto an existing page (issue #50).
+{
+  // A minimal 1x1 PNG.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  const ed = rp.EditableDoc.load(pdfa);
+  assert.strictEqual(ed.drawImage(0, png, 72, 600, 100, 100, 0.0), true, 'drawImage page 0');
+  // missing page returns false.
+  assert.strictEqual(ed.drawImage(99, png, 0, 0, 10, 10), false, 'drawImage missing page');
+  const out = ed.toBytes();
+  ed.close();
+  assert.ok(out.length > 0, 'drawImage serializes');
+  console.log(`drawImage ok (${out.length} bytes)`);
+}
+
 console.log('OK: full Node binding surface exercised');

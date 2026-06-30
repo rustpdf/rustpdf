@@ -561,7 +561,8 @@ ed.close</code></pre></div>
       <p>Place a filled rectangle or a line of text at exact coordinates on a page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>fill_rect(page_index, x, y, width, height, color = [1.0, 1.0, 1.0], opacity = 1.0) → Boolean</code></div>
       <div class="api"><code>place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0) → Boolean</code></div>
-      <p><code>color</code> is RGB (each component 0..1). <code>place_text</code> draws the baseline at (<code>x</code>, <code>y</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor (match the page rotation to follow a rotated page). The common use is masking a placeholder with an opaque white rectangle, then stamping the real value over it.</p>
+      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0) → Boolean</code></div>
+      <p><code>color</code> is RGB (each component 0..1). <code>place_text</code> draws the baseline at (<code>x</code>, <code>y</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor (match the page rotation to follow a rotated page). <code>draw_image</code> takes raw JPEG/PNG image bytes (a binary <code>String</code>) and places the image with its lower-left corner at (<code>x</code>, <code>y</code>) scaled to <code>width × height</code> points. The common use is masking a placeholder with an opaque white rectangle, then stamping the real value over it.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("form.pdf")
 geom = RustPdf.measure_page(File.binread("form.pdf"), 0)
 puts "page is #{geom.width}×#{geom.height} pt"
@@ -569,6 +570,7 @@ puts "page is #{geom.width}×#{geom.height} pt"
 # white-out a placeholder, then write the real value on top
 ed.fill_rect(0, 100, 100, 200, 40)                       # opaque white mask
 ed.place_text(0, 110, 112, "APPROVED", 14, [0, 0, 1])    # blue 14 pt text
+ed.draw_image(0, File.binread("logo.png"), 110, 160, 120, 48)  # stamp a logo
 ed.save("filled.pdf")
 ed.close</code></pre></div>
 

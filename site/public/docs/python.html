@@ -568,7 +568,8 @@ with EditableDoc.load_file("form.pdf") as ed:
       <p>Paint a filled rectangle or a line of text at exact coordinates on an existing page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). The classic use is masking a placeholder with an opaque white box, then writing the real value over it.</p>
       <div class="api"><code>fill_rect(page_index, x, y, width, height, color=(1,1,1), opacity=1.0) → bool</code></div>
       <div class="api"><code>place_text(page_index, x, y, text, size=12.0, color=(0,0,0), rotation_deg=0.0) → bool</code></div>
-      <p><code>color</code> is an RGB tuple (default opaque white for <code>fill_rect</code>, black for <code>place_text</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor. Each returns whether the page existed.</p>
+      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg=0.0) → bool</code></div>
+      <p><code>color</code> is an RGB tuple (default opaque white for <code>fill_rect</code>, black for <code>place_text</code>); <code>rotation_deg</code> rotates the text/image counter-clockwise about its anchor. <code>draw_image</code> takes raw JPEG/PNG <code>bytes</code> and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. Each returns whether the page existed.</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>import rustpdf
 from rustpdf import EditableDoc
 
@@ -577,6 +578,8 @@ with EditableDoc.load_file("invoice.pdf") as ed:
     # mask a placeholder with an opaque white box, then write the value over it
     ed.fill_rect(0, 400, g.height - 80, 120, 16, color=(1, 1, 1), opacity=1.0)
     ed.place_text(0, 400, g.height - 76, "R$ 1.234,56", size=12.0)
+    # stamp a logo onto the page
+    ed.draw_image(0, open("logo.png", "rb").read(), 72, g.height - 90, 120, 48)
     ed.save("invoice-filled.pdf")</code></pre></div>
 
       <!-- ED REDACT -->

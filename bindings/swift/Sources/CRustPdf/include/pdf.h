@@ -826,6 +826,28 @@ int pdf_editable_place_text(PdfEditable *ed,
                                   int *out_found);
 
 /**
+ * Draw an image (from in-memory JPEG/PNG bytes `data`/`len`, dispatched on the
+ * file signature) on page `index` (0-based) with its lower-left corner at
+ * `(x, y)`, scaled to `width`×`height` points, rotated `rotation_deg` degrees
+ * counter-clockwise about that corner. Coordinates are in the page's visible
+ * space (origin lower-left, y up), honoring `/Rotate`. `out_found` receives
+ * `1` if the page existed, else `0`.
+ *
+ * # Safety
+ * `ed` valid; `data` points to `len` readable bytes; `out_found` writable or NULL.
+ */
+int pdf_editable_draw_image(PdfEditable *ed,
+                                  int index,
+                                  const uint8_t *data,
+                                  uintptr_t len,
+                                  double x,
+                                  double y,
+                                  double width,
+                                  double height,
+                                  double rotation_deg,
+                                  int *out_found);
+
+/**
  * Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
  * `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
  *

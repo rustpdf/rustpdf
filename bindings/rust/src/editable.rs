@@ -389,6 +389,43 @@ impl EditableDoc {
         Ok(found != 0)
     }
 
+    /// Stamp an image onto page `page_index` (0-based) with its lower-left
+    /// corner at `(x, y)`, scaled to `width`×`height` points. `image` is the
+    /// raw PNG or JPEG file bytes (the format is detected from the signature).
+    /// `rotation_deg` rotates the image counter-clockwise about the `(x, y)`
+    /// corner. Coordinates are in the page's **visible** space (origin
+    /// lower-left, y up), regardless of the page `/Rotate`. Returns whether the
+    /// page existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_image(
+        &mut self,
+        page_index: usize,
+        image: &[u8],
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        rotation_deg: f64,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_draw_image)(
+                self.handle,
+                page_index as i32,
+                image.as_ptr(),
+                image.len(),
+                x,
+                y,
+                width,
+                height,
+                rotation_deg,
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
     /// Convert the document to PDF/A on save. Only B-levels (A1b/A2b/A3b) are
     /// valid for conversion.
     pub fn convert_to_pdfa(&mut self, level: PdfaLevel) -> Result<&mut Self> {

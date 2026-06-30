@@ -295,6 +295,23 @@ public final class EditableDoc {
         return found != 0
     }
 
+    /// Draw an image (PNG or JPEG `image` bytes, dispatched on the file
+    /// signature) on page `index` (0-based) with its lower-left corner at
+    /// `(x, y)`, scaled to `width`×`height` points and rotated `rotationDeg`
+    /// degrees counter-clockwise about that corner. Coordinates are in the
+    /// page's **visible** space (origin lower-left, y up), honoring the page's
+    /// `/Rotate`. Returns whether the page existed.
+    @discardableResult
+    public func drawImage(_ index: Int, image: [UInt8], x: Double, y: Double,
+                          width: Double, height: Double, rotationDeg: Double = 0.0) -> Bool {
+        var found: Int32 = 0
+        withBytes(image) { ptr, len in
+            try? check(Native.shared.pdf_editable_draw_image(
+                handle, Int32(index), ptr, len, x, y, width, height, rotationDeg, &found))
+        }
+        return found != 0
+    }
+
     /// Convert the loaded document to PDF/A at `level` (B-levels only: A-1b,
     /// A-2b, A-3b). Requires a license.
     @discardableResult

@@ -336,4 +336,12 @@ drawn = draw_ed.to_bytes
 check(RustPdf.extract_text(drawn).include?("STAMPED"), "placed text is extractable")
 puts "fill_rect + place_text ok (#{drawn.bytesize} bytes)"
 
+# 23. Draw an image onto an existing page (issue #50).
+img_ed = RustPdf::EditableDoc.load(pdfa)
+check(img_ed.draw_image(0, tiny_png, 72, 500, 64, 64), "draw_image page existed")
+check(!img_ed.draw_image(99, tiny_png, 0, 0, 1, 1), "draw_image missing page")
+stamped = img_ed.to_bytes
+check(stamped.bytesize > 8 && stamped.byteslice(0, 5) == "%PDF-", "draw_image serialized a PDF")
+puts "draw_image ok (#{stamped.bytesize} bytes)"
+
 puts "OK: full Ruby binding surface exercised"

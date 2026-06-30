@@ -5,7 +5,20 @@
 use std::ffi::{c_char, c_double, c_int, c_uchar};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use pdf::{ConvertError, EditableDoc, Encryption, Image, PdfaLevel, Permissions, WatermarkOptions};
+use pdf::{
+    Align, ConvertError, EditableDoc, Encryption, Image, PdfaLevel, Permissions, WatermarkOptions,
+};
+
+/// Map a C-ABI alignment int to [`Align`] (0=Left, 1=Right, 2=Center, 3=Justify;
+/// anything else = Left).
+fn align_from_int(a: c_int) -> Align {
+    match a {
+        1 => Align::Right,
+        2 => Align::Center,
+        3 => Align::Justify,
+        _ => Align::Left,
+    }
+}
 
 use crate::{bytes, clear_last_error, cstr, emit_buffer, guard, set_last_error, PdfStatus};
 
@@ -604,6 +617,159 @@ pub unsafe extern "C" fn pdf_editable_place_text(
     })
 }
 
+/// Like [`pdf_editable_place_text`] but with horizontal `align` (0=Left, 1=Right,
+/// 2=Center, 3=Justify) relative to the anchor `(x, y)`. `out_found` receives `1`
+/// if the page existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_text_aligned(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    rotation_deg: f64,
+    align: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_text_aligned", |d| {
+        let text = match unsafe { cstr(text, "place_text_aligned:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.place_text_aligned(
+            index.max(0) as usize,
+            x,
+            y,
+            &text,
+            size,
+            (r, g, b),
+            rotation_deg,
+            align_from_int(align),
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Draw `text` over an opaque background box `[x, y, x+width, y+height]`: fills
+/// the box in `bg_*` color, then writes the text (standard Helvetica, `size`
+/// points, `text_*` color) horizontally aligned per `align` (0=Left, 1=Right,
+/// 2=Center, 3=Justify) and vertically centered. Coordinates are in the page's
+/// visible space (origin lower-left, y up). `out_found` receives `1` if the page
+/// existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_masked_text(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    text: *const c_char,
+    size: f64,
+    text_r: f64,
+    text_g: f64,
+    text_b: f64,
+    bg_r: f64,
+    bg_g: f64,
+    bg_b: f64,
+    align: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_masked_text", |d| {
+        let text = match unsafe { cstr(text, "masked_text:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.masked_text(
+            index.max(0) as usize,
+            x,
+            y,
+            width,
+            height,
+            &text,
+            size,
+            (text_r, text_g, text_b),
+            (bg_r, bg_g, bg_b),
+            align_from_int(align),
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Draw an image (from in-memory JPEG/PNG bytes `data`/`len`, dispatched on the
+/// file signature) on page `index` (0-based) with its lower-left corner at
+/// `(x, y)`, scaled to `width`×`height` points, rotated `rotation_deg` degrees
+/// counter-clockwise about that corner. Coordinates are in the page's visible
+/// space (origin lower-left, y up), honoring `/Rotate`. `out_found` receives
+/// `1` if the page existed, else `0`.
+///
+/// # Safety
+/// `ed` valid; `data` points to `len` readable bytes; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_draw_image(
+    ed: *mut PdfEditable,
+    index: c_int,
+    data: *const u8,
+    len: usize,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    rotation_deg: f64,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_draw_image", |d| {
+        let buf = unsafe { bytes(data, len) };
+        let img = if buf.starts_with(&[0xFF, 0xD8]) {
+            Image::from_jpeg(buf.to_vec())
+        } else {
+            Image::from_png(buf)
+        };
+        let img = match img {
+            Ok(i) => i,
+            Err(e) => {
+                set_last_error(format!("draw_image load failed: {e}"));
+                return PdfStatus::Image;
+            }
+        };
+        let found = d.draw_image(
+            index.max(0) as usize,
+            &img,
+            x,
+            y,
+            width,
+            height,
+            rotation_deg,
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
 /// Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
 /// `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
 ///
@@ -887,6 +1053,35 @@ pub unsafe extern "C" fn pdf_extract_text(
             PdfStatus::Parse
         }
     })
+}
+
+/// Extract the text of a single page (0-based `page_index`) into a UTF-8 buffer
+/// (`out_ptr`/`out_len`). Returns `PdfStatus::InvalidArgument` if the page is
+/// out of range (no buffer is written).
+///
+/// # Safety
+/// `data`/`len` readable; `out_ptr`/`out_len` writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_extract_page_text(
+    data: *const u8,
+    len: usize,
+    page_index: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(
+        || match pdf::extract_page_text(unsafe { bytes(data, len) }, page_index) {
+            Ok(Some(text)) => unsafe { emit_buffer(text.into_bytes(), out_ptr, out_len) },
+            Ok(None) => {
+                set_last_error(format!("extract_page_text: page {page_index} out of range"));
+                PdfStatus::InvalidArgument
+            }
+            Err(e) => {
+                set_last_error(format!("extract_page_text failed: {e}"));
+                PdfStatus::Parse
+            }
+        },
+    )
 }
 
 /// Find every occurrence of `query` in `data`/`len` and write a JSON array of

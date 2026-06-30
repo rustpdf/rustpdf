@@ -340,11 +340,42 @@ using (var ed = EditableDoc.Load(pdfa))
     Assert(ed.FillRect(0, 100, 100, 200, 40), "fill_rect page existed");
     Assert(ed.PlaceText(0, 110, 112, "STAMPED", size: 14, color: (0, 0, 1), rotationDeg: 0),
         "place_text page existed");
+    // Stamp a real PNG (reuse the page-0 render from step 1) onto the page.
+    Assert(ed.DrawImage(0, png, 50, 400, 120, 90, rotationDeg: 0), "draw_image page existed");
+    Assert(!ed.DrawImage(99, png, 0, 0, 1, 1), "draw_image missing page");
     Assert(!ed.FillRect(99, 0, 0, 1, 1), "fill_rect missing page");
+    // ForSign gaps #4 + #5: aligned text + masked (boxed, vertically centered) text.
+    Assert(ed.PlaceText(0, 300, 150, "CENTERED", size: 12, align: Align.Center),
+        "place_text aligned page existed");
+    Assert(ed.MaskedText(0, 100, 200, 200, 24, "R$ 1.234,56", size: 12,
+        textColor: (0, 0, 0), bgColor: (1, 1, 1), align: Align.Center), "masked_text page existed");
     drawn = ed.ToBytes();
 }
 Assert(Pdf.ExtractText(drawn).Contains("STAMPED"), "placed text is extractable");
-Console.WriteLine("fill_rect + place_text ok");
+Assert(Pdf.ExtractText(drawn).Contains("CENTERED"), "aligned text is extractable");
+Assert(Pdf.ExtractText(drawn).Contains("R$ 1.234,56"), "masked text is extractable");
+Console.WriteLine("fill_rect + place_text(+align) + masked_text + draw_image ok");
+
+// 19a. ForSign gap #3: per-page text extraction (no one-page-doc workaround).
+Assert(Pdf.ExtractPageText(drawn, 0).Contains("STAMPED"), "page-0 text extracted");
+Console.WriteLine("extract_page_text ok");
+
+// 19b. ForSign gap #2: VISIBLE cryptographic signature appearance.
+{
+    var hsm2 = new HsmSigner(key);
+    var vis = Pdf.SignWith(plain, cert, hsm2.SignHash, options: new SigningOptions
+    {
+        Pades = true,
+        Reason = "Assinado",
+        Visible = true,
+        VisiblePage = 0,
+        VisibleRect = new[] { 72.0, 72.0, 320.0, 144.0 },
+        VisibleText = "Assinado por ForSign\nTeste Forsign",
+    });
+    Assert(Pdf.VerifySignatures(vis)[0].IsValid, "visible signature verifies");
+    Assert(vis.Length > plain.Length, "visible signature appended an appearance");
+    Console.WriteLine("visible signature ok");
+}
 
 // 20. Async remote-sign overload (issue #45 P2). Reuses the same HSM-style
 // signer, wrapped in a Task to exercise the async path.

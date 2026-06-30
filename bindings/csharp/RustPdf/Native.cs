@@ -261,6 +261,10 @@ internal static partial class Native
     [LibraryImport(Lib)]
     internal static partial int pdf_extract_text(byte[] data, nuint len, out IntPtr outPtr, out nuint outLen);
 
+    [LibraryImport(Lib)]
+    internal static partial int pdf_extract_page_text(
+        byte[] data, nuint len, nuint pageIndex, out IntPtr outPtr, out nuint outLen);
+
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_find_text_json(
         byte[] data, nuint len, string query, int caseSensitive, out IntPtr outPtr, out nuint outLen);
@@ -359,6 +363,24 @@ internal static partial class Native
     internal static partial int pdf_editable_place_text(
         IntPtr ed, int index, double x, double y, string text, double size,
         double r, double g, double b, double rotationDeg, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_place_text_aligned(
+        IntPtr ed, int index, double x, double y, string text, double size,
+        double r, double g, double b, double rotationDeg, int align, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_masked_text(
+        IntPtr ed, int index, double x, double y, double width, double height,
+        string text, double size,
+        double textR, double textG, double textB,
+        double bgR, double bgG, double bgB, int align, out int outFound);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_draw_image(
+        IntPtr ed, int index, byte[] data, nuint len,
+        double x, double y, double width, double height,
+        double rotationDeg, out int outFound);
 
     // ---- normalization (issue #41 P1) ---------------------------------------
 

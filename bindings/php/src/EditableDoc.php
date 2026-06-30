@@ -334,6 +334,42 @@ final class EditableDoc
         return $found->cdata !== 0;
     }
 
+    /**
+     * Draw an image (PNG or JPEG bytes) onto page `$pageIndex` (0-based) with
+     * its lower-left corner at `($x, $y)`, scaled to `$width`x`$height` points.
+     * Coordinates are in the page's VISIBLE space (origin lower-left, y up),
+     * regardless of any `/Rotate`. `$rotationDeg` rotates the image
+     * counter-clockwise about the corner `($x, $y)`. `$image` is a binary
+     * string (the core dispatches on the signature).
+     *
+     * @return bool whether the page existed
+     */
+    public function drawImage(
+        int $pageIndex,
+        string $image,
+        float $x,
+        float $y,
+        float $width,
+        float $height,
+        float $rotationDeg = 0.0,
+    ): bool {
+        [$buf, $len] = Ffi::bytes($image);
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_draw_image(
+            $this->h(),
+            $pageIndex,
+            $buf,
+            $len,
+            $x,
+            $y,
+            $width,
+            $height,
+            $rotationDeg,
+            \FFI::addr($found),
+        ));
+        return $found->cdata !== 0;
+    }
+
     /** Convert the document to PDF/A (only B-levels A1b/A2b/A3b; requires a license). */
     public function convertToPdfa(PdfaLevel $level = PdfaLevel::A2b): self
     {

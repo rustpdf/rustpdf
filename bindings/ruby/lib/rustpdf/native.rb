@@ -129,6 +129,9 @@ module RustPdf
       "pdf_inspect_json"             => [[VP, SZ, VP, VP], I],
       "pdf_editable_fill_rect"       => [[VP, I, D, D, D, D, D, D, D, D, VP], I],
       "pdf_editable_place_text"      => [[VP, I, D, D, VP, D, D, D, D, D, VP], I],
+      # Issue #50: stamp a PNG/JPEG image onto an existing page. The image bytes
+      # cross as the (uint8_t* data, uintptr_t len) pair, like pdf_editable_load.
+      "pdf_editable_draw_image"      => [[VP, I, VP, SZ, D, D, D, D, D, VP], I],
     }.freeze
 
     def lib

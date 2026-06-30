@@ -608,7 +608,8 @@ end;</code></pre></div>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>RotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>function FillRect(PageIndex: Integer; X, Y, Width, Height, R, G, B, Opacity: Double): Boolean;</code></div>
       <div class="api"><code>function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String; Size, R, G, B, RotationDeg: Double): Boolean;</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="api"><code>function DrawImage(PageIndex: Integer; const Image: TBytes; X, Y, Width, Height, RotationDeg: Double): Boolean;</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(X, Y)</code> scaled to <code>Width × Height</code> points.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Data: TBytes;
     G: TPageGeometry;
     Ed: TPdfEditable;
@@ -619,6 +620,7 @@ begin
   try
     Ed.FillRect(0, 400, G.Height - 60, 120, 18, 1, 1, 1, 1);   // mask: opaque white
     Ed.PlaceText(0, 404, G.Height - 56, 'PAID', 12, 0, 0.5, 0, 0);
+    Ed.DrawImage(0, TFile.ReadAllBytes('logo.png'), 404, G.Height - 120, 120, 48, 0);
     Ed.Save('stamped.pdf');
   finally
     Ed.Free;

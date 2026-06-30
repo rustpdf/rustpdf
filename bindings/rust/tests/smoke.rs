@@ -384,6 +384,16 @@ fn full_surface() {
     assert!(!paint
         .place_text(99, 0.0, 0.0, "x", 12.0, (0.0, 0.0, 0.0), 0.0)
         .unwrap());
+    // --- draw_image onto an existing page (issue #50) ---
+    assert!(
+        paint
+            .draw_image(0, png, 72.0, 200.0, 64.0, 64.0, 0.0)
+            .unwrap(),
+        "draw_image should report the page existed"
+    );
+    assert!(!paint
+        .draw_image(99, png, 0.0, 0.0, 10.0, 10.0, 0.0)
+        .unwrap());
     let painted = paint.to_bytes().expect("paint to bytes");
     let painted_text = rustpdf::extract_text(&painted).expect("extract painted text");
     assert!(

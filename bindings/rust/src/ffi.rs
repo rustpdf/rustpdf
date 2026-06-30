@@ -334,6 +334,18 @@ ffi_api! {
         c_double,
         *mut c_int,
     ) -> c_int;
+    fn pdf_editable_draw_image(
+        *mut RawEditable,
+        c_int,
+        *const u8,
+        usize,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        *mut c_int,
+    ) -> c_int;
 
     // --- forms fill / flatten / watermark / redact / PDF-A convert (Tier 1 / 2) ---
     fn pdf_editable_set_checkbox(*mut RawEditable, *const c_char, c_int, *mut c_int) -> c_int;

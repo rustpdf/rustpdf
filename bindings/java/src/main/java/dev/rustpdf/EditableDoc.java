@@ -241,6 +241,30 @@ public final class EditableDoc implements AutoCloseable {
     }
 
     /**
+     * Stamp an image (PNG or JPEG bytes — the format is detected from the data
+     * signature) onto page {@code pageIndex} (0-based), with the image's lower-left
+     * corner at {@code (x, y)}, scaled to {@code width}×{@code height} points.
+     * Coordinates are in the page's visible space (origin lower-left, y up),
+     * regardless of any page {@code /Rotate}. Returns whether the page existed.
+     */
+    public boolean drawImage(int pageIndex, byte[] image, double x, double y,
+                             double width, double height, double rotationDeg) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_draw_image(
+                h(), pageIndex, image, image.length, x, y, width, height, rotationDeg, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Stamp an image onto page {@code pageIndex} with no rotation — see
+     * {@link #drawImage(int, byte[], double, double, double, double, double)}.
+     */
+    public boolean drawImage(int pageIndex, byte[] image, double x, double y,
+                             double width, double height) {
+        return drawImage(pageIndex, image, x, y, width, height, 0.0);
+    }
+
+    /**
      * Set the output PDF version (downgrade/normalize): {@code version} is
      * {@code 0}=1.4, {@code 1}=1.5, {@code 2}=1.7, {@code 3}=2.0 (the same mapping
      * as {@link Document#setVersion(int)}).

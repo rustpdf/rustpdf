@@ -621,9 +621,10 @@ _ = ed.Save("stamped.pdf")</code></pre></div>
 
       <!-- ED DRAW -->
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
-      <p>Place a filled rectangle or a line of text at exact coordinates on one page — handy for masking a value and stamping a new one over it. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. <code>FillRect</code> takes RGB (each <code>0.0..1.0</code>) and opacity (<code>0.0..1.0</code>); pass opacity <code>1</code> for an opaque white-out box. <code>PlaceText</code> draws in standard Helvetica (so keep text to WinAnsi / Latin-1), and <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. Both return whether the target page existed.</p>
+      <p>Place a filled rectangle or a line of text at exact coordinates on one page — handy for masking a value and stamping a new one over it. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. <code>FillRect</code> takes RGB (each <code>0.0..1.0</code>) and opacity (<code>0.0..1.0</code>); pass opacity <code>1</code> for an opaque white-out box. <code>PlaceText</code> draws in standard Helvetica (so keep text to WinAnsi / Latin-1), and <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. All three return whether the target page existed.</p>
       <div class="api"><code>FillRect(pageIndex int, x, y, width, height, r, g, b, opacity float64) bool</code></div>
       <div class="api"><code>PlaceText(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64) bool</code></div>
+      <div class="api"><code>DrawImage(pageIndex int, image []byte, x, y, width, height, rotationDeg float64) bool</code></div>
       <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("invoice.pdf")
 ed, _ := rustpdf.Load(data)
 defer ed.Close()
@@ -632,6 +633,8 @@ fmt.Printf("page is %.0fx%.0f pt\n", g.Width, g.Height)
 // mask the old total with an opaque white box, then stamp the new value
 ed.FillRect(0, 430, 690, 110, 18, 1, 1, 1, 1)
 ed.PlaceText(0, 435, 693, "PAID IN FULL", 12, 0, 0.5, 0, 0)
+logo, _ := os.ReadFile("logo.png")
+ed.DrawImage(0, logo, 435, 720, 120, 48, 0) // stamp a logo, lower-left at (435, 720)
 _ = ed.Save("stamped.pdf")</code></pre></div>
 
       <!-- ED REDACT -->

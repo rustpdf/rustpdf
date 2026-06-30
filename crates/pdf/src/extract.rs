@@ -26,6 +26,20 @@ pub fn extract_text(bytes: impl AsRef<[u8]>) -> Result<String, parser::PdfError>
     Ok(out)
 }
 
+/// Extract the text of a **single page** by 0-based `index`, without building
+/// an intermediate one-page document. Returns `None` if `index` is out of
+/// range. This is the fast path for per-page extraction (RAG, previews).
+pub fn extract_page_text(
+    bytes: impl AsRef<[u8]>,
+    index: usize,
+) -> Result<Option<String>, parser::PdfError> {
+    let reader = PdfReader::parse(bytes)?;
+    Ok(reader
+        .pages()
+        .get(index)
+        .map(|page| page_text(&reader, page)))
+}
+
 /// Extract the text of a single page dictionary.
 pub fn page_text(reader: &PdfReader, page: &Dict) -> String {
     let mut out = String::new();
@@ -160,8 +174,13 @@ fn collapse_array(stack: &mut Vec<Operand>) {
 /// Map one shown string to Unicode using the current font.
 fn show(bytes: &[u8], font: Option<&FontInfo>, out: &mut String) {
     let Some(font) = font else {
-        // No font selected: best-effort Latin-1.
-        out.extend(bytes.iter().map(|&b| b as char));
+        // No font selected: best-effort WinAnsi (covers Latin-1 + the CP1252
+        // 0x80–0x9F typographic block, so an em dash isn't read as a control).
+        out.extend(
+            bytes
+                .iter()
+                .map(|&b| crate::helvetica::winansi_to_unicode(b)),
+        );
         return;
     };
     let width = if font.two_byte { 2 } else { 1 };
@@ -170,7 +189,7 @@ fn show(bytes: &[u8], font: Option<&FontInfo>, out: &mut String) {
         if let Some(s) = font.to_unicode.get(&code) {
             out.push_str(s);
         } else if !font.two_byte {
-            out.push(code as u8 as char);
+            out.push(crate::helvetica::winansi_to_unicode(code as u8));
         }
     }
 }

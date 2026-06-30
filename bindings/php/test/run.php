@@ -393,4 +393,12 @@ check(strlen($drawn) > 0, 'drawn bytes produced');
 check(str_contains(Pdf::extractText($drawn), 'PLACEDHERE'), 'placed text is extractable');
 echo "fillRect + placeText ok (placed text round-tripped)\n";
 
+// 25. Issue #50: draw an image onto an existing page.
+$imgEd = EditableDoc::load($pdfa);
+check($imgEd->drawImage(0, $png, 50.0, 50.0, 120.0, 120.0, 0.0), 'drawImage page 0 existed');
+check(!$imgEd->drawImage(99, $png, 0.0, 0.0, 10.0, 10.0), 'drawImage missing page returns false');
+$imgDrawn = $imgEd->toBytes();
+check(strlen($imgDrawn) > 0, 'image-drawn bytes produced');
+echo "drawImage ok (image stamped onto page)\n";
+
 echo "OK: full PHP binding surface exercised\n";

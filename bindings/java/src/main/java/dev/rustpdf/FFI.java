@@ -203,6 +203,9 @@ final class FFI {
         int pdf_editable_place_text(Pointer ed, int index, double x, double y, String text,
                                     double size, double r, double g, double b,
                                     double rotationDeg, IntByReference outFound);
+        int pdf_editable_draw_image(Pointer ed, int index, byte[] data, long len,
+                                    double x, double y, double width, double height,
+                                    double rotationDeg, IntByReference outFound);
 
         // ---- Normalization — issue #41 P1 (EditableDoc) ---------------------
         int pdf_editable_set_version(Pointer ed, int version);

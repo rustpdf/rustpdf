@@ -341,6 +341,14 @@ type
       page does not exist. Issue #45 P1. }
     function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String;
                        Size, R, G, B, RotationDeg: Double): Boolean;
+    { Draw an image (PNG or JPEG bytes; the core dispatches on the signature) on
+      page PageIndex (0-based), the image's lower-left corner at (X, Y), scaled to
+      Width x Height points. Coordinates are in the page's VISIBLE space (origin
+      lower-left, y up), regardless of /Rotate; RotationDeg rotates the image
+      counter-clockwise about the (X, Y) corner. Returns False if the page does
+      not exist. Issue #50. }
+    function DrawImage(PageIndex: Integer; const Image: TBytes;
+                       X, Y, Width, Height, RotationDeg: Double): Boolean;
     function ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable;
     { Set the PDF version header (0=1.4, 1=1.5, 2=1.7, 3=2.0). }
     function SetVersion(V: Integer): TPdfEditable;
@@ -605,6 +613,7 @@ type
   Tpdf_inspect_json         = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_editable_fill_rect   = function(ed: Pointer; index: Integer; x, y, width, height, r, g, b, opacity: Double; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_place_text  = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_draw_image  = function(ed: Pointer; index: Integer; data: PByte; len: NativeUInt; x, y, width, height, rotation_deg: Double; out out_found: Integer): Integer; cdecl;
 
 { ---- deferred / external signing (issue #41) ---- }
 
@@ -755,6 +764,7 @@ var
   Fpdf_inspect_json: Tpdf_inspect_json;
   Fpdf_editable_fill_rect: Tpdf_editable_fill_rect;
   Fpdf_editable_place_text: Tpdf_editable_place_text;
+  Fpdf_editable_draw_image: Tpdf_editable_draw_image;
   Fpdf_sign_begin: Tpdf_sign_begin;
   Fpdf_sign_complete: Tpdf_sign_complete;
   Fpdf_sign_with: Tpdf_sign_with;
@@ -954,6 +964,7 @@ begin
   Fpdf_inspect_json := Tpdf_inspect_json(Bind('pdf_inspect_json'));
   Fpdf_editable_fill_rect := Tpdf_editable_fill_rect(Bind('pdf_editable_fill_rect'));
   Fpdf_editable_place_text := Tpdf_editable_place_text(Bind('pdf_editable_place_text'));
+  Fpdf_editable_draw_image := Tpdf_editable_draw_image(Bind('pdf_editable_draw_image'));
   Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
   Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
   Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
@@ -2026,6 +2037,17 @@ begin
   found := 0;
   Check(Fpdf_editable_place_text(H, PageIndex, X, Y, PAnsiChar(Text), Size,
         R, G, B, RotationDeg, found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.DrawImage(PageIndex: Integer; const Image: TBytes;
+  X, Y, Width, Height, RotationDeg: Double): Boolean;
+var
+  found: Integer;
+begin
+  found := 0;
+  Check(Fpdf_editable_draw_image(H, PageIndex, BytePtr(Image), Length(Image),
+        X, Y, Width, Height, RotationDeg, found));
   Result := found <> 0;
 end;
 

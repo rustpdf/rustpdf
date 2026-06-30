@@ -276,6 +276,16 @@ public static class Pdf
         return Encoding.UTF8.GetString(bytes);
     }
 
+    /// <summary>Extract the text of a single page (0-based
+    /// <paramref name="pageIndex"/>), without building an intermediate one-page
+    /// document. Throws <see cref="PdfException"/> if the page is out of range.</summary>
+    public static string ExtractPageText(byte[] pdf, int pageIndex)
+    {
+        var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_extract_page_text(pdf, (nuint)pdf.Length, (nuint)pageIndex, out p, out n));
+        return Encoding.UTF8.GetString(bytes);
+    }
+
     /// <summary>Find every occurrence of <paramref name="query"/> in
     /// <paramref name="pdf"/>, returning each match's positional bounding box
     /// (PDF points, origin lower-left). An empty list means no match.</summary>

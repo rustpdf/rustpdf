@@ -86,6 +86,8 @@ typealias HFillRectFn   = (OpaquePointer?, Int32, Double, Double, Double, Double
                            Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
 typealias HPlaceTextFn  = (OpaquePointer?, Int32, Double, Double, UnsafePointer<CChar>?, Double,
                            Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HDrawImageFn  = (OpaquePointer?, Int32, UnsafePointer<UInt8>?, UInt, Double, Double,
+                           Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
 typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
                              UnsafeMutablePointer<UInt>?) -> Int32
 typealias SignFn        = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
@@ -205,6 +207,7 @@ final class Native {
     let pdf_editable_redact: HRedactFn = CRustPdf.pdf_editable_redact
     let pdf_editable_fill_rect: HFillRectFn = CRustPdf.pdf_editable_fill_rect
     let pdf_editable_place_text: HPlaceTextFn = CRustPdf.pdf_editable_place_text
+    let pdf_editable_draw_image: HDrawImageFn = CRustPdf.pdf_editable_draw_image
     let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
     let pdf_editable_set_version: H1IFn = CRustPdf.pdf_editable_set_version
     let pdf_editable_strip_pdfa: HFn = CRustPdf.pdf_editable_strip_pdfa

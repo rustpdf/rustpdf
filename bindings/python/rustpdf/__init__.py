@@ -546,6 +546,12 @@ _ed_place_text = _bind(
     [_ED, c_int, c_double, c_double, c_char_p, c_double,
      c_double, c_double, c_double, c_double, POINTER(c_int)],
 )
+_ed_draw_image = _bind(
+    "pdf_editable_draw_image",
+    c_int,
+    [_ED, c_int, _U8, c_size_t, c_double, c_double, c_double, c_double,
+     c_double, POINTER(c_int)],
+)
 # Network TSA (AD-RT) — issue #41 P1
 _timestamp_begin = _bind(
     "pdf_timestamp_begin",
@@ -1068,6 +1074,20 @@ class EditableDoc:
         found = c_int(0)
         _check(_ed_place_text(self._ptr(), page_index, x, y, _enc(text), size,
                               r, g, b, rotation_deg, byref(found)))
+        return bool(found.value)
+
+    def draw_image(self, page_index: int, image: bytes, x: float, y: float,
+                   width: float, height: float, rotation_deg: float = 0.0) -> bool:
+        """Draw an ``image`` (JPEG/PNG bytes, dispatched on signature) on page
+        ``page_index`` (0-based) with its lower-left corner at ``(x, y)``, scaled
+        to ``width``×``height`` points and rotated ``rotation_deg`` degrees
+        counter-clockwise about that corner. Coordinates are in the page's
+        VISIBLE space (origin lower-left, y up) — the image lands where a viewer
+        sees it regardless of ``/Rotate``. Returns whether the page existed."""
+        ptr, n, _keep = _as_u8(bytes(image))
+        found = c_int(0)
+        _check(_ed_draw_image(self._ptr(), page_index, ptr, n, x, y, width,
+                              height, rotation_deg, byref(found)))
         return bool(found.value)
 
     # normalization (issue #41 P1)

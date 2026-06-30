@@ -223,6 +223,15 @@ export class EditableDoc {
    * viewed regardless of `/Rotate`. Returns `false` if the page does not exist.
    */
   placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number): boolean;
+  /**
+   * Stamp an image (`image` is PNG or JPEG bytes — the core dispatches on the
+   * signature) onto page `pageIndex` (0-based). The image's lower-left corner
+   * lands at `(x, y)` and is scaled to `width` x `height` points; `rotationDeg`
+   * rotates it counter-clockwise about that corner. Coordinates are in the page
+   * VISIBLE space (origin lower-left, y up); content lands where viewed
+   * regardless of `/Rotate`. Returns `false` if the page does not exist.
+   */
+  drawImage(pageIndex: number, image: Bytes, x: number, y: number, width: number, height: number, rotationDeg?: number): boolean;
   optimize(): this;
   compact(on?: boolean): this;
   encrypt(opts?: EncryptOptions): this;

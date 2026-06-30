@@ -241,6 +241,22 @@ func (e *EditableDoc) PlaceText(pageIndex int, x, y float64, text string, size, 
 	return found != 0
 }
 
+// DrawImage stamps an image (in-memory PNG or JPEG bytes, dispatched on the
+// file signature) onto page index (0-based) with its lower-left corner at
+// (x, y), scaled to width×height points, and returns whether the page existed.
+// rotationDeg rotates the image counter-clockwise about that corner.
+// Coordinates are in the page's visible space (origin lower-left, y up),
+// honoring the page's /Rotate.
+func (e *EditableDoc) DrawImage(index int, image []byte, x, y, width, height, rotationDeg float64) bool {
+	var found C.int
+	C.pdf_editable_draw_image(
+		e.h, C.int(index), uptr(image), C.uintptr_t(len(image)),
+		C.double(x), C.double(y), C.double(width), C.double(height),
+		C.double(rotationDeg), &found)
+	runtime.KeepAlive(image)
+	return found != 0
+}
+
 // WatermarkImageFile stamps an image (JPEG/PNG file at path) centered on every
 // page at width×height points, rotated rotationDeg degrees, at opacity.
 func (e *EditableDoc) WatermarkImageFile(path string, width, height, opacity, rotationDeg float64) error {

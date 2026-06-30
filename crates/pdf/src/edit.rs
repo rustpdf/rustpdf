@@ -13,7 +13,7 @@ use parser::PdfReader;
 use writer::{Document as WriterDoc, PdfVersion};
 
 use crate::encrypt::{self, EncryptConfig, Encryption, Permissions};
-use crate::BuildError;
+use crate::{Align, BuildError};
 
 /// An in-memory, editable PDF document.
 #[derive(Debug, Clone)]
@@ -968,6 +968,28 @@ impl EditableDoc {
         color: (f64, f64, f64),
         rotation_deg: f64,
     ) -> bool {
+        self.place_text_aligned(index, x, y, text, size, color, rotation_deg, Align::Left)
+    }
+
+    /// Like [`place_text`](EditableDoc::place_text) but with horizontal
+    /// **alignment** relative to the anchor `(x, y)`: `Align::Left` starts the
+    /// text at the anchor (the default), `Align::Center` centers it on the
+    /// anchor, and `Align::Right` ends it at the anchor. The text width is
+    /// measured with the standard Helvetica metrics. `Align::Justify` behaves
+    /// like `Left` (there is a single line to justify). Honors `rotation_deg`
+    /// (the shift is applied along the text's baseline direction).
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_aligned(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+    ) -> bool {
         let Some(&page) = self.page_order.get(index) else {
             return false;
         };
@@ -980,16 +1002,107 @@ impl EditableDoc {
         );
         let theta = rotation_deg.to_radians();
         let (ca, sa) = (theta.cos(), theta.sin());
-        // Tm rotates about the anchor: [cos sin -sin cos x y].
+        // Shift the start point along the baseline direction (ca, sa) so the run
+        // is left/center/right-aligned on the anchor.
+        let dx = match align {
+            Align::Left | Align::Justify => 0.0,
+            Align::Center => -crate::helvetica::text_width(text, size) / 2.0,
+            Align::Right => -crate::helvetica::text_width(text, size),
+        };
+        let (sx, sy) = (x + dx * ca, y + dx * sa);
+        // Tm rotates about the (shifted) start: [cos sin -sin cos sx sy].
         let content = format!(
             "q\n{upright}BT\n/HelvD {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n\
-             {ca:.5} {sa:.5} {nsa:.5} {ca:.5} {x:.2} {y:.2} Tm\n({txt}) Tj\nET\nQ\n",
+             {ca:.5} {sa:.5} {nsa:.5} {ca:.5} {sx:.2} {sy:.2} Tm\n({txt}) Tj\nET\nQ\n",
             upright = geom.upright_cm(),
             nsa = -sa,
             txt = escape_pdf_literal(text),
         );
         self.append_content(page, content.into_bytes());
         self.add_page_resource(page, "Font", "HelvD", helv);
+        true
+    }
+
+    /// Draw **text over a filled background box** in one call (issue #50 follow-up
+    /// #5): paint an opaque rectangle `[x, y, x+width, y+height]` in `bg_color`,
+    /// then write `text` (standard Helvetica, `size` points, `text_color`)
+    /// horizontally aligned per `align` and **vertically centered** within the
+    /// box. The classic use is masking a placeholder and stamping the real value
+    /// over it without hand-computing the baseline. Coordinates are in the page's
+    /// **visible** space (origin lower-left, y up). Returns `false` if `index` is
+    /// out of range.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+    ) -> bool {
+        if self.page_order.get(index).is_none() {
+            return false;
+        }
+        // Opaque background box first.
+        self.fill_rect(index, x, y, width, height, bg_color, 1.0);
+        // Vertically center the cap-height block; horizontal anchor per align,
+        // with a small inset on the left/right edges so glyphs don't touch.
+        let pad = (size * 0.15).min(width / 4.0);
+        let baseline_y = y + (height - size * crate::helvetica::CAP_HEIGHT / 1000.0) / 2.0;
+        let anchor_x = match align {
+            Align::Left | Align::Justify => x + pad,
+            Align::Center => x + width / 2.0,
+            Align::Right => x + width - pad,
+        };
+        self.place_text_aligned(
+            index, anchor_x, baseline_y, text, size, text_color, 0.0, align,
+        )
+    }
+
+    /// Draw an **image** on page `index` (0-based) with its lower-left corner at
+    /// `(x, y)`, scaled to `width`×`height` points, rotated `rotation_deg`
+    /// degrees counter-clockwise about that corner. `image` is decoded/encoded
+    /// like [`Document::add_image`](crate::Document::add_image) inputs.
+    ///
+    /// Coordinates are in the page's **visible** space (origin at the displayed
+    /// lower-left, y up), honoring the page's `/Rotate` so the image lands where
+    /// a viewer sees it. Each call inserts a fresh Image XObject under a unique
+    /// resource name, so repeated calls (even of the same image) never collide.
+    /// Returns `false` if `index` is out of range.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_image(
+        &mut self,
+        index: usize,
+        image: &images::Image,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        rotation_deg: f64,
+    ) -> bool {
+        let Some(&page) = self.page_order.get(index) else {
+            return false;
+        };
+        let img_num = self.insert_image(image);
+        let name = format!("Imd{img_num}");
+        let geom = self.page_geometry(page);
+        let theta = rotation_deg.to_radians();
+        let (ca, sa) = (theta.cos(), theta.sin());
+        // Rotate about the anchor (x, y), then scale the unit image square to
+        // width×height drawn up-right from that anchor.
+        let content = format!(
+            "q\n{upright}{ca:.5} {sa:.5} {nsa:.5} {ca:.5} {x:.2} {y:.2} cm\n\
+             {width:.2} 0 0 {height:.2} 0 0 cm\n/{name} Do\nQ\n",
+            upright = geom.upright_cm(),
+            nsa = -sa,
+        );
+        self.append_content(page, content.into_bytes());
+        self.add_page_resource(page, "XObject", &name, img_num);
         true
     }
 
@@ -1831,9 +1944,26 @@ impl EditableDoc {
             .with("Count", self.page_order.len() as i64);
         objects.insert(self.pages_root, Object::Dict(pages_dict));
 
-        // Fix each page's Parent and Type.
+        // Push inheritable attributes onto each leaf page, then fix Parent/Type.
+        // The rebuilt single-level /Pages root carries only Type/Kids/Count, so
+        // any inheritable attribute the original page tree held higher up is
+        // dropped here. A page that relied on inheritance — e.g. PyFPDF puts
+        // /MediaBox only on /Pages, never on the leaf — would otherwise end up
+        // with no resolvable /MediaBox, which renders fine in lenient viewers
+        // (they default to A4) but makes our rasterizer fail with "no usable
+        // MediaBox". Resolve via the ORIGINAL parent chain (`self.objects`,
+        // still intact) *before* overwriting /Parent, so each page becomes
+        // self-contained regardless of the source tree's depth.
+        const INHERITABLE: [&str; 4] = ["MediaBox", "CropBox", "Resources", "Rotate"];
         for &p in &self.page_order {
             if let Some(Object::Dict(mut d)) = objects.get(&p).cloned() {
+                for key in INHERITABLE {
+                    if d.get(key).is_none() {
+                        if let Some(v) = self.inherited(p, key) {
+                            d.set(key, v);
+                        }
+                    }
+                }
                 d.set("Type", Object::name("Page"));
                 d.set("Parent", Reference::new(self.pages_root));
                 objects.insert(p, Object::Dict(d));
@@ -1995,14 +2125,27 @@ fn flatten_draw(name: &str, rect: [f64; 4], bbox: [f64; 4]) -> String {
     format!("q {sx:.4} 0 0 {sy:.4} {e:.2} {f:.2} cm /{name} Do Q\n")
 }
 
-/// Escape `(`, `)` and `\` for a PDF literal string.
+/// Escape a string as a PDF literal for a **WinAnsi**-encoded standard font
+/// (the Helvetica used by the stamp/watermark/form helpers). Each Unicode scalar
+/// is transcoded to its WinAnsi (CP1252) byte — NOT emitted as raw UTF-8, which
+/// would write a 2–3 byte sequence per accented char and render as mojibake
+/// (`ç`→`Ã§`, `—`→`â€"`). Bytes outside printable ASCII are written as `\ddd`
+/// octal escapes so the result stays valid ASCII (embeddable in a UTF-8 content
+/// `String`); a viewer decodes the octal back to the WinAnsi code. Characters
+/// with no WinAnsi representation become `?`.
 fn escape_pdf_literal(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
-        if matches!(c, '(' | ')' | '\\') {
-            out.push('\\');
+        let b = crate::helvetica::unicode_to_winansi(c).unwrap_or(b'?');
+        match b {
+            b'(' | b')' | b'\\' => {
+                out.push('\\');
+                out.push(b as char);
+            }
+            0x20..=0x7E => out.push(b as char),
+            // Non-printable or high (>= 0x80) WinAnsi byte → octal escape.
+            _ => out.push_str(&format!("\\{b:03o}")),
         }
-        out.push(c);
     }
     out
 }

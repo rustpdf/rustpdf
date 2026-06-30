@@ -914,7 +914,10 @@ fn appearance_content(w: f64, h: f64, lines: &[String], image: Option<(f64, f64)
 fn win_ansi(text: &str) -> Vec<u8> {
     let mut out = Vec::new();
     for ch in text.chars() {
-        let b = if (ch as u32) <= 0xFF { ch as u8 } else { b'?' };
+        // Transcode to WinAnsi (CP1252), covering the 0x80–0x9F typographic
+        // block (em dash, smart quotes, €, …) — not just `ch as u8`, which would
+        // turn an em dash into '?' in the visible-signature appearance.
+        let b = crate::helvetica::unicode_to_winansi(ch).unwrap_or(b'?');
         match b {
             b'(' | b')' | b'\\' => {
                 out.push(b'\\');

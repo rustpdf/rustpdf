@@ -597,12 +597,14 @@ try (EditableDoc sec = EditableDoc.loadFile(Path.of("secured.pdf"), "user-or-own
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>boolean fillRect(int pageIndex, double x, double y, double width, double height, double r, double g, double b, double opacity)</code></div>
       <div class="api"><code>boolean placeText(int pageIndex, double x, double y, String text, double size, double r, double g, double b, double rotationDeg)</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="api"><code>boolean drawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg)</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points (an overload drops the trailing <code>rotationDeg</code>).</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("invoice.pdf"));
 PageGeometry g = Pdf.measurePage(data, 0);              // read the page geometry first
 try (EditableDoc ed = EditableDoc.load(data)) {
     ed.fillRect(0, 400, g.height() - 60, 120, 18, 1, 1, 1, 1);     // mask: opaque white
     ed.placeText(0, 404, g.height() - 56, "PAID", 12, 0, 0.5, 0, 0);
+    ed.drawImage(0, Files.readAllBytes(Path.of("logo.png")), 404, g.height() - 120, 120, 48);
     ed.save("stamped.pdf");
 }</code></pre></div>
 

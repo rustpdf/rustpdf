@@ -179,6 +179,20 @@ module RustPdf
       found != 0
     end
 
+    # Stamp an +image+ (PNG or JPEG bytes; the core dispatches on the signature)
+    # onto page +page_index+ (0-based), with its lower-left corner at (+x+, +y+),
+    # scaled to +width+ x +height+ points and rotated +rotation_deg+ degrees
+    # counter-clockwise about that corner. Coordinates are in the page's VISIBLE
+    # space (origin lower-left, y up), regardless of the page's /Rotate. Returns
+    # whether the page existed.
+    def draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0)
+      found = RustPdf.out_int do |buf|
+        Native.call("pdf_editable_draw_image", ptr, page_index, image, image.bytesize,
+                    x.to_f, y.to_f, width.to_f, height.to_f, rotation_deg.to_f, buf)
+      end
+      found != 0
+    end
+
     # ---- redaction + PDF/A conversion (Tier 2) ------------------------------
 
     # Black out rectangles on a page. rects = [[x0,y0,x1,y1], ...].

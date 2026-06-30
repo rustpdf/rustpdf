@@ -88,3 +88,23 @@ fn red_rectangle_lands_in_the_lower_left() {
     );
     let _ = h;
 }
+
+/// A page whose `/MediaBox` lives on the `/Pages` tree node (inherited), not on
+/// the leaf `/Page` — produced by e.g. PyFPDF. The renderer must walk `/Parent`
+/// to find it, otherwise it errors with `BadPageGeometry` ("no usable
+/// MediaBox"). Regression for the C# `render_page_to_png` report.
+#[test]
+fn renders_page_with_inherited_mediabox() {
+    let bytes = include_bytes!("fixtures/inherited_mediabox.pdf");
+    let reader = PdfReader::parse(bytes.as_slice()).expect("parse");
+    let page = &reader.pages()[0];
+    let pixmap =
+        render_page(&reader, page, &RenderOptions::dpi(72.0)).expect("inherited MediaBox renders");
+    // A4 at 72 dpi ≈ 595×842.
+    assert!(
+        (590..=600).contains(&pixmap.width()) && (838..=846).contains(&pixmap.height()),
+        "unexpected size {}x{}",
+        pixmap.width(),
+        pixmap.height()
+    );
+}

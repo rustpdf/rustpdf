@@ -351,13 +351,15 @@ public final class SmokeTest {
             assertThat(ed.fillRect(0, 100, 100, 200, 50, 1.0, 1.0, 1.0, 1.0), "fillRect page 0");
             assertThat(ed.placeText(0, 110, 120, "PlacedHere", 14.0, 0.0, 0.0, 0.0, 0.0),
                     "placeText page 0");
+            assertThat(ed.drawImage(0, tinyPng(), 150, 150, 64, 64), "drawImage page 0");
             assertThat(!ed.fillRect(9, 0, 0, 10, 10, 0, 0, 0, 1.0), "fillRect missing page false");
             assertThat(!ed.placeText(9, 0, 0, "x", 12.0, 0, 0, 0, 0.0), "placeText missing page false");
+            assertThat(!ed.drawImage(9, tinyPng(), 0, 0, 10, 10), "drawImage missing page false");
             drawn = ed.toBytes();
         }
         assertThat(drawn.length > 0, "drawn bytes");
         assertThat(Pdf.extractText(drawn).contains("PlacedHere"), "placed text extracted");
-        System.out.println("fillRect + placeText ok (" + drawn.length + " bytes)");
+        System.out.println("fillRect + placeText + drawImage ok (" + drawn.length + " bytes)");
 
         System.out.println("OK: full Java binding surface exercised");
     }
