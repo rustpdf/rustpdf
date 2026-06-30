@@ -167,6 +167,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#sign-hsm">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -652,6 +653,76 @@ file_put_contents('contract.signed.pdf', $signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
       <div class="note"><b>"Signature is Valid" vs. "Certificate isn't Trusted" are two separate checks.</b> The cryptographic check (<code>Pdf::verifySignatures</code> returning <code>is_valid</code>, and pdfsig's "Signature Validation: Signature is Valid.") proves the bytes were not tampered with. The trust check is independent: a self-signed or test certificate makes pdfsig also print "Certificate issuer isn't Trusted." That is expected and does <b>not</b> mean the signature is invalid. To make the trust check pass, sign with a certificate chaining to a CA in the verifier's trust store.</div>
 
+      <!-- HSM / DEFERRED -->
+      <h2 id="sign-hsm">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>When the private key lives in an HSM, a cloud KMS, a smartcard or a PKI authentication token, it must never enter the library. These flows keep the key where it is and work with any PKI (eIDAS, AATL and similar). The signer certificate and any intermediates are passed independently of the key.</p>
+
+      <h3>Model A: bring your own signer</h3>
+      <p><code>signWith</code> builds the CMS signed attributes, then calls your <code>callable</code> with the bytes to sign and embeds the raw RSA signature it returns. The callable typically forwards the bytes to a cloud HSM and never sees the document.</p>
+      <div class="api"><code>Pdf::signWith(pdf, certDer, callable signHash, chain = [], ?options = null): string</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Pdf, SigningOptions};
+
+$pdf     = file_get_contents('contract.pdf');
+$certDer = file_get_contents('signer-cert.der');     // X.509 certificate (DER)
+
+$signed = Pdf::signWith(
+    $pdf,
+    $certDer,
+    // receives the to-be-signed bytes, returns the raw RSA PKCS#1 v1.5
+    // signature over their SHA-256; the key never leaves the HSM:
+    fn (string $toSign): string =&gt; $hsm-&gt;signRsaSha256($toSign),
+    chain: [$intermediateDer],                       // intermediates (DER)
+    options: new SigningOptions(reason: 'Approved', pades: true),
+);
+file_put_contents('contract.signed.pdf', $signed);</code></pre></div>
+
+      <h3>Model B: two-phase signing</h3>
+      <p>When the signer is asynchronous (a remote service or a user interaction), split the operation. <code>beginSigning</code> prepares the document and returns a <code>SigningSession</code>; hand its hash to the remote signer, build a DER CMS / PKCS#7 container, then embed it. The key never reaches the library.</p>
+      <div class="api"><code>Pdf::beginSigning(pdf, ?options = null): SigningSession</code></div>
+      <div class="api"><code>Pdf::completeSignature(document, container): string</code></div>
+      <table>
+        <tr><th>SigningSession method</th><th>Returns</th></tr>
+        <tr><td><code>getDocument(): string</code></td><td>The prepared PDF with a zero-filled <code>/Contents</code> placeholder.</td></tr>
+        <tr><td><code>getBytes(): string</code></td><td>The exact bytes the signature covers (the two ByteRange segments).</td></tr>
+        <tr><td><code>getHash(): string</code></td><td>Raw 32-byte SHA-256 of <code>getBytes()</code>: the value the HSM signs.</td></tr>
+        <tr><td><code>complete(container): string</code></td><td>Embed the finished DER CMS container, returning the signed PDF.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Pdf, SigningOptions};
+
+$session   = Pdf::beginSigning($pdf, new SigningOptions(pades: true));
+$container = $hsm-&gt;buildCmsContainer($session-&gt;getHash());   // raw 32-byte hash
+$signed    = $session-&gt;complete($container);                 // or Pdf::completeSignature(...)
+file_put_contents('contract.signed.pdf', $signed);</code></pre></div>
+
+      <h3>Inspect existing signatures</h3>
+      <p>Detect prior signature fields before adding another. Each entry is a <code>SignatureField</code> with <code>$name</code> and a <code>$signed</code> flag; an empty list means no signature fields exist.</p>
+      <div class="api"><code>Pdf::listSignatures(pdf): SignatureField[]</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>foreach (Pdf::listSignatures($pdf) as $field) {
+    printf("%s: %s\n", $field-&gt;name, $field-&gt;signed ? 'signed' : 'empty');
+}</code></pre></div>
+
+      <h3>Signing options</h3>
+      <p><code>SigningOptions</code> tunes both deferred flows (and is accepted by <code>signWith</code> and <code>beginSigning</code>).</p>
+      <table>
+        <tr><th>Property</th><th>Meaning</th></tr>
+        <tr><td><code>reason</code>, <code>location</code>, <code>name</code></td><td>Optional signature metadata strings.</td></tr>
+        <tr><td><code>pades</code></td><td><code>true</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>certify</code></td><td>A <code>Certify</code> DocMDP level applied by the first signature.</td></tr>
+        <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; 0 means the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
+        <tr><td><code>policy</code></td><td>A <code>SignaturePolicy</code> for PAdES-EPES, or <code>null</code> for none.</td></tr>
+      </table>
+      <h4><code>Certify</code> (DocMDP)</h4>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>Certify::None</code></td><td>Not a certifying signature (default).</td></tr>
+        <tr><td><code>Certify::Locked</code></td><td><code>/P 1</code>: no changes permitted after signing.</td></tr>
+        <tr><td><code>Certify::Forms</code></td><td><code>/P 2</code>: form-filling and signing permitted.</td></tr>
+        <tr><td><code>Certify::FormsAndAnnotations</code></td><td><code>/P 3</code>: form-filling, signing and annotations permitted.</td></tr>
+      </table>
+      <h4><code>SignaturePolicy</code> (PAdES-EPES)</h4>
+      <p>Constructor: <code>new SignaturePolicy(oid, hash, ?hashAlgorithmOid = null, ?uri = null)</code> where <code>oid</code> is the policy OID (dotted-decimal), <code>hash</code> is the raw policy-document hash, <code>hashAlgorithmOid</code> defaults to SHA-256 when null, and <code>uri</code> is an optional SPURI qualifier pointing at where the policy can be retrieved.</p>
+      <div class="note"><b>The library never holds the private key.</b> In both models the signing key stays inside the HSM, KMS, smartcard or PKI token: Model A calls back to it for the raw RSA signature, and Model B exports only the hash to sign. Use <code>certify</code> (DocMDP) on the first signature only.</div>
+
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
       <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
@@ -803,6 +874,7 @@ try {
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#sign-hsm">Deferred / HSM</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#render">Render to image</a>

@@ -234,5 +234,26 @@ int pdf_editable_watermark_image_file(PdfEditable *ed, const char *path, double 
 int pdf_editable_redact(PdfEditable *ed, uintptr_t index, const double *rects, uintptr_t count, int *out_found);
 int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
 int pdf_verify_signatures_json(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
+
+typedef struct {
+    const char *reason;
+    const char *location;
+    const char *name;
+    int pades;
+    int certification;
+    uintptr_t estimated_size;
+    const char *policy_oid;
+    const uint8_t *policy_hash;
+    uintptr_t policy_hash_len;
+    const char *policy_hash_alg_oid;
+    const char *policy_uri;
+} PdfSigningOptions;
+
+typedef int (*PdfSignHashFn)(void *ctx, const uint8_t *data, uintptr_t data_len, uint8_t *sig_buf, uintptr_t sig_cap, uintptr_t *sig_len);
+
+int pdf_sign_begin(const uint8_t *pdf, uintptr_t pdf_len, const PdfSigningOptions *params, uint8_t **out_doc, uintptr_t *out_doc_len, uint8_t **out_tbs, uintptr_t *out_tbs_len);
+int pdf_sign_complete(const uint8_t *document, uintptr_t document_len, const uint8_t *container, uintptr_t container_len, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_sign_with(const uint8_t *pdf, uintptr_t pdf_len, const uint8_t *cert_der, uintptr_t cert_len, const uint8_t *const *chain_ptrs, const uintptr_t *chain_lens, uintptr_t chain_count, const PdfSigningOptions *params, PdfSignHashFn callback, void *ctx, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_list_signatures(const uint8_t *pdf, uintptr_t pdf_len, uint8_t **out_ptr, uintptr_t *out_len);
 C;
 }

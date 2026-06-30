@@ -213,4 +213,36 @@ check(sig.key?("byte_range") && sig["byte_range"].is_a?(Array), "byte_range arra
 check(RustPdf.verify_signatures(pdfa).empty?, "unsigned doc has no signatures")
 puts "verify_signatures ok (#{sigs.size} signature(s))"
 
+# 15. Deferred / external (HSM) signing — issue #41.
+require "openssl"
+# Load the committed PKCS#8 DER signing key with the OpenSSL stdlib. The private
+# key stays in Ruby; rust-pdf only ever sees the raw signature it returns.
+signer_key = OpenSSL::PKey.read(File.binread(File.join(fx, "signer_key.pk8")))
+
+# 15a. Model A: rust-pdf builds the CMS and calls our block for the raw RSA
+# PKCS#1 v1.5 signature over SHA-256 of the to-be-signed bytes.
+opts = RustPdf::SigningOptions.new(reason: "HSM", location: "BR", name: "Ada", pades: true)
+model_a = RustPdf.sign_with(plain, cert, chain: [], options: opts) do |data|
+  signer_key.sign(OpenSSL::Digest.new("SHA256"), data)
+end
+check(model_a.include?("/ByteRange"), "Model A signature ByteRange")
+ma_sigs = RustPdf.verify_signatures(model_a)
+check(ma_sigs.size >= 1, "Model A produced a signature, got #{ma_sigs.inspect}")
+check(ma_sigs.first["is_valid"], "Model A signature must validate: #{ma_sigs.first.inspect}")
+puts "Model A (sign_with) ok (#{model_a.bytesize} bytes, valid)"
+
+# 15b. Model B phase 1: begin_signing yields the placeholder doc + bytes to sign.
+session = RustPdf.begin_signing(plain, options: RustPdf::SigningOptions.new(reason: "deferred"))
+check(!session.document.empty?, "begin_signing document non-empty")
+check(!session.bytes.empty?, "begin_signing bytes non-empty")
+check(session.hash.bytesize == 32, "begin_signing hash is 32 bytes, got #{session.hash.bytesize}")
+puts "begin_signing ok (doc #{session.document.bytesize} B, tbs #{session.bytes.bytesize} B, 32-byte hash)"
+
+# 15c. list_signatures: one signed field after Model A, none on the plain doc.
+fields = RustPdf.list_signatures(model_a)
+check(fields.size >= 1, "expected >=1 signature field, got #{fields.inspect}")
+check(fields.first.signed, "field should be signed: #{fields.first.inspect}")
+check(RustPdf.list_signatures(plain).empty?, "unsigned doc has no signature fields")
+puts "list_signatures ok (#{fields.size} field(s))"
+
 puts "OK: full Ruby binding surface exercised"

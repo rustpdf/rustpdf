@@ -87,6 +87,53 @@ Corporate features (PDF/A, signing, encryption, accessibility, page rendering)
 require a license; without one they throw `PdfException`. Page rendering is a
 **Pro** feature. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
 
+## Deferred / HSM signing (key never enters the library)
+
+When the private key lives in an HSM, a cloud KMS, a smartcard or a PKI token
+(any PKI — eIDAS, AATL, a national CA), the library never sees it: you provide
+the signature, the library builds the CMS/PKCS#7 container and embeds it. Use
+this for hardware-backed or remote signing of any kind.
+
+**Model A — remote signer callback.** The library prepares the signed
+attributes and calls you back for the raw RSA PKCS#1 v1.5 signature over their
+SHA-256 digest:
+
+```csharp
+using RustPdf;
+
+byte[] pdf     = File.ReadAllBytes("contract.pdf");
+byte[] certDer = File.ReadAllBytes("signer-cert.der");   // X.509 (DER), key stays remote
+
+byte[] signed = Pdf.SignWith(pdf, certDer,
+    signHash: dataToSign => hsm.SignRsaPkcs1Sha256(dataToSign),   // call your HSM / KMS / token
+    chain: new[] { intermediateDer },
+    options: new SigningOptions { Reason = "Approved", Pades = true });
+
+File.WriteAllBytes("contract.signed.pdf", signed);
+```
+
+Prefer an interface? Implement `IRemoteSigner.SignHash` and pass the instance to
+the same `SignWith` overload.
+
+**Model B — two-phase (async / detached) signing.** Phase 1 prepares the PDF
+and hands you the bytes to sign; do the remote signing out of band; phase 2
+embeds the finished container:
+
+```csharp
+SigningSession session = Pdf.BeginSigning(pdf,
+    new SigningOptions { Name = "Jane Doe", ContainerSize = 16384 });
+
+byte[] cmsDer = await BuildCmsWithRemoteSignatureAsync(session.Hash);  // SHA-256 of the covered bytes
+
+byte[] signed = session.Complete(cmsDer);            // or Pdf.CompleteSignature(session.Document, cmsDer)
+```
+
+Inspect existing signature fields before signing with
+`Pdf.ListSignatures(pdf)` (an empty list means the document is unsigned).
+`SigningOptions` also carries `Certify` (DocMDP certification) and `Policy`
+(`SignaturePolicy` for PAdES-EPES). Raise `ContainerSize` when a cloud-HSM CMS
+container is larger than the default 8 KB reservation.
+
 ## Build & run the sample
 
 ```sh

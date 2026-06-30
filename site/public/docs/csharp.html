@@ -165,6 +165,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#deferred">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -632,6 +633,68 @@ byte[] signed = Pdf.Sign(pdf, keyDer, certDer,
     name: "Jane Doe", pades: true);
 File.WriteAllBytes("contract.signed.pdf", signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- DEFERRED -->
+      <h2 id="deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing the library a private key. When the key lives in an HSM, a cloud KMS, a smartcard or a PKI token (any PKI: eIDAS, AATL, a national CA), you supply the raw RSA signature and the library builds and embeds the CMS / PKCS#7 container. There are two flavours: a synchronous <b>remote signer</b> callback, and a two-phase <b>begin / complete</b> flow for asynchronous or out-of-band signing.</p>
+
+      <h3>Model A: remote signer callback</h3>
+      <p>The library assembles the signed attributes and calls back for the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The certificate is passed as DER; the key stays inside your HSM. Provide a <code>RemoteSign</code> delegate, or an <code>IRemoteSigner</code> for the interface-shaped overload.</p>
+      <div class="api"><code>Pdf.SignWith(pdf, certDer, RemoteSign signHash, chain?, options?) → byte[]</code></div>
+      <div class="api"><code>Pdf.SignWith(pdf, certDer, IRemoteSigner signer, chain?, options?) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+byte[] pdf     = File.ReadAllBytes("contract.pdf");
+byte[] certDer = File.ReadAllBytes("signer-cert.der");   // X.509 (DER); key stays remote
+
+byte[] signed = Pdf.SignWith(pdf, certDer,
+    signHash: dataToSign =&gt; hsm.SignRsaPkcs1Sha256(dataToSign),   // your HSM / KMS / token
+    chain: new[] { intermediateDer },
+    options: new SigningOptions { Reason = "Approved", Pades = true });
+
+File.WriteAllBytes("contract.signed.pdf", signed);</code></pre></div>
+      <div class="note">The <code>signHash</code> delegate receives the bytes to sign and must return the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The private key never reaches this library, so the same code path works for cloud KMS, smartcards and PKI tokens.</div>
+
+      <h3>Model B: two-phase begin / complete</h3>
+      <p>For an asynchronous HSM or a detached workflow, phase 1 prepares the PDF with a placeholder and returns the exact bytes the signature covers; you sign the digest out of band and build the CMS container; phase 2 embeds it.</p>
+      <div class="api"><code>Pdf.BeginSigning(pdf, options?) → SigningSession</code></div>
+      <div class="api"><code>Pdf.CompleteSignature(document, container) → byte[]</code></div>
+      <p>A <code>SigningSession</code> exposes <code>Document</code> (the prepared PDF), <code>Bytes</code> (the bytes covered by the signature), <code>Hash</code> (their SHA-256, the value an HSM signs) and <code>Complete(container)</code>, which embeds a finished DER CMS / PKCS#7 container and returns the final signed PDF.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>SigningSession session = Pdf.BeginSigning(pdf,
+    new SigningOptions { Name = "Jane Doe", ContainerSize = 16384 });
+
+byte[] cmsDer = await BuildCmsWithRemoteSignatureAsync(session.Hash);   // sign the digest remotely
+
+byte[] signed = session.Complete(cmsDer);
+// equivalently: Pdf.CompleteSignature(session.Document, cmsDer)
+File.WriteAllBytes("contract.signed.pdf", signed);</code></pre></div>
+
+      <h3>Inspect existing signature fields</h3>
+      <p>Before signing, list the signature fields already present (the iText <code>SignatureUtil.getSignatureNames</code> equivalent). An empty list means the document is unsigned.</p>
+      <div class="api"><code>Pdf.ListSignatures(pdf) → IReadOnlyList&lt;SignatureField&gt;</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>foreach (SignatureField f in Pdf.ListSignatures(pdf))
+    Console.WriteLine($"{f.Name} signed: {f.Signed}");</code></pre></div>
+
+      <h3>SigningOptions</h3>
+      <p>Both models accept an optional <code>SigningOptions</code>:</p>
+      <table>
+        <tr><th>Property</th><th>Meaning</th></tr>
+        <tr><td><code>Reason</code>, <code>Location</code>, <code>Name</code></td><td>Signature metadata (all <code>string?</code>).</td></tr>
+        <tr><td><code>Pades</code></td><td><code>true</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>Certify</code></td><td>Certify the document (DocMDP); use only on the first signature. See <code>Certify</code> below.</td></tr>
+        <tr><td><code>ContainerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
+        <tr><td><code>Policy</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>null</code> for none.</td></tr>
+      </table>
+      <h4>Certify</h4>
+      <table>
+        <tr><th>Value</th><th>DocMDP level</th></tr>
+        <tr><td><code>Certify.None</code></td><td>Not a certifying signature (default).</td></tr>
+        <tr><td><code>Certify.Locked</code></td><td><code>/P 1</code>: no changes permitted after signing.</td></tr>
+        <tr><td><code>Certify.Forms</code></td><td><code>/P 2</code>: form-filling and signing permitted.</td></tr>
+        <tr><td><code>Certify.FormsAndAnnotations</code></td><td><code>/P 3</code>: form-filling, signing and annotations permitted.</td></tr>
+      </table>
+      <h4>SignaturePolicy</h4>
+      <p>A PAdES-EPES signature-policy identifier. <code>Oid</code> is the policy OID (dotted-decimal); <code>Hash</code> is the policy document hash (<code>byte[]</code>); <code>HashAlgorithmOid</code> is the hash algorithm OID (<code>null</code> means SHA-256); <code>Uri</code> is an optional SPURI qualifier pointing to where the policy can be retrieved.</p>
 
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>

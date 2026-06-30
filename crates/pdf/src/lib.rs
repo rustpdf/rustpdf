@@ -125,10 +125,13 @@ pub use render::{
     page_count as render_page_count, render_page_rgba, render_page_rgba_with, render_page_to_png,
     render_page_to_png_with, PageRenderError, RenderOptions, RenderedPage,
 };
-pub use sign::{add_dss, sign, timestamp, SignError, SignOptions, Signer, VisibleSignature};
+pub use sign::{
+    add_dss, begin_signing, complete_signing, sign, sign_with, timestamp, Certify, SignError,
+    SignOptions, SignaturePolicy, Signer, SigningSession, VisibleSignature,
+};
 pub use tag::StructTag;
 pub use text::{Rgb, TextObject};
-pub use verify::{verify_signatures, SignatureReport};
+pub use verify::{list_signatures, verify_signatures, SignatureField, SignatureReport};
 pub use writer::PdfVersion as Version;
 
 use font::{FontUsage, RegisteredFont};

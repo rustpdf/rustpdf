@@ -106,7 +106,11 @@ engine auto-activates from there).
   `/Info` + XMP, overlay, fill fields, optimize/compact, encrypt, incremental
   save, `to_bytes`.
 - Module functions: `version`, `ensure_loaded`, `activate_license`,
-  `extract_text`, `sign`, `timestamp`, `add_dss`.
+  `extract_text`, `sign`, `timestamp`, `add_dss`. **Deferred / HSM signing**
+  (the private key never reaches the library): `sign_with` (a signer callback)
+  and `begin_signing` + `SigningSession::complete` (two-phase) for cloud KMS,
+  HSMs, smartcards and PKI tokens, plus `list_signatures` and the
+  `SigningOptions` / `Certify` / `SignaturePolicy` types.
 
 ## Testing
 

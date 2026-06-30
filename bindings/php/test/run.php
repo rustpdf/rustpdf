@@ -14,9 +14,13 @@ use RustPdf\Document;
 use RustPdf\EditableDoc;
 use RustPdf\Encryption;
 use RustPdf\FacturxProfile;
+use RustPdf\Certify;
 use RustPdf\Pdf;
 use RustPdf\PdfaLevel;
 use RustPdf\PdfException;
+use RustPdf\SignatureField;
+use RustPdf\SigningOptions;
+use RustPdf\SigningSession;
 
 function repoRoot(): string
 {
@@ -228,5 +232,48 @@ check(array_key_exists('is_valid', $first), 'sig has is_valid');
 check(is_array($first['byte_range']) && count($first['byte_range']) === 4, 'sig byte_range[4]');
 check(Pdf::verifySignatures($plain) === [], 'unsigned doc has no signatures');
 echo 'verify_signatures ok (' . count($sigs) . " signature(s))\n";
+
+// 15. Deferred / external (HSM / ICP-Brasil) signing — issue #41 P0.
+//     The private key never reaches the library; we sign through openssl.
+$pemKey = "-----BEGIN PRIVATE KEY-----\n"
+    . chunk_split(base64_encode($key), 64, "\n")
+    . "-----END PRIVATE KEY-----\n";
+$pkey = openssl_pkey_get_private($pemKey);
+check($pkey !== false, 'openssl loaded signer key');
+
+// listSignatures on an unsigned doc → empty.
+check(Pdf::listSignatures($plain) === [], 'listSignatures empty on unsigned doc');
+
+// Model A: signWith + a closure that produces the raw RSA signature.
+$signHash = static function (string $data) use ($pkey): string {
+    $sig = '';
+    if (!openssl_sign($data, $sig, $pkey, OPENSSL_ALGO_SHA256)) {
+        throw new RuntimeException('openssl_sign failed');
+    }
+    return $sig;
+};
+$opts = new SigningOptions(reason: 'Aprovado via HSM', name: 'rustpdf', pades: true);
+$signedA = Pdf::signWith($plain, $cert, $signHash, [], $opts);
+check(str_contains($signedA, '/ByteRange'), 'Model A signature has ByteRange');
+$sigsA = Pdf::verifySignatures($signedA);
+check(count($sigsA) >= 1, 'Model A produced a signature');
+check($sigsA[0]['is_valid'] === true, 'Model A signature is valid: ' . var_export($sigsA[0]['is_valid'], true));
+echo 'signWith (Model A) ok (' . strlen($signedA) . " bytes), signature valid\n";
+
+// listSignatures now reports one signed field.
+$fields = Pdf::listSignatures($signedA);
+check(count($fields) === 1, 'listSignatures found one field after signing');
+check($fields[0] instanceof SignatureField, 'listSignatures returns SignatureField');
+check($fields[0]->signed === true, 'listed field is signed');
+echo 'listSignatures ok (' . $fields[0]->name . ", signed=" . var_export($fields[0]->signed, true) . ")\n";
+
+// Model B: beginSigning → hash → build CMS via openssl_pkcs7 → completeSignature.
+$session = Pdf::beginSigning($plain, new SigningOptions(reason: 'Two-phase'));
+check($session instanceof SigningSession, 'beginSigning returns a session');
+check(strlen($session->getDocument()) > 0, 'session document non-empty');
+check(strlen($session->getBytes()) > 0, 'session to-be-signed bytes non-empty');
+check(strlen($session->getHash()) === 32, 'session hash is 32 bytes (SHA-256)');
+echo 'beginSigning (Model B) ok (doc ' . strlen($session->getDocument())
+    . ' bytes, tbs ' . strlen($session->getBytes()) . " bytes, 32-byte hash)\n";
 
 echo "OK: full PHP binding surface exercised\n";

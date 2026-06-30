@@ -27,6 +27,15 @@ func takeBytes(
     return Array(UnsafeBufferPointer(start: p, count: Int(len)))
 }
 
+/// Copy a native out-buffer into a Swift `[UInt8]` and free it with
+/// `pdf_buffer_free` (for exports with more than one out-buffer, where
+/// ``takeBytes(_:)`` does not fit).
+func copyAndFree(_ ptr: UnsafeMutablePointer<UInt8>?, _ len: UInt) -> [UInt8] {
+    guard let p = ptr, len > 0 else { return [] }
+    defer { Native.shared.pdf_buffer_free(p, len) }
+    return Array(UnsafeBufferPointer(start: p, count: Int(len)))
+}
+
 /// `strdup` an optional Swift string into a heap C string (or `nil`). The
 /// caller must `free` the result.
 func dupCString(_ s: String?) -> UnsafeMutablePointer<CChar>? {

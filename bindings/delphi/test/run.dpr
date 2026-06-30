@@ -124,6 +124,74 @@ begin
     Result[I] := Bytes[I];
 end;
 
+procedure WriteAllBytes(const Path: string; const Data: TBytes);
+var
+  S: TFileStream;
+begin
+  S := TFileStream.Create(Path, fmCreate);
+  try
+    if Length(Data) > 0 then
+      S.WriteBuffer(Data[0], Length(Data));
+  finally
+    S.Free;
+  end;
+end;
+
+function BytesEqual(const A, B: TBytes): Boolean;
+var
+  I: Integer;
+begin
+  if Length(A) <> Length(B) then
+    Exit(False);
+  for I := 0 to High(A) do
+    if A[I] <> B[I] then
+      Exit(False);
+  Result := True;
+end;
+
+{$IFDEF UNIX}
+{ Model A signer + an independent SHA-256 oracle, both backed by the openssl
+  CLI (present in this environment per the project's validator set). Guarded to
+  UNIX so the binding's own test still compiles on Windows/Delphi. }
+type
+  TOpenSslSigner = class
+    KeyPemPath: string;   { the signer key, converted to PEM once }
+    WorkDir: string;
+    function SignHash(const Data: TBytes): TBytes;
+  end;
+
+function TOpenSslSigner.SignHash(const Data: TBytes): TBytes;
+var
+  DataPath, SigPath, Cmd: string;
+  Rc: Integer;
+begin
+  DataPath := IncludeTrailingPathDelimiter(WorkDir) + 'tbs.bin';
+  SigPath := IncludeTrailingPathDelimiter(WorkDir) + 'sig.bin';
+  WriteAllBytes(DataPath, Data);
+  Cmd := Format('openssl dgst -sha256 -sign "%s" -out "%s" "%s"',
+    [KeyPemPath, SigPath, DataPath]);
+  Rc := ExecuteProcess('/bin/sh', ['-c', Cmd]);
+  if Rc <> 0 then
+    raise Exception.Create('openssl signing failed, rc=' + IntToStr(Rc));
+  Result := ReadBytes(SigPath);
+end;
+
+function OpenSslSha256(const Data: TBytes; const WorkDir: string): TBytes;
+var
+  DataPath, DigPath, Cmd: string;
+  Rc: Integer;
+begin
+  DataPath := IncludeTrailingPathDelimiter(WorkDir) + 'sha_in.bin';
+  DigPath := IncludeTrailingPathDelimiter(WorkDir) + 'sha_out.bin';
+  WriteAllBytes(DataPath, Data);
+  Cmd := Format('openssl dgst -sha256 -binary -out "%s" "%s"', [DigPath, DataPath]);
+  Rc := ExecuteProcess('/bin/sh', ['-c', Cmd]);
+  if Rc <> 0 then
+    raise Exception.Create('openssl dgst failed, rc=' + IntToStr(Rc));
+  Result := ReadBytes(DigPath);
+end;
+{$ENDIF}
+
 var
   Root, Font, DevLicense, Fx: string;
   Doc, Form, Plain: TPdfDocument;
@@ -150,6 +218,19 @@ var
   PngStream: TFileStream;
   PngBytes: TBytes;
   SigJson: UTF8String;
+  { deferred / external (HSM) signing — issue #41 }
+  Session: TSigningSession;
+  SigFields: TSignatureFields;
+  Opts: TSigningOptions;
+  HashV: TBytes;
+  Ca: TBytes;
+  SignedCount: Integer;
+{$IFDEF UNIX}
+  Signer: TOpenSslSigner;
+  KeyPemPath: string;
+  ModelABytes: TBytes;
+  ConvCmd: string;
+{$ENDIF}
 begin
   Root := RepoRoot;
   Font := IncludeTrailingPathDelimiter(Root) + 'assets/fonts/Roboto-Regular.ttf';
@@ -415,6 +496,81 @@ begin
   Dss := Pdf.AddDss(Signed, [Cert], []);
   Assert(Contains(Dss, '/DSS'), 'DSS /DSS');
   Writeln('timestamp + DSS ok');
+
+  { 9. Deferred / external (HSM) signing — issue #41. }
+
+  { 9a. ListSignatures: the locally-signed PDF has exactly one signed field. }
+  SigFields := Pdf.ListSignatures(Signed);
+  SignedCount := 0;
+  for I := 0 to High(SigFields) do
+    if SigFields[I].Signed then
+      Inc(SignedCount);
+  Assert(Length(SigFields) = 1, 'ListSignatures finds one field');
+  Assert(SignedCount = 1, 'the field is reported signed');
+  Assert(Pdf.ListSignatures(PlainBytes) = nil, 'unsigned doc has no signature fields');
+  Writeln(Format('list_signatures ok (%d field, name="%s")',
+    [Length(SigFields), string(SigFields[0].Name)]));
+
+  { 9b. BeginSigning (Model B, phase 1): prepared doc + bytes-to-sign + hash. }
+  Opts := SigningOptions;
+  Opts.Reason := 'HSM test';
+  Opts.Name := 'Edivan';
+  Opts.Pades := True;
+  Opts.Certify := CertifyForms;
+  Session := Pdf.BeginSigning(PlainBytes, Opts);
+  try
+    Assert(Length(Session.Document) > 0, 'BeginSigning Document non-empty');
+    Assert(Length(Session.Bytes) > 0, 'BeginSigning Bytes non-empty');
+    Assert(Contains(Session.Document, '/ByteRange'), 'prepared doc has /ByteRange');
+    Assert(Contains(Session.Document, 'ETSI.CAdES.detached'), 'PAdES subfilter from options');
+    HashV := Session.Hash;
+    Assert(Length(HashV) = 32, 'Hash is 32 bytes (SHA-256)');
+  {$IFDEF UNIX}
+    { Cross-validate the binding's pure-Pascal SHA-256 against openssl. }
+    Assert(BytesEqual(HashV, OpenSslSha256(Session.Bytes, ImgDir)),
+      'Pascal SHA-256 matches openssl');
+    Writeln('begin_signing ok (hash cross-checked vs openssl)');
+  {$ELSE}
+    Writeln('begin_signing ok');
+  {$ENDIF}
+  finally
+    Session.Free;
+  end;
+
+  { 9c. Model A (SignWith): library builds the CMS, an external signer (openssl,
+    standing in for an HSM) produces the raw RSA signature. The private key never
+    enters the library. Requires a Pascal crypto stand-in, so UNIX/openssl only. }
+{$IFDEF UNIX}
+  Ca := ReadBytes(Fx + 'signer_ca.der');
+  KeyPemPath := IncludeTrailingPathDelimiter(ImgDir) + 'signer_key.pem';
+  ConvCmd := Format('openssl pkey -inform DER -in "%s" -out "%s"',
+    [Fx + 'signer_key.pk8', KeyPemPath]);
+  Assert(ExecuteProcess('/bin/sh', ['-c', ConvCmd]) = 0, 'convert signer key to PEM');
+  Signer := TOpenSslSigner.Create;
+  try
+    Signer.KeyPemPath := KeyPemPath;
+    Signer.WorkDir := ImgDir;
+    Opts := SigningOptions;
+    Opts.Reason := 'Model A';
+    { The library builds the CMS, openssl (the HSM stand-in) produces the raw RSA
+      signature, the chain certs are embedded alongside the signer cert, and the
+      result fully verifies. The private key never enters the library. }
+    ModelABytes := Pdf.SignWith(PlainBytes, Cert, Signer.SignHash, [Ca], Opts);
+    SigJson := Pdf.VerifySignaturesJson(ModelABytes);
+    Assert(TextContains(string(SigJson), '"signature_valid":true'),
+      'Model A signature verifies');
+    Assert(TextContains(string(SigJson), 'rust-pdf test signer'),
+      'Model A signer identity');
+    SigFields := Pdf.ListSignatures(ModelABytes);
+    Assert((Length(SigFields) = 1) and SigFields[0].Signed, 'Model A produced one signed field');
+  finally
+    Signer.Free;
+  end;
+  Writeln(Format('sign_with (Model A, external openssl signer) ok (%d bytes)',
+    [Length(ModelABytes)]));
+{$ELSE}
+  Writeln('sign_with (Model A) skipped: needs an external signer (openssl) on UNIX');
+{$ENDIF}
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

@@ -90,6 +90,14 @@ typealias AddDssFn      = (UnsafePointer<UInt8>?, UInt,
                            UnsafePointer<UnsafePointer<UInt8>?>?, UnsafePointer<UInt>?, UInt,
                            UnsafePointer<UnsafePointer<UInt8>?>?, UnsafePointer<UInt>?, UInt,
                            OutBuf, OutLen) -> Int32
+typealias SignBeginFn   = (UnsafePointer<UInt8>?, UInt, UnsafePointer<PdfSigningOptions>?,
+                           OutBuf, OutLen, OutBuf, OutLen) -> Int32
+typealias SignCompleteFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
+                            OutBuf, OutLen) -> Int32
+typealias SignWithFn    = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
+                           UnsafePointer<UnsafePointer<UInt8>?>?, UnsafePointer<UInt>?, UInt,
+                           UnsafePointer<PdfSigningOptions>?, PdfSignHashFn?,
+                           UnsafeMutableRawPointer?, OutBuf, OutLen) -> Int32
 
 /// `out_ptr` / `out_len` out-parameters shared by the buffer-producing exports.
 typealias OutBuf = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?
@@ -199,6 +207,12 @@ final class Native {
     let pdf_timestamp: TimestampFn = CRustPdf.pdf_timestamp
     let pdf_add_dss: AddDssFn = CRustPdf.pdf_add_dss
     let pdf_verify_signatures_json: ExtractTextFn = CRustPdf.pdf_verify_signatures_json
+
+    // ---- deferred / external (HSM) signing — issue #41 ----------------------
+    let pdf_sign_begin: SignBeginFn = CRustPdf.pdf_sign_begin
+    let pdf_sign_complete: SignCompleteFn = CRustPdf.pdf_sign_complete
+    let pdf_sign_with: SignWithFn = CRustPdf.pdf_sign_with
+    let pdf_list_signatures: ExtractTextFn = CRustPdf.pdf_list_signatures
 
     private init() {}
 }

@@ -157,6 +157,91 @@ def exercise_full_surface() -> None:
     png = rustpdf.render_page_to_png(with_img, page=0, dpi=72.0)
     assert png[:8] == b"\x89PNG\r\n\x1a\n", "render_page_to_png did not return a PNG"
 
+    # 9. Deferred / external (HSM) signing — issue #41 P0. The private key never
+    # reaches the library: it asks our remote signer for the raw RSA signature.
+    fixtures = (
+        Path(__file__).resolve().parents[2] / "crates" / "pdf" / "tests" / "fixtures"
+    )
+    key_pk8 = (fixtures / "signer_key.pk8").read_bytes()
+    cert_der = (fixtures / "signer_cert.der").read_bytes()
+    sign_hash = _make_rsa_signer(key_pk8)
+
+    with rustpdf.Document() as doc:
+        f = doc.add_font_file(_FONT)
+        doc.add_page()
+        doc.show_text(f, 14, 72, 700, "deferred")
+        to_sign = doc.to_bytes()
+
+    # list_signatures: a freshly built doc has no signature fields.
+    assert rustpdf.list_signatures(to_sign) == [], "plain doc must have no signature fields"
+
+    # Model A: end-to-end remote-callback signing, then validate it.
+    external = rustpdf.sign_with(
+        to_sign,
+        cert_der,
+        sign_hash,
+        options=rustpdf.SigningOptions(pades=True, reason="HSM"),
+    )
+    assert b"/ByteRange" in external, "Model A output missing /ByteRange"
+    sigs = rustpdf.verify_signatures(external)
+    assert sigs and sigs[0]["is_valid"], f"Model A signature must verify: {sigs}"
+
+    # list_signatures now detects exactly one signed field.
+    fields = rustpdf.list_signatures(external)
+    assert len(fields) == 1 and fields[0].signed, f"expected one signed field, got {fields}"
+
+    # Model B: two-phase begin → (hash signed remotely) → complete. Here we only
+    # assert the session is well-formed (non-empty buffers, 32-byte SHA-256 hash,
+    # DocMDP certification embedded); building the CMS container is the
+    # integrator's job and is exercised by the C# sample.
+    session = rustpdf.begin_signing(
+        to_sign,
+        rustpdf.SigningOptions(certify=rustpdf.Certify.FORMS_AND_ANNOTATIONS),
+    )
+    assert session.document, "begin_signing returned an empty prepared document"
+    assert session.to_be_signed, "begin_signing returned empty to-be-signed bytes"
+    assert session.bytes == session.to_be_signed, ".bytes must alias .to_be_signed"
+    assert len(session.hash) == 32, "session hash must be a 32-byte SHA-256 digest"
+    assert b"/DocMDP" in session.document, "DocMDP certification missing"
+    print("OK: deferred signing (Model A end-to-end + Model B session) verified")
+
+
+def _make_rsa_signer(key_pk8: bytes):
+    """Return a ``(data: bytes) -> bytes`` callable that produces the raw
+    RSA PKCS#1 v1.5 signature over SHA-256 of ``data`` — i.e. what a remote HSM
+    would compute. Prefers the ``cryptography`` package; falls back to ``openssl``.
+
+    The key (PKCS#8 DER) is loaded *only inside this helper*: from the library's
+    point of view, ``sign_with`` only ever receives the resulting signature.
+    """
+    try:
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import padding
+
+        priv = serialization.load_der_private_key(key_pk8, password=None)
+
+        def sign(data: bytes) -> bytes:
+            return priv.sign(data, padding.PKCS1v15(), hashes.SHA256())
+
+        return sign
+    except ImportError:
+        import subprocess
+
+        key_file = Path(tempfile.mkstemp(prefix="rustpdf_key_", suffix=".der")[1])
+        key_file.write_bytes(key_pk8)
+
+        def sign(data: bytes) -> bytes:
+            proc = subprocess.run(
+                ["openssl", "dgst", "-sha256", "-sign", str(key_file),
+                 "-keyform", "DER"],
+                input=data,
+                capture_output=True,
+                check=True,
+            )
+            return proc.stdout
+
+        return sign
+
 
 def _tiny_png() -> bytes:
     """A minimal valid 1x1 red RGB PNG, built with the stdlib only."""

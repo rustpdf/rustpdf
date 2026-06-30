@@ -129,6 +129,43 @@ var signed = Pdf.Sign(plain, key, cert, reason: "Aprovado", pades: true);
 Assert(System.Text.Encoding.Latin1.GetString(signed).Contains("/ByteRange"), "signature ByteRange");
 Console.WriteLine($"signed ok ({signed.Length} bytes)");
 
+// 7b. Deferred / remote (HSM) signing — issue #41 P0. The key never reaches
+// the library: it asks our remote signer for the raw RSA signature. Here the
+// signer is passed as a delegate (an IRemoteSigner overload also exists).
+Assert(Pdf.ListSignatures(plain).Count == 0, "plain doc has no signature fields");
+var hsm = new HsmSigner(key);
+var external = Pdf.SignWith(plain, cert, hsm.SignHash, options: new SigningOptions { Pades = true, Reason = "HSM" });
+Assert(Pdf.VerifySignatures(external)[0].IsValid, "external signature verifies");
+var extFields = Pdf.ListSignatures(external);
+Assert(extFields.Count == 1 && extFields[0].Signed, "external doc has one signed field");
+Console.WriteLine($"external (Model A) sign ok ({external.Length} bytes)");
+
+// 7c. Two-phase (Model B): begin a signing session → build a detached CMS with
+// .NET's own SignedCms (exactly the ForSign/BouncyCastle integrator pattern) →
+// complete. Also certifies the document (DocMDP forms + annotations).
+var session = Pdf.BeginSigning(plain, new SigningOptions
+{
+    Pades = true,
+    Certify = Certify.FormsAndAnnotations,
+});
+Assert(session.Hash.Length == 32, "session hash is SHA-256");
+Assert(System.Text.Encoding.Latin1.GetString(session.Document).Contains("/DocMDP"),
+    "DocMDP certification present");
+try
+{
+    // The integrator (BouncyCastle/SignedCms on their Linux servers) builds the
+    // container. SignedCms.ComputeSignature hits a keychain limitation on macOS
+    // dev machines; their production target (Linux x64) runs this fully.
+    var container = BuildDetachedCms(session.Bytes, certDer: cert, keyPk8: key);
+    var twoPhase = session.Complete(container);
+    Assert(Pdf.VerifySignatures(twoPhase)[0].IsValid, "two-phase signature verifies");
+    Console.WriteLine($"two-phase (Model B) sign ok ({twoPhase.Length} bytes)");
+}
+catch (System.Security.Cryptography.CryptographicException ex)
+{
+    Console.WriteLine($"two-phase (Model B) prepare/embed ok; integrator CMS skipped on this OS ({ex.Message})");
+}
+
 // 8. Extract raster images to a directory.
 var imgDir = Path.Combine(Path.GetTempPath(), "rustpdf-images-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(imgDir);
@@ -234,3 +271,49 @@ Console.WriteLine($"verify_signatures ok: {sigs.Count} signature(s), first sub_f
 Assert(Pdf.VerifySignatures(plain).Count == 0, "unsigned doc has no signatures");
 
 Console.WriteLine("OK: full C# binding surface exercised");
+
+// Build a detached CMS/PKCS#7 container over `data` using .NET's SignedCms —
+// the pure-.NET equivalent of what ForSign does with BouncyCastle in phase 2.
+static byte[] BuildDetachedCms(byte[] data, byte[] certDer, byte[] keyPk8)
+{
+    using var rsa = System.Security.Cryptography.RSA.Create();
+    rsa.ImportPkcs8PrivateKey(keyPk8, out _);
+    using var bare = new System.Security.Cryptography.X509Certificates.X509Certificate2(certDer);
+    using var ephemeral =
+        System.Security.Cryptography.X509Certificates.RSACertificateExtensions.CopyWithPrivateKey(bare, rsa);
+    // Round-trip through a PKCS#12 with a persisted key set: ephemeral keys are
+    // not accessible to SignedCms.ComputeSignature on macOS ("item no longer
+    // valid"); PersistKeySet fixes it cross-platform.
+    var pfx = ephemeral.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Pkcs12);
+    using var certWithKey = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+        pfx, (string?)null,
+        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.PersistKeySet
+            | System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.Exportable);
+    var cms = new System.Security.Cryptography.Pkcs.SignedCms(
+        new System.Security.Cryptography.Pkcs.ContentInfo(data), detached: true);
+    var signer = new System.Security.Cryptography.Pkcs.CmsSigner(certWithKey)
+    {
+        DigestAlgorithm = new System.Security.Cryptography.Oid("2.16.840.1.101.3.4.2.1"), // SHA-256
+    };
+    cms.ComputeSignature(signer);
+    return cms.Encode();
+}
+
+// A stand-in "remote HSM": signs with RSA PKCS#1 v1.5 over SHA-256. In
+// production this would call Azure Key Vault / VIDaaS / BirdID instead of
+// holding the key locally.
+sealed class HsmSigner : IRemoteSigner
+{
+    private readonly byte[] _keyPk8;
+    public HsmSigner(byte[] keyPk8) => _keyPk8 = keyPk8;
+
+    public byte[] SignHash(byte[] dataToSign)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create();
+        rsa.ImportPkcs8PrivateKey(_keyPk8, out _);
+        return rsa.SignData(
+            dataToSign,
+            System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    }
+}

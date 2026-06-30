@@ -71,6 +71,15 @@ with rustpdf.EditableDoc.load(data) as ed:
 
 # Sign (PKCS#7 detached / PAdES).
 signed = rustpdf.sign(data, key_der, cert_der, reason="Approved", pades=True)
+
+# Deferred / HSM signing: the private key never enters the library.
+# The library builds the CMS signed attributes and asks your signer for the
+# raw RSA signature. `sign_hash` can call any HSM, cloud KMS, smartcard or
+# PKI token (national PKI / eIDAS / AATL).
+def sign_hash(to_be_signed: bytes) -> bytes:
+    return my_hsm.sign(to_be_signed)   # raw RSA PKCS#1 v1.5 over SHA-256
+
+signed = rustpdf.sign_with(data, cert_der, sign_hash, chain=[intermediate_der])
 ```
 
 ## Testing

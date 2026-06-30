@@ -341,3 +341,282 @@ fn certificate_chain_is_accepted() {
     let signed = pdf::sign(&sample(), &signer, &SignOptions::default()).unwrap();
     assert_eq!(EditableDoc::load(&signed).unwrap().page_count(), 1);
 }
+
+// ---- Deferred / external (HSM) signing — issue #41 P0 -------------------------
+
+use cms::builder::{SignedDataBuilder, SignerInfoBuilder};
+use cms::cert::{CertificateChoices, IssuerAndSerialNumber};
+use cms::signed_data::{EncapsulatedContentInfo, SignerIdentifier};
+use const_oid::db::rfc5911::ID_DATA;
+use const_oid::db::rfc5912::ID_SHA_256;
+use rsa::pkcs1v15::SigningKey;
+use rsa::pkcs8::DecodePrivateKey;
+use rsa::RsaPrivateKey;
+use sha2::{Digest, Sha256};
+use signature::{SignatureEncoding, Signer as _};
+use x509_cert::spki::AlgorithmIdentifierOwned;
+use x509_cert::Certificate;
+
+/// A "remote HSM": SHA-256 + RSA PKCS#1 v1.5 over the bytes handed to it.
+/// This is exactly what Azure Key Vault / VIDaaS / BirdID do with a hash.
+fn hsm_sign(data: &[u8]) -> Vec<u8> {
+    let key = std::fs::read(format!("{FX}/signer_key.pk8")).unwrap();
+    let sk = SigningKey::<Sha256>::new(RsaPrivateKey::from_pkcs8_der(&key).unwrap());
+    sk.try_sign(data).unwrap().to_vec()
+}
+
+fn cert_der() -> Vec<u8> {
+    std::fs::read(format!("{FX}/signer_cert.der")).unwrap()
+}
+
+#[test]
+fn external_signing_matches_local_signing_byte_for_byte() {
+    // Model A: the library never sees the key; it calls back for the raw RSA
+    // signature. Delegating to the same key must yield an identical PDF to the
+    // in-process signer — proving the CMS assembly is equivalent.
+    lic();
+    let pdf = sample();
+    let opts = SignOptions {
+        reason: Some("HSM".into()),
+        ..Default::default()
+    };
+    let local = pdf::sign(&pdf, &signer(), &opts).unwrap();
+    let external =
+        pdf::sign_with(&pdf, &cert_der(), &[], &opts, |bytes| Ok(hsm_sign(bytes))).unwrap();
+    assert_eq!(
+        local, external,
+        "external signature must match local signature"
+    );
+    // And it is a valid, intact signature.
+    let reports = pdf::verify_signatures(&external).unwrap();
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].is_valid(), "external signature should verify");
+}
+
+#[test]
+fn external_signing_pades_verifies() {
+    lic();
+    let opts = SignOptions {
+        pades: true,
+        ..Default::default()
+    };
+    let signed = pdf::sign_with(&sample(), &cert_der(), &[], &opts, |b| Ok(hsm_sign(b))).unwrap();
+    assert!(String::from_utf8_lossy(&signed).contains("/SubFilter /ETSI.CAdES.detached"));
+    assert!(pdf::verify_signatures(&signed).unwrap()[0].is_valid());
+}
+
+#[test]
+fn external_signer_error_propagates() {
+    lic();
+    let opts = SignOptions::default();
+    let err = pdf::sign_with(&sample(), &cert_der(), &[], &opts, |_| {
+        Err(pdf::SignError::Key("HSM offline".into()))
+    })
+    .unwrap_err();
+    assert!(format!("{err}").contains("HSM offline"), "got: {err}");
+}
+
+/// Build a detached CMS container outside the library (simulating BouncyCastle
+/// on the integrator's side) over `signed_bytes`.
+fn integrator_cms(signed_bytes: &[u8]) -> Vec<u8> {
+    let key = std::fs::read(format!("{FX}/signer_key.pk8")).unwrap();
+    let sk = SigningKey::<Sha256>::new(RsaPrivateKey::from_pkcs8_der(&key).unwrap());
+    let cert = Certificate::from_der(&cert_der()).unwrap();
+    let digest = Sha256::digest(signed_bytes);
+    let content = EncapsulatedContentInfo {
+        econtent_type: ID_DATA,
+        econtent: None,
+    };
+    let digest_alg = AlgorithmIdentifierOwned {
+        oid: ID_SHA_256,
+        parameters: None,
+    };
+    let sid = SignerIdentifier::IssuerAndSerialNumber(IssuerAndSerialNumber {
+        issuer: cert.tbs_certificate.issuer.clone(),
+        serial_number: cert.tbs_certificate.serial_number.clone(),
+    });
+    let si = SignerInfoBuilder::new(
+        &sk,
+        sid,
+        digest_alg.clone(),
+        &content,
+        Some(digest.as_slice()),
+    )
+    .unwrap();
+    SignedDataBuilder::new(&content)
+        .add_digest_algorithm(digest_alg)
+        .unwrap()
+        .add_certificate(CertificateChoices::Certificate(cert))
+        .unwrap()
+        .add_signer_info::<SigningKey<Sha256>, rsa::pkcs1v15::Signature>(si)
+        .unwrap()
+        .build()
+        .unwrap()
+        .to_der()
+        .unwrap()
+}
+
+#[test]
+fn two_phase_prepare_and_embed_roundtrips() {
+    // Model B: prepare returns the hash to sign; the integrator builds the CMS
+    // container (here, with the cms crate directly) and embeds it.
+    lic();
+    let opts = SignOptions::default();
+    let prepared = pdf::begin_signing(&sample(), &opts).unwrap();
+    // The digest the HSM would sign matches SHA-256 of the covered bytes.
+    assert_eq!(
+        prepared.hash().to_vec(),
+        Sha256::digest(prepared.signed_bytes()).to_vec()
+    );
+    let container = integrator_cms(prepared.signed_bytes());
+    let signed = prepared.complete(&container).unwrap();
+    let reports = pdf::verify_signatures(&signed).unwrap();
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].is_valid(), "two-phase signature should verify");
+    assert_eq!(EditableDoc::load(&signed).unwrap().page_count(), 1);
+}
+
+#[test]
+fn embed_rejects_oversize_container() {
+    lic();
+    let opts = SignOptions {
+        estimated_size: Some(64), // far too small for any real CMS
+        ..Default::default()
+    };
+    let err = pdf::sign_with(&sample(), &cert_der(), &[], &opts, |b| Ok(hsm_sign(b))).unwrap_err();
+    assert!(
+        matches!(err, pdf::SignError::SignatureTooLarge { .. }),
+        "got: {err}"
+    );
+}
+
+#[test]
+fn estimated_size_enlarges_reserved_contents() {
+    lic();
+    let small = pdf::begin_signing(&sample(), &SignOptions::default()).unwrap();
+    let big = pdf::begin_signing(
+        &sample(),
+        &SignOptions {
+            estimated_size: Some(20_000),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(small.reserved_size(), 8192);
+    assert_eq!(big.reserved_size(), 20_000);
+    assert!(big.document().len() > small.document().len());
+}
+
+// ---- DocMDP certification + signature policy + field listing — P0 #2/#3 -------
+
+#[test]
+fn certification_adds_docmdp_perms() {
+    lic();
+    let opts = SignOptions {
+        certification: Some(pdf::Certify::FormsAndAnnotations),
+        ..Default::default()
+    };
+    let signed = pdf::sign(&sample(), &signer(), &opts).unwrap();
+    let text = String::from_utf8_lossy(&signed);
+    assert!(text.contains("/TransformMethod /DocMDP"));
+    assert!(text.contains("/P 3"));
+    assert!(text.contains("/Perms"));
+    assert!(text.contains("/DocMDP"));
+    assert_eq!(EditableDoc::load(&signed).unwrap().page_count(), 1);
+}
+
+#[test]
+fn signature_policy_identifier_is_embedded() {
+    lic();
+    let opts = SignOptions {
+        pades: true,
+        policy: Some(pdf::SignaturePolicy {
+            // The ICP-Brasil AD-RB policy OID shape (example value).
+            oid: "2.16.76.1.7.1.1.2.3".into(),
+            hash: vec![0u8; 32],
+            hash_algorithm_oid: None,
+            uri: Some("http://politicas.icpbrasil.gov.br/PA_AD_RB.der".into()),
+        }),
+        ..Default::default()
+    };
+    let signed = pdf::sign(&sample(), &signer(), &opts).unwrap();
+    let der = contents_der(&signed);
+    // id-aa-ets-sigPolicyId OID: 06 0B 2A 86 48 86 F7 0D 01 09 10 02 0F
+    let oid = [
+        0x06u8, 0x0B, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x10, 0x02, 0x0F,
+    ];
+    assert!(
+        der.windows(oid.len()).any(|w| w == oid),
+        "signature-policy-identifier attribute missing"
+    );
+    assert!(pdf::verify_signatures(&signed).unwrap()[0].is_valid());
+}
+
+#[test]
+fn list_signatures_detects_existing_signatures() {
+    lic();
+    let unsigned = sample();
+    assert!(pdf::list_signatures(&unsigned).unwrap().is_empty());
+
+    let signed = pdf::sign(&unsigned, &signer(), &SignOptions::default()).unwrap();
+    let fields = pdf::list_signatures(&signed).unwrap();
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0].name, "Signature1");
+    assert!(fields[0].signed);
+
+    let twice = pdf::sign(&signed, &signer(), &SignOptions::default()).unwrap();
+    let fields = pdf::list_signatures(&twice).unwrap();
+    assert_eq!(fields.len(), 2);
+    assert!(fields.iter().all(|f| f.signed));
+}
+
+#[test]
+fn signature_with_embedded_chain_verifies() {
+    // Regression (issue #41, found with a real ICP-Brasil e-CNPJ): when a full
+    // certificate chain is embedded, the CMS certificate SET is DER-ordered, so
+    // the signer's own cert may not be first. verify_signatures must select it
+    // by the SignerInfo's issuer+serial, not by position.
+    lic();
+    let key = std::fs::read(format!("{FX}/signer_key.pk8")).unwrap();
+    let cert = std::fs::read(format!("{FX}/signer_cert.der")).unwrap();
+    let ca = std::fs::read(format!("{FX}/signer_ca.der")).unwrap();
+    let signer = Signer::from_pkcs8_der_with_chain(&key, &cert, &[ca]).unwrap();
+    let signed = pdf::sign(
+        &sample(),
+        &signer,
+        &SignOptions {
+            pades: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let reports = pdf::verify_signatures(&signed).unwrap();
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].digest_valid, "digest");
+    assert!(
+        reports[0].signature_valid,
+        "signature must verify even when the signer cert is not first in the SET"
+    );
+    assert!(reports[0].is_valid());
+}
+
+#[test]
+fn external_signing_with_chain_verifies() {
+    // Regression: sign_with embedding a chain cert (the CA) must still verify.
+    // The Delphi binding exposed that the verifier picked the CA, not the signer.
+    lic();
+    let ca = std::fs::read(format!("{FX}/signer_ca.der")).unwrap();
+    let opts = SignOptions {
+        pades: true,
+        ..Default::default()
+    };
+    let signed = pdf::sign_with(&sample(), &cert_der(), &[ca], &opts, |b| Ok(hsm_sign(b))).unwrap();
+    let reports = pdf::verify_signatures(&signed).unwrap();
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].digest_valid, "digest");
+    assert!(
+        reports[0].signature_valid,
+        "signature must verify with an embedded chain via sign_with; signer={:?}",
+        reports[0].signer
+    );
+}

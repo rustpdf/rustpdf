@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /** Top-level helpers: version, licensing, text extraction and signing. */
 public final class Pdf {
@@ -292,6 +293,165 @@ public final class Pdf {
         private void ws() {
             while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
                 i++;
+            }
+        }
+    }
+
+    // ---- Deferred / external (HSM) signing — issue #41 P0 --------------------
+
+    /**
+     * List the signature fields in {@code pdf} (detect existing signatures before
+     * signing — the iText {@code SignatureUtil.getSignatureNames} equivalent). An
+     * empty list means there are no signature fields.
+     */
+    public static List<SignatureField> listSignatures(byte[] pdf) {
+        byte[] bytes = takeBuffer((p, n) -> FFI.C.pdf_list_signatures(pdf, pdf.length, p, n));
+        String text = new String(bytes, StandardCharsets.UTF_8);
+        List<SignatureField> out = new ArrayList<>();
+        for (String line : text.split("\n")) {
+            if (line.isEmpty()) {
+                continue;
+            }
+            int tab = line.indexOf('\t');
+            if (tab < 0) {
+                continue;
+            }
+            out.add(new SignatureField(line.substring(tab + 1), line.substring(0, tab).equals("1")));
+        }
+        return out;
+    }
+
+    /**
+     * <b>Model A — remote signer.</b> Sign {@code pdf} without handing this
+     * library a key: it builds the CMS signed attributes and calls
+     * {@code signHash} for the raw RSA PKCS#1 v1.5 signature (over SHA-256 of the
+     * supplied data), then assembles and embeds the CMS. {@code certDer} is the
+     * signer certificate; {@code chain} are intermediate certificates (DER),
+     * supplied independently of the key. The private key never reaches this
+     * library — typical {@code signHash} implementations call a cloud HSM
+     * (Azure Key Vault, VIDaaS, BirdID).
+     */
+    public static byte[] signWith(byte[] pdf, byte[] certDer, Function<byte[], byte[]> signHash,
+                                  List<byte[]> chain, SigningOptions options) {
+        List<byte[]> chainList = chain == null ? List.of() : chain;
+        List<Memory> keep = new ArrayList<>();
+        Pointer[] chainPtrs = pin(chainList, keep);
+        long[] chainLens = lens(chainList);
+        FFI.PdfSigningOptions params = buildOptions(options, keep);
+        // Strong reference held on the stack for the duration of the native call
+        // (a synchronous call inside takeBuffer) so the callback is not GC'd.
+        FFI.SignHashCallback cb = (ctx, data, dataLen, sigBuf, sigCap, sigLen) -> {
+            try {
+                byte[] input = data.getByteArray(0, (int) dataLen);
+                byte[] sig = signHash.apply(input);
+                if (sig == null) {
+                    return 1;
+                }
+                if (sig.length > sigCap) {
+                    return 2; // buffer too small
+                }
+                sigBuf.write(0, sig, 0, sig.length);
+                sigLen.setLong(0, sig.length);
+                return 0;
+            } catch (Throwable t) {
+                return 1; // signer threw
+            }
+        };
+        try {
+            return takeBuffer((p, n) -> FFI.C.pdf_sign_with(
+                    pdf, pdf.length, certDer, certDer.length,
+                    chainPtrs, chainLens, chainList.size(),
+                    params, cb, Pointer.NULL, p, n));
+        } finally {
+            keep.forEach(Memory::close);
+        }
+    }
+
+    /**
+     * <b>Model B — two-phase signing, phase 1.</b> Prepare {@code pdf} for
+     * deferred signing: returns a {@link SigningSession} whose {@link
+     * SigningSession#hash()} you send to a remote HSM. Build the CMS container,
+     * then call {@link SigningSession#complete(byte[])} (or {@link
+     * #completeSignature(byte[], byte[])}). The key never reaches this library.
+     */
+    public static SigningSession beginSigning(byte[] pdf, SigningOptions options) {
+        List<Memory> keep = new ArrayList<>();
+        FFI.PdfSigningOptions params = buildOptions(options, keep);
+        PointerByReference docPtr = new PointerByReference();
+        LongByReference docLen = new LongByReference();
+        PointerByReference tbsPtr = new PointerByReference();
+        LongByReference tbsLen = new LongByReference();
+        try {
+            check(FFI.C.pdf_sign_begin(pdf, pdf.length, params, docPtr, docLen, tbsPtr, tbsLen));
+            byte[] document = copyAndFree(docPtr.getValue(), docLen.getValue());
+            byte[] tbs = copyAndFree(tbsPtr.getValue(), tbsLen.getValue());
+            return new SigningSession(document, tbs);
+        } finally {
+            keep.forEach(Memory::close);
+        }
+    }
+
+    /**
+     * <b>Model B — two-phase signing, phase 2.</b> Embed a complete DER CMS /
+     * PKCS#7 {@code container} into a prepared {@code document} (from {@link
+     * #beginSigning(byte[], SigningOptions)}), producing the final signed PDF.
+     */
+    public static byte[] completeSignature(byte[] document, byte[] container) {
+        return takeBuffer((p, n) -> FFI.C.pdf_sign_complete(
+                document, document.length, container, container.length, p, n));
+    }
+
+    /** Build the native {@code PdfSigningOptions}, allocating UTF-8 strings into {@code keep}. */
+    private static FFI.PdfSigningOptions buildOptions(SigningOptions opts, List<Memory> keep) {
+        FFI.PdfSigningOptions n = new FFI.PdfSigningOptions();
+        if (opts == null) {
+            return n;
+        }
+        n.reason = utf8(opts.reason, keep);
+        n.location = utf8(opts.location, keep);
+        n.name = utf8(opts.name, keep);
+        n.pades = opts.pades ? 1 : 0;
+        n.certification = opts.certify == null ? 0 : opts.certify.code;
+        n.estimatedSize = opts.containerSize > 0 ? opts.containerSize : 0;
+        SignaturePolicy pol = opts.policy;
+        if (pol != null) {
+            n.policyOid = utf8(pol.oid, keep);
+            if (pol.hash != null && pol.hash.length > 0) {
+                Memory m = new Memory(pol.hash.length);
+                m.write(0, pol.hash, 0, pol.hash.length);
+                keep.add(m);
+                n.policyHash = m;
+                n.policyHashLen = pol.hash.length;
+            }
+            n.policyHashAlgOid = utf8(pol.hashAlgorithmOid, keep);
+            n.policyUri = utf8(pol.uri, keep);
+        }
+        return n;
+    }
+
+    /** Allocate a NUL-terminated UTF-8 copy of {@code s} (null → NULL pointer). */
+    private static Pointer utf8(String s, List<Memory> keep) {
+        if (s == null) {
+            return Pointer.NULL;
+        }
+        byte[] b = s.getBytes(StandardCharsets.UTF_8);
+        Memory m = new Memory(b.length + 1L);
+        m.write(0, b, 0, b.length);
+        m.setByte(b.length, (byte) 0);
+        keep.add(m);
+        return m;
+    }
+
+    /** Copy a native out-buffer into a Java array and free it with {@code pdf_buffer_free}. */
+    private static byte[] copyAndFree(Pointer p, long n) {
+        try {
+            if (p == null || n == 0) {
+                return new byte[0];
+            }
+            return p.getByteArray(0, (int) n);
+        } finally {
+            if (p != null) {
+                FFI.C.pdf_buffer_free(p, n);
             }
         }
     }

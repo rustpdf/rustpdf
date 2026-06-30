@@ -620,6 +620,45 @@ signed = RustPdf.sign(pdf, key_der, cert_der,
 File.binwrite("contract.signed.pdf", signed)
 # Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
+      <h3>Deferred / HSM signing</h3>
+      <p>Sign without the private key ever entering this library: the key stays in an HSM, cloud KMS, smartcard or PKI token. The library builds the CMS signed attributes and asks your code only for the raw RSA PKCS#1 v1.5 signature over SHA-256 of the bytes it hands you. This works with any PKI (eIDAS, AATL, or your own CA). Use <code>RustPdf.list_signatures</code> first to inventory the signature fields already present.</p>
+      <div class="api"><code>RustPdf.sign_with(pdf, cert_der, chain:, options:) { |to_sign| ... } → String</code></div>
+      <p><b>Model A (remote signer).</b> The block receives the bytes to sign and returns the raw RSA signature; the private key never reaches the library. <code>cert_der</code> is the signer certificate (DER) and <code>chain:</code> the intermediate certificates (DER), both supplied independently of the key. Pass authoring details and policy through <code>options:</code> (a <code>SigningOptions</code>).</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>pdf      = File.binread("contract.pdf")
+cert_der = File.binread("signing-cert.der")   # X.509 signer certificate (DER)
+
+opts = RustPdf::SigningOptions.new(reason: "Approved", location: "HQ",
+                                   name: "Jane Doe", pades: true)
+
+signed = RustPdf.sign_with(pdf, cert_der, chain: [issuer_der], options: opts) do |to_sign|
+  hsm.sign_rsa_sha256(to_sign)   # bytes in, raw signature out (HSM / cloud KMS / token)
+end
+File.binwrite("contract.signed.pdf", signed)</code></pre></div>
+      <div class="api"><code>RustPdf.begin_signing(pdf, options:) → SigningSession</code></div>
+      <div class="api"><code>RustPdf.complete_signature(document, container) → String</code></div>
+      <p><b>Model B (two-phase).</b> Use this when the signer is asynchronous or lives in a separate process. <code>begin_signing</code> returns a <code>SigningSession</code> whose <code>#document</code> is the prepared PDF (with a zero-filled <code>/Contents</code> placeholder), <code>#bytes</code> the exact bytes the signature covers, and <code>#hash</code> their SHA-256 (the 32-byte value an HSM signs). Build the DER CMS / PKCS#7 container out of band, then call <code>session.complete(container)</code> (or <code>RustPdf.complete_signature(document, container)</code>). The key never reaches the library.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>pdf = File.binread("contract.pdf")
+
+session   = RustPdf.begin_signing(pdf, options: RustPdf::SigningOptions.new(reason: "Approved"))
+container = remote.build_cms(session.hash)   # send the 32-byte hash to a remote signer
+final     = session.complete(container)      # embed the finished DER CMS / PKCS#7
+File.binwrite("contract.signed.pdf", final)</code></pre></div>
+      <div class="api"><code>RustPdf.list_signatures(pdf) → Array&lt;SignatureField&gt;</code></div>
+      <p>Inventory the signature fields in a PDF before signing. Each <code>SignatureField</code> is a <code>Struct</code> with <code>name</code> and <code>signed</code> (true when the field already carries a signature). An empty array means there are no signature fields.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>RustPdf.list_signatures(File.binread("contract.pdf")).each do |f|
+  puts "#{f.name}: #{f.signed ? 'signed' : 'empty'}"
+end</code></pre></div>
+      <p>Both models accept a <code>SigningOptions</code>:</p>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>reason:</code> / <code>location:</code> / <code>name:</code></td><td>Signature metadata recorded in the signature dictionary.</td></tr>
+        <tr><td><code>pades:</code></td><td><code>true</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>certify:</code></td><td>Certify the document (DocMDP) with a <code>Certify</code> value; use only on the first signature.</td></tr>
+        <tr><td><code>container_size:</code></td><td>Reserved <code>/Contents</code> bytes; 0 = default. Raise it for large cloud-KMS CMS containers.</td></tr>
+        <tr><td><code>policy:</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>nil</code> = none.</td></tr>
+      </table>
+      <p><code>RustPdf::Certify</code> selects the DocMDP level: <code>NONE</code> (not certifying), <code>LOCKED</code> (no changes permitted), <code>FORMS</code> (form-filling and signing permitted) and <code>FORMS_AND_ANNOTATIONS</code> (also annotations). <code>RustPdf::SignaturePolicy.new(oid:, hash:, hash_algorithm_oid:, uri:)</code> carries a policy OID, its document hash bytes (under <code>hash_algorithm_oid</code>, <code>nil</code> = SHA-256) and an optional SPURI.</p>
+
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
       <p>Build long-term-validation signatures offline. <code>add_dss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>

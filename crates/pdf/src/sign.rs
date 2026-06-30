@@ -2,8 +2,19 @@
 //!
 //! * [`sign`] — incremental-update signing with a `ByteRange` placeholder and a
 //!   PKCS#7 (CMS) detached signature. Supports invisible/visible signatures,
-//!   multiple signatures, certificate chains, and **PAdES-B-B**
-//!   (`ETSI.CAdES.detached` + `signing-certificate-v2`).
+//!   multiple signatures, certificate chains, **PAdES-B-B**
+//!   (`ETSI.CAdES.detached` + `signing-certificate-v2`), **DocMDP
+//!   certification** ([`Certify`]) and a **signature-policy
+//!   identifier** ([`SignaturePolicy`], PAdES-EPES / ICP-Brasil AD-RB).
+//! * **Deferred / HSM signing — "bring your own signer"** (the private key
+//!   never reaches this library):
+//!   * [`sign_with`] — *Model A*: the library builds the CMS signed
+//!     attributes and calls back for the raw RSA signature (from a remote HSM),
+//!     then assembles and embeds the CMS.
+//!   * [`begin_signing`] + [`SigningSession::complete`] (or the stateless
+//!     [`complete_signing`]) — *Model B*: a two-phase signing session, so the
+//!     hash can cross an async/HTTP boundary and the caller supplies a complete
+//!     CMS container.
 //! * [`timestamp`] — append an RFC 3161 **document timestamp** (`/DocTimeStamp`,
 //!   `ETSI.RFC3161`) signed by a TSA — the PAdES-B-LTA building block. (Works
 //!   fully offline with a self-issued TSA; no network needed.)
@@ -11,22 +22,37 @@
 //!   validation certificates and CRLs — the PAdES-B-LT building block.
 //!
 //! Each operation appends an incremental update (new objects + `xref` chained
-//! via `/Prev`); earlier signatures remain valid.
+//! via `/Prev`); earlier signatures remain valid. Pre-flight with
+//! [`list_signatures`](crate::list_signatures) to detect existing
+//! signatures.
+
+use std::cell::RefCell;
 
 use cms::builder::{SignedDataBuilder, SignerInfoBuilder};
 use cms::cert::{CertificateChoices, IssuerAndSerialNumber};
 use cms::signed_data::{EncapsulatedContentInfo, SignerIdentifier};
 use const_oid::db::{rfc5911::ID_DATA, rfc5912::ID_SHA_256};
 use const_oid::ObjectIdentifier;
-use der::asn1::{OctetString, SetOfVec};
+use der::asn1::{Null, OctetString, SetOfVec};
 use der::{Any, Decode, Encode};
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::DecodePrivateKey;
 use rsa::RsaPrivateKey;
 use sha2::{Digest, Sha256};
+use signature::Keypair;
 use x509_cert::attr::Attribute;
-use x509_cert::spki::AlgorithmIdentifierOwned;
+use x509_cert::spki::{self, AlgorithmIdentifierOwned, DynSignatureAlgorithmIdentifier};
 use x509_cert::Certificate;
+
+/// `sha256WithRSAEncryption` (PKCS#1): `1.2.840.113549.1.1.11`.
+const SHA256_WITH_RSA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.1.11");
+/// `id-aa-ets-sigPolicyId` (RFC 5126, PAdES-EPES): `1.2.840.113549.1.9.16.2.15`.
+const ID_AA_ETS_SIG_POLICY_ID: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.15");
+/// `id-spq-ets-uri` (SPURI qualifier): `1.2.840.113549.1.9.16.5.1`.
+const ID_SPQ_ETS_URI: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.5.1");
+/// SHA-256 (the default policy hash algorithm): `2.16.840.1.101.3.4.2.1`.
+const SHA256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.2.1");
 
 use cos::{Dict, Object, Reference, Stream};
 use parser::PdfReader;
@@ -112,6 +138,44 @@ pub struct VisibleSignature {
     pub lines: Vec<String>,
 }
 
+/// What a **certifying** (DocMDP) signature still allows. Set this on the
+/// *first* signature of a document to lock down later changes — it writes
+/// `/Perms /DocMDP` with the matching `/TransformParams /P`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Certify {
+    /// `/P 1` — the document is sealed; no changes are permitted after signing.
+    Locked,
+    /// `/P 2` — only form-filling and further signing are permitted.
+    Forms,
+    /// `/P 3` — form-filling, signing **and** annotation changes are permitted.
+    FormsAndAnnotations,
+}
+
+impl Certify {
+    fn p(self) -> u8 {
+        match self {
+            Certify::Locked => 1,
+            Certify::Forms => 2,
+            Certify::FormsAndAnnotations => 3,
+        }
+    }
+}
+
+/// A signature-policy identifier (PAdES-EPES, RFC 5126 — the building block for
+/// ICP-Brasil's *Política de Assinatura*, e.g. AD-RB). Embedded as the
+/// `id-aa-ets-sigPolicyId` signed attribute.
+#[derive(Debug, Clone)]
+pub struct SignaturePolicy {
+    /// The policy OID (dotted-decimal string), e.g. the ICP-Brasil AD-RB OID.
+    pub oid: String,
+    /// The policy document's hash (its digest under `hash_algorithm_oid`).
+    pub hash: Vec<u8>,
+    /// The hash algorithm OID for `hash`; `None` means SHA-256.
+    pub hash_algorithm_oid: Option<String>,
+    /// Optional SPURI qualifier — the URI where the policy can be retrieved.
+    pub uri: Option<String>,
+}
+
 /// Signature metadata + optional visible appearance.
 #[derive(Debug, Clone, Default)]
 pub struct SignOptions {
@@ -123,13 +187,83 @@ pub struct SignOptions {
     pub visible: Option<VisibleSignature>,
     /// Produce a PAdES-B-B signature (ETSI subfilter + signing-certificate-v2).
     pub pades: bool,
+    /// Certify the document (DocMDP). Use only on the **first** signature.
+    pub certification: Option<Certify>,
+    /// Embed a signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB).
+    pub policy: Option<SignaturePolicy>,
+    /// Override the bytes reserved for the `/Contents` CMS container. Cloud-HSM
+    /// containers vary in size; raise this if signing fails with
+    /// [`SignError::SignatureTooLarge`]. Defaults to 8192.
+    pub estimated_size: Option<usize>,
 }
 
 const RESERVED: usize = 8192;
 const BYTERANGE_FIELD: usize = 48;
 
-/// Sign `pdf`. Signing an already-signed PDF adds a further signature.
+/// Sign `pdf` with a local [`Signer`] (key + cert held in process). Signing an
+/// already-signed PDF adds a further signature as a new incremental revision.
+///
+/// For HSM / "bring-your-own-signer" flows where the private key must never
+/// reach this library, use [`sign_with`] (Model A — signature callback) or
+/// [`begin_signing`] + [`SigningSession::complete`] (Model B — two-phase).
 pub fn sign(pdf: &[u8], signer: &Signer, opts: &SignOptions) -> Result<Vec<u8>, SignError> {
+    crate::require(license::Feature::Signatures)?;
+    let prepared = begin_signing(pdf, opts)?;
+    let der = build_pkcs7(
+        signer,
+        prepared.signed_bytes(),
+        opts.pades,
+        opts.policy.as_ref(),
+    )?;
+    prepared.complete(&der)
+}
+
+/// **Model A — external signer callback.** Sign `pdf` without ever handing this
+/// library a private key: it computes the `ByteRange`, builds the CMS signed
+/// attributes, then calls `sign_raw` with the exact bytes to be signed. The
+/// callback returns the raw RSA PKCS#1 v1.5 signature (over SHA-256 of those
+/// bytes) produced by a remote HSM (Azure Key Vault, VIDaaS, BirdID, …); the
+/// library assembles the CMS `SignedData` and embeds it.
+///
+/// `cert_der` is the signer certificate; `chain` are intermediate certificates
+/// (each DER-encoded), supplied independently of the key. For an async HSM call
+/// drive [`begin_signing`]/[`SigningSession::complete`] instead.
+pub fn sign_with<F>(
+    pdf: &[u8],
+    cert_der: &[u8],
+    chain: &[Vec<u8>],
+    opts: &SignOptions,
+    sign_raw: F,
+) -> Result<Vec<u8>, SignError>
+where
+    F: Fn(&[u8]) -> Result<Vec<u8>, SignError>,
+{
+    crate::require(license::Feature::Signatures)?;
+    let cert =
+        Certificate::from_der(cert_der).map_err(|e| SignError::Key(format!("certificate: {e}")))?;
+    let chain_certs = chain
+        .iter()
+        .map(|c| Certificate::from_der(c).map_err(|e| SignError::Key(format!("chain: {e}"))))
+        .collect::<Result<Vec<_>, _>>()?;
+    let prepared = begin_signing(pdf, opts)?;
+    let der = build_pkcs7_with(
+        &cert,
+        &chain_certs,
+        prepared.signed_bytes(),
+        opts.pades,
+        opts.policy.as_ref(),
+        &sign_raw,
+    )?;
+    prepared.complete(&der)
+}
+
+/// **Model B — two-phase / detached container.** Phase 1: prepare `pdf` for
+/// signing, returning a [`SigningSession`] whose [`hash`](SigningSession::hash)
+/// / [`signed_bytes`](SigningSession::signed_bytes) you send to the HSM
+/// (possibly across an async or HTTP boundary). Once you have a complete CMS /
+/// PKCS#7 container, call [`SigningSession::complete`] to inject it into the
+/// reserved placeholder (phase 2). The key never touches this library.
+pub fn begin_signing(pdf: &[u8], opts: &SignOptions) -> Result<SigningSession, SignError> {
     crate::require(license::Feature::Signatures)?;
     let subfilter = if opts.pades {
         "ETSI.CAdES.detached"
@@ -150,31 +284,66 @@ pub fn sign(pdf: &[u8], signer: &Signer, opts: &SignOptions) -> Result<Vec<u8>, 
     if let Some(n) = &opts.name {
         extra.push_str(&format!(" /Name ({})", escape(n)));
     }
-    let pades = opts.pades;
-    append_signature(
+    prepare_internal(
         pdf,
-        "Sig",
-        subfilter,
-        "Signature",
-        extra.as_bytes(),
-        opts.visible.as_ref(),
-        |bytes| build_pkcs7(signer, bytes, pades),
+        PrepareParams {
+            sig_type: "Sig",
+            subfilter,
+            field_prefix: "Signature",
+            extra: extra.into_bytes(),
+            visible: opts.visible.as_ref(),
+            certification: opts.certification,
+            reserved: opts.estimated_size.unwrap_or(RESERVED),
+        },
     )
+}
+
+/// Stateless **phase 2** for two-phase signing: embed a complete DER CMS /
+/// PKCS#7 `container` into the **last** zero-filled `/Contents` placeholder of a
+/// [`begin_signing`]-prepared `document`. Use this when phase 1 (prepare)
+/// and phase 2 (embed) run in different processes and only the prepared bytes
+/// crossed the boundary; otherwise [`SigningSession::complete`] is more direct.
+pub fn complete_signing(document: &[u8], container: &[u8]) -> Result<Vec<u8>, SignError> {
+    let a = rfind_sub(document, b"/Contents <")
+        .map(|p| p + b"/Contents ".len())
+        .ok_or_else(|| SignError::Structure("no /Contents placeholder".into()))?;
+    // `a` indexes the '<'; find the closing '>'.
+    let close = document[a..]
+        .iter()
+        .position(|&b| b == b'>')
+        .map(|i| a + i)
+        .ok_or_else(|| SignError::Structure("unterminated /Contents".into()))?;
+    let reserved = (close - a - 1) / 2;
+    let hex = hex_encode(container);
+    if hex.len() > reserved * 2 {
+        return Err(SignError::SignatureTooLarge {
+            got: container.len(),
+            reserved,
+        });
+    }
+    let mut out = document.to_vec();
+    out[a + 1..a + 1 + hex.len()].copy_from_slice(hex.as_bytes());
+    Ok(out)
 }
 
 /// Append an RFC 3161 document timestamp signed by `tsa` (PAdES-B-LTA block).
 pub fn timestamp(pdf: &[u8], tsa: &Signer, date: Option<&str>) -> Result<Vec<u8>, SignError> {
     crate::require(license::Feature::Signatures)?;
     let gen_time = date.unwrap_or("20260625000000Z").to_string();
-    append_signature(
+    let prepared = prepare_internal(
         pdf,
-        "DocTimeStamp",
-        "ETSI.RFC3161",
-        "Timestamp",
-        b"",
-        None,
-        |bytes| build_timestamp_token(tsa, bytes, &gen_time),
-    )
+        PrepareParams {
+            sig_type: "DocTimeStamp",
+            subfilter: "ETSI.RFC3161",
+            field_prefix: "Timestamp",
+            extra: Vec::new(),
+            visible: None,
+            certification: None,
+            reserved: RESERVED,
+        },
+    )?;
+    let der = build_timestamp_token(tsa, prepared.signed_bytes(), &gen_time)?;
+    prepared.complete(&der)
 }
 
 /// Add a Document Security Store (`/DSS`) with validation `certs` and `crls`
@@ -248,17 +417,89 @@ pub fn add_dss(pdf: &[u8], certs: &[Vec<u8>], crls: &[Vec<u8>]) -> Result<Vec<u8
     Ok(out)
 }
 
+/// A PDF prepared for **deferred (two-phase) signing**: its `/ByteRange` is
+/// fixed and `/Contents` holds a zero-filled placeholder. Send the
+/// [`hash`](Self::hash) (or [`signed_bytes`](Self::signed_bytes)) to a
+/// remote signer/HSM, build the CMS/PKCS#7 container, then call
+/// [`complete`](Self::complete) to inject it. The private key never reaches this
+/// library. Produced by [`begin_signing`].
+pub struct SigningSession {
+    /// The prepared PDF (incremental update with a placeholder `/Contents`).
+    document: Vec<u8>,
+    /// Byte offset of the `<` opening the `/Contents` hex string.
+    contents_offset: usize,
+    /// Bytes reserved for the DER container (placeholder is `reserved * 2` hex).
+    reserved: usize,
+    /// Exactly the bytes the signature covers (the two `/ByteRange` segments).
+    signed_bytes: Vec<u8>,
+}
+
+impl SigningSession {
+    /// The prepared PDF bytes (with a zero-filled `/Contents` placeholder).
+    /// Embedding the container yields the final signed PDF.
+    pub fn document(&self) -> &[u8] {
+        &self.document
+    }
+
+    /// The exact bytes the signature covers — the two `/ByteRange` segments
+    /// concatenated. Hash and sign these (or use [`hash`](Self::hash)).
+    pub fn signed_bytes(&self) -> &[u8] {
+        &self.signed_bytes
+    }
+
+    /// SHA-256 of [`signed_bytes`](Self::signed_bytes) — the value an HSM signs.
+    pub fn hash(&self) -> [u8; 32] {
+        Sha256::digest(&self.signed_bytes).into()
+    }
+
+    /// The number of bytes reserved for the CMS container.
+    pub fn reserved_size(&self) -> usize {
+        self.reserved
+    }
+
+    /// Phase 2: complete the signature by embedding a finished DER CMS / PKCS#7
+    /// `container` into the reserved `/Contents` placeholder, returning the final
+    /// signed PDF. Fails with [`SignError::SignatureTooLarge`] if the container
+    /// exceeds the reserved space (raise `SignOptions::estimated_size` and
+    /// re-open the session).
+    pub fn complete(mut self, container: &[u8]) -> Result<Vec<u8>, SignError> {
+        let hex = hex_encode(container);
+        if hex.len() > self.reserved * 2 {
+            return Err(SignError::SignatureTooLarge {
+                got: container.len(),
+                reserved: self.reserved,
+            });
+        }
+        let a = self.contents_offset;
+        self.document[a + 1..a + 1 + hex.len()].copy_from_slice(hex.as_bytes());
+        Ok(self.document)
+    }
+}
+
+/// Internal parameters for [`prepare_internal`].
+struct PrepareParams<'a> {
+    sig_type: &'a str,
+    subfilter: &'a str,
+    field_prefix: &'a str,
+    extra: Vec<u8>,
+    visible: Option<&'a VisibleSignature>,
+    certification: Option<Certify>,
+    reserved: usize,
+}
+
 /// Core: append a signature field + signature dictionary as an incremental
-/// update, set the `ByteRange`, then fill `/Contents` with `make_contents`.
-fn append_signature(
-    pdf: &[u8],
-    sig_type: &str,
-    subfilter: &str,
-    field_prefix: &str,
-    extra: &[u8],
-    visible: Option<&VisibleSignature>,
-    make_contents: impl Fn(&[u8]) -> Result<Vec<u8>, SignError>,
-) -> Result<Vec<u8>, SignError> {
+/// update and fix the `/ByteRange`, returning a [`SigningSession`] whose
+/// `/Contents` placeholder is ready to receive the CMS container.
+fn prepare_internal(pdf: &[u8], p: PrepareParams) -> Result<SigningSession, SignError> {
+    let PrepareParams {
+        sig_type,
+        subfilter,
+        field_prefix,
+        extra,
+        visible,
+        certification,
+        reserved,
+    } = p;
     let reader = PdfReader::parse(pdf).map_err(|e| SignError::Parse(e.to_string()))?;
     let catalog_num = ref_num(reader.trailer().get("Root"))
         .ok_or_else(|| SignError::Structure("no /Root".into()))?;
@@ -331,9 +572,19 @@ fn append_signature(
     new_page.set("Annots", Object::Array(annots));
     objects.push((page_num, Object::Dict(new_page).to_bytes()));
 
-    if update_catalog {
+    // Re-emit the catalog if we introduced an AcroForm or are certifying
+    // (DocMDP needs `/Perms /DocMDP` pointing at this signature).
+    if update_catalog || certification.is_some() {
         let mut c = catalog.clone();
-        c.set("AcroForm", Reference::new(acro_num));
+        if update_catalog {
+            c.set("AcroForm", Reference::new(acro_num));
+        }
+        if certification.is_some() {
+            c.set(
+                "Perms",
+                Object::Dict(Dict::new().with("DocMDP", Reference::new(sig_num))),
+            );
+        }
         objects.push((catalog_num, Object::Dict(c).to_bytes()));
     }
     objects.push((acro_num, Object::Dict(acro_dict).to_bytes()));
@@ -393,7 +644,22 @@ fn append_signature(
     }
     objects.push((widget_num, Object::Dict(widget).to_bytes()));
 
-    objects.push((sig_num, sig_object_body(sig_type, subfilter, extra)));
+    // A certifying signature carries a DocMDP transform reference.
+    let mut extra = extra;
+    if let Some(level) = certification {
+        extra.extend_from_slice(
+            format!(
+                " /Reference [ << /Type /SigRef /TransformMethod /DocMDP \
+                 /TransformParams << /Type /TransformParams /P {} /V /1.2 >> >> ]",
+                level.p()
+            )
+            .as_bytes(),
+        );
+    }
+    objects.push((
+        sig_num,
+        sig_object_body(sig_type, subfilter, &extra, reserved),
+    ));
 
     // Assemble incremental blob.
     let mut blob = Vec::new();
@@ -422,7 +688,7 @@ fn append_signature(
     let a = rfind_sub(&file, b"/Contents <")
         .map(|p| p + b"/Contents ".len())
         .ok_or_else(|| SignError::Structure("contents placeholder lost".into()))?;
-    let gap = RESERVED * 2 + 2;
+    let gap = reserved * 2 + 2;
     let seg2_start = a + gap;
     let seg2_len = file.len() - seg2_start;
     overwrite_last_byterange(&mut file, &format!("0 {a} {seg2_start} {seg2_len}"))?;
@@ -431,16 +697,12 @@ fn append_signature(
     signed.extend_from_slice(&file[..a]);
     signed.extend_from_slice(&file[seg2_start..]);
 
-    let der = make_contents(&signed)?;
-    let hex = hex_encode(&der);
-    if hex.len() > RESERVED * 2 {
-        return Err(SignError::SignatureTooLarge {
-            got: der.len(),
-            reserved: RESERVED,
-        });
-    }
-    file[a + 1..a + 1 + hex.len()].copy_from_slice(hex.as_bytes());
-    Ok(file)
+    Ok(SigningSession {
+        document: file,
+        contents_offset: a,
+        reserved,
+        signed_bytes: signed,
+    })
 }
 
 fn appearance_content(w: f64, h: f64, lines: &[String]) -> Vec<u8> {
@@ -485,7 +747,7 @@ fn win_ansi(text: &str) -> Vec<u8> {
     out
 }
 
-fn sig_object_body(sig_type: &str, subfilter: &str, extra: &[u8]) -> Vec<u8> {
+fn sig_object_body(sig_type: &str, subfilter: &str, extra: &[u8], reserved: usize) -> Vec<u8> {
     let mut s = Vec::new();
     s.extend_from_slice(
         format!("<< /Type /{sig_type} /Filter /Adobe.PPKLite /SubFilter /{subfilter}").as_bytes(),
@@ -494,7 +756,7 @@ fn sig_object_body(sig_type: &str, subfilter: &str, extra: &[u8]) -> Vec<u8> {
     s.extend_from_slice(&[b' '; BYTERANGE_FIELD]);
     s.extend_from_slice(b"]");
     s.extend_from_slice(b" /Contents <");
-    s.extend(std::iter::repeat_n(b'0', RESERVED * 2));
+    s.extend(std::iter::repeat_n(b'0', reserved * 2));
     s.extend_from_slice(b">");
     s.extend_from_slice(extra);
     s.extend_from_slice(b" >>");
@@ -515,7 +777,37 @@ fn overwrite_last_byterange(file: &mut [u8], value: &str) -> Result<(), SignErro
     Ok(())
 }
 
-fn build_pkcs7(signer: &Signer, message: &[u8], pades: bool) -> Result<Vec<u8>, SignError> {
+fn build_pkcs7(
+    signer: &Signer,
+    message: &[u8],
+    pades: bool,
+    policy: Option<&SignaturePolicy>,
+) -> Result<Vec<u8>, SignError> {
+    build_signed_data(
+        &signer.signing_key,
+        &signer.cert,
+        &signer.chain,
+        message,
+        pades,
+        policy,
+    )
+}
+
+/// Build a detached CMS `SignedData` over `message`, signing with `key`. The
+/// signer `S` is either an in-process [`SigningKey`] ([`build_pkcs7`]) or an
+/// [`DelegatedSigner`] delegating to a remote HSM ([`build_pkcs7_with`]) —
+/// both paths produce identical structure for the same key.
+fn build_signed_data<S>(
+    key: &S,
+    cert: &Certificate,
+    chain: &[Certificate],
+    message: &[u8],
+    pades: bool,
+    policy: Option<&SignaturePolicy>,
+) -> Result<Vec<u8>, SignError>
+where
+    S: Keypair + DynSignatureAlgorithmIdentifier + signature::Signer<rsa::pkcs1v15::Signature>,
+{
     let digest = Sha256::digest(message);
     let content = EncapsulatedContentInfo {
         econtent_type: ID_DATA,
@@ -525,9 +817,9 @@ fn build_pkcs7(signer: &Signer, message: &[u8], pades: bool) -> Result<Vec<u8>, 
         oid: ID_SHA_256,
         parameters: None,
     };
-    let sid = signer_id(&signer.cert);
+    let sid = signer_id(cert);
     let mut signer_info = SignerInfoBuilder::new(
-        &signer.signing_key,
+        key,
         sid,
         digest_alg.clone(),
         &content,
@@ -536,7 +828,12 @@ fn build_pkcs7(signer: &Signer, message: &[u8], pades: bool) -> Result<Vec<u8>, 
     .map_err(|e| SignError::Cms(e.to_string()))?;
     if pades {
         signer_info
-            .add_signed_attribute(signing_certificate_v2(&signer.cert)?)
+            .add_signed_attribute(signing_certificate_v2(cert)?)
+            .map_err(|e| SignError::Cms(e.to_string()))?;
+    }
+    if let Some(pol) = policy {
+        signer_info
+            .add_signed_attribute(signature_policy_identifier(pol)?)
             .map_err(|e| SignError::Cms(e.to_string()))?;
     }
 
@@ -544,20 +841,138 @@ fn build_pkcs7(signer: &Signer, message: &[u8], pades: bool) -> Result<Vec<u8>, 
     builder
         .add_digest_algorithm(digest_alg)
         .map_err(|e| SignError::Cms(e.to_string()))?
-        .add_certificate(CertificateChoices::Certificate(signer.cert.clone()))
+        .add_certificate(CertificateChoices::Certificate(cert.clone()))
         .map_err(|e| SignError::Cms(e.to_string()))?;
-    for c in &signer.chain {
+    for c in chain {
         builder
             .add_certificate(CertificateChoices::Certificate(c.clone()))
             .map_err(|e| SignError::Cms(e.to_string()))?;
     }
     builder
-        .add_signer_info::<SigningKey<Sha256>, rsa::pkcs1v15::Signature>(signer_info)
+        .add_signer_info::<S, rsa::pkcs1v15::Signature>(signer_info)
         .map_err(|e| SignError::Cms(e.to_string()))?
         .build()
         .map_err(|e| SignError::Cms(e.to_string()))?
         .to_der()
         .map_err(|e| SignError::Cms(e.to_string()))
+}
+
+/// A callback yielding the raw RSA PKCS#1 v1.5 signature (over SHA-256 of the
+/// supplied bytes) — the "bring-your-own-signer" hook backed by a remote HSM.
+type SignHashFn<'a> = dyn Fn(&[u8]) -> Result<Vec<u8>, SignError> + 'a;
+
+/// Build a detached CMS `SignedData` where the RSA signature value comes from
+/// an external callback (Model A — see [`sign_with`]).
+fn build_pkcs7_with(
+    cert: &Certificate,
+    chain: &[Certificate],
+    message: &[u8],
+    pades: bool,
+    policy: Option<&SignaturePolicy>,
+    sign_raw: &SignHashFn,
+) -> Result<Vec<u8>, SignError> {
+    let signer = DelegatedSigner::new(sign_raw);
+    let result = build_signed_data(&signer, cert, chain, message, pades, policy);
+    // Surface the callback's own error rather than the opaque CMS error.
+    if let Some(err) = signer.take_error() {
+        return Err(err);
+    }
+    result
+}
+
+/// A CMS signer whose signature value is produced by a caller-supplied callback
+/// (a remote HSM). It contributes only the `sha256WithRSAEncryption` algorithm
+/// identifier and the raw signature bytes — no private key is held.
+struct DelegatedSigner<'a> {
+    sign_raw: &'a SignHashFn<'a>,
+    /// Captures a callback failure so the opaque [`signature::Error`] the CMS
+    /// builder surfaces can be replaced with the real cause.
+    error: RefCell<Option<SignError>>,
+}
+
+impl<'a> DelegatedSigner<'a> {
+    fn new(sign_raw: &'a SignHashFn<'a>) -> Self {
+        DelegatedSigner {
+            sign_raw,
+            error: RefCell::new(None),
+        }
+    }
+
+    fn take_error(&self) -> Option<SignError> {
+        self.error.borrow_mut().take()
+    }
+}
+
+impl Keypair for DelegatedSigner<'_> {
+    // The CMS build path never inspects the verifying key, so a unit suffices.
+    type VerifyingKey = ();
+    fn verifying_key(&self) {}
+}
+
+impl DynSignatureAlgorithmIdentifier for DelegatedSigner<'_> {
+    fn signature_algorithm_identifier(&self) -> Result<AlgorithmIdentifierOwned, spki::Error> {
+        Ok(AlgorithmIdentifierOwned {
+            oid: SHA256_WITH_RSA,
+            parameters: Some(Any::from(Null)),
+        })
+    }
+}
+
+impl signature::Signer<rsa::pkcs1v15::Signature> for DelegatedSigner<'_> {
+    fn try_sign(&self, msg: &[u8]) -> Result<rsa::pkcs1v15::Signature, signature::Error> {
+        match (self.sign_raw)(msg) {
+            Ok(bytes) => rsa::pkcs1v15::Signature::try_from(bytes.as_slice()).map_err(|e| {
+                *self.error.borrow_mut() =
+                    Some(SignError::Cms(format!("invalid external signature: {e}")));
+                signature::Error::new()
+            }),
+            Err(e) => {
+                *self.error.borrow_mut() = Some(e);
+                Err(signature::Error::new())
+            }
+        }
+    }
+}
+
+/// ESS signature-policy-identifier signed attribute (PAdES-EPES, RFC 5126).
+fn signature_policy_identifier(pol: &SignaturePolicy) -> Result<Attribute, SignError> {
+    let policy_oid: ObjectIdentifier = pol
+        .oid
+        .parse()
+        .map_err(|e| SignError::Cms(format!("policy OID: {e}")))?;
+    let hash_oid: ObjectIdentifier = match &pol.hash_algorithm_oid {
+        Some(s) => s
+            .parse()
+            .map_err(|e| SignError::Cms(format!("policy hash OID: {e}")))?,
+        None => SHA256_OID,
+    };
+
+    // SigPolicyId ::= OBJECT IDENTIFIER
+    let sig_policy_id = tlv(0x06, policy_oid.as_bytes());
+    // OtherHashAlgAndValue ::= SEQUENCE { hashAlgorithm AlgorithmIdentifier, hashValue OCTET STRING }
+    let hash_alg = tlv(0x30, &tlv(0x06, hash_oid.as_bytes()));
+    let hash_value = tlv(0x04, &pol.hash);
+    let sig_policy_hash = tlv(0x30, &[hash_alg, hash_value].concat());
+
+    let mut body = [sig_policy_id, sig_policy_hash].concat();
+    if let Some(uri) = &pol.uri {
+        // SigPolicyQualifierInfo { id-spq-ets-uri, SPuri (IA5String) }
+        let qualifier = tlv(0x16, uri.as_bytes());
+        let qinfo = tlv(
+            0x30,
+            &[tlv(0x06, ID_SPQ_ETS_URI.as_bytes()), qualifier].concat(),
+        );
+        body.extend_from_slice(&tlv(0x30, &qinfo)); // SEQUENCE OF SigPolicyQualifierInfo
+    }
+    // SignaturePolicy CHOICE -> signaturePolicyId (SignaturePolicyId SEQUENCE)
+    let sig_policy = tlv(0x30, &body);
+
+    let any = Any::from_der(&sig_policy).map_err(|e| SignError::Cms(e.to_string()))?;
+    let values = SetOfVec::try_from(vec![any]).map_err(|e| SignError::Cms(e.to_string()))?;
+    Ok(Attribute {
+        oid: ID_AA_ETS_SIG_POLICY_ID,
+        values,
+    })
 }
 
 /// Build an RFC 3161 TimeStampToken (a CMS SignedData encapsulating TSTInfo)

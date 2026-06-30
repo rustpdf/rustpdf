@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const koffi = require('koffi');
 
 class PdfError extends Error {
@@ -22,6 +23,8 @@ const Align = Object.freeze({ Left: 0, Right: 1, Center: 2, Justify: 3 });
 const AFRelationship = Object.freeze({ Source: 0, Data: 1, Alternative: 2, Supplement: 3, Unspecified: 4 });
 const Encryption = Object.freeze({ Rc4: 0, Aes128: 1, Aes256: 2 });
 const FacturxProfile = Object.freeze({ Minimum: 0, BasicWL: 1, Basic: 2, EN16931: 3, Extended: 4 });
+// DocMDP certification level applied by the first (certifying) signature.
+const Certify = Object.freeze({ None: 0, Locked: 1, Forms: 2, FormsAndAnnotations: 3 });
 
 // ---- Bookmark (document outline tree) --------------------------------------
 
@@ -113,6 +116,29 @@ function libPath() {
 
 const lib = koffi.load(libPath());
 
+// Deferred / external (HSM) signing — issue #41 P0.
+// The C-ABI PdfSigningOptions struct (field order must match include/pdf.h).
+const SigningOptionsStruct = koffi.struct('PdfSigningOptions', {
+  reason: 'const char *',
+  location: 'const char *',
+  name: 'const char *',
+  pades: 'int',
+  certification: 'int',
+  estimated_size: 'size_t',
+  policy_oid: 'const char *',
+  policy_hash: 'const uint8_t *',
+  policy_hash_len: 'size_t',
+  policy_hash_alg_oid: 'const char *',
+  policy_uri: 'const char *',
+});
+void SigningOptionsStruct; // registered by name; referenced in func strings below
+
+// Model A callback: produce the raw RSA PKCS#1 v1.5 signature over SHA-256 of
+// `data`, writing it into `sig_buf` (capacity `sig_cap`), set `*sig_len`, return 0.
+const SignHashFn = koffi.proto(
+  'int PdfSignHashFn(void *ctx, uint8_t *data, size_t data_len, uint8_t *sig_buf, size_t sig_cap, size_t *sig_len)',
+);
+
 const f = {
   version: lib.func('const char *pdf_version()'),
   lastError: lib.func('const char *pdf_last_error_message()'),
@@ -203,6 +229,12 @@ const f = {
   sign: lib.func('int pdf_sign(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *reason, const char *location, const char *name, int pades, _Out_ uint8_t **out, _Out_ size_t *len)'),
   timestamp: lib.func('int pdf_timestamp(const uint8_t *pdf, size_t pl, const uint8_t *key, size_t kl, const uint8_t *cert, size_t cl, const char *date, _Out_ uint8_t **out, _Out_ size_t *len)'),
   addDss: lib.func('int pdf_add_dss(const uint8_t *pdf, size_t pl, const uint8_t **cp, const size_t *cl, size_t cc, const uint8_t **rp, const size_t *rl, size_t rc, _Out_ uint8_t **out, _Out_ size_t *len)'),
+
+  // Deferred / external (HSM) signing — issue #41 P0.
+  signBegin: lib.func('int pdf_sign_begin(const uint8_t *pdf, size_t pl, const PdfSigningOptions *params, _Out_ uint8_t **out_doc, _Out_ size_t *out_doc_len, _Out_ uint8_t **out_tbs, _Out_ size_t *out_tbs_len)'),
+  signComplete: lib.func('int pdf_sign_complete(const uint8_t *document, size_t dl, const uint8_t *container, size_t cl, _Out_ uint8_t **out, _Out_ size_t *len)'),
+  signWith: lib.func('int pdf_sign_with(const uint8_t *pdf, size_t pl, const uint8_t *cert, size_t cl, const uint8_t **chain_ptrs, const size_t *chain_lens, size_t chain_count, const PdfSigningOptions *params, PdfSignHashFn *callback, void *ctx, _Out_ uint8_t **out, _Out_ size_t *len)'),
+  listSignatures: lib.func('int pdf_list_signatures(const uint8_t *pdf, size_t pl, _Out_ uint8_t **out, _Out_ size_t *len)'),
 };
 
 // ---- helpers ---------------------------------------------------------------
@@ -230,6 +262,15 @@ function takeBytes(call) {
 
 function asBuf(data) {
   return Buffer.isBuffer(data) ? data : Buffer.from(data);
+}
+
+// Copy a single native out-buffer into a Buffer and free it (used where one
+// call returns two out-buffers and takeBytes' single-buffer shape doesn't fit).
+function copyAndFree(ptr, n) {
+  if (!ptr || n === 0) return Buffer.alloc(0);
+  const buf = Buffer.from(koffi.decode(ptr, 'uint8_t', n));
+  f.bufferFree(ptr, n);
+  return buf;
 }
 
 // ---- top-level API ---------------------------------------------------------
@@ -294,6 +335,118 @@ function addDss(pdf, certs = [], crls = []) {
     p, p.length,
     cb, cb.map((x) => x.length), cb.length,
     rb, rb.map((x) => x.length), rb.length, o, n));
+}
+
+// ---- deferred / external (HSM) signing — issue #41 P0 ----------------------
+
+// Marshal a JS SigningOptions object into the native PdfSigningOptions struct.
+// SigningOptions: { reason?, location?, name?, pades?, certify?, containerSize?,
+//   policy? }, where policy = { oid, hash, hashAlgorithmOid?, uri? }.
+function buildSigningOptions(options) {
+  const o = options || {};
+  const pol = o.policy || null;
+  const hash = pol && pol.hash ? asBuf(pol.hash) : null;
+  return {
+    reason: o.reason ?? null,
+    location: o.location ?? null,
+    name: o.name ?? null,
+    pades: o.pades ? 1 : 0,
+    certification: o.certify ?? Certify.None,
+    estimated_size: o.containerSize && o.containerSize > 0 ? o.containerSize : 0,
+    policy_oid: pol ? pol.oid ?? null : null,
+    policy_hash: hash && hash.length > 0 ? hash : null,
+    policy_hash_len: hash ? hash.length : 0,
+    policy_hash_alg_oid: pol ? pol.hashAlgorithmOid ?? null : null,
+    policy_uri: pol ? pol.uri ?? null : null,
+  };
+}
+
+// An in-progress two-phase signature (Model B). `document` holds the prepared
+// PDF (zero-filled /Contents placeholder); `bytes` the exact bytes the
+// signature covers. Hand `hash` to a remote HSM, build the CMS container, then
+// call `complete`.
+class SigningSession {
+  constructor(document, bytes) {
+    this.document = document; // Uint8Array (Buffer)
+    this.bytes = bytes; // Uint8Array (Buffer)
+  }
+
+  // SHA-256 of `bytes` — the value an HSM signs.
+  get hash() {
+    return crypto.createHash('sha256').update(this.bytes).digest();
+  }
+
+  // Phase 2: embed a finished DER CMS / PKCS#7 container, returning the final PDF.
+  complete(container) {
+    return completeSignature(this.document, container);
+  }
+}
+
+// Model A — remote signer. Sign `pdf` without handing this library a key: it
+// builds the CMS signed attributes and calls `signHash(data: Buffer) => Buffer`
+// for the raw RSA PKCS#1 v1.5 signature over SHA-256 of `data`, then assembles
+// and embeds the CMS. `certDer` is the signer certificate; `chain` are
+// intermediates (DER), supplied independently of the key.
+function signWith(pdf, certDer, signHash, chain = [], options) {
+  const p = asBuf(pdf), c = asBuf(certDer);
+  const chainBufs = chain.map(asBuf);
+  const params = buildSigningOptions(options);
+  const jsCb = (ctx, data, dataLen, sigBuf, sigCap, sigLenPtr) => {
+    try {
+      const input = Buffer.from(koffi.decode(data, 'uint8_t', Number(dataLen)));
+      const sig = asBuf(signHash(input));
+      if (sig.length > Number(sigCap)) return 2; // buffer too small
+      koffi.encode(sigBuf, 'uint8_t', sig, sig.length);
+      koffi.encode(sigLenPtr, 'size_t', sig.length);
+      return 0;
+    } catch {
+      return 1; // signer threw
+    }
+  };
+  const cb = koffi.register(jsCb, koffi.pointer(SignHashFn));
+  try {
+    return takeBytes((o, n) => f.signWith(
+      p, p.length, c, c.length,
+      chainBufs, chainBufs.map((x) => x.length), chainBufs.length,
+      params, cb, null, o, n));
+  } finally {
+    koffi.unregister(cb);
+  }
+}
+
+// Model B — two-phase signing, phase 1. Prepare `pdf` for deferred signing and
+// return a SigningSession. The key never reaches this library.
+function beginSigning(pdf, options) {
+  const p = asBuf(pdf);
+  const params = buildSigningOptions(options);
+  const outDoc = [null], outDocLen = [0n], outTbs = [null], outTbsLen = [0n];
+  check(f.signBegin(p, p.length, params, outDoc, outDocLen, outTbs, outTbsLen));
+  const document = copyAndFree(outDoc[0], Number(outDocLen[0]));
+  const bytes = copyAndFree(outTbs[0], Number(outTbsLen[0]));
+  return new SigningSession(document, bytes);
+}
+
+// Model B — two-phase signing, phase 2. Embed a complete DER CMS / PKCS#7
+// `container` into a prepared `document` (from beginSigning), returning the
+// final signed PDF.
+function completeSignature(document, container) {
+  const d = asBuf(document), c = asBuf(container);
+  return takeBytes((o, n) => f.signComplete(d, d.length, c, c.length, o, n));
+}
+
+// List the signature fields in `pdf` (detect existing signatures before
+// signing). Returns [{ name, signed }, ...]; an empty array means none.
+function listSignatures(pdf) {
+  const b = asBuf(pdf);
+  const text = takeBytes((o, n) => f.listSignatures(b, b.length, o, n)).toString('utf8');
+  const out = [];
+  for (const line of text.split('\n')) {
+    if (!line) continue;
+    const tab = line.indexOf('\t');
+    if (tab < 0) continue;
+    out.push({ name: line.slice(tab + 1), signed: line.slice(0, tab) === '1' });
+  }
+  return out;
 }
 
 // ---- Document --------------------------------------------------------------
@@ -535,7 +688,9 @@ module.exports = {
   AFRelationship,
   Encryption,
   FacturxProfile,
+  Certify,
   Bookmark,
+  SigningSession,
   Document,
   EditableDoc,
   version,
@@ -548,4 +703,8 @@ module.exports = {
   sign,
   timestamp,
   addDss,
+  signWith,
+  beginSigning,
+  completeSignature,
+  listSignatures,
 };

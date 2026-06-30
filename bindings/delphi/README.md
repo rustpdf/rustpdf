@@ -72,6 +72,48 @@ Strings cross as UTF-8; byte payloads are `TBytes`; rectangles use `TPdfRect`
 (`PdfRect(x0, y0, x1, y1)`). Any non-zero `PdfStatus` is raised as an
 `ERustPdf` carrying the native thread-local error message and a `Status` code.
 
+## Deferred / HSM signing
+
+Sign **without** handing the library a private key. When the key lives in an HSM,
+a cloud KMS, a smartcard or a PKI token (any PKI — eIDAS, AATL, a national CA),
+you supply the raw RSA signature and the binding builds and embeds the
+CMS / PKCS#7 container. The private key never enters the library.
+
+`TPdfRemoteSign` is a method pointer (`of object`, so it can carry state — FPC
+3.2 has no anonymous methods), so the callback is a method of one of your
+classes:
+
+```pascal
+type
+  TMySigner = class
+    function SignHash(const DataToSign: TBytes): TBytes;   // call your HSM / KMS / token
+  end;
+
+var
+  Signer: TMySigner;
+  Opts: TSigningOptions;
+  Signed: TBytes;
+begin
+  Signer := TMySigner.Create;
+  try
+    Opts := SigningOptions;        // zero-initialised record
+    Opts.Reason := 'Approved';
+    Opts.Pades  := True;           // PAdES-B-B
+    // Model A: SignHash returns the raw RSA PKCS#1 v1.5 signature over SHA-256(DataToSign).
+    Signed := Pdf.SignWith(PdfBytes, CertDer, Signer.SignHash, [IntermediateDer], Opts);
+  finally
+    Signer.Free;
+  end;
+end;
+```
+
+For an asynchronous or out-of-band signer, use the two-phase flow instead:
+`Pdf.BeginSigning` returns a `TSigningSession` whose `Hash` you send to the
+remote signer; build a DER CMS container, then `Session.Complete(Container)`
+(or `Pdf.CompleteSignature`). `Pdf.ListSignatures` reports the signature fields
+already present. `TSigningOptions` also carries `Location` / `Name`, DocMDP
+certification (`TCertify`) and a signature policy (`TSignaturePolicy`).
+
 ## Licensing
 
 Corporate features (PDF/A, tagging, encryption, signing, page rendering — a

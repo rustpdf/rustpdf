@@ -272,4 +272,54 @@ let plain;
   console.log(`verify_signatures ok (valid=${s.is_valid}, covers=${s.covers_whole_document})`);
 }
 
+// 14. Deferred / external (HSM) signing — issue #41 P0.
+{
+  const crypto = require('crypto');
+  const fx = path.join(root, 'crates', 'pdf', 'tests', 'fixtures');
+  // PKCS#8 DER private key + DER certificate (the key stays in *our* process,
+  // standing in for an HSM; the library never receives it).
+  const keyDer = fs.readFileSync(path.join(fx, 'signer_key.pk8'));
+  const cert = fs.readFileSync(path.join(fx, 'signer_cert.der'));
+  const privateKey = crypto.createPrivateKey({ key: keyDer, format: 'der', type: 'pkcs8' });
+
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'deferred signing');
+  const doc = d.toBytes();
+  d.close();
+
+  // Pre-signing inventory: no signature fields yet.
+  assert.strictEqual(rp.listSignatures(doc).length, 0, 'unsigned → no signature fields');
+
+  // Model A: the lib calls back for the raw RSA-PKCS#1-v1.5-SHA256 signature.
+  let signerCalls = 0;
+  const signHash = (data) => {
+    signerCalls += 1;
+    // `data` are the CMS signed attributes; sign their SHA-256 (RSA PKCS#1 v1.5).
+    return crypto.sign('sha256', data, { key: privateKey, padding: crypto.constants.RSA_PKCS1_PADDING });
+  };
+  const signed = rp.signWith(doc, cert, signHash, [], { reason: 'HSM', pades: true });
+  assert.ok(signerCalls >= 1, 'remote signer callback was invoked');
+  assert.ok(signed.includes(Buffer.from('/ByteRange')), 'Model A produced a /ByteRange');
+
+  // Prove the resulting signature is cryptographically valid end-to-end.
+  const sigs = rp.verifySignatures(signed);
+  assert.strictEqual(sigs.length, 1, `Model A: one signature, got ${sigs.length}`);
+  assert.ok(sigs[0].is_valid, `Model A signature must be valid: ${JSON.stringify(sigs[0])}`);
+  console.log(`Model A (signWith) ok — valid=${sigs[0].is_valid}, callbacks=${signerCalls}`);
+
+  // listSignatures now reports exactly one (signed) field.
+  const fields = rp.listSignatures(signed);
+  assert.strictEqual(fields.length, 1, `listSignatures: one field, got ${fields.length}`);
+  assert.strictEqual(fields[0].signed, true, 'the field reports as signed');
+  console.log(`listSignatures ok — name=${fields[0].name}, signed=${fields[0].signed}`);
+
+  // Model B: two-phase begin/complete. Check the session shape.
+  const session = rp.beginSigning(doc, { reason: 'two-phase' });
+  assert.ok(session.document.length > 0, 'session document non-empty');
+  assert.ok(session.bytes.length > 0, 'session bytes non-empty');
+  assert.strictEqual(session.hash.length, 32, 'session hash is SHA-256 (32 bytes)');
+  console.log(`Model B (beginSigning) ok — document=${session.document.length}B, tbs=${session.bytes.length}B, hash=${session.hash.length}B`);
+}
+
 console.log('OK: full Node binding surface exercised');

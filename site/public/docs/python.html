@@ -165,6 +165,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#deferred-sign">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -628,6 +629,64 @@ signed = rustpdf.sign(pdf_bytes, key_der, cert_der,
                       name="Jane Doe", pades=True)
 open("contract.signed.pdf", "wb").write(signed)
 # Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- DEFERRED / HSM SIGNING -->
+      <h2 id="deferred-sign">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing the library a private key. The key stays inside an HSM, cloud KMS, smartcard or PKI token, and only the raw signature crosses back. This works with any PKI (national PKI, eIDAS, AATL): the library builds the CMS / PKCS#7 container and asks your signer for the RSA signature over the document digest.</p>
+      <p>There are two flavors. <b>Model A</b> (callback) is a single call: you pass a <code>sign_hash</code> callable that the library invokes synchronously to obtain the signature. <b>Model B</b> (two phase) splits preparation and completion, so the digest can travel to a remote signer (a different process, host, or an asynchronous cloud signing service) before you embed the finished container.</p>
+
+      <h3>Model A: callback signer</h3>
+      <p>The library assembles the CMS signed attributes, calls <code>sign_hash(data)</code> for the raw RSA PKCS#1 v1.5 signature over SHA-256 of <code>data</code>, then embeds the container. The certificate (and any intermediates) are passed as DER, independent of the key.</p>
+      <div class="api"><code>rustpdf.sign_with(pdf, cert_der, sign_hash, chain=(), options=None) → bytes</code></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>import rustpdf
+
+pdf_bytes        = open("contract.pdf", "rb").read()
+cert_der         = open("signing-cert.der", "rb").read()   # X.509 certificate (DER)
+intermediate_der = open("intermediate.der", "rb").read()   # chain cert (DER)
+
+# The signer delegates to an HSM / cloud KMS / smartcard. No key reaches the library.
+def sign_hash(to_be_signed: bytes) -> bytes:
+    return my_hsm.sign(to_be_signed)   # raw RSA PKCS#1 v1.5 over SHA-256
+
+signed = rustpdf.sign_with(
+    pdf_bytes, cert_der, sign_hash,
+    chain=[intermediate_der],
+    options=rustpdf.SigningOptions(reason="Approved", location="Berlin", pades=True),
+)
+open("contract.signed.pdf", "wb").write(signed)</code></pre></div>
+
+      <h3>Model B: two-phase (begin / complete)</h3>
+      <p><code>begin_signing</code> returns a <code>SigningSession</code> holding the prepared <code>document</code> (with a zero-filled <code>/Contents</code> placeholder) plus the exact <code>bytes</code> the signature covers and their <code>hash</code> (SHA-256). Send the hash to a remote signer, build the DER CMS / PKCS#7 container, then call <code>complete()</code> (or <code>rustpdf.complete_signature(document, container)</code>). The two halves can run in different processes.</p>
+      <div class="api"><code>rustpdf.begin_signing(pdf, options=None) → SigningSession</code></div>
+      <div class="api"><code>SigningSession.document</code>, <code>.bytes</code>, <code>.hash</code>, <code>.complete(container) → bytes</code></div>
+      <div class="api"><code>rustpdf.complete_signature(document, container) → bytes</code></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>session = rustpdf.begin_signing(pdf_bytes, options=rustpdf.SigningOptions(pades=True))
+
+# Hand off to a remote HSM / cloud signing service (here, a separate step).
+container = remote_signer.build_cms(session.hash)   # finished DER CMS / PKCS#7
+
+signed = session.complete(container)
+open("contract.signed.pdf", "wb").write(signed)</code></pre></div>
+
+      <h3>Inventory existing signatures</h3>
+      <p>Before signing, inspect the signature fields already present (for example to add a second signature without disturbing the first). An empty list means there are no signature fields.</p>
+      <div class="api"><code>rustpdf.list_signatures(pdf) → list[SignatureField]</code></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>for field in rustpdf.list_signatures(pdf_bytes):
+    print(field.name, "signed:" , field.signed)   # SignatureField(name, signed)</code></pre></div>
+
+      <h3>Signing options</h3>
+      <p>Both models accept a <code>SigningOptions</code>. It carries the visible metadata plus the cryptographic profile.</p>
+      <div class="api"><code>SigningOptions(reason=None, location=None, name=None, pades=False, certify=Certify.NONE, container_size=0, policy=None)</code></div>
+      <ul>
+        <li><code>reason</code>, <code>location</code>, <code>name</code>: human-readable signature metadata.</li>
+        <li><code>pades=True</code>: produce a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>) instead of a plain PKCS#7 one.</li>
+        <li><code>certify</code>: a <code>Certify</code> level (DocMDP) for a certifying signature. Use it only on the first signature: <code>NONE</code>, <code>LOCKED</code> (no changes allowed after signing), <code>FORMS</code> (form filling and signing allowed), <code>FORMS_AND_ANNOTATIONS</code>.</li>
+        <li><code>container_size</code>: reserved <code>/Contents</code> bytes (0 = default, 8192). Raise it when a cloud HSM returns a large CMS container.</li>
+        <li><code>policy</code>: a <code>SignaturePolicy</code> identifier (PAdES-EPES) when your PKI mandates one.</li>
+      </ul>
+      <div class="api"><code>SignaturePolicy(oid, hash, hash_algorithm_oid=None, uri=None)</code></div>
+      <p>The policy <code>oid</code> is the dotted-decimal policy identifier, <code>hash</code> is the policy document digest (under <code>hash_algorithm_oid</code>, defaulting to SHA-256), and <code>uri</code> is an optional location where the policy can be retrieved.</p>
+      <div class="note"><b>The key never enters the library.</b> Deferred signing exists so that the signing key can stay in dedicated hardware or a managed service. The library only sees the certificate, the bytes to be signed, and the finished signature, so it is a fit for any external-key PKI (national PKI, eIDAS, AATL).</div>
 
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>

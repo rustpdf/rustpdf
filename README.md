@@ -233,8 +233,12 @@ let text = pdf::extract_text(std::fs::read("merged.pdf")?)?;
   `pdf::sign` — **digital signatures** (incremental update + `ByteRange` + PKCS#7
   detached; **visible**, **multiple**, **certificate chains**); **PAdES** —
   B-B (`SignOptions.pades`), B-LT (`pdf::add_dss` → `/DSS` with certs/CRLs),
-  B-LTA (`pdf::timestamp` → RFC 3161 `/DocTimeStamp`). Validated by `pdfsig` and
-  `openssl cms -verify`.
+  B-LTA (`pdf::timestamp` → RFC 3161 `/DocTimeStamp`). **Deferred / HSM signing**
+  (the private key never reaches the library): `pdf::sign_with` (a signer callback)
+  and `pdf::begin_signing` → `SigningSession::complete` (two-phase) for cloud HSMs,
+  smartcards and PKI tokens; plus **DocMDP certification** (`Certify`), an explicit
+  **signature policy** (`SignaturePolicy`, PAdES-EPES, for any national PKI) and
+  `list_signatures`. Validated by `pdfsig` and `openssl cms -verify`.
 * **PDF/A** (levels **1b / 2b / 2a / 3b / 3a**) via `Document::pdfa()` /
   `pdfa_a()` / `pdfa_with(PdfaLevel)`; A-3 embeds attachments (`attach_file` →
   `/AFRelationship` + `/AF`). **Accessibility** (`tagged()`): **semantic tags** —
@@ -266,6 +270,10 @@ secured.save("secured.pdf")?;
 let signer = pdf::Signer::from_pkcs8_der(&key_der, &cert_der)?;
 let signed = pdf::sign(&pdf_bytes, &signer, &pdf::SignOptions::default())?;
 // `pdfsig signed.pdf` → "Signature is Valid. Total document signed."
+
+// Deferred / HSM signing — the private key never reaches the library.
+// `sign_raw` returns the RSA signature from your HSM, smartcard or PKI token:
+let signed = pdf::sign_with(&pdf_bytes, &cert_der, &chain, &opts, |to_sign| hsm.sign(to_sign))?;
 ```
 
 ## Licensing (corporate features)

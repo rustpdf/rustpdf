@@ -189,6 +189,40 @@ let stamped = try Pdf.timestamp(pdf: signed, tsaKeyDER: tsaKey, tsaCertDER: tsaC
 let withDss = try Pdf.addDss(pdf: stamped, certs: [cert], crls: [crl])
 ```
 
+## Deferred / HSM signing
+
+Sign without the private key ever entering the library. The key stays in a
+hardware security module, cloud KMS, smartcard or PKI token (any PKI: eIDAS
+providers, AATL members); RustPdf builds the PDF and CMS structures and only the
+raw signature crosses back.
+
+**Model A — external signer callback.** `signWith` calls your closure with the
+bytes to sign and embeds the raw RSA signature it returns:
+
+```swift
+let signed = try Pdf.signWith(
+    pdf, certificate: cert, chain: [intermediateCert],
+    options: SigningOptions(reason: "Approved", pades: true)
+) { toSign in
+    try hsm.signRSA(sha256: toSign)   // key never leaves the HSM
+}
+```
+
+**Model B — two-phase signing** (for an asynchronous or remote signer). Phase 1
+prepares the document and exposes the bytes to sign; phase 2 embeds the finished
+CMS container:
+
+```swift
+let session   = try Pdf.beginSigning(pdf, options: SigningOptions(certify: .forms))
+let container = try remoteSigner.buildCMS(forHash: session.hash)  // SHA-256 of session.bytes
+let out       = try session.complete(container)
+// session.document is serializable, so phase 2 can run on another host:
+//   let out = try Pdf.completeSignature(session.document, container: container)
+```
+
+Inspect existing signature fields before signing with
+`Pdf.listSignatures(pdf) -> [SignatureField]`.
+
 ## Error handling
 
 Every fallible call throws `PdfError`, carrying the `PdfStatus` and the

@@ -60,6 +60,58 @@ typedef struct PdfDocument PdfDocument;
  */
 typedef struct PdfEditable PdfEditable;
 
+/**
+ * Options for deferred/external signing, carried across the C ABI. NULL string
+ * fields and a zero `policy_hash_len` mean "absent". `certification` is the
+ * DocMDP `/P` value (0 = none, 1/2/3); `estimated_size` of 0 uses the default.
+ */
+typedef struct {
+    const char *reason;
+    const char *location;
+    const char *name;
+    /**
+     * Non-zero selects PAdES-B-B (`ETSI.CAdES.detached`).
+     */
+    int pades;
+    /**
+     * DocMDP certification level: 0 = none, 1/2/3 = `/P` value.
+     */
+    int certification;
+    /**
+     * Reserved `/Contents` bytes; 0 = library default (8192).
+     */
+    uintptr_t estimated_size;
+    /**
+     * Signature-policy OID (PAdES-EPES / ICP-Brasil); NULL = no policy.
+     */
+    const char *policy_oid;
+    /**
+     * Policy hash bytes (with `policy_hash_len`); ignored if `policy_oid` NULL.
+     */
+    const uint8_t *policy_hash;
+    uintptr_t policy_hash_len;
+    /**
+     * Policy hash algorithm OID; NULL = SHA-256.
+     */
+    const char *policy_hash_alg_oid;
+    /**
+     * SPURI qualifier; NULL = none.
+     */
+    const char *policy_uri;
+} PdfSigningOptions;
+
+/**
+ * Callback invoked to produce the raw RSA PKCS#1 v1.5 signature (over SHA-256
+ * of `data`) from a remote HSM. Write the signature into `sig_buf` (capacity
+ * `sig_cap`), set `*sig_len`, and return 0 on success (non-zero = failure).
+ */
+typedef int (*PdfSignHashFn)(void *ctx,
+                             const uint8_t *data,
+                             uintptr_t data_len,
+                             uint8_t *sig_buf,
+                             uintptr_t sig_cap,
+                             uintptr_t *sig_len);
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -839,6 +891,82 @@ PdfStatus pdf_verify_signatures_json(const uint8_t *data,
                                      uintptr_t len,
                                      unsigned char **out_ptr,
                                      uintptr_t *out_len);
+
+/**
+ * **Two-phase signing, phase 1.** Prepare `pdf` for deferred signing: returns
+ * the prepared PDF (`out_doc`/`out_doc_len`, with a zero-filled `/Contents`
+ * placeholder) and the exact bytes to be signed (`out_tbs`/`out_tbs_len`).
+ * Hash `out_tbs` (SHA-256), sign remotely / build the CMS container, then call
+ * [`pdf_sign_complete`]. The private key never reaches this library.
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; `params` NULL or a valid [`PdfSigningOptions`]; the
+ * four out pointers writable. Both emitted buffers are freed with
+ * `pdf_buffer_free`.
+ */
+PdfStatus pdf_sign_begin(const uint8_t *pdf,
+                         uintptr_t pdf_len,
+                         const PdfSigningOptions *params,
+                         unsigned char **out_doc,
+                         uintptr_t *out_doc_len,
+                         unsigned char **out_tbs,
+                         uintptr_t *out_tbs_len);
+
+/**
+ * **Two-phase signing, phase 2.** Embed a complete DER CMS / PKCS#7 `container`
+ * into the prepared `document` (from [`pdf_sign_begin`]), producing the final
+ * signed PDF in `out_ptr`/`out_len`.
+ *
+ * # Safety
+ * `document`/`container` readable for their lengths; `out_ptr`/`out_len`
+ * writable.
+ */
+PdfStatus pdf_sign_complete(const uint8_t *document,
+                            uintptr_t document_len,
+                            const uint8_t *container,
+                            uintptr_t container_len,
+                            unsigned char **out_ptr,
+                            uintptr_t *out_len);
+
+/**
+ * **Model A — external signer callback.** Sign `pdf` without handing this
+ * library a key: it builds the CMS signed attributes and calls `callback`
+ * (with `ctx`) for the raw RSA signature, then assembles and embeds the CMS.
+ * `cert_der` is the signer certificate; `chain_ptrs`/`chain_lens`/`chain_count`
+ * are intermediate certificates (DER), supplied independently of the key.
+ *
+ * # Safety
+ * `pdf`/`cert_der` readable for their lengths; each `chain_ptrs[i]` readable
+ * for `chain_lens[i]`; `params` NULL or valid; `callback` a valid function
+ * pointer; `out_ptr`/`out_len` writable.
+ */
+PdfStatus pdf_sign_with(const uint8_t *pdf,
+                        uintptr_t pdf_len,
+                        const uint8_t *cert_der,
+                        uintptr_t cert_len,
+                        const uint8_t *const *chain_ptrs,
+                        const uintptr_t *chain_lens,
+                        uintptr_t chain_count,
+                        const PdfSigningOptions *params,
+                        PdfSignHashFn callback,
+                        void *ctx,
+                        unsigned char **out_ptr,
+                        uintptr_t *out_len);
+
+/**
+ * List the signature fields in `pdf` (detect existing signatures before
+ * signing). Emits a newline-separated text buffer in `out_ptr`/`out_len`; each
+ * line is `<0|1>\t<field-name>` where the first column is 1 when the field is
+ * already signed. An empty buffer means no signature fields.
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; `out_ptr`/`out_len` writable. The buffer is
+ * freed with `pdf_buffer_free`.
+ */
+PdfStatus pdf_list_signatures(const uint8_t *pdf,
+                              uintptr_t pdf_len,
+                              unsigned char **out_ptr,
+                              uintptr_t *out_len);
 
 #ifdef __cplusplus
 }  // extern "C"

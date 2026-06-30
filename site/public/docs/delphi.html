@@ -154,6 +154,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#deferred">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -677,6 +678,81 @@ CertDer  := ...;   // X.509 certificate (DER)
 
 Signed := Pdf.Sign(PdfBytes, KeyDer, CertDer, 'Approved', 'New York', 'Jane Doe', True);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- DEFERRED -->
+      <h2 id="deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing the library a private key. When the key lives in an HSM, a cloud KMS, a smartcard or a PKI token (any PKI: eIDAS, AATL, a national CA), you supply the raw RSA signature and the binding builds and embeds the CMS / PKCS#7 container. There are two flavours: a synchronous <b>remote signer</b> callback, and a two-phase <b>begin / complete</b> flow for asynchronous or out-of-band signing.</p>
+
+      <h3>Model A: remote signer callback</h3>
+      <p>The binding assembles the signed attributes and calls back for the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The certificate is passed as DER; the key stays inside your HSM. <code>TPdfRemoteSign</code> is a method pointer (<code>of object</code>, so it can carry state), so the callback is a method of one of your classes. <code>Chain</code> are intermediate certificates (DER), supplied independently of the key.</p>
+      <div class="api"><code>Pdf.SignWith(PdfBytes, CertDer, Callback: TPdfRemoteSign [; Chain: array of TBytes [; Options: TSigningOptions]]): TBytes</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>type
+  TMySigner = class
+    function SignHash(const DataToSign: TBytes): TBytes;   // call your HSM / KMS / token
+  end;
+…
+var
+  Signer: TMySigner;
+  Opts: TSigningOptions;
+  Signed: TBytes;
+begin
+  Signer := TMySigner.Create;
+  try
+    Opts := SigningOptions;        // zero-initialised record
+    Opts.Reason := 'Approved';
+    Opts.Pades  := True;           // PAdES-B-B
+    Signed := Pdf.SignWith(PdfBytes, CertDer, Signer.SignHash, [IntermediateDer], Opts);
+  finally
+    Signer.Free;
+  end;
+end;</code></pre></div>
+      <div class="note"><code>SignHash</code> receives the bytes to sign and must return the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The private key never reaches this library, so the same code path works for a cloud KMS, a smartcard or a PKI token.</div>
+
+      <h3>Model B: two-phase begin / complete</h3>
+      <p>For an asynchronous signer or a detached workflow, phase 1 prepares the PDF with a placeholder and returns the exact bytes the signature covers; you sign the digest out of band and build the CMS container; phase 2 embeds it. A <code>TSigningSession</code> exposes <code>Document</code> (the prepared PDF), <code>Bytes</code> (the bytes covered by the signature), <code>Hash</code> (their SHA-256, the value a remote signer signs) and <code>Complete(Container)</code>, which embeds a finished DER CMS / PKCS#7 container and returns the final signed PDF. Free the session with <code>.Free</code>.</p>
+      <div class="api"><code>Pdf.BeginSigning(PdfBytes [; Options: TSigningOptions]): TSigningSession</code></div>
+      <div class="api"><code>Pdf.CompleteSignature(Document, Container: TBytes): TBytes</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var
+  Session: TSigningSession;
+  Container, Signed: TBytes;
+begin
+  Session := Pdf.BeginSigning(PdfBytes);   // or BeginSigning(PdfBytes, Opts)
+  try
+    Container := BuildCmsContainer(Session.Hash);   // sign the digest remotely, assemble DER CMS
+    Signed := Session.Complete(Container);          // = Pdf.CompleteSignature(Session.Document, Container)
+  finally
+    Session.Free;
+  end;
+end;</code></pre></div>
+
+      <h3>Inspect existing signature fields</h3>
+      <p>Before signing, list the signature fields already present in the document. An empty result means the document is unsigned.</p>
+      <div class="api"><code>Pdf.ListSignatures(PdfBytes: TBytes): TSignatureFields</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var F: TSignatureField;
+…
+for F in Pdf.ListSignatures(PdfBytes) do
+  Writeln(F.Name, ' signed: ', F.Signed);</code></pre></div>
+
+      <h3>TSigningOptions</h3>
+      <p>Both models accept an optional <code>TSigningOptions</code> record; build a zero-initialised one with the <code>SigningOptions</code> helper, then set the fields you need.</p>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>Reason</code>, <code>Location</code>, <code>Name</code></td><td>Signature metadata (all <code>UTF8String</code>).</td></tr>
+        <tr><td><code>Pades</code></td><td><code>True</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>Certify</code></td><td>Certify the document (DocMDP); apply only on the first signature. See <code>TCertify</code> below.</td></tr>
+        <tr><td><code>ContainerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
+        <tr><td><code>HasPolicy</code>, <code>Policy</code></td><td>Set <code>HasPolicy := True</code> to attach a <code>TSignaturePolicy</code> identifier (PAdES-EPES).</td></tr>
+      </table>
+      <h4>TCertify</h4>
+      <table>
+        <tr><th>Value</th><th>DocMDP level</th></tr>
+        <tr><td><code>CertifyNone</code></td><td>Not a certifying signature (default).</td></tr>
+        <tr><td><code>CertifyLocked</code></td><td><code>/P 1</code>: no changes permitted after signing.</td></tr>
+        <tr><td><code>CertifyForms</code></td><td><code>/P 2</code>: form-filling and signing permitted.</td></tr>
+        <tr><td><code>CertifyFormsAndAnnotations</code></td><td><code>/P 3</code>: form-filling, signing and annotations permitted.</td></tr>
+      </table>
+      <h4>TSignaturePolicy</h4>
+      <p>A PAdES-EPES signature-policy identifier. <code>OID</code> is the policy OID (dotted-decimal); <code>Hash</code> is the policy document hash (<code>TBytes</code>); <code>HashAlgorithmOID</code> is the hash algorithm OID (empty means SHA-256); <code>URI</code> is an optional SPURI qualifier pointing to where the policy can be retrieved.</p>
 
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>

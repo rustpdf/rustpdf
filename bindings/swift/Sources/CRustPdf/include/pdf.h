@@ -60,6 +60,57 @@ typedef struct PdfDocument PdfDocument;
  */
 typedef struct PdfEditable PdfEditable;
 
+/**
+ * Options for deferred / external signing (issue #41). All pointer fields are
+ * NULL when unused; a zero `estimated_size` or `policy_hash_len` means "absent".
+ */
+typedef struct {
+    const char *reason;
+    const char *location;
+    const char *name;
+    /**
+     * Non-zero selects PAdES-B-B (`ETSI.CAdES.detached`).
+     */
+    int pades;
+    /**
+     * DocMDP certification level: 0 = none, 1/2/3 = `/P` value.
+     */
+    int certification;
+    /**
+     * Reserved `/Contents` bytes; 0 = library default (8192).
+     */
+    uintptr_t estimated_size;
+    /**
+     * Signature-policy OID (PAdES-EPES / ICP-Brasil); NULL = no policy.
+     */
+    const char *policy_oid;
+    /**
+     * Policy hash bytes (with `policy_hash_len`); ignored if `policy_oid` NULL.
+     */
+    const uint8_t *policy_hash;
+    uintptr_t policy_hash_len;
+    /**
+     * Policy hash algorithm OID; NULL = SHA-256.
+     */
+    const char *policy_hash_alg_oid;
+    /**
+     * SPURI qualifier; NULL = none.
+     */
+    const char *policy_uri;
+} PdfSigningOptions;
+
+/**
+ * Callback invoked to produce the raw RSA PKCS#1 v1.5 signature (over SHA-256
+ * of `data`) from a remote HSM. Write the signature into `sig_buf` (capacity
+ * `sig_cap`), set `*sig_len`, and return 0 on success (non-zero = failure).
+ */
+typedef int (*PdfSignHashFn)(void *ctx,
+                             const uint8_t *data,
+                             uintptr_t data_len,
+                             uint8_t *sig_buf,
+                             uintptr_t sig_cap,
+                             uintptr_t *sig_len);
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -838,6 +889,59 @@ int pdf_verify_signatures_json(const uint8_t *data,
                                uintptr_t len,
                                unsigned char **out_ptr,
                                uintptr_t *out_len);
+
+/**
+ * **Deferred signing, phase 1.** Prepare `pdf` for external signing: returns the
+ * prepared PDF (`out_doc`/`out_doc_len`, with a zero-filled `/Contents`
+ * placeholder) and the exact bytes to be signed (`out_tbs`/`out_tbs_len`). Both
+ * buffers are freed with `pdf_buffer_free`. The private key never reaches the
+ * library.
+ */
+int pdf_sign_begin(const uint8_t *pdf,
+                   uintptr_t pdf_len,
+                   const PdfSigningOptions *params,
+                   unsigned char **out_doc,
+                   uintptr_t *out_doc_len,
+                   unsigned char **out_tbs,
+                   uintptr_t *out_tbs_len);
+
+/**
+ * **Deferred signing, phase 2.** Embed a complete DER CMS / PKCS#7 `container`
+ * into the prepared `document` (from `pdf_sign_begin`), producing the final
+ * signed PDF in `out_ptr`/`out_len`.
+ */
+int pdf_sign_complete(const uint8_t *document,
+                      uintptr_t document_len,
+                      const uint8_t *container,
+                      uintptr_t container_len,
+                      unsigned char **out_ptr,
+                      uintptr_t *out_len);
+
+/**
+ * **Model A — external signer callback.** Sign `pdf` without handing the library
+ * a key: it builds the CMS signed attributes and calls `callback` (with `ctx`)
+ * for the raw RSA signature, then assembles and embeds the CMS.
+ */
+int pdf_sign_with(const uint8_t *pdf,
+                  uintptr_t pdf_len,
+                  const uint8_t *cert_der,
+                  uintptr_t cert_len,
+                  const uint8_t *const *chain_ptrs,
+                  const uintptr_t *chain_lens,
+                  uintptr_t chain_count,
+                  const PdfSigningOptions *params,
+                  PdfSignHashFn callback,
+                  void *ctx,
+                  unsigned char **out_ptr,
+                  uintptr_t *out_len);
+
+/**
+ * List the signature fields in `pdf` (one line per field, `<0|1>\t<name>`).
+ */
+int pdf_list_signatures(const uint8_t *pdf,
+                        uintptr_t pdf_len,
+                        unsigned char **out_ptr,
+                        uintptr_t *out_len);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -12,6 +12,10 @@ import Darwin
 import Glibc
 #endif
 import Foundation
+import CRustPdf
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 /// Options for ``Pdf/sign(pdf:keyDER:certDER:options:)``. Empty strings are
 /// treated as absent.
@@ -52,6 +56,100 @@ public struct SignatureReport: Sendable, Decodable {
     public let isValid: Bool
     /// The four `/ByteRange` integers.
     public let byteRange: [Int]
+}
+
+/// A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB).
+public struct SignaturePolicy: Sendable {
+    /// The policy OID (dotted-decimal), e.g. the ICP-Brasil AD-RB OID.
+    public var oid: String
+    /// The policy document hash (under ``hashAlgorithmOid``).
+    public var hash: [UInt8]
+    /// Hash algorithm OID; `nil` = SHA-256.
+    public var hashAlgorithmOid: String?
+    /// Optional SPURI qualifier — where the policy can be retrieved.
+    public var uri: String?
+
+    public init(oid: String, hash: [UInt8] = [],
+                hashAlgorithmOid: String? = nil, uri: String? = nil) {
+        self.oid = oid
+        self.hash = hash
+        self.hashAlgorithmOid = hashAlgorithmOid
+        self.uri = uri
+    }
+}
+
+/// Options for deferred / external signing (issue #41). Empty strings and `nil`
+/// are treated as absent.
+public struct SigningOptions: Sendable {
+    /// The `/Reason` recorded in the signature dictionary.
+    public var reason: String?
+    /// The `/Location` recorded in the signature dictionary.
+    public var location: String?
+    /// The signer `/Name` recorded in the signature dictionary.
+    public var name: String?
+    /// Produce a PAdES-B-B signature (`ETSI.CAdES.detached`).
+    public var pades: Bool
+    /// Certify the document (DocMDP) — use only on the first signature.
+    public var certify: Certify
+    /// Reserved `/Contents` bytes; 0 = library default (8192). Raise for large
+    /// cloud-HSM CMS containers.
+    public var containerSize: Int
+    /// Signature-policy identifier (PAdES-EPES); `nil` = none.
+    public var policy: SignaturePolicy?
+
+    public init(reason: String? = nil, location: String? = nil, name: String? = nil,
+                pades: Bool = false, certify: Certify = .none,
+                containerSize: Int = 0, policy: SignaturePolicy? = nil) {
+        self.reason = reason
+        self.location = location
+        self.name = name
+        self.pades = pades
+        self.certify = certify
+        self.containerSize = containerSize
+        self.policy = policy
+    }
+}
+
+/// A signature field discovered in a PDF (pre-signing inventory), from
+/// ``Pdf/listSignatures(_:)``.
+public struct SignatureField: Sendable {
+    /// The field name.
+    public let name: String
+    /// Whether the field is already signed.
+    public let signed: Bool
+
+    public init(name: String, signed: Bool) {
+        self.name = name
+        self.signed = signed
+    }
+}
+
+/// An in-progress two-phase signature (Model B). ``document`` holds the prepared
+/// PDF (with a zero-filled `/Contents` placeholder) and ``bytes`` the exact bytes
+/// the signature covers. Hand ``hash`` to a remote signer, build the CMS
+/// container, then call ``complete(_:)``. The private key never reaches the
+/// library.
+public final class SigningSession {
+    /// The prepared PDF (with a zero-filled `/Contents` placeholder).
+    public let document: [UInt8]
+    /// The exact bytes covered by the signature (the two ByteRange segments).
+    public let bytes: [UInt8]
+
+    init(document: [UInt8], bytes: [UInt8]) {
+        self.document = document
+        self.bytes = bytes
+    }
+
+    /// SHA-256 of ``bytes`` — the value an HSM signs.
+    public var hash: [UInt8] {
+        Array(SHA256.hash(data: Data(bytes)))
+    }
+
+    /// Phase 2: complete the signature by embedding a finished DER CMS / PKCS#7
+    /// `container`, returning the final signed PDF.
+    public func complete(_ container: [UInt8]) throws -> [UInt8] {
+        try Pdf.completeSignature(document, container: container)
+    }
 }
 
 /// The namespace for the package-level (static) entry points. Document
@@ -192,6 +290,180 @@ public enum Pdf {
                 }
             }
         }
+    }
+
+    // MARK: - Deferred / external (HSM) signing — issue #41
+
+    /// **Model A — external signer.** Sign `pdf` without handing the library a
+    /// key: it builds the CMS signed attributes and calls `signHash` for the raw
+    /// RSA PKCS#1 v1.5 signature (over SHA-256 of the bytes it passes), then
+    /// assembles and embeds the CMS. `certificate` is the signer certificate;
+    /// `chain` are intermediates (DER), supplied independently of the key.
+    /// Requires a license granting the signatures feature.
+    public static func signWith(
+        _ pdf: [UInt8], certificate certDer: [UInt8],
+        chain: [[UInt8]] = [], options: SigningOptions? = nil,
+        sign signHash: @escaping ([UInt8]) throws -> [UInt8]
+    ) throws -> [UInt8] {
+        let box = SignBox(signHash)
+        let ctx = Unmanaged.passRetained(box).toOpaque()
+        defer { Unmanaged<SignBox>.fromOpaque(ctx).release() }
+
+        let result: [UInt8]
+        do {
+            result = try withBytes(pdf) { pp, pl in
+                try withBytes(certDer) { cp, cl in
+                    try withByteArrays(chain) { chainPtrs, chainLens in
+                        try withSigningOptions(options) { params in
+                            try takeBytes { out, outLen in
+                                Native.shared.pdf_sign_with(
+                                    pp, pl, cp, cl,
+                                    chainPtrs, chainLens, UInt(chain.count),
+                                    params, signTrampoline, ctx, out, outLen)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            // Surface the signer's own error in preference to the FFI status.
+            if let inner = box.error { throw inner }
+            throw error
+        }
+        if let inner = box.error { throw inner }
+        return result
+    }
+
+    /// **Model B — two-phase signing, phase 1.** Prepare `pdf` for deferred
+    /// signing: returns a ``SigningSession`` whose ``SigningSession/hash`` you
+    /// send to a remote HSM. Build the CMS container, then call
+    /// ``SigningSession/complete(_:)`` (or ``completeSignature(_:container:)``).
+    /// The key never reaches the library.
+    public static func beginSigning(_ pdf: [UInt8], options: SigningOptions? = nil) throws -> SigningSession {
+        var docPtr: UnsafeMutablePointer<UInt8>?
+        var docLen: UInt = 0
+        var tbsPtr: UnsafeMutablePointer<UInt8>?
+        var tbsLen: UInt = 0
+        try withBytes(pdf) { pp, pl in
+            try withSigningOptions(options) { params in
+                try check(Native.shared.pdf_sign_begin(
+                    pp, pl, params, &docPtr, &docLen, &tbsPtr, &tbsLen))
+            }
+        }
+        let document = copyAndFree(docPtr, docLen)
+        let bytes = copyAndFree(tbsPtr, tbsLen)
+        return SigningSession(document: document, bytes: bytes)
+    }
+
+    /// **Model B — two-phase signing, phase 2.** Embed a complete DER CMS /
+    /// PKCS#7 `container` into a prepared `document` (from ``beginSigning(_:options:)``),
+    /// producing the final signed PDF.
+    public static func completeSignature(_ document: [UInt8], container: [UInt8]) throws -> [UInt8] {
+        try withBytes(document) { dp, dl in
+            try withBytes(container) { cp, cl in
+                try takeBytes { out, outLen in
+                    Native.shared.pdf_sign_complete(dp, dl, cp, cl, out, outLen)
+                }
+            }
+        }
+    }
+
+    /// List the signature fields in `pdf` (detect existing signatures before
+    /// signing — the iText `SignatureUtil.getSignatureNames` equivalent). An
+    /// empty array means there are no signature fields.
+    public static func listSignatures(_ pdf: [UInt8]) throws -> [SignatureField] {
+        let bytes = try withBytes(pdf) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_list_signatures(ptr, len, out, outLen)
+            }
+        }
+        let text = String(decoding: bytes, as: UTF8.self)
+        var fields: [SignatureField] = []
+        for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
+            guard let tab = line.firstIndex(of: "\t") else { continue }
+            let signed = line[..<tab] == "1"
+            let name = String(line[line.index(after: tab)...])
+            fields.append(SignatureField(name: name, signed: signed))
+        }
+        return fields
+    }
+
+    /// Build a C ``PdfSigningOptions`` from `options` and run `body` with a
+    /// pointer to it (or `nil` when `options` is `nil`). Heap C strings are freed
+    /// afterwards; the policy hash is borrowed for the duration of `body`.
+    private static func withSigningOptions<R>(
+        _ options: SigningOptions?,
+        _ body: (UnsafePointer<PdfSigningOptions>?) throws -> R
+    ) rethrows -> R {
+        guard let o = options else { return try body(nil) }
+        let reason = dupCString(o.reason)
+        let location = dupCString(o.location)
+        let name = dupCString(o.name)
+        let policyOid = dupCString(o.policy?.oid)
+        let policyHashAlg = dupCString(o.policy?.hashAlgorithmOid)
+        let policyUri = dupCString(o.policy?.uri)
+        defer {
+            free(reason); free(location); free(name)
+            free(policyOid); free(policyHashAlg); free(policyUri)
+        }
+        func c(_ p: UnsafeMutablePointer<CChar>?) -> UnsafePointer<CChar>? { p.map { UnsafePointer($0) } }
+
+        let hash = o.policy?.hash ?? []
+        return try hash.withUnsafeBufferPointer { hbuf in
+            var params = PdfSigningOptions()
+            params.reason = c(reason)
+            params.location = c(location)
+            params.name = c(name)
+            params.pades = o.pades ? 1 : 0
+            params.certification = o.certify.rawValue
+            params.estimated_size = o.containerSize > 0 ? UInt(o.containerSize) : 0
+            params.policy_oid = c(policyOid)
+            if o.policy != nil, !hash.isEmpty {
+                params.policy_hash = hbuf.baseAddress
+                params.policy_hash_len = UInt(hash.count)
+            }
+            params.policy_hash_alg_oid = c(policyHashAlg)
+            params.policy_uri = c(policyUri)
+            return try withUnsafePointer(to: &params) { try body($0) }
+        }
+    }
+}
+
+/// A reference box carrying the Model-A signer closure across the C boundary
+/// (passed as `ctx`), plus a slot for an error it threw.
+final class SignBox {
+    let sign: ([UInt8]) throws -> [UInt8]
+    var error: Error?
+    init(_ sign: @escaping ([UInt8]) throws -> [UInt8]) { self.sign = sign }
+}
+
+/// The non-capturing `@convention(c)` trampoline handed to `pdf_sign_with`. It
+/// recovers the ``SignBox`` from `ctx`, calls the Swift closure with the bytes
+/// to sign, and copies the returned RSA signature into `sigBuf` (respecting
+/// `sigCap`). Returns 0 on success, non-zero on failure.
+private let signTrampoline: @convention(c) (
+    UnsafeMutableRawPointer?, UnsafePointer<UInt8>?, UInt,
+    UnsafeMutablePointer<UInt8>?, UInt, UnsafeMutablePointer<UInt>?
+) -> Int32 = { ctx, data, dataLen, sigBuf, sigCap, sigLen in
+    guard let ctx = ctx else { return 1 }
+    let box = Unmanaged<SignBox>.fromOpaque(ctx).takeUnretainedValue()
+    do {
+        let input: [UInt8] = data.map { Array(UnsafeBufferPointer(start: $0, count: Int(dataLen))) } ?? []
+        let sig = try box.sign(input)
+        if UInt(sig.count) > sigCap {
+            box.error = PdfError(status: .sign, message: "signature (\(sig.count) bytes) exceeds buffer capacity")
+            return 2
+        }
+        if let sb = sigBuf {
+            sig.withUnsafeBufferPointer { buf in
+                if let base = buf.baseAddress { sb.update(from: base, count: sig.count) }
+            }
+        }
+        sigLen?.pointee = UInt(sig.count)
+        return 0
+    } catch {
+        box.error = error
+        return 1
     }
 }
 

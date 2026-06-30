@@ -166,6 +166,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#hsm">HSM / deferred signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -677,6 +678,60 @@ const signed = rustpdf.sign(pdf, keyDer, certDer, {
 fs.writeFileSync("contract.signed.pdf", signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
+      <!-- HSM / DEFERRED SIGNING -->
+      <h2 id="hsm">HSM / deferred signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing this library a private key. The key stays in an HSM, cloud KMS, smartcard or PKI token, and the binding only builds and embeds the CMS. It works with any PKI (eIDAS, AATL and other trust lists). Two models are offered, and both expect an RSA PKCS#1 v1.5 signature over SHA-256.</p>
+
+      <h3>Model A: bring your own signer</h3>
+      <p><code>signWith</code> builds the CMS signed attributes and calls your <code>signHash</code> callback for the raw RSA signature over the bytes it passes in, then assembles and embeds the container. <code>certDer</code> is the signer certificate; <code>chain</code> are intermediate certificates (DER), supplied independently of the key.</p>
+      <div class="api"><code>rustpdf.signWith(pdf, certDer, signHash, chain?, options?) → Buffer</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { signWith } = require("rustpdf");
+
+const pdf     = fs.readFileSync("contract.pdf");
+const certDer = fs.readFileSync("signing-cert.der");        // X.509 certificate (DER)
+
+// signHash receives the bytes to sign and returns the raw RSA signature
+// produced by your HSM / KMS / smartcard. The private key never enters the library.
+const signed = signWith(pdf, certDer, (data) => hsm.signRsaSha256(data), [], {
+  reason: "Approved", location: "Berlin", name: "Jane Doe", pades: true,
+});
+fs.writeFileSync("contract.signed.pdf", signed);</code></pre></div>
+
+      <h3>Model B: two-phase signing</h3>
+      <p>When the signer is remote or asynchronous, split signing in two. <code>beginSigning</code> prepares the PDF and returns a <code>SigningSession</code>; send its <code>hash</code> to the signer, wrap the result in a DER CMS / PKCS#7 container, then call <code>complete</code> (or the standalone <code>completeSignature</code>). The key never reaches this library.</p>
+      <div class="api"><code>rustpdf.beginSigning(pdf, options?) → SigningSession</code></div>
+      <div class="api"><code>session.complete(container) → Buffer</code></div>
+      <div class="api"><code>rustpdf.completeSignature(document, container) → Buffer</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { beginSigning } = require("rustpdf");
+
+const session = beginSigning(pdf, { pades: true });
+// session.document : the prepared PDF (zero-filled /Contents placeholder)
+// session.bytes    : the exact bytes the signature covers
+// session.hash     : SHA-256 of those bytes (the value the HSM signs)
+
+const container = await remoteSigner.buildCms(session.hash);   // DER CMS / PKCS#7
+const signed = session.complete(container);
+fs.writeFileSync("contract.signed.pdf", signed);</code></pre></div>
+
+      <h3>Inventory existing signatures</h3>
+      <p>Before signing, list the signature fields already present (for example to add a second signature without disturbing the first). Returns one object per field with <code>name</code> and <code>signed</code>; an empty array means there are none.</p>
+      <div class="api"><code>rustpdf.listSignatures(pdf) → SignatureField[]</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>for (const field of rustpdf.listSignatures(pdf)) {
+  console.log(field.name, "signed:", field.signed);
+}</code></pre></div>
+
+      <h3>Signing options</h3>
+      <p>The optional <code>options</code> object (<code>SigningOptions</code>) is shared by <code>signWith</code> and <code>beginSigning</code>.</p>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>reason</code>, <code>location</code>, <code>name</code></td><td>Free-text signature metadata.</td></tr>
+        <tr><td><code>pades</code></td><td><code>true</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>certify</code></td><td>A <code>Certify</code> level (DocMDP), applied only by the first signature: <code>Certify.None</code> (0), <code>Locked</code> (1, no changes), <code>Forms</code> (2, form-filling and signing), <code>FormsAndAnnotations</code> (3).</td></tr>
+        <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> or omitted uses the default. Raise it for large cloud-HSM containers.</td></tr>
+        <tr><td><code>policy</code></td><td>A signature-policy identifier (PAdES-EPES): <code>{ oid, hash, hashAlgorithmOid?, uri? }</code>. Omit for none.</td></tr>
+      </table>
+      <div class="note"><b>The private key never crosses the FFI boundary.</b> Both models build the CMS in-process from the certificate plus the signature your signer returns, so the key can stay in an HSM, cloud KMS, smartcard or PKI token. <code>signHash</code> (Model A) and your CMS builder (Model B) must produce an RSA PKCS#1 v1.5 signature over SHA-256.</div>
+
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
       <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
@@ -830,6 +885,7 @@ try {
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#hsm">HSM / deferred signing</a>
       <a href="#verify">Validate signatures</a>
       <a href="#extract">Extraction</a>
       <a href="#render">Render to image</a>

@@ -1,8 +1,10 @@
 package dev.rustpdf;
 
+import com.sun.jna.Callback;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.Structure;
 import com.sun.jna.StringArray;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.LongByReference;
@@ -24,6 +26,46 @@ final class FFI {
 
     /** The loaded native library. */
     static final Lib C = load();
+
+    /**
+     * Mirrors the C-ABI {@code PdfSigningOptions} (deferred-signing options).
+     * Pointer fields are {@code null} when unused; a zero {@code estimated_size}
+     * or {@code policy_hash_len} means "absent". The field order is exactly the
+     * struct declaration order. Strings are passed as NUL-terminated UTF-8
+     * {@link Pointer}s allocated by the caller (so the field encoding does not
+     * depend on JNA's default charset).
+     */
+    @Structure.FieldOrder({
+        "reason", "location", "name", "pades", "certification", "estimatedSize",
+        "policyOid", "policyHash", "policyHashLen", "policyHashAlgOid", "policyUri"
+    })
+    public static final class PdfSigningOptions extends Structure {
+        public Pointer reason;
+        public Pointer location;
+        public Pointer name;
+        public int pades;
+        public int certification;
+        public long estimatedSize;       // uintptr_t (64-bit target)
+        public Pointer policyOid;
+        public Pointer policyHash;
+        public long policyHashLen;       // uintptr_t (64-bit target)
+        public Pointer policyHashAlgOid;
+        public Pointer policyUri;
+
+        public PdfSigningOptions() {
+            super();
+        }
+    }
+
+    /**
+     * Mirrors {@code PdfSignHashFn}: produce the raw RSA PKCS#1 v1.5 signature
+     * (over SHA-256 of {@code data}) from a remote HSM. Write it into
+     * {@code sigBuf} (capacity {@code sigCap}), set {@code *sigLen}, return 0 on
+     * success (non-zero = failure).
+     */
+    public interface SignHashCallback extends Callback {
+        int invoke(Pointer ctx, Pointer data, long dataLen, Pointer sigBuf, long sigCap, Pointer sigLen);
+    }
 
     /** JNA interface mapping the C exports. */
     interface Lib extends Library {
@@ -151,6 +193,19 @@ final class FFI {
         // ---- Tier 2: signature validation (module-level) --------------------
         int pdf_verify_signatures_json(byte[] data, long len,
                                        PointerByReference outPtr, LongByReference outLen);
+
+        // ---- Deferred / external (HSM) signing — issue #41 P0 ---------------
+        int pdf_sign_begin(byte[] pdf, long pdfLen, PdfSigningOptions params,
+                           PointerByReference outDoc, LongByReference outDocLen,
+                           PointerByReference outTbs, LongByReference outTbsLen);
+        int pdf_sign_complete(byte[] document, long documentLen, byte[] container, long containerLen,
+                              PointerByReference outPtr, LongByReference outLen);
+        int pdf_sign_with(byte[] pdf, long pdfLen, byte[] certDer, long certLen,
+                          Pointer[] chainPtrs, long[] chainLens, long chainCount,
+                          PdfSigningOptions params, SignHashCallback callback, Pointer ctx,
+                          PointerByReference outPtr, LongByReference outLen);
+        int pdf_list_signatures(byte[] pdf, long pdfLen,
+                                PointerByReference outPtr, LongByReference outLen);
     }
 
     private static Lib load() {

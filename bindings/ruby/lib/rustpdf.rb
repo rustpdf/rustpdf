@@ -1,5 +1,6 @@
 require "fiddle"
 require "json"
+require "digest"
 require_relative "rustpdf/native"
 
 # Idiomatic Ruby binding for the rust-pdf core over its C ABI (libpdf_ffi),
@@ -91,6 +92,74 @@ module RustPdf
     end
   end
 
+  # DocMDP certification level applied by the first (certifying) signature.
+  module Certify
+    NONE = 0                  # not a certifying signature
+    LOCKED = 1                # /P 1 — no changes permitted after signing
+    FORMS = 2                 # /P 2 — form-filling and signing permitted
+    FORMS_AND_ANNOTATIONS = 3 # /P 3 — also annotations permitted
+  end
+
+  # A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB).
+  class SignaturePolicy
+    attr_accessor :oid, :hash, :hash_algorithm_oid, :uri
+
+    # +oid+: dotted-decimal policy OID; +hash+: policy document hash bytes
+    # (under +hash_algorithm_oid+, nil = SHA-256); +uri+: optional SPURI.
+    def initialize(oid:, hash:, hash_algorithm_oid: nil, uri: nil)
+      @oid = oid
+      @hash = hash
+      @hash_algorithm_oid = hash_algorithm_oid
+      @uri = uri
+    end
+  end
+
+  # Options for deferred / external signing (issue #41).
+  class SigningOptions
+    attr_accessor :reason, :location, :name, :pades, :certify, :container_size, :policy
+
+    def initialize(reason: nil, location: nil, name: nil, pades: false,
+                   certify: Certify::NONE, container_size: 0, policy: nil)
+      @reason = reason
+      @location = location
+      @name = name
+      @pades = pades
+      @certify = certify
+      @container_size = container_size
+      @policy = policy
+    end
+  end
+
+  # A signature field discovered in a PDF (pre-signing inventory). +signed+ is
+  # true when the field already carries a signature.
+  SignatureField = Struct.new(:name, :signed)
+
+  # An in-progress two-phase signature: #document holds the placeholder PDF and
+  # #bytes the exact bytes the signature covers. Hand #hash to a remote signer,
+  # build the CMS container, then call #complete.
+  class SigningSession
+    # The prepared PDF (with a zero-filled /Contents placeholder).
+    attr_reader :document
+    # The exact bytes covered by the signature (the two ByteRange segments).
+    attr_reader :bytes
+
+    def initialize(document, bytes)
+      @document = document
+      @bytes = bytes
+    end
+
+    # SHA-256 of #bytes — the 32-byte value an HSM signs.
+    def hash
+      Digest::SHA256.digest(@bytes)
+    end
+
+    # Phase 2: complete the signature by embedding a finished DER CMS / PKCS#7
+    # +container+, returning the final signed PDF.
+    def complete(container)
+      RustPdf.complete_signature(@document, container)
+    end
+  end
+
   module_function
 
   # Native library version string.
@@ -177,7 +246,158 @@ module RustPdf
     result
   end
 
+  # ---- deferred / external (HSM) signing — issue #41 ------------------------
+
+  # Model A — remote signer. Sign +pdf+ without handing this library a key: it
+  # builds the CMS signed attributes and calls the given block for the raw RSA
+  # PKCS#1 v1.5 signature (over SHA-256 of the block's argument), then assembles
+  # and embeds the CMS. +cert_der+ is the signer certificate (DER); +chain+ are
+  # intermediate certificates (DER), supplied independently of the key. The
+  # private key never reaches this library. Returns the signed PDF bytes.
+  def sign_with(pdf, cert_der, chain: [], options: nil, &block)
+    raise Error, "sign_with requires a block that produces the signature" unless block
+
+    opts_bytes, keep = build_signing_options(options)
+    cptrs = chain.map { |c| Fiddle::Pointer[c] }
+    cptr_buf = cptrs.map(&:to_i).pack("J*")
+    clen_buf = chain.map(&:bytesize).pack("J*")
+
+    signer_error = nil
+    closure = Fiddle::Closure::BlockCaller.new(
+      Fiddle::TYPE_INT,
+      [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_SIZE_T,
+       Fiddle::TYPE_VOIDP, Fiddle::TYPE_SIZE_T, Fiddle::TYPE_VOIDP]
+    ) do |_ctx, data, data_len, sig_buf, sig_cap, sig_len|
+      begin
+        sig = block.call(data[0, data_len]).to_s
+        if sig.bytesize > sig_cap
+          signer_error = Error.new("signature (#{sig.bytesize} bytes) exceeds buffer capacity #{sig_cap}")
+          next 2
+        end
+        sig_buf[0, sig.bytesize] = sig
+        sig_len[0, Native::SIZEOF_SZ] = [sig.bytesize].pack("J")
+        0
+      rescue StandardError => e
+        signer_error = e
+        1
+      end
+    end
+
+    begin
+      result = take_bytes do |pp, pn|
+        Native.call("pdf_sign_with", pdf, pdf.bytesize, cert_der, cert_der.bytesize,
+                    cptr_buf, clen_buf, chain.size, opts_bytes, closure, Fiddle::NULL, pp, pn)
+      end
+    rescue Error
+      raise signer_error if signer_error
+
+      raise
+    end
+    # keep the callback, struct and per-cert pointers alive until the call returned
+    cptrs.clear
+    keep.clear
+    closure.to_i # touch to keep it referenced past the native call
+    result
+  end
+
+  # Model B — two-phase signing, phase 1. Prepare +pdf+ for deferred signing:
+  # returns a SigningSession whose #hash you send to a remote HSM. Build the CMS
+  # container, then call SigningSession#complete (or .complete_signature). The
+  # key never reaches this library.
+  def begin_signing(pdf, options: nil)
+    opts_bytes, keep = build_signing_options(options)
+    doc_p = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    doc_n = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    tbs_p = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    tbs_n = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    check(Native.call("pdf_sign_begin", pdf, pdf.bytesize, opts_bytes, doc_p, doc_n, tbs_p, tbs_n))
+    keep.clear
+    SigningSession.new(read_buffer(doc_p, doc_n), read_buffer(tbs_p, tbs_n))
+  end
+
+  # Model B — phase 2. Embed a complete DER CMS / PKCS#7 +container+ into a
+  # prepared +document+ (from #begin_signing), returning the final signed PDF.
+  def complete_signature(document, container)
+    take_bytes do |pp, pn|
+      Native.call("pdf_sign_complete", document, document.bytesize, container, container.bytesize, pp, pn)
+    end
+  end
+
+  # List the signature fields in +pdf+ (detect existing signatures before
+  # signing). Returns an Array of SignatureField; an empty Array means there are
+  # no signature fields.
+  def list_signatures(pdf)
+    text = take_bytes { |pp, pn| Native.call("pdf_list_signatures", pdf, pdf.bytesize, pp, pn) }
+           .force_encoding(Encoding::UTF_8)
+    fields = []
+    text.each_line do |line|
+      line = line.chomp
+      tab = line.index("\t")
+      next unless tab
+
+      fields << SignatureField.new(line[(tab + 1)..-1], line[0...tab] == "1")
+    end
+    fields
+  end
+
   # ---- internal helpers (used by Document/EditableDoc) ----------------------
+
+  # Marshal a SigningOptions (or nil) into the C PdfSigningOptions struct bytes,
+  # returning [packed_struct, keepalive] where +keepalive+ holds the Fiddle
+  # pointers backing the struct's string/byte fields (keep it referenced until
+  # the native call returns). 64-bit layout: 3 ptr, 2 int (8 bytes together),
+  # size_t, ptr, ptr, size_t, ptr, ptr.
+  def build_signing_options(options)
+    keep = []
+    cstr = lambda do |s|
+      return 0 if s.nil?
+
+      p = Fiddle::Pointer[s.to_s]
+      keep << p
+      p.to_i
+    end
+
+    reason   = cstr.call(options&.reason)
+    location = cstr.call(options&.location)
+    name     = cstr.call(options&.name)
+    pades    = options&.pades ? 1 : 0
+    cert     = (options&.certify || Certify::NONE).to_i
+    est      = (options&.container_size || 0).to_i
+
+    policy_oid = 0
+    policy_hash = 0
+    policy_hash_len = 0
+    policy_alg = 0
+    policy_uri = 0
+    if (pol = options&.policy)
+      policy_oid = cstr.call(pol.oid)
+      if pol.hash && !pol.hash.empty?
+        hp = Fiddle::Pointer[pol.hash]
+        keep << hp
+        policy_hash = hp.to_i
+        policy_hash_len = pol.hash.bytesize
+      end
+      policy_alg = cstr.call(pol.hash_algorithm_oid)
+      policy_uri = cstr.call(pol.uri)
+    end
+
+    bytes = [reason, location, name].pack("J3") +
+            [pades, cert].pack("l2") +
+            [est, policy_oid, policy_hash, policy_hash_len, policy_alg, policy_uri].pack("J6")
+    [bytes, keep]
+  end
+
+  # Read an out-buffer (pointer-to-pointer +pp+, pointer-to-len +pn+) into a
+  # binary String, freeing the native buffer.
+  def read_buffer(pp, pn)
+    len = pn[0, Native::SIZEOF_SZ].unpack1("J")
+    return "".b if len.zero?
+
+    dptr = pp.ptr
+    bytes = dptr[0, len]
+    Native.call("pdf_buffer_free", dptr, len)
+    bytes
+  end
 
   def last_error
     p = Native.call("pdf_last_error_message")
@@ -194,13 +414,7 @@ module RustPdf
     pp = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
     pn = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
     check(yield(pp, pn))
-    len = pn[0, Native::SIZEOF_SZ].unpack1("J")
-    return "".b if len.zero?
-
-    dptr = pp.ptr
-    bytes = dptr[0, len]
-    Native.call("pdf_buffer_free", dptr, len)
-    bytes
+    read_buffer(pp, pn)
   end
 
   # Run a producer { |out_int| status } and return the written int.
