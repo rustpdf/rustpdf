@@ -229,11 +229,18 @@ int pdf_editable_set_radio(PdfEditable *ed, const char *name, const char *export
 int pdf_editable_set_choice(PdfEditable *ed, const char *name, const char *value, int *out_found);
 int pdf_editable_flatten_forms(PdfEditable *ed);
 int pdf_editable_field_names(const PdfEditable *ed, uint8_t **out_ptr, uintptr_t *out_len);
-int pdf_editable_watermark_text(PdfEditable *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg);
-int pdf_editable_watermark_image_file(PdfEditable *ed, const char *path, double width, double height, double opacity);
+int pdf_editable_watermark_text(PdfEditable *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg, int opaque_background);
+int pdf_editable_watermark_image_file(PdfEditable *ed, const char *path, double width, double height, double opacity, double rotation_deg);
+int pdf_editable_set_version(PdfEditable *ed, int version);
+int pdf_editable_strip_pdfa(PdfEditable *ed);
+int pdf_editable_normalize(PdfEditable *ed, int version);
 int pdf_editable_redact(PdfEditable *ed, uintptr_t index, const double *rects, uintptr_t count, int *out_found);
 int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
 int pdf_verify_signatures_json(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_find_text_json(const uint8_t *data, uintptr_t len, const char *query, int case_sensitive, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_timestamp_begin(const uint8_t *pdf, uintptr_t pdf_len, uint8_t **out_doc, uintptr_t *out_doc_len, uint8_t **out_tbs, uintptr_t *out_tbs_len);
+int pdf_timestamp_request(const uint8_t *imprint, uintptr_t imprint_len, const uint8_t *nonce, uintptr_t nonce_len, int cert_req, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_timestamp_token_from_response(const uint8_t *response, uintptr_t response_len, uint8_t **out_ptr, uintptr_t *out_len);
 
 typedef struct {
     const char *reason;
@@ -247,6 +254,12 @@ typedef struct {
     uintptr_t policy_hash_len;
     const char *policy_hash_alg_oid;
     const char *policy_uri;
+    int visible;
+    uintptr_t vis_page;
+    double vis_rect[4];
+    const char *vis_text;
+    const uint8_t *vis_image;
+    uintptr_t vis_image_len;
 } PdfSigningOptions;
 
 typedef int (*PdfSignHashFn)(void *ctx, const uint8_t *data, uintptr_t data_len, uint8_t *sig_buf, uintptr_t sig_cap, uintptr_t *sig_len);

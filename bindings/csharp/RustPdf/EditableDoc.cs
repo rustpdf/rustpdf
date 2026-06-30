@@ -149,19 +149,49 @@ public sealed class EditableDoc : IDisposable
         return text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
     }
 
-    /// <summary>Stamp diagonal text across every page as a watermark.</summary>
+    /// <summary>Stamp diagonal text across every page as a watermark.
+    /// <paramref name="opaqueBackground"/> draws an opaque box behind the text
+    /// (e.g. a redaction-style banner) instead of overlaying transparently.</summary>
     public EditableDoc WatermarkText(string text, double size = 64.0,
-        (double R, double G, double B)? color = null, double opacity = 0.30, double rotationDeg = 45.0)
+        (double R, double G, double B)? color = null, double opacity = 0.30, double rotationDeg = 45.0,
+        bool opaqueBackground = false)
     {
         var (r, g, b) = color ?? (0.5, 0.5, 0.5);
-        Pdf.Check(Native.pdf_editable_watermark_text(H, text, size, r, g, b, opacity, rotationDeg));
+        Pdf.Check(Native.pdf_editable_watermark_text(
+            H, text, size, r, g, b, opacity, rotationDeg, opaqueBackground ? 1 : 0));
         return this;
     }
 
-    /// <summary>Stamp an image file across every page as a watermark.</summary>
-    public EditableDoc WatermarkImageFile(string path, double width, double height, double opacity = 0.30)
+    /// <summary>Stamp an image file across every page as a watermark, rotated
+    /// <paramref name="rotationDeg"/> degrees.</summary>
+    public EditableDoc WatermarkImageFile(string path, double width, double height,
+        double opacity = 0.30, double rotationDeg = 0.0)
     {
-        Pdf.Check(Native.pdf_editable_watermark_image_file(H, path, width, height, opacity));
+        Pdf.Check(Native.pdf_editable_watermark_image_file(H, path, width, height, opacity, rotationDeg));
+        return this;
+    }
+
+    /// <summary>Set the output PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7, 3 = 2.0).
+    /// Clears any catalog <c>/Version</c> override.</summary>
+    public EditableDoc SetVersion(int version)
+    {
+        Pdf.Check(Native.pdf_editable_set_version(H, version));
+        return this;
+    }
+
+    /// <summary>Strip PDF/A conformance (<c>/OutputIntents</c>, XMP <c>pdfaid</c>,
+    /// <c>/Version</c>) so the file is a plain PDF.</summary>
+    public EditableDoc StripPdfa()
+    {
+        Pdf.Check(Native.pdf_editable_strip_pdfa(H));
+        return this;
+    }
+
+    /// <summary>Normalize to a plain PDF at <paramref name="version"/> (strip
+    /// PDF/A + set version). Version codes as in <see cref="SetVersion"/>.</summary>
+    public EditableDoc Normalize(int version)
+    {
+        Pdf.Check(Native.pdf_editable_normalize(H, version));
         return this;
     }
 

@@ -168,7 +168,52 @@ public final class Pdf {
                     bool(obj.get("digest_valid")),
                     bool(obj.get("signature_valid")),
                     bool(obj.get("is_valid")),
-                    br));
+                    br,
+                    nullable(obj.get("issuer")),
+                    nullable(obj.get("serial_number")),
+                    nullable(obj.get("valid_from")),
+                    nullable(obj.get("valid_to")),
+                    nullable(obj.get("algorithm")),
+                    nullable(obj.get("signing_time")),
+                    lng(obj.get("cert_count")),
+                    bool(obj.get("has_timestamp"))));
+        }
+        return out;
+    }
+
+    /**
+     * Find every occurrence of {@code query} in {@code pdf} (case-insensitive),
+     * returning a positional {@link TextHit} (page + bounding box in points) per
+     * match. An empty list means no match.
+     */
+    public static List<TextHit> findText(byte[] pdf, String query) {
+        return findText(pdf, query, false);
+    }
+
+    /** Like {@link #findText(byte[], String)} but with case-sensitivity control. */
+    public static List<TextHit> findText(byte[] pdf, String query, boolean caseSensitive) {
+        byte[] bytes = takeBuffer((p, n) ->
+                FFI.C.pdf_find_text_json(pdf, pdf.length, query, caseSensitive ? 1 : 0, p, n));
+        String json = new String(bytes, StandardCharsets.UTF_8).trim();
+        List<TextHit> out = new ArrayList<>();
+        if (json.isEmpty()) {
+            return out;
+        }
+        Object parsed = new Json(json).parse();
+        if (!(parsed instanceof List<?> arr)) {
+            return out;
+        }
+        for (Object item : arr) {
+            if (!(item instanceof Map<?, ?> obj)) {
+                continue;
+            }
+            out.add(new TextHit(
+                    (int) lng(obj.get("page")),
+                    str(obj.get("text")),
+                    dbl(obj.get("x")),
+                    dbl(obj.get("y")),
+                    dbl(obj.get("width")),
+                    dbl(obj.get("height"))));
         }
         return out;
     }
@@ -177,8 +222,20 @@ public final class Pdf {
         return o == null ? "" : o.toString();
     }
 
+    private static String nullable(Object o) {
+        return o == null ? null : o.toString();
+    }
+
     private static boolean bool(Object o) {
         return o instanceof Boolean b && b;
+    }
+
+    private static long lng(Object o) {
+        return o instanceof Number n ? n.longValue() : 0L;
+    }
+
+    private static double dbl(Object o) {
+        return o instanceof Number n ? n.doubleValue() : 0.0;
     }
 
     /**
@@ -401,6 +458,50 @@ public final class Pdf {
                 document, document.length, container, container.length, p, n));
     }
 
+    // ---- Network timestamp (AD-RT) — issue #41 P1 ---------------------------
+
+    /**
+     * <b>Network timestamp, phase 1.</b> Prepare {@code pdf} for a
+     * {@code /DocTimeStamp} from a network RFC 3161 TSA. Returns a {@link
+     * SigningSession} whose {@link SigningSession#hash()} (SHA-256 of {@link
+     * SigningSession#bytes()}) feeds {@link #timestampRequest(byte[])}. POST that
+     * request to the TSA, extract the token with {@link
+     * #timestampTokenFromResponse(byte[])}, then embed it via {@link
+     * SigningSession#complete(byte[])}.
+     */
+    public static SigningSession beginTimestamp(byte[] pdf) {
+        PointerByReference docPtr = new PointerByReference();
+        LongByReference docLen = new LongByReference();
+        PointerByReference tbsPtr = new PointerByReference();
+        LongByReference tbsLen = new LongByReference();
+        check(FFI.C.pdf_timestamp_begin(pdf, pdf.length, docPtr, docLen, tbsPtr, tbsLen));
+        byte[] document = copyAndFree(docPtr.getValue(), docLen.getValue());
+        byte[] tbs = copyAndFree(tbsPtr.getValue(), tbsLen.getValue());
+        return new SigningSession(document, tbs);
+    }
+
+    /** Build an RFC 3161 {@code TimeStampReq} (DER) for {@code imprint} (a SHA-256 digest). */
+    public static byte[] timestampRequest(byte[] imprint) {
+        return timestampRequest(imprint, null, true);
+    }
+
+    /**
+     * Build an RFC 3161 {@code TimeStampReq} (DER) for {@code imprint} (a SHA-256
+     * digest). {@code nonce} is optional ({@code null} = none); {@code certReq}
+     * asks the TSA to embed its certificate.
+     */
+    public static byte[] timestampRequest(byte[] imprint, byte[] nonce, boolean certReq) {
+        byte[] nz = nonce == null ? new byte[0] : nonce;
+        return takeBuffer((p, n) -> FFI.C.pdf_timestamp_request(
+                imprint, imprint.length, nz, nz.length, certReq ? 1 : 0, p, n));
+    }
+
+    /** Extract the {@code TimeStampToken} (CMS) from a TSA's RFC 3161 {@code TimeStampResp}. */
+    public static byte[] timestampTokenFromResponse(byte[] response) {
+        return takeBuffer((p, n) -> FFI.C.pdf_timestamp_token_from_response(
+                response, response.length, p, n));
+    }
+
     /** Build the native {@code PdfSigningOptions}, allocating UTF-8 strings into {@code keep}. */
     private static FFI.PdfSigningOptions buildOptions(SigningOptions opts, List<Memory> keep) {
         FFI.PdfSigningOptions n = new FFI.PdfSigningOptions();
@@ -425,6 +526,22 @@ public final class Pdf {
             }
             n.policyHashAlgOid = utf8(pol.hashAlgorithmOid, keep);
             n.policyUri = utf8(pol.uri, keep);
+        }
+        // Visible signature appearance (issue #41 P1).
+        n.visible = opts.visible ? 1 : 0;
+        n.visPage = opts.visiblePage;
+        if (opts.visibleRect != null) {
+            for (int i = 0; i < 4 && i < opts.visibleRect.length; i++) {
+                n.visRect[i] = opts.visibleRect[i];
+            }
+        }
+        n.visText = utf8(opts.visibleText, keep);
+        if (opts.visibleImage != null && opts.visibleImage.length > 0) {
+            Memory m = new Memory(opts.visibleImage.length);
+            m.write(0, opts.visibleImage, 0, opts.visibleImage.length);
+            keep.add(m);
+            n.visImage = m;
+            n.visImageLen = opts.visibleImage.length;
         }
         return n;
     }

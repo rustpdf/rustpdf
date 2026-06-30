@@ -375,7 +375,7 @@ func TestFullSurface(t *testing.T) {
 			t.Fatalf("missing checkbox: ok=%v err=%v", ok, err)
 		}
 
-		if err := ed.WatermarkText("DRAFT", 64, 0.5, 0.5, 0.5, 0.3, 45); err != nil {
+		if err := ed.WatermarkText("DRAFT", 64, 0.5, 0.5, 0.5, 0.3, 45, false); err != nil {
 			t.Fatal(err)
 		}
 		if ok, err := ed.Redact(0, [][4]float64{{72, 755, 140, 775}}); err != nil || !ok {
@@ -432,11 +432,47 @@ func TestFullSurface(t *testing.T) {
 		if err := os.WriteFile(pngPath, makePNG(t), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := ed.WatermarkImageFile(pngPath, 64, 64, 0.3); err != nil {
+		if err := ed.WatermarkImageFile(pngPath, 64, 64, 0.3, 30); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := ed.ToBytes(); err != nil {
 			t.Fatal(err)
+		}
+	}
+
+	// 16. Issue #41 P1: positional text search.
+	{
+		hits, err := FindText(pdfa, "Título", false)
+		if err != nil {
+			t.Fatalf("find text: %v", err)
+		}
+		if len(hits) < 1 {
+			t.Fatalf("expected at least one hit, got %d", len(hits))
+		}
+		if hits[0].Width <= 0 || hits[0].Height <= 0 {
+			t.Fatalf("hit has no bounding box: %+v", hits[0])
+		}
+	}
+
+	// 17. Issue #41 P1: version normalization on a loaded doc.
+	{
+		ed, err := Load(pdfa)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+		if err := ed.SetVersion(2); err != nil { // PDF 1.7
+			t.Fatal(err)
+		}
+		if err := ed.Normalize(2); err != nil { // strip PDF/A + version 1.7
+			t.Fatal(err)
+		}
+		out, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Contains(out, []byte("pdfaid")) {
+			t.Fatal("PDF/A identifier should be gone after Normalize")
 		}
 	}
 }

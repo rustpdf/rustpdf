@@ -162,6 +162,7 @@
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
       <a href="#ed-output">Output &amp; incremental</a>
 
       <h4>Signatures</h4>
@@ -171,6 +172,7 @@
       <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
+      <a href="#search">Positional text search</a>
       <a href="#extract">Text &amp; image extraction</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -588,13 +590,15 @@ ed.close();</code></pre></div>
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". Characters outside Latin-1 (Cyrillic, Greek, CJK, emoji) are not dropped: they render as visible mojibake, so do not pass them here.</p>
-      <div class="api"><code>watermarkText(text, { size?, color?, opacity?, rotationDeg? }?)</code></div>
-      <div class="api"><code>watermarkImageFile(path, width, height, opacity?)</code></div>
+      <div class="api"><code>watermarkText(text, { size?, color?, opacity?, rotationDeg?, opaqueBackground? }?)</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity?, rotationDeg?)</code></div>
+      <p>Set <code>opaqueBackground: true</code> to draw a solid (white-out) box behind the text stamp instead of letting the page show through. <code>watermarkImageFile</code> takes an optional <code>rotationDeg</code> to rotate the image stamp.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("report.pdf");
-ed.watermarkText("CONFIDENTIAL", { opacity: 0.25, rotationDeg: 45 });
+ed.watermarkText("CONFIDENTIAL", { opacity: 0.25, rotationDeg: 45, opaqueBackground: false });
+ed.watermarkImageFile("stamp.png", 200, 120, 0.3, 30);   // rotate the image 30°
 ed.save("stamped.pdf");
 ed.close();</code></pre></div>
-      <p>Defaults: <code>size: 64</code>, <code>color: [0.5, 0.5, 0.5]</code>, <code>opacity: 0.30</code>, <code>rotationDeg: 45</code>.</p>
+      <p>Defaults: <code>size: 64</code>, <code>color: [0.5, 0.5, 0.5]</code>, <code>opacity: 0.30</code>, <code>rotationDeg: 45</code> (text) / <code>0</code> (image), <code>opaqueBackground: false</code>.</p>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -643,6 +647,24 @@ ed.save("secured.pdf");          // throws PdfError without an Encryption licens
 ed.close();</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
       <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (cross-checked against qpdf for all three ciphers). The read-only permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat read-only as a hint to well-behaved viewers, not as an access control.</div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Remove PDF/A conformance or downgrade the PDF version of a loaded document. <code>setVersion</code> rewrites the header version; <code>stripPdfa</code> drops the OutputIntents, the XMP <code>pdfaid</code> identifier and the catalog <code>/Version</code>; <code>normalize</code> does both at once (strip PDF/A and set the version), producing a plain PDF.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setVersion(version)</code></td><td>Set the output PDF version (<a href="#enums"><code>PdfVersion</code></a>: <code>0</code>→1.4, <code>1</code>→1.5, <code>2</code>→1.7, <code>3</code>→2.0).</td></tr>
+        <tr><td><code>stripPdfa()</code></td><td>Strip PDF/A conformance (OutputIntents, XMP <code>pdfaid</code>, <code>/Version</code>).</td></tr>
+        <tr><td><code>normalize(version?)</code></td><td>Strip PDF/A and set the version in one call (defaults to <code>2</code> → 1.7).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc, PdfVersion } = require("rustpdf");
+
+const ed = EditableDoc.loadFile("archival.pdf");
+ed.normalize(PdfVersion.V1_7);   // strip PDF/A + downgrade to 1.7
+// or step by step:
+// ed.stripPdfa().setVersion(PdfVersion.V1_7);
+ed.save("plain.pdf");
+ed.close();</code></pre></div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>
@@ -729,7 +751,15 @@ fs.writeFileSync("contract.signed.pdf", signed);</code></pre></div>
         <tr><td><code>certify</code></td><td>A <code>Certify</code> level (DocMDP), applied only by the first signature: <code>Certify.None</code> (0), <code>Locked</code> (1, no changes), <code>Forms</code> (2, form-filling and signing), <code>FormsAndAnnotations</code> (3).</td></tr>
         <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> or omitted uses the default. Raise it for large cloud-HSM containers.</td></tr>
         <tr><td><code>policy</code></td><td>A signature-policy identifier (PAdES-EPES): <code>{ oid, hash, hashAlgorithmOid?, uri? }</code>. Omit for none.</td></tr>
+        <tr><td><code>visible</code>, <code>visiblePage</code>, <code>visibleRect</code>, <code>visibleText</code></td><td>Draw a visible signature: set <code>visible: true</code>, the 0-based <code>visiblePage</code>, the appearance <code>visibleRect</code> <code>[x0, y0, x1, y1]</code>, and optional <code>visibleText</code> lines.</td></tr>
+        <tr><td><code>visibleImage</code></td><td>PNG/JPEG bytes (<code>Buffer</code>) of a handwritten-signature image, drawn aspect-fit behind any <code>visibleText</code> in the appearance rectangle.</td></tr>
       </table>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const signed = signWith(pdf, certDer, (data) => hsm.signRsaSha256(data), [], {
+  reason: "Approved", pades: true,
+  visible: true, visiblePage: 0, visibleRect: [380, 60, 560, 140],
+  visibleText: "Signed by Jane Doe",
+  visibleImage: fs.readFileSync("signature.png"),   // drawn aspect-fit behind the text
+});</code></pre></div>
       <div class="note"><b>The private key never crosses the FFI boundary.</b> Both models build the CMS in-process from the certificate plus the signature your signer returns, so the key can stay in an HSM, cloud KMS, smartcard or PKI token. <code>signHash</code> (Model A) and your CMS builder (Model B) must produce an RSA PKCS#1 v1.5 signature over SHA-256.</div>
 
       <!-- LTV -->
@@ -746,18 +776,58 @@ const lt = rustpdf.addDss(signed, [certDer], [crlDer]);
 const lta = rustpdf.timestamp(lt, tsaKeyDer, tsaCertDer);
 fs.writeFileSync("contract.lta.pdf", lta);</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To timestamp against a real RFC 3161 TSA, use the transport-agnostic helpers: the binding builds the request and embeds the token, while you do the HTTP POST. <code>beginTimestamp</code> prepares the PDF and returns <code>{ document, bytes }</code>; build a request with <code>timestampRequest</code> over the SHA-256 of <code>bytes</code>, POST the DER to the TSA, extract the token with <code>timestampTokenFromResponse</code>, then embed it via <code>completeSignature</code>. Free public TSAs work, such as FreeTSA (<code>https://freetsa.org/tsr</code>) and DigiCert (<code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>rustpdf.beginTimestamp(pdf) → { document, bytes }</code></div>
+      <div class="api"><code>rustpdf.timestampRequest(imprint, nonce?, certReq?) → Buffer</code></div>
+      <div class="api"><code>rustpdf.timestampTokenFromResponse(response) → Buffer</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const crypto = require("crypto");
+const rustpdf = require("rustpdf");
+
+const session = rustpdf.beginTimestamp(signed);
+const imprint = crypto.createHash("sha256").update(session.bytes).digest();
+const req = rustpdf.timestampRequest(imprint);          // RFC 3161 TimeStampReq (DER)
+
+const resp = await fetch("https://freetsa.org/tsr", {   // you do the HTTP POST
+  method: "POST",
+  headers: { "Content-Type": "application/timestamp-query" },
+  body: req,
+});
+const token = rustpdf.timestampTokenFromResponse(Buffer.from(await resp.arrayBuffer()));
+const lta = rustpdf.completeSignature(session.document, token);
+fs.writeFileSync("contract.lta.pdf", lta);</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>rustpdf.verifySignatures(data: Buffer) → object[]</code></div>
-      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. <code>field_name</code> and <code>signer</code> may be <code>null</code> when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report also carries rich certificate and signature metadata: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code>, <code>signer</code> and any of the certificate fields may be <code>null</code> when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
 
 const data = fs.readFileSync("contract.signed.pdf");
 for (const sig of rustpdf.verifySignatures(data)) {
   console.log(sig.signer, "valid:", sig.is_valid,
               "covers whole doc:", sig.covers_whole_document);
+  console.log("  issuer:", sig.issuer, "| serial:", sig.serial_number);
+  console.log("  algorithm:", sig.algorithm, "| signed at:", sig.signing_time);
+  console.log("  cert valid:", sig.valid_from, "→", sig.valid_to);
+  console.log("  certs:", sig.cert_count, "| timestamped:", sig.has_timestamp);
 }</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find where text appears on the page, not just whether it does. <code>findText</code> returns every occurrence of <code>query</code> as a bounding box, so you can place a highlight, link or redaction over a match. Search is case-insensitive by default; pass <code>true</code> to match case. See the <a href="/search-pdf">PDF text search</a> concept page for background.</p>
+      <div class="api"><code>rustpdf.findText(data: Buffer, query: string, caseSensitive?: boolean) → TextHit[]</code></div>
+      <p>Each <code>TextHit</code> has <code>page</code> (0-based), <code>text</code>, and <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code> in PDF points with the origin at the lower-left. An empty array means no match.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+
+const data = fs.readFileSync("report.pdf");
+for (const hit of rustpdf.findText(data, "Total")) {
+  console.log(`p${hit.page}: "${hit.text}" @ ${hit.x},${hit.y} ${hit.width}x${hit.height}`);
+}
+
+// case-sensitive:
+const exact = rustpdf.findText(data, "Total", true);</code></pre></div>
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
@@ -884,9 +954,11 @@ try {
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
       <a href="#sign">Signatures</a>
       <a href="#hsm">HSM / deferred signing</a>
       <a href="#verify">Validate signatures</a>
+      <a href="#search">Positional text search</a>
       <a href="#extract">Extraction</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

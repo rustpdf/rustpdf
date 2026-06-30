@@ -127,16 +127,22 @@ module RustPdf
       text.split("\n").reject(&:empty?)
     end
 
-    # Stamp a diagonal text watermark across every page.
-    def watermark_text(text, size: 64.0, color: [0.5, 0.5, 0.5], opacity: 0.30, rotation_deg: 45.0)
+    # Stamp a diagonal text watermark across every page. When
+    # +opaque_background+ is true, the text is drawn over an opaque white box
+    # (otherwise it is blended into the page content).
+    def watermark_text(text, size: 64.0, color: [0.5, 0.5, 0.5], opacity: 0.30,
+                       rotation_deg: 45.0, opaque_background: false)
       r, g, b = color
-      RustPdf.check(Native.call("pdf_editable_watermark_text", ptr, text, size, r, g, b, opacity, rotation_deg))
+      RustPdf.check(Native.call("pdf_editable_watermark_text", ptr, text, size, r, g, b,
+                                opacity, rotation_deg, opaque_background ? 1 : 0))
       self
     end
 
-    # Stamp an image watermark (from a file) across every page.
-    def watermark_image_file(path, width, height, opacity: 0.30)
-      RustPdf.check(Native.call("pdf_editable_watermark_image_file", ptr, path, width, height, opacity))
+    # Stamp an image watermark (from a file) across every page, rotated
+    # +rotation_deg+ degrees counter-clockwise.
+    def watermark_image_file(path, width, height, opacity: 0.30, rotation_deg: 0.0)
+      RustPdf.check(Native.call("pdf_editable_watermark_image_file", ptr, path, width, height,
+                                opacity, rotation_deg))
       self
     end
 
@@ -153,6 +159,29 @@ module RustPdf
     # Convert the document to PDF/A (B-levels only: A1B=0, A2B=1, A3B=3).
     def convert_to_pdfa(level = Pdfa::A2B)
       RustPdf.check(Native.call("pdf_editable_convert_to_pdfa", ptr, level))
+      self
+    end
+
+    # ---- version normalization (issue #41 P1) -------------------------------
+
+    # Set the output PDF version (downgrade/normalize). +version+ uses the
+    # RustPdf::Version codes (V1_4=0, V1_5=1, V1_7=2, V2_0=3).
+    def set_version(version)
+      RustPdf.check(Native.call("pdf_editable_set_version", ptr, version))
+      self
+    end
+
+    # Strip PDF/A conformance (OutputIntents, XMP pdfaid, /Version) so the file
+    # is a plain PDF.
+    def strip_pdfa
+      RustPdf.check(Native.call("pdf_editable_strip_pdfa", ptr))
+      self
+    end
+
+    # Normalize to a plain PDF at +version+ (strip PDF/A + set version). Codes as
+    # in #set_version.
+    def normalize(version = Version::V1_7)
+      RustPdf.check(Native.call("pdf_editable_normalize", ptr, version))
       self
     end
 

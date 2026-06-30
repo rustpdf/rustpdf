@@ -7,7 +7,10 @@
 use std::path::PathBuf;
 use std::sync::Once;
 
-use rustpdf::{Align, Bookmark, Document, EditableDoc, Encryption, FacturxProfile, PdfaLevel};
+use rustpdf::{
+    Align, Bookmark, Document, EditableDoc, Encryption, FacturxProfile, PdfVersion, PdfaLevel,
+    SigningOptions,
+};
 
 static INIT: Once = Once::new();
 
@@ -121,7 +124,10 @@ fn full_surface() {
     // Page rendering (Pro feature; license already active).
     assert_eq!(rustpdf::page_count(&bytes).expect("page count"), 1);
     let png = rustpdf::render_page_to_png(&bytes, 0, 72.0).expect("render page");
-    assert!(png.len() > 8 && &png[1..4] == b"PNG", "expected a PNG header");
+    assert!(
+        png.len() > 8 && &png[1..4] == b"PNG",
+        "expected a PNG header"
+    );
 
     // --- encryption path ---
     let mut enc = EditableDoc::load(&bytes).expect("load for encrypt");
@@ -211,7 +217,7 @@ fn full_surface() {
 
     // --- watermarks + redaction + PDF/A conversion (EditableDoc) ---
     let mut wm = EditableDoc::load(&bytes).expect("load for watermark");
-    wm.watermark_text("CONFIDENTIAL", 64.0, (0.5, 0.5, 0.5), 0.30, 45.0)
+    wm.watermark_text("CONFIDENTIAL", 64.0, (0.5, 0.5, 0.5), 0.30, 45.0, false)
         .unwrap();
 
     let png: &[u8] = &[
@@ -223,7 +229,7 @@ fn full_surface() {
     ];
     let png_path = std::env::temp_dir().join("rustpdf_smoke_wm.png");
     std::fs::write(&png_path, png).expect("write png");
-    wm.watermark_image_file(png_path.to_str().unwrap(), 100.0, 100.0, 0.30)
+    wm.watermark_image_file(png_path.to_str().unwrap(), 100.0, 100.0, 0.30, 0.0)
         .unwrap();
 
     // Redact a region on the first page; non-existent pages report false.
@@ -265,4 +271,94 @@ fn full_surface() {
     let rep = &reports[0];
     assert!(!rep.sub_filter.is_empty(), "sub_filter should be set");
     assert_ne!(rep.byte_range, [0, 0, 0, 0], "byte_range should be filled");
+
+    // --- rich signature fields (issue #41 P1) are accessible ---
+    // A plain PKCS#7 signature carries the signer cert but no embedded timestamp.
+    assert!(
+        rep.cert_count >= 1,
+        "expected at least the signer certificate"
+    );
+    assert!(
+        !rep.has_timestamp,
+        "plain signature has no embedded timestamp"
+    );
+    let _rich = (
+        &rep.issuer,
+        &rep.serial_number,
+        &rep.valid_from,
+        &rep.valid_to,
+        &rep.algorithm,
+        &rep.signing_time,
+    );
+
+    // --- pre-signing inventory (list_signatures) ---
+    assert!(
+        rustpdf::list_signatures(&bytes).unwrap().is_empty(),
+        "unsigned document has no signature fields"
+    );
+    let fields = rustpdf::list_signatures(&signed).expect("list signatures");
+    assert_eq!(fields.len(), 1, "signed document has one signature field");
+    assert!(fields[0].signed, "the field should be reported as signed");
+
+    // --- positional text search (find_text, issue #41 P1) ---
+    let hits = rustpdf::find_text(&bytes, "Hello", false).expect("find_text");
+    assert!(!hits.is_empty(), "expected at least one match for 'Hello'");
+    let hit = &hits[0];
+    assert!(
+        hit.width > 0.0 && hit.height > 0.0,
+        "match should carry a non-empty bounding box: {hit:?}"
+    );
+
+    // --- normalization (set_version / strip_pdfa / normalize, issue #41 P1) ---
+    let mut norm = EditableDoc::load(&pdfa_bytes).expect("load for normalize");
+    norm.set_version(PdfVersion::V1_7).unwrap();
+    let v17 = norm.to_bytes().expect("set_version to bytes");
+    assert!(v17.starts_with(b"%PDF-"));
+    let mut norm2 = EditableDoc::load(&pdfa_bytes).expect("load for normalize 2");
+    norm2.normalize(PdfVersion::V2_0).unwrap();
+    let normalized = norm2.to_bytes().expect("normalize to bytes");
+    assert!(
+        normalized.starts_with(b"%PDF-2.0"),
+        "PDF 2.0 header expected"
+    );
+
+    // --- deferred signing: Model A callback wiring + visible appearance ---
+    // Model A: the closure receives the to-be-signed bytes (the key never
+    // crosses the FFI line). We return a placeholder container; we only assert
+    // the callback fired, proving the trampoline plumbing works.
+    let mut called = false;
+    let _ = rustpdf::sign_with(&bytes, &cert, &[], None, |tbs| {
+        called = true;
+        assert!(!tbs.is_empty(), "callback should receive bytes to sign");
+        Ok(vec![0u8; 256])
+    });
+    assert!(called, "sign_with must invoke the hash callback");
+
+    // Model B with a visible-signature appearance (exercises the extended
+    // PdfSigningOptions struct, incl. the appended visible_* fields).
+    let opts = SigningOptions {
+        reason: Some("smoke".into()),
+        visible: true,
+        visible_page: 0,
+        visible_rect: [72.0, 72.0, 272.0, 144.0],
+        visible_text: Some("Signed by\nrustpdf".into()),
+        ..Default::default()
+    };
+    let session = rustpdf::begin_signing(&bytes, Some(&opts)).expect("begin_signing");
+    assert!(
+        session.document.starts_with(b"%PDF-"),
+        "prepared document should be a PDF"
+    );
+    assert!(
+        !session.to_be_signed.is_empty(),
+        "to-be-signed bytes should be present"
+    );
+
+    // --- network TSA (AD-RT) helpers (issue #41 P1) ---
+    let (ts_doc, ts_tbs) = rustpdf::begin_timestamp(&signed).expect("begin_timestamp");
+    assert!(ts_doc.starts_with(b"%PDF-"));
+    assert!(!ts_tbs.is_empty());
+    // A 32-byte imprint stands in for SHA-256(ts_tbs); the request is DER.
+    let request = rustpdf::timestamp_request(&[0u8; 32], None, true).expect("timestamp_request");
+    assert_eq!(request.first(), Some(&0x30), "TimeStampReq should be DER");
 }

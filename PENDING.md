@@ -322,10 +322,36 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
     `ListSignatures` + `SigningOptions`/`SignaturePolicy`/`Certify`, cada um com o
     mecanismo de callback FFI nativo da linguagem (Model A provado end-to-end no
     smoke test de cada binding). Página `/icp-brasil` no site (EN).
+  - ✅ **Issue #41 P1 — concluído (2026-06-29).** Em core + C ABI + **todos os 10
+    bindings** (smoke tests verdes):
+    - **#6 Busca posicional de texto** → `pdf::find_text(bytes, query, FindOptions)`
+      devolve `Vec<TextHit>` (page, text, x/y/w/h em pontos no espaço do usuário).
+      Novo `crates/pdf/src/find.rs` interpreta o content stream (CTM/Tm + avanços
+      de `/Widths`/`/W`+`/DW`) e une as caixas dos glifos casados. FFI
+      `pdf_find_text_json` (JSON). **Livre** (como a extração).
+    - **#5 Inspeção rica de assinatura** — `SignatureReport` agora tem `issuer`,
+      `serial_number` (hex), `valid_from`/`valid_to` (ISO-8601), `algorithm`
+      (ex. SHA256withRSA), `signing_time`, `cert_count`, `has_timestamp`.
+      JSON do FFI `pdf_verify_signatures_json` estendido.
+    - **#4 Imagem na assinatura visível** — `VisibleSignature.image` (PNG/JPEG)
+      desenhada aspect-fit atrás do texto; novos campos `vis_*` em `PdfSigningOptions`.
+    - **#7 Desenhar sobre PDF** — geometria de página honra `/CropBox` + herança
+      do page-tree e troca dims em `/Rotate` 90/270 (`EditableDoc::page_dimensions`);
+      watermarks saem "de pé" em páginas rotacionadas; `watermark_image` ganhou
+      rotação; `WatermarkOptions.opaque_background` (carimbo branco opaco).
+    - **#8 Normalização** — `EditableDoc::set_version`/`strip_pdfa`/`normalize`
+      (downgrade de versão + remoção de OutputIntents/XMP-pdfaid/Version). FFI
+      correspondente.
+    - **AD-RT (TSA em rede)** — helpers transport-agnósticos (mantêm o core
+      offline): `begin_timestamp` + `timestamp_request` (DER do RFC 3161
+      TimeStampReq) + `timestamp_token_from_response`; o integrador faz o POST e
+      embute via o `complete_signing` existente. FFI `pdf_timestamp_begin`/
+      `pdf_timestamp_request`/`pdf_timestamp_token_from_response`. Página
+      `/search-pdf` no site.
   - **Ainda pendentes do issue #41:** **Adobe Acrobat** (trusted, sem warnings —
-    requer as raízes ICP-Brasil/AATL no validador); **AD-RT** (carimbo de tempo,
-    precisa de TSA em rede); P1 (busca posicional de texto → bounding boxes,
-    inspeção rica de assinatura com DN/serial/validade) e P2 (layout) abertos.
+    requer as raízes ICP-Brasil/AATL no validador); **cliente OCSP/CRL de rede
+    automático** (o `add_dss` aceita DER fornecido pelo integrador); P2 (layout
+    multi-coluna) aberto.
 - ✅ **7.4 PDF/A — níveis 1b/2b/2a/3b/3a.** `Document::pdfa()` (=A-2b),
   `pdfa_a()` (=A-2a) e `pdfa_with(PdfaLevel)` cobrem **A-1b** (header PDF 1.4,
   `/CIDSet` no descritor lido do programa de subset, sem object streams),

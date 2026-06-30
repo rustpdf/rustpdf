@@ -240,6 +240,15 @@ type SignatureReport struct {
 	SignatureValid      bool    `json:"signature_valid"`
 	IsValid             bool    `json:"is_valid"`
 	ByteRange           []int   `json:"byte_range"`
+	// Certificate / signature details (issue #41 P1; any may be nil/zero).
+	Issuer       *string `json:"issuer"`
+	SerialNumber *string `json:"serial_number"`
+	ValidFrom    *string `json:"valid_from"`
+	ValidTo      *string `json:"valid_to"`
+	Algorithm    *string `json:"algorithm"`
+	SigningTime  *string `json:"signing_time"`
+	CertCount    int     `json:"cert_count"`
+	HasTimestamp bool    `json:"has_timestamp"`
 }
 
 // VerifySignatures validates every signature in a PDF. It returns one report per
@@ -261,6 +270,45 @@ func VerifySignatures(pdf []byte) ([]SignatureReport, error) {
 		return nil, err
 	}
 	return reports, nil
+}
+
+// TextHit is one occurrence of a search query, with its bounding box in PDF
+// user space (points, origin lower-left).
+type TextHit struct {
+	Page   int     `json:"page"`
+	Text   string  `json:"text"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
+// FindText returns the bounding box of every occurrence of query in pdf. With
+// caseSensitive false the match is case-insensitive. An empty slice means no
+// match.
+func FindText(pdf []byte, query string, caseSensitive bool) ([]TextHit, error) {
+	cq := C.CString(query)
+	defer C.free(unsafe.Pointer(cq))
+	cs := C.int(0)
+	if caseSensitive {
+		cs = 1
+	}
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_find_text_json(uptr(pdf), C.uintptr_t(len(pdf)), cq, cs, out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 {
+		return []TextHit{}, nil
+	}
+	var hits []TextHit
+	if err := json.Unmarshal(b, &hits); err != nil {
+		return nil, err
+	}
+	return hits, nil
 }
 
 // SignOptions configures Sign. Empty strings are treated as absent.

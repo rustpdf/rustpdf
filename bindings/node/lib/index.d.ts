@@ -19,6 +19,8 @@ export const Encryption: { readonly Rc4: 0; readonly Aes128: 1; readonly Aes256:
 export const FacturxProfile: {
   readonly Minimum: 0; readonly BasicWL: 1; readonly Basic: 2; readonly EN16931: 3; readonly Extended: 4;
 };
+/** PDF version codes (setVersion / normalize): 0=1.4, 1=1.5, 2=1.7, 3=2.0. */
+export const PdfVersion: { readonly V1_4: 0; readonly V1_5: 1; readonly V1_7: 2; readonly V2_0: 3 };
 /** DocMDP certification level applied by the first (certifying) signature. */
 export const Certify: {
   readonly None: 0; readonly Locked: 1; readonly Forms: 2; readonly FormsAndAnnotations: 3;
@@ -41,6 +43,18 @@ export interface WatermarkTextOptions {
   color?: [number, number, number];
   opacity?: number;
   rotationDeg?: number;
+  /** Draw an opaque (solid) background behind the watermark text. */
+  opaqueBackground?: boolean;
+}
+
+/** A positional text-search hit (coords in PDF points, origin lower-left). */
+export interface TextHit {
+  page: number;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface SignatureInfo {
@@ -52,6 +66,15 @@ export interface SignatureInfo {
   signature_valid: boolean;
   is_valid: boolean;
   byte_range: [number, number, number, number];
+  // Rich certificate / signature metadata (issue #41 P1; any may be null).
+  issuer: string | null;
+  serial_number: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  algorithm: string | null;
+  signing_time: string | null;
+  cert_count: number;
+  has_timestamp: boolean;
 }
 
 export interface Info {
@@ -140,7 +163,13 @@ export class EditableDoc {
   flattenForms(): this;
   fieldNames(): string[];
   watermarkText(text: string, opts?: WatermarkTextOptions): this;
-  watermarkImageFile(path: string, width: number, height: number, opacity?: number): this;
+  watermarkImageFile(path: string, width: number, height: number, opacity?: number, rotationDeg?: number): this;
+  /** Set the output PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0. */
+  setVersion(version: number): this;
+  /** Strip PDF/A conformance (OutputIntents, XMP pdfaid, /Version). */
+  stripPdfa(): this;
+  /** Normalize to a plain PDF at `version` (strip PDF/A + set version). */
+  normalize(version?: number): this;
   redact(pageIndex: number, rects: Rect[]): boolean;
   convertToPdfa(level?: number): this;
   optimize(): this;
@@ -176,6 +205,16 @@ export interface SigningOptions {
   containerSize?: number;
   /** Signature-policy identifier (PAdES-EPES); omit for none. */
   policy?: SignaturePolicy | null;
+  /** Draw a visible signature using the fields below (issue #41 P1). */
+  visible?: boolean;
+  /** 0-based page index for the visible appearance. */
+  visiblePage?: number;
+  /** Appearance rectangle [x0, y0, x1, y1] in page points. */
+  visibleRect?: Rect;
+  /** Appearance text lines, separated by '\n'; omit for none. */
+  visibleText?: string | null;
+  /** PNG/JPEG bytes of a handwritten-signature image; omit for none. */
+  visibleImage?: Bytes | null;
 }
 
 /** A signature field discovered in a PDF (pre-signing inventory). */
@@ -236,6 +275,22 @@ export function renderPageToPng(pdf: Bytes, page?: number, dpi?: number): Buffer
 /** Number of pages in `pdf` (free — no license required). */
 export function pageCount(pdf: Bytes): number;
 export function verifySignatures(pdf: Bytes): SignatureInfo[];
+/** Find every occurrence of `query` in `pdf` (case-insensitive by default). */
+export function findText(pdf: Bytes, query: string, caseSensitive?: boolean): TextHit[];
 export function sign(pdf: Bytes, keyDer: Bytes, certDer: Bytes, opts?: SignOptions): Buffer;
 export function timestamp(pdf: Bytes, tsaKeyDer: Bytes, tsaCertDer: Bytes, date?: string | null): Buffer;
 export function addDss(pdf: Bytes, certs?: Bytes[], crls?: Bytes[]): Buffer;
+
+/** A prepared network-timestamp job: SHA-256 `bytes`, fetch a token, then completeSignature(document, token). */
+export interface TimestampSession {
+  /** The prepared PDF (with a zero-filled /Contents placeholder). */
+  document: Buffer;
+  /** The exact bytes covered by the timestamp. */
+  bytes: Buffer;
+}
+/** Network TSA (AD-RT) phase 1: prepare `pdf` for a /DocTimeStamp. */
+export function beginTimestamp(pdf: Bytes): TimestampSession;
+/** Build an RFC 3161 TimeStampReq (DER) for `imprint` (SHA-256 of the bytes to timestamp). */
+export function timestampRequest(imprint: Bytes, nonce?: Bytes | null, certReq?: boolean): Buffer;
+/** Extract the TimeStampToken (CMS) from a TSA's RFC 3161 TimeStampResp. */
+export function timestampTokenFromResponse(response: Bytes): Buffer;

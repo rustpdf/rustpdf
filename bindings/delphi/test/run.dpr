@@ -225,6 +225,10 @@ var
   HashV: TBytes;
   Ca: TBytes;
   SignedCount: Integer;
+  { issue #41 P1 — positional search + normalization }
+  Hits: TTextHits;
+  NormEd, VerEd: TPdfEditable;
+  NormBytes, VerBytes: TBytes;
 {$IFDEF UNIX}
   Signer: TOpenSslSigner;
   KeyPemPath: string;
@@ -485,6 +489,11 @@ begin
   Assert(TextContains(string(SigJson), '"sub_filter"'), 'verify JSON has sub_filter');
   Assert(TextContains(string(SigJson), '"byte_range"'), 'verify JSON has byte_range');
   Assert(TextContains(string(SigJson), '"is_valid"'), 'verify JSON has is_valid');
+  { issue #41 P1: rich certificate detail fields are now present. }
+  Assert(TextContains(string(SigJson), '"issuer"'), 'verify JSON has issuer');
+  Assert(TextContains(string(SigJson), '"serial_number"'), 'verify JSON has serial_number');
+  Assert(TextContains(string(SigJson), '"cert_count"'), 'verify JSON has cert_count');
+  Assert(TextContains(string(SigJson), '"has_timestamp"'), 'verify JSON has has_timestamp');
   Assert(Pdf.VerifySignaturesJson(PlainBytes) = '[]', 'unsigned doc -> empty JSON array');
   Writeln('verify_signatures (JSON) ok');
 
@@ -571,6 +580,40 @@ begin
 {$ELSE}
   Writeln('sign_with (Model A) skipped: needs an external signer (openssl) on UNIX');
 {$ENDIF}
+
+  { 10. Positional text search (issue #41 P1). PlainBytes shows 'segredo'. }
+  Hits := Pdf.FindText(PlainBytes, 'segredo');
+  Assert(Length(Hits) >= 1, 'find_text finds at least one hit');
+  Assert((Hits[0].Width > 0) and (Hits[0].Height > 0), 'find_text hit has a non-empty box');
+  Assert(Hits[0].Page = 0, 'find_text hit is on page 0');
+  Assert(Length(Pdf.FindText(PlainBytes, 'no-such-text')) = 0, 'find_text miss -> empty');
+  Writeln(Format('find_text ok (%d hit(s); first box %.1fx%.1f at %.1f,%.1f)',
+    [Length(Hits), Hits[0].Width, Hits[0].Height, Hits[0].X, Hits[0].Y]));
+
+  { 11. Normalization: strip PDF/A + set version (issue #41 P1). ConvBytes is a
+    PDF/A (section 5e) carrying the XMP pdfaid identifier; Normalize removes the
+    /Metadata so the A-conformance claim is gone. }
+  Assert(Contains(ConvBytes, 'pdfaid'), 'PDF/A input carries the pdfaid claim');
+  NormEd := TPdfEditable.Load(ConvBytes);
+  try
+    NormEd.Normalize(2);  { plain PDF 1.7 }
+    NormBytes := NormEd.ToBytes;
+  finally
+    NormEd.Free;
+  end;
+  Assert(not Contains(NormBytes, 'pdfaid'), 'normalize strips the PDF/A pdfaid claim');
+  Writeln(Format('normalize ok (%d bytes)', [Length(NormBytes)]));
+
+  VerEd := TPdfEditable.Load(PlainBytes);
+  try
+    VerEd.SetVersion(3);  { PDF 2.0 header }
+    VerBytes := VerEd.ToBytes;
+  finally
+    VerEd.Free;
+  end;
+  Assert(StartsWith(VerBytes, TEncoding.ASCII.GetBytes('%PDF-2.0')),
+    'set_version writes a 2.0 header');
+  Writeln('set_version ok');
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

@@ -42,6 +42,18 @@ pub(crate) fn build_image(doc: &mut WriterDoc, img: &Image) -> Reference {
         doc.add(Stream::with_dict(dict, m.data.clone()))
     });
 
+    let mut dict = image_xobject_dict(img);
+    if let Some(smask) = smask_ref {
+        dict.set("SMask", smask);
+    }
+
+    doc.add(Stream::with_dict(dict, img.data.clone()))
+}
+
+/// The Image XObject dictionary for `img` (without `/SMask`, which the caller
+/// links after emitting the mask stream). Shared by [`build_image`] and the
+/// visible-signature appearance builder.
+pub(crate) fn image_xobject_dict(img: &Image) -> Dict {
     let mut dict = Dict::new()
         .with("Type", Object::name("XObject"))
         .with("Subtype", Object::name("Image"))
@@ -50,18 +62,13 @@ pub(crate) fn build_image(doc: &mut WriterDoc, img: &Image) -> Reference {
         .with("BitsPerComponent", img.bits_per_component as i64)
         .with("ColorSpace", color_space_object(&img.color_space))
         .with("Filter", filter_name(img.filter));
-
     if let Some(decode) = &img.decode {
         dict.set(
             "Decode",
             Object::Array(decode.iter().map(|&v| Object::Real(v as f64)).collect()),
         );
     }
-    if let Some(smask) = smask_ref {
-        dict.set("SMask", smask);
-    }
-
-    doc.add(Stream::with_dict(dict, img.data.clone()))
+    dict
 }
 
 fn filter_name(filter: Filter) -> Object {

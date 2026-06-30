@@ -151,6 +151,7 @@
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
@@ -160,6 +161,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -586,12 +588,13 @@ end;</code></pre></div>
 
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
-      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>WatermarkText(Text; Size = 64; R = 0.5; G = 0.5; B = 0.5; Opacity = 0.30; RotationDeg = 45): TPdfEditable</code></div>
-      <div class="api"><code>WatermarkImageFile(Path; Width, Height; Opacity = 0.30): TPdfEditable</code></div>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". Set <code>OpaqueBackground := True</code> to white out a band behind the text instead of stamping over the content; pass <code>RotationDeg</code> to rotate the image watermark.</p>
+      <div class="api"><code>WatermarkText(Text; Size = 64; R = 0.5; G = 0.5; B = 0.5; Opacity = 0.30; RotationDeg = 45; OpaqueBackground = False): TPdfEditable</code></div>
+      <div class="api"><code>WatermarkImageFile(Path; Width, Height; Opacity = 0.30; RotationDeg = 0): TPdfEditable</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('report.pdf');
 try
-  Ed.WatermarkText('CONFIDENTIAL', 64, 0.5, 0.5, 0.5, 0.25, 45);
+  Ed.WatermarkText('CONFIDENTIAL', 64, 0.5, 0.5, 0.5, 0.25, 45, False);
+  Ed.WatermarkImageFile('stamp.png', 200, 80, 0.30, 30);   // rotated 30°
   Ed.SaveToFile('stamped.pdf');
 finally
   Ed.Free;
@@ -664,6 +667,23 @@ Ed := TPdfEditable.Load(Original);
 try
   Ed.SetInfo('Subject', 'reviewed');
   Incremental := Ed.ToBytesIncremental(Original);   // original bytes preserved verbatim
+finally
+  Ed.Free;
+end;</code></pre></div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Turn a PDF/A or higher-version file back into a plain PDF. <code>StripPdfa</code> removes the PDF/A conformance markers (the output intent and the <code>pdfaid</code> XMP), <code>SetVersion</code> sets the header version, and <code>Normalize</code> does both in one call (strip PDF/A and set the version).</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>SetVersion(V): TPdfEditable</code></td><td>Set the PDF header version: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0.</td></tr>
+        <tr><td><code>StripPdfa: TPdfEditable</code></td><td>Remove PDF/A conformance (output intent + <code>pdfaid</code> XMP), leaving a plain PDF.</td></tr>
+        <tr><td><code>Normalize(V): TPdfEditable</code></td><td>Strip PDF/A and set the version <code>V</code> in one step.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('archival_pdfa.pdf');
+try
+  Ed.Normalize(2);                   // strip PDF/A + downgrade to PDF 1.7
+  Ed.SaveToFile('plain.pdf');
 finally
   Ed.Free;
 end;</code></pre></div>
@@ -742,6 +762,7 @@ for F in Pdf.ListSignatures(PdfBytes) do
         <tr><td><code>Certify</code></td><td>Certify the document (DocMDP); apply only on the first signature. See <code>TCertify</code> below.</td></tr>
         <tr><td><code>ContainerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
         <tr><td><code>HasPolicy</code>, <code>Policy</code></td><td>Set <code>HasPolicy := True</code> to attach a <code>TSignaturePolicy</code> identifier (PAdES-EPES).</td></tr>
+        <tr><td><code>Visible</code>, <code>VisiblePage</code>, <code>VisibleRect</code>, <code>VisibleText</code>, <code>VisibleImage</code></td><td>Set <code>Visible := True</code> to draw a visible signature on page <code>VisiblePage</code> inside <code>VisibleRect</code> (<code>[x0, y0, x1, y1]</code> in points). <code>VisibleText</code> holds the lines (separated by <code>#10</code>). <code>VisibleImage</code> takes embedded <b>PNG/JPEG</b> bytes, drawn aspect-fit behind any text.</td></tr>
       </table>
       <h4>TCertify</h4>
       <table>
@@ -765,12 +786,30 @@ Lt := Pdf.AddDss(Signed, [CertDer], [CrlDer]);
 // B-LTA: add a document timestamp signed by a TSA key/cert
 Lta := Pdf.Timestamp(Lt, TsaKeyDer, TsaCertDer);</code></pre></div>
 
+      <h3>Network timestamp (PAdES AD-RT)</h3>
+      <p>To stamp with a real network TSA instead of a local key, the binding exposes a transport-agnostic flow: you do the HTTP POST, the library handles the PDF and RFC 3161 plumbing. Phase 1 prepares the document; build a TSA request, POST it, extract the token, then embed it.</p>
+      <div class="api"><code>Pdf.BeginTimestamp(PdfBytes: TBytes): TTimestampSession</code></div>
+      <div class="api"><code>Pdf.TimestampRequest(const Imprint: TBytes [; Nonce: TBytes]; CertReq = True): TBytes</code></div>
+      <div class="api"><code>Pdf.TimestampTokenFromResponse(const Response: TBytes): TBytes</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var
+  Session: TTimestampSession;
+  Imprint, Req, Resp, Token, Lta: TBytes;
+begin
+  Session := Pdf.BeginTimestamp(Signed);
+  Imprint := Sha256(Session.Tbs);                  // hash the bytes the timestamp covers
+  Req := Pdf.TimestampRequest(Imprint);            // RFC 3161 TimeStampReq (DER)
+  Resp := HttpPost('https://freetsa.org/tsr', Req, 'application/timestamp-query');
+  Token := Pdf.TimestampTokenFromResponse(Resp);   // extract the TimeStampToken
+  Lta := Pdf.CompleteSignature(Session.Document, Token);
+end;</code></pre></div>
+      <p>Free public TSAs work: FreeTSA (<code>https://freetsa.org/tsr</code>) and DigiCert (<code>http://timestamp.digicert.com</code>). The integrator performs the HTTP POST; the binding builds the request and embeds the returned token.</p>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
       <div class="api"><code>Pdf.VerifySignaturesJson(PdfBytes: TBytes): UTF8String</code></div>
-      <p>Each array entry is an object with <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. <code>field_name</code> and <code>signer</code> may be empty when absent.</p>
+      <p>Each array entry is an object with <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report now also carries the signer-certificate detail: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code> and <code>signer</code> may be empty, and any of the certificate fields may be <code>null</code>, when absent.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Json: UTF8String;
 …
 Data := ...;   // TBytes of contract.signed.pdf
@@ -792,6 +831,22 @@ Writeln(Pdf.ExtractText(Data));
 
 N := Pdf.ExtractImagesToDir(Data, 'out_images/');   // count of images written
 Writeln(Format('wrote %d image(s)', [Int64(N)]));</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back each match with its bounding box, so you can highlight, redact or link the located text. <code>FindText</code> returns a <code>TTextHits</code> array of <code>TTextHit</code> records; the search is case-insensitive unless you pass <code>CaseSensitive := True</code>. See the <a href="/search-pdf">PDF text search</a> concept page for background.</p>
+      <div class="api"><code>Pdf.FindText(const PdfBytes: TBytes; const Query: string; CaseSensitive: Boolean = False): TTextHits</code></div>
+      <p>Each <code>TTextHit</code> carries <code>Page</code> (0-based), <code>Text</code>, and <code>X</code>, <code>Y</code>, <code>Width</code>, <code>Height</code> in PDF points with the box origin at the lower-left corner.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var
+  Hits: TTextHits;
+  Hit: TTextHit;
+begin
+  Data := ...;   // TBytes of report.pdf
+  Hits := Pdf.FindText(Data, 'Invoice');
+  for Hit in Hits do
+    Writeln(Format('page %d  "%s"  [%.1f %.1f %.1f %.1f]',
+      [Hit.Page, Hit.Text, Hit.X, Hit.Y, Hit.Width, Hit.Height]));
+end;</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -900,9 +955,11 @@ end;</code></pre></div>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

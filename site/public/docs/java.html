@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Java · rust-pdf docs</title>
+  <meta name="description" content="Complete Java reference for rust-pdf: authoring, text, images, PDF/A, accessibility, forms, manipulation, encryption and signatures (including deferred / HSM signing)." />
+  <link rel="canonical" href="https://rustpdf.dev/docs/java" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:title" content="Java · rust-pdf docs" />
+  <meta property="og:description" content="Complete Java reference: authoring, PDF/A, accessibility, forms, manipulation, encryption and signatures. One Maven dependency, dev.rustpdf:rustpdf." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:alt" content="rust-pdf Java documentation" />
+  <meta name="twitter:image:alt" content="rust-pdf Java documentation" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rustpdf.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://rustpdf.dev/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Java",
+          "item": "https://rustpdf.dev/docs/java"
+        }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "rust-pdf for Java",
+      "description": "Complete Java reference for rust-pdf: authoring, fonts and text, images, PDF/A, accessibility, forms, manipulation, encryption, digital signatures (including deferred / HSM signing) and text extraction.",
+      "url": "https://rustpdf.dev/docs/java",
+      "inLanguage": "en",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "rust-pdf",
+        "applicationCategory": "DeveloperApplication",
+        "@id": "https://rustpdf.dev/#software",
+        "publisher": {
+          "@id": "https://rustpdf.dev/#org"
+        }
+      },
+      "datePublished": "2026-02-01",
+      "dateModified": "2026-06-29",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rustpdf.dev/logo.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "@id": "https://rustpdf.dev/docs/java#article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://rustpdf.dev/docs/java"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://rustpdf.dev/og.png",
+        "width": 1200,
+        "height": 630
+      },
+      "proficiencyLevel": "Intermediate"
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/docs/docs.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <div class="docs-shell with-toc">
+    <!-- LEFT NAV -->
+    <aside class="docs-side">
+      <h4>Language</h4>
+      <a href="/docs/python" class="lang-pill">Python</a>
+      <a href="/docs/csharp" class="lang-pill">C# / .NET</a>
+      <a href="/docs/java" class="lang-pill" style="color:var(--brand-2)">● Java</a>
+      <a href="/docs/node" class="lang-pill">Node / TypeScript</a>
+      <a href="/docs/ruby" class="lang-pill">Ruby</a>
+      <a href="/docs/delphi" class="lang-pill">Delphi / Free Pascal</a>
+      <a href="/docs/swift" class="lang-pill">Swift</a>
+      <a href="/docs/php" class="lang-pill">PHP</a>
+      <a href="/docs/go" class="lang-pill">Go</a>
+      <h4>Getting started</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#licensing">Licensing &amp; activation</a>
+      <a href="#coords">Coordinate system</a>
+      <a href="#threading">Threading &amp; concurrency</a>
+
+      <h4>Authoring: Document</h4>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Pages &amp; vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility (PDF/UA)</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#facturx">ZUGFeRD / Factur-X</a>
+      <a href="#forms">AcroForm fields</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks / outline</a>
+      <a href="#metadata">Metadata</a>
+
+      <h4>Manipulation: EditableDoc</h4>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-meta">Metadata &amp; overlay</a>
+      <a href="#ed-forms">Form fill &amp; flatten</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
+      <a href="#ed-optimize">Optimize</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
+
+      <h4>Signatures</h4>
+      <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#deferred">Deferred / HSM signing</a>
+      <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
+      <a href="#verify">Validate signatures</a>
+
+      <h4>Other</h4>
+      <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
+      <a href="#render">Render to image</a>
+      <a href="#enums">Enums</a>
+      <a href="#errors">Errors</a>
+      <a href="#utils">Utilities</a>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="main" class="docs-main">
+      <h1>Java</h1>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
+      <p class="docs-lead">The <code>dev.rustpdf:rustpdf</code> Maven artifact wraps the rust-pdf C core with idiomatic, chainable classes over pure-Java FFI (<a href="https://github.com/java-native-access/jna">JNA</a>), so there is no native build step on your side. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The published artifact is a fat JAR that bundles the native library for every supported platform.</p>
+
+      <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both implement <code>AutoCloseable</code> and hold a native handle, so use them with try-with-resources to free it promptly. Using a <code>Document</code> or <code>EditableDoc</code> after it has been closed throws <code>IllegalStateException</code> (never a crash); calling <code>close()</code> more than once is safe.</div>
+
+      <!-- INSTALL -->
+      <h2 id="install">Installation</h2>
+      <p>Add the dependency from Maven Central. The native library (<code>libpdf_ffi</code>) is bundled inside the JAR as a JNA classpath resource for every supported platform (<code>darwin-aarch64</code>, <code>linux-x86-64</code>, <code>linux-aarch64</code> and <code>win32-x86-64</code>); JNA extracts the matching one at runtime, so there is nothing to compile.</p>
+      <div class="code has-label"><span class="lbl">xml</span><pre><code>&lt;dependency&gt;
+  &lt;groupId&gt;dev.rustpdf&lt;/groupId&gt;
+  &lt;artifactId&gt;rustpdf&lt;/artifactId&gt;
+  &lt;version&gt;0.4.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre></div>
+      <div class="code has-label"><span class="lbl">gradle</span><pre><code>implementation("dev.rustpdf:rustpdf:0.4.0")</code></pre></div>
+      <p>Requires Java 17+. Verify it loaded:</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.Pdf;
+System.out.println(Pdf.version());   // native library version</code></pre></div>
+      <div class="note"><code>RUSTPDF_LIB</code> can point at an explicit shared-library path to override resolution (handy in a dev tree, where the loader also picks up <code>target/debug/</code> or <code>target/release/</code>).</div>
+
+      <!-- QUICKSTART -->
+      <h2 id="quickstart">Quick start</h2>
+      <p>A one-page document with a filled rectangle, saved to disk:</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.Document;
+
+try (Document doc = new Document()) {     // A4 by default
+    doc.addPage();
+    doc.setFillRgb(0.86, 0.20, 0.18);
+    doc.rect(72, 640, 200, 120);          // x, y, width, height (points)
+    doc.fill();
+    doc.save("out.pdf");
+}</code></pre></div>
+      <p>Most methods return the document, so calls chain:</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (Document doc = new Document()) {
+    int font = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage()
+       .setFillRgb(0.1, 0.1, 0.12)
+       .rect(0, 800, 595, 42).fill()
+       .showText(font, 24, 72, 740, "Olá, açúcar, café");
+    byte[] data = doc.toBytes();          // a byte[] instead of a file
+}</code></pre></div>
+
+      <!-- LICENSING -->
+      <h2 id="licensing">Licensing &amp; activation</h2>
+      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls throw <code>PdfException</code> and produce no output.</p>
+      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
+      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
+# or point at a file:
+export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
+      <p>Or activate explicitly in code:</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.Pdf;
+Pdf.activateLicense(token);   // throws PdfException if forged / expired / malformed</code></pre></div>
+      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
+
+      <!-- COORDS -->
+      <h2 id="coords">Coordinate system</h2>
+      <ul>
+        <li>Units are <b>points</b> (1 pt = 1/72 inch). A4 is <code>595 × 842</code>, US&nbsp;Letter <code>612 × 792</code>.</li>
+        <li>The origin <code>(0, 0)</code> is the <b>bottom-left</b> corner; <code>y</code> grows upward.</li>
+        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
+        <li>Drawing/text always targets the <b>most recently added page</b>.</li>
+      </ul>
+
+      <!-- THREADING -->
+      <h2 id="threading">Threading &amp; concurrency</h2>
+      <p>Every native call is <b>synchronous</b> and the core is <b>Send but not Sync</b>: a single handle must never be touched by two threads at once.</p>
+      <ul>
+        <li><b>Documents are independent.</b> Each <code>Document</code>/<code>EditableDoc</code> shares no state, so they are safe to build in parallel tasks or threads, one handle per task.</li>
+        <li><b>Do not share a live handle</b> across threads; give each its own.</li>
+        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's, and <code>PdfException</code> surfaces on the calling side.</li>
+        <li><b>License is process-global.</b> <code>Pdf.activateLicense</code> (or the env var) applies to every thread; activate once at startup.</li>
+      </ul>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>// one document per task, no shared handle
+List&lt;Callable&lt;byte[]&gt;&gt; jobs = IntStream.range(0, 8).&lt;Callable&lt;byte[]&gt;&gt;mapToObj(i -&gt; () -&gt; {
+    try (Document doc = new Document()) {
+        doc.addPage().setFillRgb(0.1, 0.1, 0.12).rect(72, 700, 200, 80).fill();
+        return doc.toBytes();
+    }
+}).toList();
+List&lt;Future&lt;byte[]&gt;&gt; pdfs = Executors.newFixedThreadPool(4).invokeAll(jobs);</code></pre></div>
+
+      <!-- DOCUMENT CREATE -->
+      <h2 id="doc-create">Authoring: create &amp; save</h2>
+      <div class="api"><code>new Document()</code> <span class="badge free">free</span></div>
+      <p>Creates an empty document (A4 default page size). Use try-with-resources (or call <code>close()</code>) to free the native handle.</p>
+      <table>
+        <tr><th>Member</th><th>Description</th></tr>
+        <tr><td><code>addPage()</code> / <code>addPage(w, h)</code></td><td>Append a page; optional size in points.</td></tr>
+        <tr><td><code>setDefaultSize(w, h)</code></td><td>Default size for subsequently added pages.</td></tr>
+        <tr><td><code>setVersion(v)</code></td><td>Set the PDF header version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
+        <tr><td><code>pageCount()</code></td><td>Number of pages so far.</td></tr>
+        <tr><td><code>toBytes()</code></td><td>Render the document to a <code>byte[]</code>.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Render and write to a file.</td></tr>
+        <tr><td><code>close()</code></td><td>Free the native handle.</td></tr>
+      </table>
+      <div class="note"><b>Validity.</b> A document must have at least one page; serializing an empty document throws an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
+
+      <!-- GRAPHICS -->
+      <h2 id="graphics">Pages &amp; vector graphics</h2>
+      <p>Graphics state and path operators mirror PDF's content-stream model. Colors are RGB in <code>0.0–1.0</code>.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setFillRgb(r, g, b)</code></td><td>Fill color.</td></tr>
+        <tr><td><code>setStrokeRgb(r, g, b)</code></td><td>Stroke color.</td></tr>
+        <tr><td><code>setLineWidth(w)</code></td><td>Stroke width in points.</td></tr>
+        <tr><td><code>rect(x, y, w, h)</code></td><td>Add a rectangle subpath.</td></tr>
+        <tr><td><code>fill()</code></td><td>Fill the current path with the fill color.</td></tr>
+        <tr><td><code>stroke()</code></td><td>Stroke the current path with the stroke color.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (Document doc = new Document()) {
+    doc.addPage();
+    doc.setStrokeRgb(0.10, 0.45, 0.90).setLineWidth(3);
+    doc.rect(72, 600, 300, 160).stroke();
+    doc.setFillRgb(0.95, 0.77, 0.06);
+    doc.rect(120, 640, 120, 80).fill();
+    doc.save("shapes.pdf");
+}</code></pre></div>
+
+      <!-- TEXT -->
+      <h2 id="text">Fonts &amp; text</h2>
+      <p>Fonts are embedded and <b>subsetted</b>, with HarfBuzz-quality shaping, kerning and full Unicode (Type0/CIDFontType2 with <code>ToUnicode</code>, so text extracts and copies correctly, provided the embedded font covers those characters). Register a font once, then reference it by its integer id.</p>
+      <div class="api"><code>addFontFile(path) → int</code> &nbsp; <code>addFont(byte[] data) → int</code></div>
+      <div class="api"><code>showText(font, size, x, y, text, headingLevel = 0)</code></div>
+      <p><code>headingLevel</code> (1–6) tags the run as <code>H1</code>–<code>H6</code> in an accessible document (see <a href="#tagged">Accessibility</a>); leave it as <code>0</code> for ordinary text (the no-heading overload omits it).</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (Document doc = new Document()) {
+    int regular = doc.addFontFile("Roboto-Regular.ttf");
+    // …or from bytes you already have in memory:
+    // int regular = doc.addFont(Files.readAllBytes(Path.of("Roboto-Regular.ttf")));
+
+    doc.addPage();
+    doc.showText(regular, 28, 72, 760, "Invoice #1024");
+    doc.showText(regular, 12, 72, 720, "日本語 · Ελληνικά · العربية");
+    doc.save("text.pdf");
+}</code></pre></div>
+      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped: they render as the missing-glyph box and will not extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
+      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>\0</code>) character: it truncates the string at the FFI boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
+
+      <!-- PARAGRAPHS -->
+      <h2 id="paragraphs">Paragraphs</h2>
+      <p>The paragraph layer wraps, aligns and justifies text inside a fixed width (greedy line breaking using shaped glyph widths).</p>
+      <div class="api"><code>paragraph(font, size, x, y, width, text, Align align)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+
+String intro =
+    "A long paragraph that wraps to the given width and is justified "
+  + "automatically; extra space is distributed between words.";
+
+try (Document doc = new Document()) {
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.paragraph(f, 12, 72, 700, 451, intro, Align.JUSTIFY);
+    doc.save("paragraph.pdf");
+}</code></pre></div>
+      <p>See the <a href="#enums"><code>Align</code></a> enum for the alignment options.</p>
+
+      <!-- IMAGES -->
+      <h2 id="images">Images</h2>
+      <p>JPEGs are embedded verbatim (<code>DCTDecode</code>, no re-encode). PNGs are decoded and re-encoded (<code>FlateDecode</code>); alpha becomes an <code>/SMask</code>, palette becomes an <code>Indexed</code> color space. Register an image once, draw it many times.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>addImageFile(path) → int</code></td><td>Load JPEG/PNG from a file; returns the image id.</td></tr>
+        <tr><td><code>addImagePng(byte[] data) → int</code></td><td>Register a PNG from memory.</td></tr>
+        <tr><td><code>addImageJpeg(byte[] data) → int</code></td><td>Register a JPEG from memory.</td></tr>
+        <tr><td><code>drawImage(image, x, y, w, h)</code></td><td>Draw at <code>(x, y)</code> scaled to <code>w × h</code> points.</td></tr>
+        <tr><td><code>figure(image, x, y, w, h, alt)</code></td><td>Draw as a tagged <code>/Figure</code> with alt text (accessibility).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (Document doc = new Document()) {
+    int logo = doc.addImageFile("logo.png");
+    doc.addPage();
+    doc.drawImage(logo, 72, 680, 160, 90);
+    doc.save("with_image.pdf");
+}</code></pre></div>
+
+      <!-- PDF/A -->
+      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
+      <div class="api"><code>pdfa()</code> &nbsp; <code>pdfa(PdfaLevel level)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+
+try (Document doc = new Document()) {
+    doc.pdfa(PdfaLevel.A2B).setInfo("Q3 Report", "Acme Inc.", null, null, null);
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.showText(f, 20, 72, 760, "Archival report");
+    doc.save("report_pdfa.pdf");     // throws PdfException without a license granting PDF/A
+}</code></pre></div>
+      <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>setTitle(…)</code> (or <code>setInfo</code> with a title).</div>
+
+      <!-- TAGGED -->
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <p><code>tagged()</code> builds a logical structure tree (PDF/UA-1). Combine with <code>pdfa(PdfaLevel.A2A)</code> for archival <i>and</i> accessible output. Use <code>headingLevel</code> on <code>showText</code> for <code>H1</code>–<code>H6</code>, and <code>figure(..., alt)</code> for described images.</p>
+      <div class="api"><code>tagged()</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+
+try (Document doc = new Document()) {
+    doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Accessible report");
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.showText(f, 26, 72, 760, "Annual report", 1);   // H1
+    doc.showText(f, 14, 72, 720, "Overview", 2);         // H2
+    doc.showText(f, 11, 72, 690, "Body paragraph of the section…");
+    int chart = doc.addImageFile("chart.png");
+    doc.figure(chart, 72, 520, 300, 150, "Revenue grew 18% year over year");
+    doc.save("accessible.pdf");
+}</code></pre></div>
+      <div class="note"><b>Figures need a tagged document.</b> <code>figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
+
+      <!-- ATTACHMENTS -->
+      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>AFRelationship</code></a>.</p>
+      <div class="api"><code>attachFile(name, mime, byte[] data, AFRelationship relationship, description)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.*;
+
+byte[] xml = Files.readAllBytes(Path.of("invoice.xml"));
+try (Document doc = new Document()) {
+    doc.pdfa(PdfaLevel.A3B).setTitle("E-invoice 1024");
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.showText(f, 18, 72, 760, "Invoice 1024");
+    doc.attachFile("invoice.xml", "text/xml", xml,
+                   AFRelationship.SOURCE, "Structured invoice data");
+    doc.save("einvoice.pdf");
+}</code></pre></div>
+      <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library rejects A4f output that has no attachment, so call <code>attachFile</code> before serializing.</div>
+      <div class="note"><b>The licence gate is on PDF/A, not on <code>attachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
+
+      <!-- FACTURX -->
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
+      <div class="api"><code>facturx(byte[] xml, FacturxProfile profile)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.*;
+
+byte[] xml = Files.readAllBytes(Path.of("factur-x.xml"));   // your Cross-Industry Invoice XML
+try (Document doc = new Document()) {
+    doc.setTitle("Invoice INV-2026-001");
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.showText(f, 18, 72, 760, "Invoice INV-2026-001");
+    doc.facturx(xml, FacturxProfile.EN16931);
+    doc.save("einvoice.pdf");        // PDF/A-3 + Factur-X; needs a PDF/A license
+}</code></pre></div>
+      <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum to Extended).</p>
+
+      <!-- FORMS -->
+      <h2 id="forms">AcroForm fields</h2>
+      <p>Build interactive forms with generated appearance streams (no <code>NeedAppearances</code>). Rectangles are <code>double[]{x0, y0, x1, y1}</code>; <code>page</code> is a 0-based page index. Dotted names (<code>"a.b.c"</code>) create hierarchical fields.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>textField(name, page, rect, value, size)</code></td><td>Text input (<code>size = 0</code> → auto font size).</td></tr>
+        <tr><td><code>checkbox(name, page, rect, checked)</code></td><td>Checkbox (<code>boolean checked</code>).</td></tr>
+        <tr><td><code>dropdown(name, page, rect, options, selected, size)</code></td><td>Combo box from a <code>List&lt;String&gt;</code>; <code>selected</code> 0-based index or <code>-1</code>.</td></tr>
+        <tr><td><code>radioGroup(name, page, rects, exports, selected)</code></td><td><code>rects</code> = <code>double[][]</code>, <code>exports</code> = <code>String[]</code>; <code>selected</code> 0-based or <code>-1</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.util.List;
+
+try (Document doc = new Document()) {
+    doc.addPage();
+    doc.textField("applicant.name", 0, new double[]{72, 700, 320, 720}, "", 0);
+    doc.checkbox("agree", 0, new double[]{72, 660, 88, 676}, false);
+    doc.dropdown("plan", 0, new double[]{72, 620, 240, 640},
+                 List.of("Starter", "Pro", "Enterprise"), 1, 0);
+    doc.radioGroup("billing", 0,
+        new double[][]{ {72, 580, 88, 596}, {140, 580, 156, 596} },
+        new String[]{ "monthly", "annual" }, 1);
+    doc.save("form.pdf");
+}</code></pre></div>
+      <p>Fill and flatten fields later with <a href="#ed-forms"><code>EditableDoc</code></a>.</p>
+      <div class="note"><b>Page index and rectangle are validated.</b> A field (or internal link) whose <code>page</code> does not exist, or whose rectangle is degenerate (<code>x1 &lt; x0</code> or zero area), is rejected when the document is serialized: <code>toBytes()</code>/<code>save()</code> throw <code>PdfException</code> ("targets page index N…" / "degenerate rectangle…") instead of producing an invisible, never-appearing widget. Pass a 0-based page index that exists and a rectangle with <code>x1 &gt; x0</code> and <code>y1 &gt; y0</code>.</div>
+
+      <!-- LINKS -->
+      <h2 id="links">Hyperlinks <span class="badge free">free</span></h2>
+      <p>Add clickable link rectangles to the current page: a <b>web link</b> opens a URL; an <b>internal link</b> jumps to another page (optionally scrolling so a given <code>top</code> y-coordinate sits at the top of the view).</p>
+      <div class="api"><code>linkUri(rect, uri)</code> &nbsp; <code>linkToPage(rect, pageIndex)</code> &nbsp; <code>linkToPage(rect, pageIndex, top)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (Document doc = new Document()) {
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    doc.addPage();
+    doc.showText(f, 14, 72, 760, "Visit rustpdf.dev (see page 2)");
+    doc.linkUri(new double[]{72, 756, 320, 776}, "https://rustpdf.dev/");   // web link
+    doc.linkToPage(new double[]{330, 756, 430, 776}, 1, 800);              // jump to page 2
+    doc.addPage();
+    doc.save("links.pdf");
+}</code></pre></div>
+      <p>Rectangles are <code>double[]{x0, y0, x1, y1}</code> in points; <code>pageIndex</code> is 0-based.</p>
+
+      <!-- BOOKMARKS -->
+      <h2 id="bookmarks">Bookmarks / outline <span class="badge free">free</span></h2>
+      <p>Build a navigable document outline. A <code>Bookmark</code> has a title, a target page and an optional <code>top</code>; nest children with <code>.child(...)</code>. A document with bookmarks opens with the outline pane shown.</p>
+      <div class="api"><code>new Bookmark(title, page)</code> &nbsp; <code>new Bookmark(title, page, Double top)</code> &nbsp; <code>.child(bookmark)</code> &nbsp; <code>addBookmark(bookmark)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+
+try (Document doc = new Document()) {
+    int f = doc.addFontFile("Roboto-Regular.ttf");
+    for (int i = 0; i &lt; 3; i++)
+        doc.addPage();
+    doc.addBookmark(
+        new Bookmark("Chapter 1", 0, 820.0)
+            .child(new Bookmark("Section 1.1", 1))
+            .child(new Bookmark("Section 1.2", 2)));
+    doc.addBookmark(new Bookmark("Chapter 2", 2));
+    doc.save("outline.pdf");
+}</code></pre></div>
+
+      <!-- METADATA -->
+      <h2 id="metadata">Metadata</h2>
+      <div class="api"><code>setInfo(title, author, subject, keywords, creator)</code> &nbsp; <code>setTitle(title)</code></div>
+      <p>Sets the document information dictionary (and, for PDF/A, the matching XMP). Pass <code>null</code> for any entry you do not need, or use <code>setTitle</code> for the common case.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>doc.setInfo("Q3 Report", "Acme Inc.",
+            "Quarterly results", "finance, q3", null);</code></pre></div>
+
+      <!-- EDITABLE LOAD -->
+      <h2 id="ed-load">Manipulation: load an existing PDF</h2>
+      <p><code>EditableDoc</code> parses an existing document (classic &amp; xref streams, object streams, all standard filters, RC4/AES decryption) into an editable model. Pages are a flat list; the page tree is rebuilt on output.</p>
+      <div class="api"><code>EditableDoc.load(byte[] data)</code> &nbsp; <code>EditableDoc.load(byte[] data, password)</code></div>
+      <div class="api"><code>EditableDoc.loadFile(Path path)</code> &nbsp; <code>EditableDoc.loadFile(Path path, password)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.EditableDoc;
+import java.nio.file.Path;
+
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("in.pdf"))) {
+    System.out.println(ed.pageCount());
+}
+
+// encrypted input:
+try (EditableDoc sec = EditableDoc.loadFile(Path.of("secured.pdf"), "user-or-owner-pw")) {
+    sec.save("plain.pdf");
+}</code></pre></div>
+      <div class="note"><b>Corrupt or truncated input.</b> A badly damaged file (e.g. truncated mid-stream) may still <i>load</i> via the recovery scan but recover <b>zero pages</b>; <code>load</code> does not throw in that case. Serializing a zero-page document throws <code>PdfException</code> ("document has no pages") rather than writing an invalid file, but you should check <code>pageCount() &gt; 0</code> after loading untrusted input before relying on it.</div>
+
+      <!-- ED PAGES -->
+      <h2 id="ed-pages">Pages: merge, split, reorder, rotate</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>merge(other)</code></td><td>Append all pages of another <code>EditableDoc</code> (objects renumbered &amp; remapped).</td></tr>
+        <tr><td><code>rotatePage(index, degrees)</code></td><td>Rotate one page (90 / 180 / 270).</td></tr>
+        <tr><td><code>deletePage(index)</code></td><td>Remove a page.</td></tr>
+        <tr><td><code>reorderPages(int[] order)</code></td><td>Reorder with a full permutation list of indices.</td></tr>
+        <tr><td><code>extractPages(int[] indices) → EditableDoc</code></td><td>New document containing just those pages.</td></tr>
+        <tr><td><code>pageCount()</code></td><td>Current page count.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc a = EditableDoc.loadFile(Path.of("a.pdf"))) {
+    try (EditableDoc b = EditableDoc.loadFile(Path.of("b.pdf"))) {
+        a.merge(b);                        // a now has a's pages followed by b's
+    }
+    a.rotatePage(0, 90);
+    a.reorderPages(new int[]{2, 1, 0});    // a full permutation of every index
+    a.save("merged.pdf");
+
+    try (EditableDoc subset = a.extractPages(new int[]{0, 2})) {   // pages 1 and 3
+        subset.save("subset.pdf");
+    }
+}</code></pre></div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>reorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument (wrong length, a repeated index, or out-of-range) is rejected and leaves the page order unchanged. That call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
+
+      <!-- ED META -->
+      <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setInfo(key, value)</code></td><td>Set one info entry (e.g. <code>"Title"</code>).</td></tr>
+        <tr><td><code>getInfo(key) → String</code></td><td>Read an info entry.</td></tr>
+        <tr><td><code>setXmp(byte[] xml)</code></td><td>Replace the XMP metadata stream.</td></tr>
+        <tr><td><code>overlayPage(index, byte[] content)</code></td><td>Overlay a content-stream fragment onto a page (stamps/watermarks).</td></tr>
+        <tr><td><code>fillTextField(name, value) → boolean</code></td><td>Fill an AcroForm text field; returns whether it was found.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("form.pdf"))) {
+    ed.setInfo("Title", "Filled form");
+    boolean found = ed.fillTextField("applicant.name", "Jane Doe");
+    System.out.println("filled: " + found + " | title: " + ed.getInfo("Title"));
+    ed.save("filled.pdf");
+}</code></pre></div>
+
+      <!-- ED FORMS -->
+      <h2 id="ed-forms">Form fill &amp; flatten <span class="badge free">free</span></h2>
+      <p>Fill the fields of an existing AcroForm and (optionally) <b>flatten</b> them: filling generates a fresh appearance stream (no <code>NeedAppearances</code>), and flattening bakes every widget's appearance into the page content and removes the interactive form entirely.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>fieldNames() → List&lt;String&gt;</code></td><td>Fully-qualified names of every terminal field.</td></tr>
+        <tr><td><code>fillTextField(name, value) → boolean</code></td><td>Set a text (or text-style choice) field; returns whether it matched.</td></tr>
+        <tr><td><code>setCheckbox(name, checked) → boolean</code></td><td>Check/uncheck a checkbox.</td></tr>
+        <tr><td><code>setRadio(name, exportValue) → boolean</code></td><td>Select a radio button by its export value.</td></tr>
+        <tr><td><code>setChoice(name, value) → boolean</code></td><td>Set a dropdown / list-box value.</td></tr>
+        <tr><td><code>flattenForms()</code></td><td>Bake all fields into static content and drop the <code>/AcroForm</code>.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("form.pdf"))) {
+    System.out.println(String.join(", ", ed.fieldNames()));   // applicant.name, agree, plan, ...
+    ed.fillTextField("applicant.name", "Jane Doe");
+    ed.setCheckbox("agree", true);
+    ed.setRadio("billing", "annual");
+    ed.setChoice("plan", "Pro");
+    ed.flattenForms();                  // optional: make it non-editable
+    ed.save("filled.pdf");
+}</code></pre></div>
+
+      <!-- ED WATERMARK -->
+      <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
+      <div class="api"><code>watermarkText(text)</code> &nbsp; <code>watermarkText(text, size, r, g, b, opacity, rotationDeg)</code> &nbsp; <code>watermarkText(text, size, r, g, b, opacity, rotationDeg, boolean opaqueBackground)</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity)</code> &nbsp; <code>watermarkImageFile(path, width, height, opacity, rotationDeg)</code></div>
+      <p>The final <code>opaqueBackground</code> argument draws the text over an opaque filled box (a white-out stamp, e.g. a redaction label) instead of letting the page show through. <code>watermarkImageFile</code> takes an optional <code>rotationDeg</code> to rotate the image stamp.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("report.pdf"))) {
+    ed.watermarkText("CONFIDENTIAL", 64, 0.7, 0.1, 0.1, 0.25, 45);          // translucent diagonal
+    ed.watermarkText("VOID", 48, 0, 0, 0, 1.0, 0, true);                    // opaque white-out stamp
+    ed.watermarkImageFile("stamp.png", 180, 180, 0.4, 30);                  // rotated image stamp
+    ed.save("stamped.pdf");
+}</code></pre></div>
+
+      <!-- ED REDACT -->
+      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <div class="api"><code>redact(pageIndex, double[][] rects) → boolean</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("statement.pdf"))) {
+    // rects = double[][] of {x0, y0, x1, y1} on that page
+    ed.redact(0, new double[][]{
+        {60, 590, 400, 620},
+        {60, 540, 400, 570},
+    });
+    ed.save("redacted.pdf");     // throws PdfException without a license granting redaction
+}</code></pre></div>
+      <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf.extractText</code> on the output no longer returns it.</div>
+
+      <!-- ED PDFA -->
+      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
+      <div class="api"><code>convertToPdfa(PdfaLevel level)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.Path;
+
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("in.pdf"))) {
+    ed.convertToPdfa(PdfaLevel.A2B);    // throws PdfException if fonts aren't embedded
+    ed.save("archival.pdf");            // veraPDF: PDF/A-2b compliant
+}</code></pre></div>
+
+      <!-- ED OPTIMIZE -->
+      <h2 id="ed-optimize">Optimize &amp; compact</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>optimize()</code></td><td>Drop unreferenced objects, Flate-compress uncompressed streams, dedupe identical objects.</td></tr>
+        <tr><td><code>compact(on)</code></td><td>Pack objects into object streams + emit a cross-reference stream (<code>boolean on</code>).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("big.pdf"))) {
+    ed.optimize().compact(true);
+    ed.save("small.pdf");
+}</code></pre></div>
+
+      <!-- ED ENCRYPT -->
+      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
+      <div class="api"><code>encrypt(user, owner, Encryption method, readOnly)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.Path;
+
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("in.pdf"))) {
+    ed.encrypt("", "owner-secret", Encryption.AES256, true);
+    ed.save("secured.pdf");          // throws PdfException without an Encryption license
+}</code></pre></div>
+      <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
+      <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (verified against qpdf for all three ciphers). The <code>readOnly</code> permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat <code>readOnly</code> as a hint to well-behaved viewers, not as an access control.</div>
+
+      <!-- ED OUTPUT -->
+      <h2 id="ed-output">Output &amp; incremental update</h2>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>toBytes() → byte[]</code></td><td>Serialize the manipulated document.</td></tr>
+        <tr><td><code>save(path)</code></td><td>Serialize to a file.</td></tr>
+        <tr><td><code>toBytesIncremental(byte[] original) → byte[]</code></td><td>Append only changes to the original bytes (signature-safe, non-destructive).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] original = Files.readAllBytes(Path.of("in.pdf"));
+try (EditableDoc ed = EditableDoc.load(original)) {
+    ed.setInfo("Subject", "reviewed");
+    byte[] incremental = ed.toBytesIncremental(original);   // original bytes preserved verbatim
+    Files.write(Path.of("reviewed.pdf"), incremental);
+}</code></pre></div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Drop PDF/A conformance and downgrade the PDF version, turning an archival or newer file into a plain, broadly compatible PDF. <code>setVersion</code> rewrites only the header/catalog version; <code>stripPdfa</code> removes the PDF/A markers (the catalog <code>/OutputIntents</code>, the XMP <code>pdfaid</code> block and <code>/Version</code>); <code>normalize</code> does both in one call. Version codes match <code>Document.setVersion</code>: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setVersion(version)</code></td><td>Set the output PDF version (header + catalog).</td></tr>
+        <tr><td><code>stripPdfa()</code></td><td>Remove PDF/A conformance so the file becomes a plain PDF.</td></tr>
+        <tr><td><code>normalize(version)</code></td><td>Strip PDF/A then set the version (the common case).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("archival.pdf"))) {
+    ed.normalize(2);                 // strip PDF/A, downgrade to PDF 1.7
+    ed.save("plain.pdf");
+}
+
+// or step by step:
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("v2.pdf"))) {
+    ed.stripPdfa();
+    ed.setVersion(0);                // PDF 1.4
+    ed.save("compat.pdf");
+}</code></pre></div>
+
+      <!-- SIGN -->
+      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER <code>byte[]</code>. <code>pades = true</code> switches to PAdES-B-B.</p>
+      <div class="api"><code>Pdf.sign(pdf, keyDer, certDer, reason, location, name, pades) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.Pdf;
+import java.nio.file.*;
+
+byte[] pdf     = Files.readAllBytes(Path.of("contract.pdf"));
+byte[] keyDer  = Files.readAllBytes(Path.of("signing-key.pkcs8.der"));   // PKCS#8 private key (DER)
+byte[] certDer = Files.readAllBytes(Path.of("signing-cert.der"));        // X.509 certificate (DER)
+
+byte[] signed = Pdf.sign(pdf, keyDer, certDer,
+    "Approved", "New York", "Jane Doe", true);
+Files.write(Path.of("contract.signed.pdf"), signed);
+// Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- DEFERRED -->
+      <h2 id="deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing the library a private key. When the key lives in an HSM, a cloud KMS, a smartcard or a PKI token (any PKI: eIDAS, AATL, a national CA), you supply the raw RSA signature and the library builds and embeds the CMS / PKCS#7 container. There are two flavours: a synchronous <b>remote signer</b> callback, and a two-phase <b>begin / complete</b> flow for asynchronous or out-of-band signing.</p>
+
+      <h3>Model A: remote signer callback</h3>
+      <p>The library assembles the signed attributes and calls back for the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The signer certificate is passed as DER; intermediate certificates go in <code>chain</code> (also DER), supplied independently of the key, which stays inside your HSM. The callback is a <code>Function&lt;byte[], byte[]&gt;</code>.</p>
+      <div class="api"><code>Pdf.signWith(pdf, certDer, Function&lt;byte[],byte[]&gt; signHash, List&lt;byte[]&gt; chain, SigningOptions options) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.*;
+import java.util.List;
+
+byte[] pdf     = Files.readAllBytes(Path.of("contract.pdf"));
+byte[] certDer = Files.readAllBytes(Path.of("signer-cert.der"));   // X.509 (DER); key stays remote
+
+SigningOptions options = new SigningOptions();
+options.reason = "Approved";
+options.pades  = true;
+
+byte[] signed = Pdf.signWith(pdf, certDer,
+    dataToSign -> hsm.signRsaPkcs1Sha256(dataToSign),   // your HSM / KMS / token
+    List.of(intermediateDer), options);
+
+Files.write(Path.of("contract.signed.pdf"), signed);</code></pre></div>
+      <div class="note">The <code>signHash</code> callback receives the bytes to sign and must return the raw RSA PKCS#1 v1.5 signature over their SHA-256 digest. The private key never reaches this library, so the same code path works for a cloud KMS, a smartcard or a PKI token. Return <code>null</code> (or throw) from the callback to abort signing.</div>
+
+      <h3>Model B: two-phase begin / complete</h3>
+      <p>For an asynchronous HSM or a detached workflow, phase 1 prepares the PDF with a placeholder and returns the exact bytes the signature covers; you sign the digest out of band and build the CMS container; phase 2 embeds it.</p>
+      <div class="api"><code>Pdf.beginSigning(pdf, SigningOptions options) → SigningSession</code></div>
+      <div class="api"><code>Pdf.completeSignature(document, container) → byte[]</code></div>
+      <p>A <code>SigningSession</code> exposes <code>document()</code> (the prepared PDF), <code>bytes()</code> (the bytes covered by the signature), <code>hash()</code> (their SHA-256, the value an HSM signs) and <code>complete(container)</code>, which embeds a finished DER CMS / PKCS#7 container and returns the final signed PDF.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>SigningOptions options = new SigningOptions();
+options.name = "Jane Doe";
+options.containerSize = 16384;
+
+SigningSession session = Pdf.beginSigning(pdf, options);
+
+byte[] cmsDer = buildCmsWithRemoteSignature(session.hash());   // sign the digest remotely
+
+byte[] signed = session.complete(cmsDer);
+// equivalently: Pdf.completeSignature(session.document(), cmsDer)
+Files.write(Path.of("contract.signed.pdf"), signed);</code></pre></div>
+
+      <h3>Inspect existing signature fields</h3>
+      <p>Before signing, list the signature fields already present (the iText <code>SignatureUtil.getSignatureNames</code> equivalent). An empty list means the document is unsigned. Each <code>SignatureField</code> is a record with <code>name()</code> and <code>signed()</code>.</p>
+      <div class="api"><code>Pdf.listSignatures(pdf) → List&lt;SignatureField&gt;</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>for (SignatureField f : Pdf.listSignatures(pdf))
+    System.out.println(f.name() + " signed: " + f.signed());</code></pre></div>
+
+      <h3>SigningOptions</h3>
+      <p>Both models accept a <code>SigningOptions</code> with public fields:</p>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>reason</code>, <code>location</code>, <code>name</code></td><td>Signature metadata (all <code>String</code>, may be <code>null</code>).</td></tr>
+        <tr><td><code>pades</code></td><td><code>true</code> produces a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>certify</code></td><td>Certify the document (DocMDP); use only on the first signature. See <code>Certify</code> below.</td></tr>
+        <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
+        <tr><td><code>policy</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>null</code> for none.</td></tr>
+        <tr><td><code>visible</code></td><td><code>true</code> draws a visible signature appearance using the fields below.</td></tr>
+        <tr><td><code>visiblePage</code>, <code>visibleRect</code></td><td>0-based page index and rectangle <code>double[]{x0, y0, x1, y1}</code> (points) for the appearance.</td></tr>
+        <tr><td><code>visibleText</code></td><td>Appearance text lines (separated by <code>'\n'</code>); <code>null</code> for none.</td></tr>
+        <tr><td><code>visibleImage</code></td><td>PNG/JPEG <code>byte[]</code> (e.g. a handwritten-signature scan) drawn aspect-fit behind any text; <code>null</code> for none.</td></tr>
+      </table>
+      <p>Set <code>visible = true</code> and supply a rectangle to draw the appearance; <code>visibleImage</code> embeds a PNG or JPEG (scaled aspect-fit) behind <code>visibleText</code>.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>SigningOptions options = new SigningOptions();
+options.visible      = true;
+options.visiblePage  = 0;
+options.visibleRect  = new double[]{72, 96, 272, 156};
+options.visibleText  = "Jane Doe\nApproved";
+options.visibleImage = Files.readAllBytes(Path.of("signature.png"));   // drawn aspect-fit</code></pre></div>
+      <h4>Certify</h4>
+      <table>
+        <tr><th>Value</th><th>DocMDP level</th></tr>
+        <tr><td><code>Certify.NONE</code></td><td>Not a certifying signature (default).</td></tr>
+        <tr><td><code>Certify.LOCKED</code></td><td><code>/P 1</code>: no changes permitted after signing.</td></tr>
+        <tr><td><code>Certify.FORMS</code></td><td><code>/P 2</code>: form-filling and signing permitted.</td></tr>
+        <tr><td><code>Certify.FORMS_AND_ANNOTATIONS</code></td><td><code>/P 3</code>: form-filling, signing and annotations permitted.</td></tr>
+      </table>
+      <h4>SignaturePolicy</h4>
+      <p>A PAdES-EPES signature-policy identifier (public fields). <code>oid</code> is the policy OID (dotted-decimal); <code>hash</code> is the policy document hash (<code>byte[]</code>); <code>hashAlgorithmOid</code> is the hash algorithm OID (<code>null</code> means SHA-256); <code>uri</code> is an optional SPURI qualifier pointing to where the policy can be retrieved.</p>
+
+      <!-- LTV -->
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <p>Build long-term-validation signatures offline. <code>Pdf.addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>Pdf.timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
+      <div class="api"><code>Pdf.addDss(pdf, List&lt;byte[]&gt; certs, List&lt;byte[]&gt; crls) → byte[]</code></div>
+      <div class="api"><code>Pdf.timestamp(pdf, tsaKeyDer, tsaCertDer, date) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] signed = Files.readAllBytes(Path.of("contract.signed.pdf"));
+
+// B-LT: embed validation material (caller supplies DER certs/CRLs)
+byte[] lt = Pdf.addDss(signed, List.of(certDer), List.of(crlDer));
+
+// B-LTA: add a document timestamp signed by a TSA key/cert
+byte[] lta = Pdf.timestamp(lt, tsaKeyDer, tsaCertDer, null);
+Files.write(Path.of("contract.lta.pdf"), lta);</code></pre></div>
+
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To stamp with a real network RFC 3161 TSA, use the transport-agnostic helpers and do the HTTP POST yourself. Phase 1 <code>beginTimestamp</code> prepares the PDF and returns a <code>SigningSession</code>; build the request from its <code>hash()</code> with <code>timestampRequest</code>, POST it to the TSA, extract the token from the response with <code>timestampTokenFromResponse</code>, then embed it via <code>session.complete(token)</code>. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>Pdf.beginTimestamp(pdf) → SigningSession</code> &nbsp; <code>Pdf.timestampRequest(imprint[, nonce, certReq]) → byte[]</code> &nbsp; <code>Pdf.timestampTokenFromResponse(response) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>SigningSession session = Pdf.beginTimestamp(signed);
+byte[] tsq = Pdf.timestampRequest(session.hash());        // RFC 3161 TimeStampReq (DER)
+
+// POST tsq to the TSA (Content-Type: application/timestamp-query) — your HTTP client:
+byte[] tsr = httpPost("https://freetsa.org/tsr", "application/timestamp-query", tsq);
+
+byte[] token = Pdf.timestampTokenFromResponse(tsr);       // the CMS TimeStampToken
+byte[] lta   = session.complete(token);
+Files.write(Path.of("contract.lta.pdf"), lta);</code></pre></div>
+
+      <!-- VERIFY -->
+      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
+      <div class="api"><code>Pdf.verifySignatures(byte[] pdf) → List&lt;SignatureReport&gt;</code></div>
+      <p>Each <code>SignatureReport</code> is a record with <code>fieldName()</code>, <code>subFilter()</code>, <code>signer()</code>, <code>coversWholeDocument()</code>, <code>digestValid()</code>, <code>signatureValid()</code>, <code>isValid()</code> and <code>byteRange()</code>. It also carries the signer-certificate and timestamp details: <code>issuer()</code> (RFC 4514 DN), <code>serialNumber()</code> (uppercase hex), <code>validFrom()</code> / <code>validTo()</code> (ISO-8601 certificate validity), <code>algorithm()</code> (e.g. <code>SHA256withRSA</code>), <code>signingTime()</code> (claimed signing time, ISO-8601), <code>certCount()</code> (number of certificates in the CMS) and <code>hasTimestamp()</code> (whether an embedded timestamp is present). The string accessors may be <code>null</code> when absent. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("contract.signed.pdf"));
+for (SignatureReport sig : Pdf.verifySignatures(data)) {
+    System.out.println(sig.signer() + " valid: " + sig.isValid()
+                     + " covers whole doc: " + sig.coversWholeDocument());
+    System.out.println("  issuer: " + sig.issuer()
+                     + " serial: " + sig.serialNumber()
+                     + " algorithm: " + sig.algorithm());
+    System.out.println("  valid " + sig.validFrom() + " .. " + sig.validTo()
+                     + " signed: " + sig.signingTime()
+                     + " certs: " + sig.certCount()
+                     + " timestamped: " + sig.hasTimestamp());
+}</code></pre></div>
+
+      <!-- EXTRACT -->
+      <h2 id="extract">Text &amp; image extraction</h2>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist.</p>
+      <div class="api"><code>Pdf.extractText(byte[] data) → String</code> <span class="badge free">free</span></div>
+      <div class="api"><code>Pdf.extractImagesToDir(byte[] data, String outDir) → long</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
+System.out.println(Pdf.extractText(data));
+
+long n = Pdf.extractImagesToDir(data, "out_images/");   // returns how many were written
+System.out.println("wrote " + n + " image(s)");</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back its <b>position</b> on the page, not just the text. Each match is a <code>TextHit</code> with a 0-based <code>page()</code> and a bounding box (<code>x()</code>, <code>y()</code>, <code>width()</code>, <code>height()</code>) in PDF points, origin at the lower-left. Search is case-insensitive by default; pass a flag to make it case-sensitive. Useful for highlighting, redaction targeting or click-to-locate. See the <a href="/search-pdf">searching text in a PDF</a> concept guide.</p>
+      <div class="api"><code>Pdf.findText(byte[] pdf, String query) → List&lt;TextHit&gt;</code> &nbsp; <code>Pdf.findText(byte[] pdf, String query, boolean caseSensitive) → List&lt;TextHit&gt;</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("invoice.pdf"));
+for (TextHit hit : Pdf.findText(data, "Total"))
+    System.out.printf("page %d  box [%.1f %.1f %.1f %.1f]  %s%n",
+        hit.page(), hit.x(), hit.y(), hit.width(), hit.height(), hit.text());
+
+// case-sensitive
+List&lt;TextHit&gt; exact = Pdf.findText(data, "INV-2026-001", true);</code></pre></div>
+
+      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>pageCount</code> is free.</p>
+      <div class="api"><code>Pdf.renderPageToPng(byte[] pdf, int pageIndex, double dpi) → byte[]</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>Pdf.pageCount(byte[] pdf) → long</code> <span class="badge free">free</span></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
+System.out.println(Pdf.pageCount(data) + " page(s)");
+byte[] png = Pdf.renderPageToPng(data, 0, 150.0);
+Files.write(Path.of("page1.png"), png);</code></pre></div>
+
+      <!-- ENUMS -->
+      <h2 id="enums">Enums</h2>
+      <h3>PdfaLevel</h3>
+      <table>
+        <tr><th>Value</th><th>Level</th></tr>
+        <tr><td><code>PdfaLevel.A1B</code></td><td>PDF/A-1b (basic, PDF 1.4)</td></tr>
+        <tr><td><code>PdfaLevel.A2B</code></td><td>PDF/A-2b (basic): default of <code>pdfa()</code></td></tr>
+        <tr><td><code>PdfaLevel.A2A</code></td><td>PDF/A-2a (accessible: pair with <code>tagged()</code>)</td></tr>
+        <tr><td><code>PdfaLevel.A3B</code></td><td>PDF/A-3b (basic, allows attachments)</td></tr>
+        <tr><td><code>PdfaLevel.A3A</code></td><td>PDF/A-3a (accessible + attachments)</td></tr>
+        <tr><td><code>PdfaLevel.A4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
+        <tr><td><code>PdfaLevel.A4E</code></td><td>PDF/A-4e (engineering)</td></tr>
+        <tr><td><code>PdfaLevel.A4F</code></td><td>PDF/A-4f (requires at least one embedded file)</td></tr>
+      </table>
+      <h3>Align</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>Align.LEFT</code></td><td>Left-aligned (default)</td></tr>
+        <tr><td><code>Align.RIGHT</code></td><td>Right-aligned</td></tr>
+        <tr><td><code>Align.CENTER</code></td><td>Centered</td></tr>
+        <tr><td><code>Align.JUSTIFY</code></td><td>Justified (space distributed between words)</td></tr>
+      </table>
+      <h3>AFRelationship</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>AFRelationship.SOURCE</code></td><td>Source data for the document (e.g. the invoice XML)</td></tr>
+        <tr><td><code>AFRelationship.DATA</code></td><td>Data used to derive the visual content</td></tr>
+        <tr><td><code>AFRelationship.ALTERNATIVE</code></td><td>Alternative representation</td></tr>
+        <tr><td><code>AFRelationship.SUPPLEMENT</code></td><td>Supplementary material</td></tr>
+        <tr><td><code>AFRelationship.UNSPECIFIED</code></td><td>Unspecified relationship</td></tr>
+      </table>
+      <h3>Encryption</h3>
+      <table>
+        <tr><th>Value</th><th>Cipher</th></tr>
+        <tr><td><code>Encryption.RC4</code></td><td>RC4 (legacy)</td></tr>
+        <tr><td><code>Encryption.AES128</code></td><td>AES-128</td></tr>
+        <tr><td><code>Encryption.AES256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>FacturxProfile</h3>
+      <table>
+        <tr><th>Value</th><th>Conformance level</th></tr>
+        <tr><td><code>FacturxProfile.MINIMUM</code></td><td>Minimal header data only</td></tr>
+        <tr><td><code>FacturxProfile.BASIC_WL</code></td><td>Basic, without line items</td></tr>
+        <tr><td><code>FacturxProfile.BASIC</code></td><td>Basic, with line items</td></tr>
+        <tr><td><code>FacturxProfile.EN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
+        <tr><td><code>FacturxProfile.EXTENDED</code></td><td>EN 16931 plus extensions</td></tr>
+      </table>
+
+      <!-- ERRORS -->
+      <h2 id="errors">Error handling</h2>
+      <p>Every failing native call throws <code>PdfException</code> (an unchecked <code>RuntimeException</code>) carrying the <code>status()</code> (<code>PdfStatus</code>) code and the library's last-error message (via <code>getMessage()</code>). License failures (missing/expired/forged token, or a feature the token does not grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation's own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same "requires a valid license" message.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+
+try (Document doc = new Document()) {
+    doc.pdfa().setTitle("x");
+    doc.addPage();
+    doc.save("out.pdf");
+} catch (PdfException e) {
+    System.err.println("failed: " + e.status() + " " + e.getMessage());
+    // e.g. PdfStatus=4 (Serialize): feature 'pdfa' requires a valid license
+}</code></pre></div>
+
+      <!-- UTILS -->
+      <h2 id="utils">Utilities</h2>
+      <table>
+        <tr><th>Member</th><th>Description</th></tr>
+        <tr><td><code>Pdf.version() → String</code></td><td>Native library version string.</td></tr>
+        <tr><td><code>Pdf.activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
+      </table>
+
+      <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, C# / .NET, Node / TypeScript, Ruby, Delphi / Free Pascal, Swift, Go and PHP: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
+    </main>
+
+    <!-- RIGHT TOC -->
+    <nav class="docs-toc">
+      <h4>On this page</h4>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#licensing">Licensing</a>
+      <a href="#threading">Threading</a>
+      <a href="#doc-create">Create &amp; save</a>
+      <a href="#graphics">Vector graphics</a>
+      <a href="#text">Fonts &amp; text</a>
+      <a href="#paragraphs">Paragraphs</a>
+      <a href="#images">Images</a>
+      <a href="#pdfa">PDF/A</a>
+      <a href="#tagged">Accessibility</a>
+      <a href="#attachments">Attachments</a>
+      <a href="#facturx">Factur-X</a>
+      <a href="#forms">Forms</a>
+      <a href="#links">Hyperlinks</a>
+      <a href="#bookmarks">Bookmarks</a>
+      <a href="#ed-load">Load</a>
+      <a href="#ed-pages">Pages</a>
+      <a href="#ed-forms">Form fill</a>
+      <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-redact">Redaction</a>
+      <a href="#ed-pdfa">Convert to PDF/A</a>
+      <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
+      <a href="#sign">Signatures</a>
+      <a href="#deferred">Deferred / HSM signing</a>
+      <a href="#verify">Validate</a>
+      <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
+      <a href="#render">Render to image</a>
+      <a href="#enums">Enums</a>
+    </nav>
+  </div>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/docs/docs.js"></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

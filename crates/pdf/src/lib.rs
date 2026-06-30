@@ -11,6 +11,7 @@ mod edit;
 mod encrypt;
 mod extract;
 mod extract_image;
+mod find;
 mod flow;
 mod font;
 mod form;
@@ -112,6 +113,7 @@ pub use edit::{ConvertError, EditableDoc, WatermarkOptions};
 pub use encrypt::{Encryption, Permissions};
 pub use extract::{extract_text, page_text};
 pub use extract_image::{extract_images, ExtractedImage, ImageFormat};
+pub use find::{find_text, FindOptions, TextHit};
 pub use flow::{Report, Table};
 pub use font::FontId;
 pub use fonts::FontError;
@@ -126,8 +128,9 @@ pub use render::{
     render_page_to_png_with, PageRenderError, RenderOptions, RenderedPage,
 };
 pub use sign::{
-    add_dss, begin_signing, complete_signing, sign, sign_with, timestamp, Certify, SignError,
-    SignOptions, SignaturePolicy, Signer, SigningSession, VisibleSignature,
+    add_dss, begin_signing, begin_timestamp, complete_signing, sign, sign_with, timestamp,
+    timestamp_request, timestamp_token_from_response, Certify, SignError, SignOptions,
+    SignaturePolicy, Signer, SigningSession, VisibleSignature,
 };
 pub use tag::StructTag;
 pub use text::{Rgb, TextObject};

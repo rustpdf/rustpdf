@@ -75,7 +75,10 @@ type
   { Options for deferred / external signing (issue #41). Reason/Location/Name
     populate the signature dict; Pades selects ETSI.CAdES.detached; Certify
     applies DocMDP (only on the first signature); ContainerSize overrides the
-    reserved /Contents size (0 = default 8192); set HasPolicy to attach Policy. }
+    reserved /Contents size (0 = default 8192); set HasPolicy to attach Policy.
+    Set Visible to draw a visible signature on page VisiblePage inside
+    VisibleRect, with VisibleText (lines separated by #10) and/or an embedded
+    VisibleImage (PNG/JPEG bytes). }
   TSigningOptions = record
     Reason: UTF8String;
     Location: UTF8String;
@@ -85,6 +88,11 @@ type
     ContainerSize: Integer;
     HasPolicy: Boolean;
     Policy: TSignaturePolicy;
+    Visible: Boolean;
+    VisiblePage: NativeUInt;
+    VisibleRect: array[0..3] of Double;  // [x0, y0, x1, y1] in points
+    VisibleText: UTF8String;
+    VisibleImage: TBytes;
   end;
 
   { A signature field discovered in a PDF (pre-signing inventory, Pdf.ListSignatures). }
@@ -126,6 +134,23 @@ type
   { Axis-aligned rectangle [x0,y0,x1,y1] for AcroForm widgets and redaction. }
   TPdfRect = record
     X0, Y0, X1, Y1: Double;
+  end;
+
+  { One positional text match from Pdf.FindText. Page is 0-based; X/Y are the
+    box origin (lower-left) and Width/Height its size, all in PDF points. }
+  TTextHit = record
+    Page: Integer;
+    Text: string;
+    X, Y, Width, Height: Double;
+  end;
+  TTextHits = array of TTextHit;
+
+  { The two byte buffers produced by Pdf.BeginTimestamp (network-TSA / AD-RT):
+    Document is the prepared PDF with a zero-filled /Contents placeholder; Tbs
+    are the exact bytes the timestamp covers (hash these for the TSA request). }
+  TTimestampSession = record
+    Document: TBytes;
+    Tbs: TBytes;
   end;
 
   { One radio button: its widget rectangle plus its /AP export value. }
@@ -271,11 +296,19 @@ type
     function FieldNames: TPdfStringArray;
     function WatermarkText(const Text: string; Size: Double = 64.0;
                            R: Double = 0.5; G: Double = 0.5; B: Double = 0.5;
-                           Opacity: Double = 0.30; RotationDeg: Double = 45.0): TPdfEditable;
+                           Opacity: Double = 0.30; RotationDeg: Double = 45.0;
+                           OpaqueBackground: Boolean = False): TPdfEditable;
     function WatermarkImageFile(const Path: string; Width, Height: Double;
-                                Opacity: Double = 0.30): TPdfEditable;
+                                Opacity: Double = 0.30;
+                                RotationDeg: Double = 0.0): TPdfEditable;
     function Redact(PageIndex: NativeUInt; const Rects: array of TPdfRect): Boolean;
     function ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable;
+    { Set the PDF version header (0=1.4, 1=1.5, 2=1.7, 3=2.0). }
+    function SetVersion(V: Integer): TPdfEditable;
+    { Strip PDF/A conformance (OutputIntents, pdfaid XMP), leaving a plain PDF. }
+    function StripPdfa: TPdfEditable;
+    { Normalize to a plain PDF at version V (strip PDF/A + set version). }
+    function Normalize(V: Integer): TPdfEditable;
     function Optimize: TPdfEditable;
     function Compact(On: Boolean = True): TPdfEditable;
     function Encrypt(Method: TEncryption = encAES256; const User: string = '';
@@ -302,10 +335,19 @@ type
     class function PageCount(const PdfBytes: TBytes): NativeUInt; static;
     { Validate every signature in PdfBytes and return the raw JSON array string
       (one object per signature with fields field_name, sub_filter, signer,
-      covers_whole_document, digest_valid, signature_valid, is_valid, byte_range).
-      Object Pascal has no bundled JSON parser, so this returns the JSON text
-      verbatim; parse it with your preferred JSON unit. "[]" means unsigned. }
+      covers_whole_document, digest_valid, signature_valid, is_valid, byte_range,
+      plus the certificate detail fields issuer, serial_number, valid_from,
+      valid_to, algorithm, signing_time (any may be null), cert_count and
+      has_timestamp). Object Pascal has no bundled JSON parser, so this returns
+      the JSON text verbatim; parse it with your preferred JSON unit. "[]" means
+      unsigned. }
     class function VerifySignaturesJson(const PdfBytes: TBytes): UTF8String; static;
+
+    { Positional full-text search. Returns one TTextHit per match (with its
+      bounding box in PDF points, origin lower-left). CaseSensitive defaults to
+      a case-insensitive search. }
+    class function FindText(const PdfBytes: TBytes; const Query: string;
+                            CaseSensitive: Boolean = False): TTextHits; static;
     class function Sign(const PdfBytes, KeyDer, CertDer: TBytes;
                         const Reason: string = ''; const Location: string = '';
                         const Name: string = ''; Pades: Boolean = False): TBytes; static;
@@ -343,6 +385,24 @@ type
     class function SignWith(const PdfBytes, CertDer: TBytes; Callback: TPdfRemoteSign;
                             const Chain: array of TBytes;
                             const Options: TSigningOptions): TBytes; overload; static;
+
+    { ---- network TSA / document timestamp (PAdES AD-RT) — issue #41 ---- }
+
+    { Phase 1: prepare PdfBytes for a /DocTimeStamp. Hash the returned Tbs
+      bytes, build a TSA request with TimestampRequest, POST it to the TSA,
+      extract the token with TimestampTokenFromResponse, then embed it via
+      CompleteSignature(session.Document, token). }
+    class function BeginTimestamp(const PdfBytes: TBytes): TTimestampSession; static;
+
+    { Build an RFC 3161 TimeStampReq for Imprint (a SHA-256 digest). Nonce is
+      optional; CertReq asks the TSA to include its certificate. }
+    class function TimestampRequest(const Imprint: TBytes;
+                                    CertReq: Boolean = True): TBytes; overload; static;
+    class function TimestampRequest(const Imprint, Nonce: TBytes;
+                                    CertReq: Boolean = True): TBytes; overload; static;
+
+    { Extract the TimeStampToken (CMS) from a TSA's RFC 3161 response. }
+    class function TimestampTokenFromResponse(const Response: TBytes): TBytes; static;
   end;
 
 { Convenience constructor for a TPdfRect. }
@@ -476,10 +536,13 @@ type
   Tpdf_editable_set_choice  = function(ed: Pointer; name, value: PAnsiChar; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_flatten_forms = function(ed: Pointer): Integer; cdecl;
   Tpdf_editable_field_names = function(ed: Pointer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
-  Tpdf_editable_watermark_text = function(ed: Pointer; text: PAnsiChar; size, r, g, b, opacity, rotation_deg: Double): Integer; cdecl;
-  Tpdf_editable_watermark_image_file = function(ed: Pointer; path: PAnsiChar; width, height, opacity: Double): Integer; cdecl;
+  Tpdf_editable_watermark_text = function(ed: Pointer; text: PAnsiChar; size, r, g, b, opacity, rotation_deg: Double; opaque_background: Integer): Integer; cdecl;
+  Tpdf_editable_watermark_image_file = function(ed: Pointer; path: PAnsiChar; width, height, opacity, rotation_deg: Double): Integer; cdecl;
   Tpdf_editable_redact      = function(ed: Pointer; index: NativeUInt; rects: Pointer; count: NativeUInt; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_convert_to_pdfa = function(ed: Pointer; level: Integer): Integer; cdecl;
+  Tpdf_editable_set_version = function(ed: Pointer; version: Integer): Integer; cdecl;
+  Tpdf_editable_strip_pdfa  = function(ed: Pointer): Integer; cdecl;
+  Tpdf_editable_normalize   = function(ed: Pointer; version: Integer): Integer; cdecl;
 
   Tpdf_extract_text         = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_extract_images_to_dir = function(data: PByte; len: NativeUInt; dir: PAnsiChar; out out_count: NativeUInt): Integer; cdecl;
@@ -489,6 +552,7 @@ type
   Tpdf_timestamp            = function(pdf: PByte; pdf_len: NativeUInt; key: PByte; key_len: NativeUInt; cert: PByte; cert_len: NativeUInt; date: PAnsiChar; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_add_dss              = function(pdf: PByte; pdf_len: NativeUInt; cert_ptrs: Pointer; cert_lens: Pointer; cert_count: NativeUInt; crl_ptrs: Pointer; crl_lens: Pointer; crl_count: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_verify_signatures_json = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_find_text_json       = function(data: PByte; len: NativeUInt; query: PAnsiChar; case_sensitive: Integer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
 
 { ---- deferred / external signing (issue #41) ---- }
 
@@ -511,6 +575,12 @@ type
     PolicyHashLen: NativeUInt;
     PolicyHashAlgOid: PAnsiChar;
     PolicyUri: PAnsiChar;
+    Visible: Integer;
+    VisPage: NativeUInt;
+    VisRect: array[0..3] of Double;
+    VisText: PAnsiChar;
+    VisImage: PByte;
+    VisImageLen: NativeUInt;
   end;
   PPdfSigningOptionsC = ^TPdfSigningOptionsC;
 
@@ -530,6 +600,15 @@ type
     params: PPdfSigningOptionsC; callback: TPdfSignHashFn; ctx: Pointer;
     out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_list_signatures = function(pdf: PByte; pdf_len: NativeUInt;
+    out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+
+  Tpdf_timestamp_begin = function(pdf: PByte; pdf_len: NativeUInt;
+    out out_doc: PByte; out out_doc_len: NativeUInt;
+    out out_tbs: PByte; out out_tbs_len: NativeUInt): Integer; cdecl;
+  Tpdf_timestamp_request = function(imprint: PByte; imprint_len: NativeUInt;
+    nonce: PByte; nonce_len: NativeUInt; cert_req: Integer;
+    out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_timestamp_token_from_response = function(response: PByte; response_len: NativeUInt;
     out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
 
 { ===================== bound function table ============================= }
@@ -608,6 +687,9 @@ var
   Fpdf_editable_watermark_image_file: Tpdf_editable_watermark_image_file;
   Fpdf_editable_redact: Tpdf_editable_redact;
   Fpdf_editable_convert_to_pdfa: Tpdf_editable_convert_to_pdfa;
+  Fpdf_editable_set_version: Tpdf_editable_set_version;
+  Fpdf_editable_strip_pdfa: Tpdf_editable_strip_pdfa;
+  Fpdf_editable_normalize: Tpdf_editable_normalize;
   Fpdf_extract_text: Tpdf_extract_text;
   Fpdf_extract_images_to_dir: Tpdf_extract_images_to_dir;
   Fpdf_render_page_to_png: Tpdf_render_page_to_png;
@@ -616,10 +698,14 @@ var
   Fpdf_timestamp: Tpdf_timestamp;
   Fpdf_add_dss: Tpdf_add_dss;
   Fpdf_verify_signatures_json: Tpdf_verify_signatures_json;
+  Fpdf_find_text_json: Tpdf_find_text_json;
   Fpdf_sign_begin: Tpdf_sign_begin;
   Fpdf_sign_complete: Tpdf_sign_complete;
   Fpdf_sign_with: Tpdf_sign_with;
   Fpdf_list_signatures: Tpdf_list_signatures;
+  Fpdf_timestamp_begin: Tpdf_timestamp_begin;
+  Fpdf_timestamp_request: Tpdf_timestamp_request;
+  Fpdf_timestamp_token_from_response: Tpdf_timestamp_token_from_response;
 
 { ===================== loader ========================================== }
 
@@ -796,6 +882,9 @@ begin
   Fpdf_editable_watermark_image_file := Tpdf_editable_watermark_image_file(Bind('pdf_editable_watermark_image_file'));
   Fpdf_editable_redact := Tpdf_editable_redact(Bind('pdf_editable_redact'));
   Fpdf_editable_convert_to_pdfa := Tpdf_editable_convert_to_pdfa(Bind('pdf_editable_convert_to_pdfa'));
+  Fpdf_editable_set_version := Tpdf_editable_set_version(Bind('pdf_editable_set_version'));
+  Fpdf_editable_strip_pdfa := Tpdf_editable_strip_pdfa(Bind('pdf_editable_strip_pdfa'));
+  Fpdf_editable_normalize := Tpdf_editable_normalize(Bind('pdf_editable_normalize'));
   Fpdf_extract_text := Tpdf_extract_text(Bind('pdf_extract_text'));
   Fpdf_extract_images_to_dir := Tpdf_extract_images_to_dir(Bind('pdf_extract_images_to_dir'));
   Fpdf_render_page_to_png := Tpdf_render_page_to_png(Bind('pdf_render_page_to_png'));
@@ -804,10 +893,14 @@ begin
   Fpdf_timestamp := Tpdf_timestamp(Bind('pdf_timestamp'));
   Fpdf_add_dss := Tpdf_add_dss(Bind('pdf_add_dss'));
   Fpdf_verify_signatures_json := Tpdf_verify_signatures_json(Bind('pdf_verify_signatures_json'));
+  Fpdf_find_text_json := Tpdf_find_text_json(Bind('pdf_find_text_json'));
   Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
   Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
   Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
   Fpdf_list_signatures := Tpdf_list_signatures(Bind('pdf_list_signatures'));
+  Fpdf_timestamp_begin := Tpdf_timestamp_begin(Bind('pdf_timestamp_begin'));
+  Fpdf_timestamp_request := Tpdf_timestamp_request(Bind('pdf_timestamp_request'));
+  Fpdf_timestamp_token_from_response := Tpdf_timestamp_token_from_response(Bind('pdf_timestamp_token_from_response'));
 
   GLoaded := True;
 end;
@@ -1035,6 +1128,8 @@ end;
 { Build the C options record. The PAnsiChar/PByte fields alias the caller's
   Options record, which stays alive for the duration of the native call. }
 function MakeSignOpts(const Options: TSigningOptions): TPdfSigningOptionsC;
+var
+  I: Integer;
 begin
   FillChar(Result, SizeOf(Result), 0);
   Result.Reason := U8Ptr(Options.Reason);
@@ -1054,6 +1149,19 @@ begin
     end;
     Result.PolicyHashAlgOid := U8Ptr(Options.Policy.HashAlgorithmOID);
     Result.PolicyUri := U8Ptr(Options.Policy.URI);
+  end;
+  if Options.Visible then
+  begin
+    Result.Visible := 1;
+    Result.VisPage := Options.VisiblePage;
+    for I := 0 to 3 do
+      Result.VisRect[I] := Options.VisibleRect[I];
+    Result.VisText := U8Ptr(Options.VisibleText);
+    if Length(Options.VisibleImage) > 0 then
+    begin
+      Result.VisImage := BytePtr(Options.VisibleImage);
+      Result.VisImageLen := Length(Options.VisibleImage);
+    end;
   end;
 end;
 
@@ -1113,6 +1221,8 @@ begin
 end;
 
 function SigningOptions: TSigningOptions;
+var
+  I: Integer;
 begin
   { A managed local record is already zero-initialised; return it as-is. }
   Result.Reason := '';
@@ -1122,6 +1232,12 @@ begin
   Result.Certify := CertifyNone;
   Result.ContainerSize := 0;
   Result.HasPolicy := False;
+  Result.Visible := False;
+  Result.VisiblePage := 0;
+  for I := 0 to 3 do
+    Result.VisibleRect[I] := 0.0;
+  Result.VisibleText := '';
+  Result.VisibleImage := nil;
 end;
 
 { ===================== TSigningSession ================================= }
@@ -1781,22 +1897,23 @@ begin
 end;
 
 function TPdfEditable.WatermarkText(const Text: string; Size, R, G, B,
-  Opacity, RotationDeg: Double): TPdfEditable;
+  Opacity, RotationDeg: Double; OpaqueBackground: Boolean): TPdfEditable;
 var
   ut: UTF8String;
 begin
   ut := U8(Text);
-  Check(Fpdf_editable_watermark_text(H, PAnsiChar(ut), Size, R, G, B, Opacity, RotationDeg));
+  Check(Fpdf_editable_watermark_text(H, PAnsiChar(ut), Size, R, G, B, Opacity,
+        RotationDeg, Ord(OpaqueBackground)));
   Result := Self;
 end;
 
 function TPdfEditable.WatermarkImageFile(const Path: string; Width, Height,
-  Opacity: Double): TPdfEditable;
+  Opacity, RotationDeg: Double): TPdfEditable;
 var
   up: UTF8String;
 begin
   up := U8(Path);
-  Check(Fpdf_editable_watermark_image_file(H, PAnsiChar(up), Width, Height, Opacity));
+  Check(Fpdf_editable_watermark_image_file(H, PAnsiChar(up), Width, Height, Opacity, RotationDeg));
   Result := Self;
 end;
 
@@ -1823,6 +1940,24 @@ end;
 function TPdfEditable.ConvertToPdfa(Level: TPdfaLevel): TPdfEditable;
 begin
   Check(Fpdf_editable_convert_to_pdfa(H, Ord(Level)));
+  Result := Self;
+end;
+
+function TPdfEditable.SetVersion(V: Integer): TPdfEditable;
+begin
+  Check(Fpdf_editable_set_version(H, V));
+  Result := Self;
+end;
+
+function TPdfEditable.StripPdfa: TPdfEditable;
+begin
+  Check(Fpdf_editable_strip_pdfa(H));
+  Result := Self;
+end;
+
+function TPdfEditable.Normalize(V: Integer): TPdfEditable;
+begin
+  Check(Fpdf_editable_normalize(H, V));
   Result := Self;
 end;
 
@@ -1873,6 +2008,231 @@ var
 begin
   up := U8(Path);
   Check(Fpdf_editable_save(H, PAnsiChar(up)));
+end;
+
+{ ===================== minimal JSON (find_text) ======================== }
+
+{ A small, dependency-free JSON reader for the flat array Pdf.FindText returns:
+  an array of objects, each with the keys page (int), text (string) and x, y,
+  width, height (numbers). It walks the raw UTF-8 bytes (1-based index P over
+  the UTF8String J) to avoid codepage surprises; string values are decoded
+  UTF-8 -> string at the end. It is tolerant of whitespace and key order, and
+  recognises only the keys above. Mirrors the binding's self-contained style
+  (cf. the bundled SHA-256). }
+
+procedure JsonSkipWs(const J: UTF8String; var P: Integer); inline;
+begin
+  while (P <= Length(J)) and (J[P] in [#9, #10, #13, ' ']) do
+    Inc(P);
+end;
+
+function JsonParseString(const J: UTF8String; var P: Integer): string;
+var
+  Buf: UTF8String;
+  C: AnsiChar;
+  Code, Lo: Integer;
+
+  function HexNibble(Ch: AnsiChar): Integer;
+  begin
+    case Ch of
+      '0'..'9': Result := Ord(Ch) - Ord('0');
+      'a'..'f': Result := Ord(Ch) - Ord('a') + 10;
+      'A'..'F': Result := Ord(Ch) - Ord('A') + 10;
+    else
+      Result := 0;
+    end;
+  end;
+
+  function Read4Hex: Integer;
+  var
+    K: Integer;
+  begin
+    Result := 0;
+    for K := 1 to 4 do
+      if P <= Length(J) then
+      begin
+        Result := (Result shl 4) or HexNibble(J[P]);
+        Inc(P);
+      end;
+  end;
+
+  procedure AppendCodepoint(CP: Integer);
+  begin
+    if CP < $80 then
+      Buf := Buf + AnsiChar(CP)
+    else if CP < $800 then
+    begin
+      Buf := Buf + AnsiChar($C0 or (CP shr 6));
+      Buf := Buf + AnsiChar($80 or (CP and $3F));
+    end
+    else if CP < $10000 then
+    begin
+      Buf := Buf + AnsiChar($E0 or (CP shr 12));
+      Buf := Buf + AnsiChar($80 or ((CP shr 6) and $3F));
+      Buf := Buf + AnsiChar($80 or (CP and $3F));
+    end
+    else
+    begin
+      Buf := Buf + AnsiChar($F0 or (CP shr 18));
+      Buf := Buf + AnsiChar($80 or ((CP shr 12) and $3F));
+      Buf := Buf + AnsiChar($80 or ((CP shr 6) and $3F));
+      Buf := Buf + AnsiChar($80 or (CP and $3F));
+    end;
+  end;
+
+begin
+  Buf := '';
+  Inc(P);  { skip opening quote }
+  while (P <= Length(J)) and (J[P] <> '"') do
+  begin
+    C := J[P];
+    if C = '\' then
+    begin
+      Inc(P);
+      if P > Length(J) then
+        Break;
+      C := J[P];
+      Inc(P);  { consume the escape selector }
+      case C of
+        '"': Buf := Buf + '"';
+        '\': Buf := Buf + '\';
+        '/': Buf := Buf + '/';
+        'b': Buf := Buf + #8;
+        'f': Buf := Buf + #12;
+        'n': Buf := Buf + #10;
+        'r': Buf := Buf + #13;
+        't': Buf := Buf + #9;
+        'u':
+          begin
+            Code := Read4Hex;
+            if (Code >= $D800) and (Code <= $DBFF) and (P + 1 <= Length(J)) and
+               (J[P] = '\') and (J[P + 1] = 'u') then
+            begin
+              Inc(P, 2);  { skip the low surrogate's \u }
+              Lo := Read4Hex;
+              Code := $10000 + ((Code - $D800) shl 10) + (Lo - $DC00);
+            end;
+            AppendCodepoint(Code);
+          end;
+      else
+        Buf := Buf + C;
+      end;
+    end
+    else
+    begin
+      Buf := Buf + C;
+      Inc(P);
+    end;
+  end;
+  if (P <= Length(J)) and (J[P] = '"') then
+    Inc(P);  { skip closing quote }
+  Result := string(Buf);
+end;
+
+function JsonParseNumber(const J: UTF8String; var P: Integer): Double;
+var
+  StartP: Integer;
+  FS: TFormatSettings;
+begin
+  StartP := P;
+  while (P <= Length(J)) and (J[P] in ['0'..'9', '+', '-', '.', 'e', 'E']) do
+    Inc(P);
+  FS := FormatSettings;
+  FS.DecimalSeparator := '.';
+  FS.ThousandSeparator := #0;
+  Result := StrToFloatDef(string(Copy(J, StartP, P - StartP)), 0.0, FS);
+end;
+
+function JsonParseHit(const J: UTF8String; var P: Integer): TTextHit;
+var
+  Key: string;
+begin
+  Result.Page := 0;
+  Result.Text := '';
+  Result.X := 0.0; Result.Y := 0.0; Result.Width := 0.0; Result.Height := 0.0;
+  JsonSkipWs(J, P);
+  if (P <= Length(J)) and (J[P] = '{') then
+    Inc(P);
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '}' then
+    begin
+      Inc(P);
+      Break;
+    end;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if J[P] <> '"' then
+      Break;  { malformed }
+    Key := JsonParseString(J, P);
+    JsonSkipWs(J, P);
+    if (P <= Length(J)) and (J[P] = ':') then
+      Inc(P);
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '"' then
+    begin
+      if Key = 'text' then
+        Result.Text := JsonParseString(J, P)
+      else
+        JsonParseString(J, P);  { discard unknown string }
+    end
+    else if J[P] = 'n' then
+      Inc(P, 4)  { null }
+    else
+    begin
+      if Key = 'page' then
+        Result.Page := Round(JsonParseNumber(J, P))
+      else if Key = 'x' then
+        Result.X := JsonParseNumber(J, P)
+      else if Key = 'y' then
+        Result.Y := JsonParseNumber(J, P)
+      else if Key = 'width' then
+        Result.Width := JsonParseNumber(J, P)
+      else if Key = 'height' then
+        Result.Height := JsonParseNumber(J, P)
+      else
+        JsonParseNumber(J, P);  { discard unknown number }
+    end;
+  end;
+end;
+
+function ParseTextHits(const J: UTF8String): TTextHits;
+var
+  P, N: Integer;
+begin
+  SetLength(Result, 0);
+  N := 0;
+  P := 1;
+  JsonSkipWs(J, P);
+  if (P > Length(J)) or (J[P] <> '[') then
+    Exit;
+  Inc(P);
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = ']' then
+      Break;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if J[P] <> '{' then
+      Break;
+    SetLength(Result, N + 1);
+    Result[N] := JsonParseHit(J, P);
+    Inc(N);
+  end;
 end;
 
 { ===================== Pdf (package functions) ========================= }
@@ -1946,6 +2306,26 @@ begin
   SetLength(Result, Length(Raw));
   if Length(Raw) > 0 then
     Move(Raw[0], Result[1], Length(Raw));
+end;
+
+class function Pdf.FindText(const PdfBytes: TBytes; const Query: string;
+  CaseSensitive: Boolean): TTextHits;
+var
+  uq: UTF8String;
+  P: PByte;
+  Len: NativeUInt;
+  Json: UTF8String;
+  Raw: TBytes;
+begin
+  EnsureLoaded;
+  uq := U8(Query);
+  Check(Fpdf_find_text_json(BytePtr(PdfBytes), Length(PdfBytes), PAnsiChar(uq),
+        Ord(CaseSensitive), P, Len));
+  Raw := TakeBuffer(P, Len);
+  SetLength(Json, Length(Raw));
+  if Length(Raw) > 0 then
+    Move(Raw[0], Json[1], Length(Raw));
+  Result := ParseTextHits(Json);
 end;
 
 class function Pdf.Sign(const PdfBytes, KeyDer, CertDer: TBytes;
@@ -2107,6 +2487,44 @@ begin
   finally
     GActiveSigner := nil;
   end;
+  Result := TakeBuffer(P, Len);
+end;
+
+class function Pdf.BeginTimestamp(const PdfBytes: TBytes): TTimestampSession;
+var
+  DocP, TbsP: PByte;
+  DocLen, TbsLen: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_timestamp_begin(BytePtr(PdfBytes), Length(PdfBytes),
+        DocP, DocLen, TbsP, TbsLen));
+  Result.Document := TakeBuffer(DocP, DocLen);
+  Result.Tbs := TakeBuffer(TbsP, TbsLen);
+end;
+
+class function Pdf.TimestampRequest(const Imprint: TBytes; CertReq: Boolean): TBytes;
+begin
+  Result := TimestampRequest(Imprint, nil, CertReq);
+end;
+
+class function Pdf.TimestampRequest(const Imprint, Nonce: TBytes; CertReq: Boolean): TBytes;
+var
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_timestamp_request(BytePtr(Imprint), Length(Imprint),
+        BytePtr(Nonce), Length(Nonce), Ord(CertReq), P, Len));
+  Result := TakeBuffer(P, Len);
+end;
+
+class function Pdf.TimestampTokenFromResponse(const Response: TBytes): TBytes;
+var
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_timestamp_token_from_response(BytePtr(Response), Length(Response), P, Len));
   Result := TakeBuffer(P, Len);
 end;
 

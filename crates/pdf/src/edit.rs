@@ -815,34 +815,61 @@ impl EditableDoc {
     pub fn watermark_text(&mut self, text: &str, opts: WatermarkOptions) {
         let helv = self.helvetica();
         let gs = self.alloc_extgstate(opts.opacity);
+        let gs_opaque = if opts.opaque_background {
+            Some(self.alloc_extgstate(1.0))
+        } else {
+            None
+        };
         let pages = self.page_order.clone();
         for page in pages {
-            let (pw, ph) = self.page_size(page);
-            let cx = pw / 2.0;
-            let cy = ph / 2.0;
+            let geom = self.page_geometry(page);
+            let (pw, ph) = geom.visible_size();
+            let (cx, cy) = (pw / 2.0, ph / 2.0);
             let theta = opts.rotation_deg.to_radians();
             let (a, b) = (theta.cos(), theta.sin());
             let (c, d) = (-theta.sin(), theta.cos());
             // Rough Helvetica width to center the baseline on the page center.
             let tw = opts.size * 0.52 * text.chars().count() as f64;
             let (r, g, bl) = opts.color;
-            let content = format!(
-                "q\n/GSwm gs\nBT\n/Helvwm {size:.2} Tf\n{r:.3} {g:.3} {bl:.3} rg\n\
-                 {a:.5} {b:.5} {c:.5} {d:.5} {cx:.2} {cy:.2} Tm\n\
-                 {ox:.2} {oy:.2} Td\n({txt}) Tj\nET\nQ\n",
+            // Draw in a frame rotated about the page center (in visible space),
+            // compensating page /Rotate via `upright_cm` so it reads upright.
+            let mut content = format!(
+                "q\n{upright}q\n{a:.5} {b:.5} {c:.5} {d:.5} {cx:.2} {cy:.2} cm\n",
+                upright = geom.upright_cm(),
+            );
+            if let Some(_op) = gs_opaque {
+                // Opaque white box behind the text (white-out stamp).
+                let pad = opts.size * 0.25;
+                content.push_str(&format!(
+                    "/GSwmO gs\n1 1 1 rg\n{x:.2} {y:.2} {w:.2} {h:.2} re f\n",
+                    x = -tw / 2.0 - pad,
+                    y = -opts.size * 0.35 - pad,
+                    w = tw + 2.0 * pad,
+                    h = opts.size + 2.0 * pad,
+                ));
+            }
+            let text_gs = if gs_opaque.is_some() { "GSwmO" } else { "GSwm" };
+            content.push_str(&format!(
+                "/{text_gs} gs\nBT\n/Helvwm {size:.2} Tf\n{r:.3} {g:.3} {bl:.3} rg\n\
+                 1 0 0 1 {ox:.2} {oy:.2} Tm\n({txt}) Tj\nET\nQ\nQ\n",
                 size = opts.size,
                 ox = -tw / 2.0,
                 oy = -opts.size * 0.35,
                 txt = escape_pdf_literal(text),
-            );
+            ));
             self.append_content(page, content.into_bytes());
             self.add_page_resource(page, "Font", "Helvwm", helv);
             self.add_page_resource(page, "ExtGState", "GSwm", gs);
+            if let Some(op) = gs_opaque {
+                self.add_page_resource(page, "ExtGState", "GSwmO", op);
+            }
         }
     }
 
     /// Stamp an **image watermark** centered on every page at `width`×`height`
-    /// points, drawn at `opacity`. `image` is decoded/encoded like
+    /// points, rotated `rotation_deg` degrees counter-clockwise about its center
+    /// and drawn at `opacity`. Respects page `/Rotate` and `/CropBox` so the
+    /// stamp lands centered in the visible area. `image` is decoded/encoded like
     /// [`Document::add_image`](crate::Document::add_image) inputs.
     pub fn watermark_image(
         &mut self,
@@ -850,20 +877,76 @@ impl EditableDoc {
         width: f64,
         height: f64,
         opacity: f64,
+        rotation_deg: f64,
     ) {
         let img_num = self.insert_image(image);
         let gs = self.alloc_extgstate(opacity);
         let pages = self.page_order.clone();
         for page in pages {
-            let (pw, ph) = self.page_size(page);
-            let x = (pw - width) / 2.0;
-            let y = (ph - height) / 2.0;
-            let content =
-                format!("q\n/GSwm gs\n{width:.2} 0 0 {height:.2} {x:.2} {y:.2} cm\n/Imwm Do\nQ\n");
+            let geom = self.page_geometry(page);
+            let (pw, ph) = geom.visible_size();
+            let (cx, cy) = (pw / 2.0, ph / 2.0);
+            let theta = rotation_deg.to_radians();
+            let (a, b) = (theta.cos(), theta.sin());
+            let (c, d) = (-theta.sin(), theta.cos());
+            // upright (page /Rotate) → rotate about center → place image, drawn
+            // from its own center so rotation pivots on the image middle.
+            let content = format!(
+                "q\n{upright}/GSwm gs\nq\n{a:.5} {b:.5} {c:.5} {d:.5} {cx:.2} {cy:.2} cm\n\
+                 {width:.2} 0 0 {height:.2} {hx:.2} {hy:.2} cm\n/Imwm Do\nQ\nQ\n",
+                upright = geom.upright_cm(),
+                hx = -width / 2.0,
+                hy = -height / 2.0,
+            );
             self.append_content(page, content.into_bytes());
             self.add_page_resource(page, "XObject", "Imwm", img_num);
             self.add_page_resource(page, "ExtGState", "GSwm", gs);
         }
+    }
+
+    // ---- normalization (issue #41 P1 #8) ---------------------------------
+
+    /// Set the output PDF **version**, written as the header on the next
+    /// (non-incremental) [`to_bytes`](EditableDoc::to_bytes)/[`save`](EditableDoc::save).
+    /// Also clears any catalog `/Version` override (e.g. a `2.0` inherited from a
+    /// PDF 2.0 input) so the header version is authoritative — the explicit
+    /// downgrade path for normalizing modern files to, say, PDF 1.7.
+    pub fn set_version(&mut self, version: PdfVersion) -> &mut Self {
+        self.version = version;
+        let cat = self.catalog;
+        self.update_dict(cat, |d| {
+            d.remove("Version");
+        });
+        self
+    }
+
+    /// Strip **PDF/A conformance** from the document: remove the catalog
+    /// `/OutputIntents`, the XMP `/Metadata` carrying the `pdfaid` identifier,
+    /// and any catalog `/Version` override. Use when re-purposing a PDF/A file
+    /// into a plain PDF whose later edits would otherwise break A-conformance
+    /// (the claim would be false). Does not re-flag the file as PDF/A.
+    pub fn strip_pdfa(&mut self) -> &mut Self {
+        let cat = self.catalog;
+        self.update_dict(cat, |d| {
+            d.remove("OutputIntents");
+            d.remove("Metadata");
+            d.remove("Version");
+        });
+        if let Some(m) = self.metadata.take() {
+            self.objects.remove(&m);
+        }
+        self
+    }
+
+    /// Normalize the document to a plain, self-contained PDF at `version`:
+    /// strips PDF/A conformance ([`strip_pdfa`](EditableDoc::strip_pdfa)) and
+    /// sets the version ([`set_version`](EditableDoc::set_version)). The file is
+    /// already decrypted on load (owner password accepted), so the result is a
+    /// clean, downgraded, unencrypted PDF after a non-incremental save.
+    pub fn normalize(&mut self, version: PdfVersion) -> &mut Self {
+        self.strip_pdfa();
+        self.set_version(version);
+        self
     }
 
     /// An `/ExtGState` setting fill+stroke alpha for translucent stamps.
@@ -947,16 +1030,64 @@ impl EditableDoc {
 
     // ---- page content / resource helpers ---------------------------------
 
-    /// The page's media box size in points (falls back to A4).
-    fn page_size(&self, page: u32) -> (f64, f64) {
-        let mb = as_dict(self.objects.get(&page)).and_then(|d| d.get("MediaBox"));
-        if let Some(Object::Array(a)) = mb {
-            let v: Vec<f64> = a.iter().filter_map(num_f64).collect();
-            if v.len() == 4 {
-                return ((v[2] - v[0]).abs(), (v[3] - v[1]).abs());
+    /// Look up an attribute on a page, walking up `/Parent` so inheritable
+    /// attributes (`/MediaBox`, `/CropBox`, `/Rotate`, `/Resources`) resolve.
+    fn inherited(&self, page: u32, key: &str) -> Option<Object> {
+        let mut cur = page;
+        for _ in 0..32 {
+            let d = as_dict(self.objects.get(&cur))?;
+            if let Some(v) = d.get(key) {
+                return Some(v.clone());
+            }
+            match d.get("Parent") {
+                Some(Object::Reference(r)) => cur = r.number,
+                _ => break,
             }
         }
-        (595.276, 841.89)
+        None
+    }
+
+    /// The page's effective geometry: crop-box origin/size (falling back to the
+    /// media box, then A4) and normalized `/Rotate`. Sizes are in *unrotated*
+    /// user space.
+    fn page_geometry(&self, page: u32) -> PageGeom {
+        let rect = |key: &str| -> Option<[f64; 4]> {
+            match self.inherited(page, key) {
+                Some(Object::Array(a)) => {
+                    let v: Vec<f64> = a.iter().filter_map(num_f64).collect();
+                    (v.len() == 4).then(|| [v[0], v[1], v[2], v[3]])
+                }
+                _ => None,
+            }
+        };
+        let mb = rect("MediaBox").unwrap_or([0.0, 0.0, 595.276, 841.89]);
+        let cb = rect("CropBox").unwrap_or(mb);
+        let rotate = self
+            .inherited(page, "Rotate")
+            .and_then(|o| match o {
+                Object::Integer(n) => Some(n),
+                Object::Real(r) => Some(r as i64),
+                _ => None,
+            })
+            .map(|r| r.rem_euclid(360))
+            .unwrap_or(0);
+        PageGeom {
+            x0: cb[0].min(cb[2]),
+            y0: cb[1].min(cb[3]),
+            w: (cb[2] - cb[0]).abs(),
+            h: (cb[3] - cb[1]).abs(),
+            rotate,
+        }
+    }
+
+    /// The page's **visible** size in points — crop box with width/height
+    /// swapped for `/Rotate` 90/270, i.e. the dimensions a viewer sees. Useful
+    /// for laying out stamps. Falls back to A4.
+    pub fn page_dimensions(&self, index: usize) -> (f64, f64) {
+        let Some(&page) = self.page_order.get(index) else {
+            return (595.276, 841.89);
+        };
+        self.page_geometry(page).visible_size()
     }
 
     /// Append `ops` (raw content-stream operators) after the page's existing
@@ -1701,6 +1832,11 @@ pub struct WatermarkOptions {
     pub opacity: f64,
     /// Rotation in degrees, counter-clockwise (45° is the classic diagonal).
     pub rotation_deg: f64,
+    /// Draw an **opaque white box** behind the text (and render the text fully
+    /// opaque) — turning the watermark into a white-out stamp that covers the
+    /// content underneath, rather than a translucent overlay. `opacity` is
+    /// ignored when this is set.
+    pub opaque_background: bool,
 }
 
 impl Default for WatermarkOptions {
@@ -1710,6 +1846,40 @@ impl Default for WatermarkOptions {
             color: (0.5, 0.5, 0.5),
             opacity: 0.30,
             rotation_deg: 45.0,
+            opaque_background: false,
+        }
+    }
+}
+
+/// A page's effective geometry (crop box in unrotated user space + `/Rotate`).
+struct PageGeom {
+    x0: f64,
+    y0: f64,
+    w: f64,
+    h: f64,
+    rotate: i64,
+}
+
+impl PageGeom {
+    /// Visible dimensions (width/height swapped for 90°/270° rotation).
+    fn visible_size(&self) -> (f64, f64) {
+        if self.rotate == 90 || self.rotate == 270 {
+            (self.h, self.w)
+        } else {
+            (self.w, self.h)
+        }
+    }
+
+    /// A `cm` operator mapping *visible-upright* coordinates (origin at the
+    /// displayed lower-left, y up) into unrotated user space, so content drawn
+    /// in this frame reads upright after the viewer applies `/Rotate`.
+    fn upright_cm(&self) -> String {
+        let (x0, y0, w, h) = (self.x0, self.y0, self.w, self.h);
+        match self.rotate {
+            90 => format!("0 1 -1 0 {:.2} {:.2} cm\n", x0 + w, y0),
+            180 => format!("-1 0 0 -1 {:.2} {:.2} cm\n", x0 + w, y0 + h),
+            270 => format!("0 -1 1 0 {:.2} {:.2} cm\n", x0, y0 + h),
+            _ => format!("1 0 0 1 {:.2} {:.2} cm\n", x0, y0),
         }
     }
 }

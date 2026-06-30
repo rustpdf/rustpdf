@@ -6,7 +6,7 @@
 
 #![allow(non_camel_case_types)]
 
-use std::os::raw::{c_char, c_double, c_int};
+use std::os::raw::{c_char, c_double, c_int, c_void};
 use std::sync::OnceLock;
 
 use crate::error::PdfError;
@@ -22,6 +22,50 @@ pub struct RawDoc {
 pub struct RawEditable {
     _private: [u8; 0],
 }
+
+/// Mirror of the C ABI `PdfSigningOptions` struct (deferred/external signing).
+///
+/// Field order and layout are load-bearing — they must match `include/pdf.h`
+/// exactly. NULL string fields and a zero `*_len` mean "absent". The last six
+/// fields (`visible` … `vis_image_len`) are the visible-signature appearance
+/// (issue #41 P1), appended at the end so existing offsets are unchanged.
+#[repr(C)]
+#[derive(Debug)]
+pub(crate) struct PdfSigningOptions {
+    pub reason: *const c_char,
+    pub location: *const c_char,
+    pub name: *const c_char,
+    pub pades: c_int,
+    pub certification: c_int,
+    pub estimated_size: usize,
+    pub policy_oid: *const c_char,
+    pub policy_hash: *const u8,
+    pub policy_hash_len: usize,
+    pub policy_hash_alg_oid: *const c_char,
+    pub policy_uri: *const c_char,
+    // --- visible signature + embedded image (issue #41 P1) ---
+    pub visible: c_int,
+    pub vis_page: usize,
+    pub vis_rect: [c_double; 4],
+    pub vis_text: *const c_char,
+    pub vis_image: *const u8,
+    pub vis_image_len: usize,
+}
+
+impl PdfSigningOptions {
+    /// An all-absent options struct (every pointer NULL, every count 0). The
+    /// all-zero bit pattern is valid for every field of this `#[repr(C)]` type.
+    pub(crate) fn empty() -> Self {
+        // SAFETY: null pointers, zero ints and zero floats are valid here.
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// The `PdfSignHashFn` callback: produce the raw RSA PKCS#1 v1.5 signature over
+/// SHA-256 of `data` into `sig_buf` (capacity `sig_cap`), set `*sig_len`, return
+/// 0 on success (non-zero = failure).
+pub(crate) type PdfSignHashFn =
+    unsafe extern "C" fn(*mut c_void, *const u8, usize, *mut u8, usize, *mut usize) -> c_int;
 
 macro_rules! ffi_api {
     ( $( fn $name:ident ( $($arg:ty),* $(,)? ) $( -> $ret:ty )? ; )* ) => {
@@ -251,6 +295,14 @@ ffi_api! {
     ) -> c_int;
     fn pdf_editable_save(*const RawEditable, *const c_char) -> c_int;
     fn pdf_extract_text(*const u8, usize, *mut *mut u8, *mut usize) -> c_int;
+    fn pdf_find_text_json(
+        *const u8,
+        usize,
+        *const c_char,
+        c_int,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
     fn pdf_extract_images_to_dir(*const u8, usize, *const c_char, *mut usize) -> c_int;
     fn pdf_render_page_to_png(*const u8, usize, usize, f64, *mut *mut u8, *mut usize) -> c_int;
     fn pdf_page_count(*const u8, usize, *mut usize) -> c_int;
@@ -280,6 +332,7 @@ ffi_api! {
         c_double,
         c_double,
         c_double,
+        c_int,
     ) -> c_int;
     fn pdf_editable_watermark_image_file(
         *mut RawEditable,
@@ -287,7 +340,11 @@ ffi_api! {
         c_double,
         c_double,
         c_double,
+        c_double,
     ) -> c_int;
+    fn pdf_editable_set_version(*mut RawEditable, c_int) -> c_int;
+    fn pdf_editable_strip_pdfa(*mut RawEditable) -> c_int;
+    fn pdf_editable_normalize(*mut RawEditable, c_int) -> c_int;
     fn pdf_editable_redact(
         *mut RawEditable,
         usize,
@@ -334,6 +391,65 @@ ffi_api! {
         usize,
         *const *const u8,
         *const usize,
+        usize,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+
+    // --- deferred / external (HSM) signing (issue #41 P0) ---
+    fn pdf_sign_begin(
+        *const u8,
+        usize,
+        *const PdfSigningOptions,
+        *mut *mut u8,
+        *mut usize,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+    fn pdf_sign_complete(
+        *const u8,
+        usize,
+        *const u8,
+        usize,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+    fn pdf_sign_with(
+        *const u8,
+        usize,
+        *const u8,
+        usize,
+        *const *const u8,
+        *const usize,
+        usize,
+        *const PdfSigningOptions,
+        PdfSignHashFn,
+        *mut c_void,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+    fn pdf_list_signatures(*const u8, usize, *mut *mut u8, *mut usize) -> c_int;
+
+    // --- network TSA (AD-RT) (issue #41 P1) ---
+    fn pdf_timestamp_begin(
+        *const u8,
+        usize,
+        *mut *mut u8,
+        *mut usize,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+    fn pdf_timestamp_request(
+        *const u8,
+        usize,
+        *const u8,
+        usize,
+        c_int,
+        *mut *mut u8,
+        *mut usize,
+    ) -> c_int;
+    fn pdf_timestamp_token_from_response(
+        *const u8,
         usize,
         *mut *mut u8,
         *mut usize,

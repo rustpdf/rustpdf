@@ -37,7 +37,8 @@ final class FFI {
      */
     @Structure.FieldOrder({
         "reason", "location", "name", "pades", "certification", "estimatedSize",
-        "policyOid", "policyHash", "policyHashLen", "policyHashAlgOid", "policyUri"
+        "policyOid", "policyHash", "policyHashLen", "policyHashAlgOid", "policyUri",
+        "visible", "visPage", "visRect", "visText", "visImage", "visImageLen"
     })
     public static final class PdfSigningOptions extends Structure {
         public Pointer reason;
@@ -51,6 +52,13 @@ final class FFI {
         public long policyHashLen;       // uintptr_t (64-bit target)
         public Pointer policyHashAlgOid;
         public Pointer policyUri;
+        // ---- visible signature appearance (issue #41 P1) --------------------
+        public int visible;
+        public long visPage;             // uintptr_t (64-bit target)
+        public double[] visRect = new double[4]; // [x0, y0, x1, y1], inline array
+        public Pointer visText;
+        public Pointer visImage;
+        public long visImageLen;         // uintptr_t (64-bit target)
 
         public PdfSigningOptions() {
             super();
@@ -182,9 +190,16 @@ final class FFI {
         int pdf_editable_flatten_forms(Pointer ed);
         int pdf_editable_field_names(Pointer ed, PointerByReference outPtr, LongByReference outLen);
         int pdf_editable_watermark_text(Pointer ed, String text, double size,
-                                        double r, double g, double b, double opacity, double rotationDeg);
+                                        double r, double g, double b, double opacity,
+                                        double rotationDeg, int opaqueBackground);
         int pdf_editable_watermark_image_file(Pointer ed, String path,
-                                              double width, double height, double opacity);
+                                              double width, double height, double opacity,
+                                              double rotationDeg);
+
+        // ---- Normalization — issue #41 P1 (EditableDoc) ---------------------
+        int pdf_editable_set_version(Pointer ed, int version);
+        int pdf_editable_strip_pdfa(Pointer ed);
+        int pdf_editable_normalize(Pointer ed, int version);
 
         // ---- Tier 2: redaction + PDF/A conversion (EditableDoc) -------------
         int pdf_editable_redact(Pointer ed, long index, double[] rects, long count, IntByReference outFound);
@@ -206,6 +221,19 @@ final class FFI {
                           PointerByReference outPtr, LongByReference outLen);
         int pdf_list_signatures(byte[] pdf, long pdfLen,
                                 PointerByReference outPtr, LongByReference outLen);
+
+        // ---- Positional text search — issue #41 P1 --------------------------
+        int pdf_find_text_json(byte[] data, long len, String query, int caseSensitive,
+                               PointerByReference outPtr, LongByReference outLen);
+
+        // ---- Network TSA (AD-RT) — issue #41 P1 -----------------------------
+        int pdf_timestamp_begin(byte[] pdf, long pdfLen,
+                                PointerByReference outDoc, LongByReference outDocLen,
+                                PointerByReference outTbs, LongByReference outTbsLen);
+        int pdf_timestamp_request(byte[] imprint, long imprintLen, byte[] nonce, long nonceLen,
+                                  int certReq, PointerByReference outPtr, LongByReference outLen);
+        int pdf_timestamp_token_from_response(byte[] response, long responseLen,
+                                              PointerByReference outPtr, LongByReference outLen);
     }
 
     private static Lib load() {

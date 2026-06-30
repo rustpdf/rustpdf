@@ -98,6 +98,28 @@ typedef struct {
      * SPURI qualifier; NULL = none.
      */
     const char *policy_uri;
+    /**
+     * Non-zero draws a **visible** signature using the fields below.
+     */
+    int visible;
+    /**
+     * 0-based page index for the visible appearance.
+     */
+    uintptr_t vis_page;
+    /**
+     * Appearance rectangle `[x0, y0, x1, y1]` in page points.
+     */
+    double vis_rect[4];
+    /**
+     * Text lines for the appearance, separated by `\n`; NULL = none.
+     */
+    const char *vis_text;
+    /**
+     * PNG/JPEG bytes of a handwritten-signature image (with `vis_image_len`);
+     * NULL/0 = no image.
+     */
+    const uint8_t *vis_image;
+    uintptr_t vis_image_len;
 } PdfSigningOptions;
 
 /**
@@ -742,11 +764,13 @@ PdfStatus pdf_editable_watermark_text(PdfEditable *ed,
                                       double g,
                                       double b,
                                       double opacity,
-                                      double rotation_deg);
+                                      double rotation_deg,
+                                      int opaque_background);
 
 /**
  * Stamp an image (from a JPEG/PNG file `path`) centered on every page at
- * `width`×`height` points, at `opacity`.
+ * `width`×`height` points, rotated `rotation_deg` degrees, at `opacity`.
+ * Respects page `/Rotate` and `/CropBox`.
  *
  * # Safety
  * `ed`, `path` valid.
@@ -755,7 +779,35 @@ PdfStatus pdf_editable_watermark_image_file(PdfEditable *ed,
                                             const char *path,
                                             double width,
                                             double height,
-                                            double opacity);
+                                            double opacity,
+                                            double rotation_deg);
+
+/**
+ * Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
+ * `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
+ *
+ * # Safety
+ * `ed` valid.
+ */
+PdfStatus pdf_editable_set_version(PdfEditable *ed, int version);
+
+/**
+ * Strip PDF/A conformance (catalog `/OutputIntents`, XMP `/Metadata` `pdfaid`,
+ * `/Version`) so the file is a plain PDF.
+ *
+ * # Safety
+ * `ed` valid.
+ */
+PdfStatus pdf_editable_strip_pdfa(PdfEditable *ed);
+
+/**
+ * Normalize to a plain PDF at `version` (strip PDF/A + set version). `version`
+ * codes as in [`pdf_editable_set_version`].
+ *
+ * # Safety
+ * `ed` valid.
+ */
+PdfStatus pdf_editable_normalize(PdfEditable *ed, int version);
 
 /**
  * Redact rectangular regions on page `index`: `rects` holds `count*4` doubles
@@ -847,6 +899,25 @@ PdfStatus pdf_extract_text(const uint8_t *data,
                            uintptr_t len,
                            unsigned char **out_ptr,
                            uintptr_t *out_len);
+
+/**
+ * Find every occurrence of `query` in `data`/`len` and write a JSON array of
+ * bounding boxes into `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]).
+ * Each element is `{"page":int,"text":str,"x":num,"y":num,"width":num,
+ * "height":num}` with coordinates in PDF user space (points, origin
+ * lower-left). `case_sensitive` is `0` for case-insensitive matching, non-zero
+ * for exact. An empty array `[]` means no match.
+ *
+ * # Safety
+ * `data`/`len` readable; `query` a valid NUL-terminated UTF-8 string;
+ * `out_ptr`/`out_len` writable.
+ */
+PdfStatus pdf_find_text_json(const uint8_t *data,
+                             uintptr_t len,
+                             const char *query,
+                             int case_sensitive,
+                             unsigned char **out_ptr,
+                             uintptr_t *out_len);
 
 /**
  * Extract every raster image from `data`/`len` and write each one as a file
@@ -979,6 +1050,55 @@ PdfStatus pdf_sign_complete(const uint8_t *document,
                             uintptr_t container_len,
                             unsigned char **out_ptr,
                             uintptr_t *out_len);
+
+/**
+ * **Network timestamp (AD-RT), phase 1.** Prepare `pdf` for a `/DocTimeStamp`
+ * from a network RFC 3161 TSA: returns the prepared PDF (`out_doc`) and the
+ * bytes to timestamp (`out_tbs`). SHA-256 `out_tbs`, build a request with
+ * [`pdf_timestamp_request`], POST it to the TSA, extract the token with
+ * [`pdf_timestamp_token_from_response`], then embed it via [`pdf_sign_complete`].
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; the four out pointers writable (buffers freed
+ * with `pdf_buffer_free`).
+ */
+PdfStatus pdf_timestamp_begin(const uint8_t *pdf,
+                              uintptr_t pdf_len,
+                              unsigned char **out_doc,
+                              uintptr_t *out_doc_len,
+                              unsigned char **out_tbs,
+                              uintptr_t *out_tbs_len);
+
+/**
+ * Build an RFC 3161 `TimeStampReq` (DER) for `imprint` (the SHA-256 of the
+ * bytes to timestamp). `nonce`/`nonce_len` is optional (NULL/0 = none);
+ * `cert_req` non-zero asks the TSA to embed its certificate. Result in
+ * `out_ptr`/`out_len` (freed with `pdf_buffer_free`).
+ *
+ * # Safety
+ * `imprint` readable for `imprint_len`; `nonce` NULL or readable for
+ * `nonce_len`; out pointers writable.
+ */
+PdfStatus pdf_timestamp_request(const uint8_t *imprint,
+                                uintptr_t imprint_len,
+                                const uint8_t *nonce,
+                                uintptr_t nonce_len,
+                                int cert_req,
+                                unsigned char **out_ptr,
+                                uintptr_t *out_len);
+
+/**
+ * Extract the `TimeStampToken` (a CMS `ContentInfo`) from a TSA's RFC 3161
+ * `TimeStampResp` in `response`/`response_len`. The token bytes (for
+ * [`pdf_sign_complete`]) are returned in `out_ptr`/`out_len`.
+ *
+ * # Safety
+ * `response` readable for `response_len`; out pointers writable.
+ */
+PdfStatus pdf_timestamp_token_from_response(const uint8_t *response,
+                                            uintptr_t response_len,
+                                            unsigned char **out_ptr,
+                                            uintptr_t *out_len);
 
 /**
  * **Model A — external signer callback.** Sign `pdf` without handing this

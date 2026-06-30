@@ -163,6 +163,7 @@
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
       <a href="#ed-output">Output &amp; incremental</a>
 
       <h4>Signatures</h4>
@@ -173,6 +174,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -573,10 +575,12 @@ $ed-&gt;save('filled.pdf');</code></pre></div>
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>watermarkText(text, size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0): self</code></div>
-      <div class="api"><code>watermarkImageFile(path, width, height, opacity = 0.30): self</code></div>
+      <div class="api"><code>watermarkText(text, size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0, opaqueBackground = false): self</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity = 0.30, rotationDeg = 0.0): self</code></div>
+      <p>Set <code>opaqueBackground: true</code> to white out the area behind the text stamp (an opaque label rather than a translucent overlay). <code>watermarkImageFile</code> takes a <code>rotationDeg</code> angle to rotate the image stamp.</p>
       <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('report.pdf');
-$ed-&gt;watermarkText('CONFIDENTIAL', opacity: 0.25, rotationDeg: 45.0)
+$ed-&gt;watermarkText('CONFIDENTIAL', opacity: 0.25, rotationDeg: 45.0, opaqueBackground: true)
+   -&gt;watermarkImageFile('stamp.png', 200, 120, opacity: 0.30, rotationDeg: 30.0)
    -&gt;save('stamped.pdf');</code></pre></div>
 
       <!-- ED REDACT -->
@@ -635,6 +639,22 @@ $ed = EditableDoc::load($original);
 $ed-&gt;setInfo('Subject', 'reviewed');
 $incremental = $ed-&gt;toBytesIncremental($original);   // original bytes preserved verbatim
 file_put_contents('reviewed.pdf', $incremental);</code></pre></div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Remove PDF/A conformance markers or downgrade the PDF version. <code>setVersion</code> changes the output header version, <code>stripPdfa</code> removes the OutputIntents, XMP <code>pdfaid</code> and <code>/Version</code>, and <code>normalize</code> does both (strip PDF/A then set the version) to produce a plain PDF.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setVersion(version): self</code></td><td>Set the output version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
+        <tr><td><code>stripPdfa(): self</code></td><td>Strip PDF/A conformance (OutputIntents, XMP <code>pdfaid</code>, <code>/Version</code>).</td></tr>
+        <tr><td><code>normalize(version = 2): self</code></td><td>Strip PDF/A and set the version in one call.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('archival.pdf');
+$ed-&gt;normalize(2)              // plain PDF 1.7, PDF/A markers removed
+   -&gt;save('plain.pdf');
+
+// or step by step:
+$ed-&gt;stripPdfa()-&gt;setVersion(1);   // PDF 1.5, no PDF/A conformance</code></pre></div>
 
       <!-- SIGN -->
       <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
@@ -710,7 +730,18 @@ file_put_contents('contract.signed.pdf', $signed);</code></pre></div>
         <tr><td><code>certify</code></td><td>A <code>Certify</code> DocMDP level applied by the first signature.</td></tr>
         <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; 0 means the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
         <tr><td><code>policy</code></td><td>A <code>SignaturePolicy</code> for PAdES-EPES, or <code>null</code> for none.</td></tr>
+        <tr><td><code>visible</code>, <code>visiblePage</code>, <code>visibleRect</code>, <code>visibleText</code></td><td>Draw a visible signature appearance: enable <code>visible</code>, place it with <code>visiblePage</code> (0-based) and <code>visibleRect</code> (<code>[x0,y0,x1,y1]</code> points), and add caption lines via <code>visibleText</code>.</td></tr>
+        <tr><td><code>visibleImage</code></td><td>PNG/JPEG bytes drawn aspect-fit behind any <code>visibleText</code> in the appearance rectangle, or <code>null</code> for none.</td></tr>
       </table>
+      <p>The visible appearance accepts an embedded image: set <code>visibleImage</code> to PNG or JPEG bytes and it is drawn aspect-fit behind the caption text.</p>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>$options = new SigningOptions(
+    reason: 'Approved',
+    visible: true,
+    visiblePage: 0,
+    visibleRect: [72, 72, 272, 152],
+    visibleText: "Jane Doe\nApproved",
+    visibleImage: file_get_contents('signature.png'),
+);</code></pre></div>
       <h4><code>Certify</code> (DocMDP)</h4>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -737,11 +768,31 @@ $lt = Pdf::addDss($signed, [$certDer], [$crlDer]);
 $lta = Pdf::timestamp($lt, $tsaKeyDer, $tsaCertDer);
 file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To timestamp against a network RFC 3161 TSA instead of a local key, use the transport-agnostic helpers: <code>beginTimestamp</code> prepares the document and returns <code>[document, tbs]</code>; SHA-256 the <code>tbs</code>, build a request with <code>timestampRequest</code>, POST it to the TSA, extract the token with <code>timestampTokenFromResponse</code>, then embed it with <code>completeSignature</code>. You do the HTTP POST; free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>Pdf::beginTimestamp(pdf): array</code></div>
+      <div class="api"><code>Pdf::timestampRequest(imprint, ?nonce = null, certReq = true): string</code></div>
+      <div class="api"><code>Pdf::timestampTokenFromResponse(response): string</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
+
+[$document, $tbs] = Pdf::beginTimestamp($signed);
+$imprint = hash('sha256', $tbs, true);            // raw 32-byte SHA-256
+$req     = Pdf::timestampRequest($imprint);       // RFC 3161 TimeStampReq (DER)
+
+// POST the DER request to the TSA (any HTTP client):
+$response = file_get_contents('https://freetsa.org/tsr', false, stream_context_create([
+    'http' =&gt; ['method' =&gt; 'POST', 'header' =&gt; 'Content-Type: application/timestamp-query', 'content' =&gt; $req],
+]));
+
+$token = Pdf::timestampTokenFromResponse($response);   // TimeStampToken (CMS)
+$lta   = Pdf::completeSignature($document, $token);
+file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf::verifySignatures(data: string): array</code></div>
-      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. The <code>field_name</code> and <code>signer</code> may be null when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>, plus certificate detail (any may be null): <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. The <code>field_name</code> and <code>signer</code> may be null when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned. It is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
 
 $data = file_get_contents('contract.signed.pdf');
@@ -750,6 +801,12 @@ foreach (Pdf::verifySignatures($data) as $sig) {
         $sig['signer'],
         $sig['is_valid'] ? 'yes' : 'no',
         $sig['covers_whole_document'] ? 'yes' : 'no');
+    printf("  issuer: %s | serial: %s | %s\n",
+        $sig['issuer'], $sig['serial_number'], $sig['algorithm']);
+    printf("  valid %s … %s | signed: %s | timestamped: %s\n",
+        $sig['valid_from'], $sig['valid_to'],
+        $sig['signing_time'],
+        $sig['has_timestamp'] ? 'yes' : 'no');
 }</code></pre></div>
 
       <!-- EXTRACT -->
@@ -764,6 +821,19 @@ echo Pdf::extractText($data);
 
 $n = Pdf::extractImagesToDir($data, 'out_images/');   // returns how many were written
 echo "wrote $n image(s)\n";</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query and get its position: <code>findText</code> returns a list of <code>TextHit</code> objects, each with a <code>page</code> and a bounding box (<code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>) in PDF points, origin lower-left. The search is case-insensitive unless <code>caseSensitive</code> is set. See the concept page on <a href="/search-pdf">searching PDF text</a>.</p>
+      <div class="api"><code>Pdf::findText(pdf: string, query: string, caseSensitive = false): TextHit[]</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
+
+$data = file_get_contents('report.pdf');
+foreach (Pdf::findText($data, 'Total') as $hit) {
+    printf("page %d: \"%s\" at (%.1f, %.1f) %.1f×%.1f pt\n",
+        $hit-&gt;page, $hit-&gt;text,
+        $hit-&gt;x, $hit-&gt;y, $hit-&gt;width, $hit-&gt;height);
+}</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -873,10 +943,12 @@ try {
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#sign-hsm">Deferred / HSM</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

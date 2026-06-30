@@ -174,19 +174,64 @@ public final class EditableDoc implements AutoCloseable {
 
     /** Stamp a diagonal text watermark on every page (sensible defaults). */
     public EditableDoc watermarkText(String text) {
-        return watermarkText(text, 64.0, 0.5, 0.5, 0.5, 0.30, 45.0);
+        return watermarkText(text, 64.0, 0.5, 0.5, 0.5, 0.30, 45.0, false);
     }
 
     /** Stamp a text watermark on every page. {@code rotationDeg} is the rotation in degrees. */
     public EditableDoc watermarkText(String text, double size, double r, double g, double b,
                                      double opacity, double rotationDeg) {
-        Pdf.check(FFI.C.pdf_editable_watermark_text(h(), text, size, r, g, b, opacity, rotationDeg));
+        return watermarkText(text, size, r, g, b, opacity, rotationDeg, false);
+    }
+
+    /**
+     * Stamp a text watermark on every page. When {@code opaqueBackground} is true
+     * the text is drawn over an opaque filled box (e.g. a stamp/redaction label).
+     */
+    public EditableDoc watermarkText(String text, double size, double r, double g, double b,
+                                     double opacity, double rotationDeg, boolean opaqueBackground) {
+        Pdf.check(FFI.C.pdf_editable_watermark_text(
+                h(), text, size, r, g, b, opacity, rotationDeg, opaqueBackground ? 1 : 0));
         return this;
     }
 
     /** Stamp an image watermark (from a file) on every page. */
     public EditableDoc watermarkImageFile(String path, double width, double height, double opacity) {
-        Pdf.check(FFI.C.pdf_editable_watermark_image_file(h(), path, width, height, opacity));
+        return watermarkImageFile(path, width, height, opacity, 0.0);
+    }
+
+    /** Stamp an image watermark (from a file) on every page, rotated {@code rotationDeg} degrees. */
+    public EditableDoc watermarkImageFile(String path, double width, double height,
+                                          double opacity, double rotationDeg) {
+        Pdf.check(FFI.C.pdf_editable_watermark_image_file(
+                h(), path, width, height, opacity, rotationDeg));
+        return this;
+    }
+
+    /**
+     * Set the output PDF version (downgrade/normalize): {@code version} is
+     * {@code 0}=1.4, {@code 1}=1.5, {@code 2}=1.7, {@code 3}=2.0 (the same mapping
+     * as {@link Document#setVersion(int)}).
+     */
+    public EditableDoc setVersion(int version) {
+        Pdf.check(FFI.C.pdf_editable_set_version(h(), version));
+        return this;
+    }
+
+    /**
+     * Strip PDF/A conformance (catalog {@code /OutputIntents}, the XMP
+     * {@code pdfaid} block and {@code /Version}) so the file becomes a plain PDF.
+     */
+    public EditableDoc stripPdfa() {
+        Pdf.check(FFI.C.pdf_editable_strip_pdfa(h()));
+        return this;
+    }
+
+    /**
+     * Normalize to a plain PDF at {@code version} (strip PDF/A then set the
+     * version). Version codes as in {@link #setVersion(int)}.
+     */
+    public EditableDoc normalize(int version) {
+        Pdf.check(FFI.C.pdf_editable_normalize(h(), version));
         return this;
     }
 

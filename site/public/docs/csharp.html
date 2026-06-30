@@ -161,6 +161,7 @@
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
       <a href="#ed-output">Output &amp; incremental</a>
 
       <h4>Signatures</h4>
@@ -170,6 +171,7 @@
       <a href="#verify">Validate signatures</a>
 
       <h4>Other</h4>
+      <a href="#search">Positional text search</a>
       <a href="#extract">Text &amp; image extraction</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -549,11 +551,13 @@ ed.Save("filled.pdf");</code></pre></div>
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>WatermarkText(text, size = 64.0, color = null, opacity = 0.30, rotationDeg = 45.0)</code></div>
-      <div class="api"><code>WatermarkImageFile(path, width, height, opacity = 0.30)</code></div>
+      <div class="api"><code>WatermarkText(text, size = 64.0, color = null, opacity = 0.30, rotationDeg = 45.0, opaqueBackground = false)</code></div>
+      <div class="api"><code>WatermarkImageFile(path, width, height, opacity = 0.30, rotationDeg = 0.0)</code></div>
+      <p>Set <code>opaqueBackground: true</code> to draw an opaque box behind the text, a white-out / redaction-style banner instead of a transparent overlay. <code>WatermarkImageFile</code> takes a <code>rotationDeg</code> to rotate the stamped image.</p>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("report.pdf");
 ed.WatermarkText("CONFIDENTIAL", color: (0.7, 0.1, 0.1),
-                 opacity: 0.25, rotationDeg: 45);
+                 opacity: 0.25, rotationDeg: 45, opaqueBackground: false);
+ed.WatermarkImageFile("stamp.png", 200, 120, opacity: 0.30, rotationDeg: 30);
 ed.Save("stamped.pdf");</code></pre></div>
 
       <!-- ED REDACT -->
@@ -603,6 +607,21 @@ ed.Encrypt(user: "", owner: "owner-secret",
 ed.Save("secured.pdf");          // throws PdfException without an Encryption license</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
       <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (verified against qpdf for all three ciphers). The <code>readOnly</code> permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat <code>readOnly</code> as a hint to well-behaved viewers, not as an access control.</div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Turn a PDF/A or PDF 2.0 file back into a plain PDF: <code>SetVersion</code> sets the header version, <code>StripPdfa</code> removes the PDF/A conformance markers (<code>/OutputIntents</code>, the XMP <code>pdfaid</code> entry and any <code>/Version</code> override), and <code>Normalize</code> does both at once.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>SetVersion(version)</code></td><td>Set the output version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0). Clears any catalog <code>/Version</code> override.</td></tr>
+        <tr><td><code>StripPdfa()</code></td><td>Remove PDF/A conformance so the file is a plain PDF.</td></tr>
+        <tr><td><code>Normalize(version)</code></td><td>Strip PDF/A and set the version in one call (codes as in <code>SetVersion</code>).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("archival.pdf");
+ed.Normalize(2);                 // strip PDF/A + set version 1.7
+// or step by step:
+// ed.StripPdfa().SetVersion(2);
+ed.Save("plain.pdf");</code></pre></div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>
@@ -684,7 +703,21 @@ File.WriteAllBytes("contract.signed.pdf", signed);</code></pre></div>
         <tr><td><code>Certify</code></td><td>Certify the document (DocMDP); use only on the first signature. See <code>Certify</code> below.</td></tr>
         <tr><td><code>ContainerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
         <tr><td><code>Policy</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>null</code> for none.</td></tr>
+        <tr><td><code>Visible</code></td><td><code>true</code> draws a visible signature appearance using the fields below.</td></tr>
+        <tr><td><code>VisiblePage</code>, <code>VisibleRect</code></td><td>0-based page index and the appearance rectangle <code>[x0, y0, x1, y1]</code> in points.</td></tr>
+        <tr><td><code>VisibleText</code></td><td>Appearance text lines (separated by <code>\n</code>); <code>null</code> for none.</td></tr>
+        <tr><td><code>VisibleImage</code></td><td>PNG/JPEG bytes drawn aspect-fit behind any text (e.g. a handwritten-signature scan); <code>null</code> for none.</td></tr>
       </table>
+      <p>A visible signature can carry an embedded image: set <code>Visible = true</code>, give it a rectangle, and pass the PNG/JPEG bytes in <code>VisibleImage</code> (drawn aspect-fit behind <code>VisibleText</code>).</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>var opts = new SigningOptions
+{
+    Name = "Jane Doe",
+    Visible = true,
+    VisiblePage = 0,
+    VisibleRect = new[] { 72.0, 96.0, 272.0, 156.0 },
+    VisibleText = "Signed by Jane Doe\n2026-06-30",
+    VisibleImage = File.ReadAllBytes("signature.png"),
+};</code></pre></div>
       <h4>Certify</h4>
       <table>
         <tr><th>Value</th><th>DocMDP level</th></tr>
@@ -710,17 +743,62 @@ byte[] lt = Pdf.AddDss(signed, new[] { certDer }, new[] { crlDer });
 byte[] lta = Pdf.Timestamp(lt, tsaKeyDer, tsaCertDer);
 File.WriteAllBytes("contract.lta.pdf", lta);</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To stamp from a real network RFC 3161 TSA, the transport is left to you: <code>Pdf.BeginTimestamp</code> prepares the PDF and returns the bytes to timestamp, <code>Pdf.TimestampRequest</code> builds the request (DER), you POST it to the TSA, <code>Pdf.TimestampTokenFromResponse</code> extracts the token, then <code>Pdf.CompleteSignature</code> embeds it. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>Pdf.BeginTimestamp(pdf) → (byte[] Document, byte[] Bytes)</code></div>
+      <div class="api"><code>Pdf.TimestampRequest(imprint, nonce?, certReq = true) → byte[]</code></div>
+      <div class="api"><code>Pdf.TimestampTokenFromResponse(response) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using System.Security.Cryptography;
+
+byte[] pdf = File.ReadAllBytes("contract.signed.pdf");
+
+var (document, toStamp) = Pdf.BeginTimestamp(pdf);
+byte[] imprint = SHA256.HashData(toStamp);
+byte[] request = Pdf.TimestampRequest(imprint);
+
+// POST the DER request to the TSA (you own the HTTP call):
+using var http = new HttpClient();
+using var body = new ByteArrayContent(request);
+body.Headers.ContentType = new("application/timestamp-query");
+byte[] response = await (await http.PostAsync("https://freetsa.org/tsr", body))
+    .Content.ReadAsByteArrayAsync();
+
+byte[] token  = Pdf.TimestampTokenFromResponse(response);
+byte[] lta    = Pdf.CompleteSignature(document, token);
+File.WriteAllBytes("contract.lta.pdf", lta);</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf.VerifySignatures(byte[] pdf) → IReadOnlyList&lt;SignatureInfo&gt;</code></div>
-      <p>Each <code>SignatureInfo</code> has <code>FieldName</code>, <code>SubFilter</code>, <code>Signer</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. <code>FieldName</code> and <code>Signer</code> may be <code>null</code> when absent (they are <code>string?</code>). An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each <code>SignatureInfo</code> has <code>FieldName</code>, <code>SubFilter</code>, <code>Signer</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. When the signer certificate parses, it also carries the certificate detail: <code>Issuer</code>, <code>SerialNumber</code>, <code>ValidFrom</code>, <code>ValidTo</code>, <code>Algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>SigningTime</code>, <code>CertCount</code> and <code>HasTimestamp</code>. The string fields may be <code>null</code> when absent. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
 
 byte[] data = File.ReadAllBytes("contract.signed.pdf");
 foreach (SignatureInfo sig in Pdf.VerifySignatures(data))
+{
     Console.WriteLine($"{sig.Signer} valid: {sig.IsValid} " +
-                      $"covers whole doc: {sig.CoversWholeDocument}");</code></pre></div>
+                      $"covers whole doc: {sig.CoversWholeDocument}");
+    Console.WriteLine($"  issuer:    {sig.Issuer}");
+    Console.WriteLine($"  serial:    {sig.SerialNumber}");
+    Console.WriteLine($"  valid:     {sig.ValidFrom} … {sig.ValidTo}");
+    Console.WriteLine($"  algorithm: {sig.Algorithm}");
+    Console.WriteLine($"  signed at: {sig.SigningTime}");
+    Console.WriteLine($"  certs:     {sig.CertCount}, timestamp: {sig.HasTimestamp}");
+}</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back each match's bounding box in PDF points (origin lower-left). Useful for highlighting, redaction targeting, or locating where to stamp. Search is case-insensitive by default; pass <code>caseSensitive: true</code> to match case. See the <a href="/search-pdf">searching a PDF</a> concept page for background.</p>
+      <div class="api"><code>Pdf.FindText(byte[] pdf, string query, bool caseSensitive = false) → IReadOnlyList&lt;TextHit&gt;</code></div>
+      <p>Each <code>TextHit</code> has <code>Page</code> (0-based), <code>Text</code>, and the box <code>X</code>, <code>Y</code>, <code>Width</code>, <code>Height</code>. An empty list means no match.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using RustPdf;
+
+byte[] data = File.ReadAllBytes("report.pdf");
+foreach (TextHit hit in Pdf.FindText(data, "Total"))
+    Console.WriteLine(
+        $"page {hit.Page}: \"{hit.Text}\" at " +
+        $"({hit.X:0.#}, {hit.Y:0.#}) {hit.Width:0.#}×{hit.Height:0.#} pt");</code></pre></div>
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
@@ -845,8 +923,10 @@ catch (PdfException e)
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
+      <a href="#search">Text search</a>
       <a href="#extract">Extraction</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

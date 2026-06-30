@@ -57,6 +57,8 @@ const SHA256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.16.840.1.10
 use cos::{Dict, Object, Reference, Stream};
 use parser::PdfReader;
 
+use crate::image::image_xobject_dict;
+
 /// Errors from signing/timestamping.
 #[derive(Debug)]
 pub enum SignError {
@@ -131,11 +133,27 @@ impl Signer {
 }
 
 /// A visible signature appearance.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct VisibleSignature {
     pub page: usize,
     pub rect: [f64; 4],
     pub lines: Vec<String>,
+    /// Optional raw PNG or JPEG bytes of a handwritten-signature / logo image,
+    /// drawn (aspect-fit, centered) inside the appearance rectangle. Any
+    /// [`lines`](VisibleSignature::lines) are drawn on top.
+    pub image: Option<Vec<u8>>,
+}
+
+/// Decode raw image bytes (PNG or JPEG, sniffed by magic number) for embedding
+/// in a visible-signature appearance.
+fn decode_signature_image(data: &[u8]) -> Option<images::Image> {
+    if data.starts_with(&[0x89, b'P', b'N', b'G']) {
+        images::Image::from_png(data).ok()
+    } else if data.starts_with(&[0xFF, 0xD8]) {
+        images::Image::from_jpeg(data.to_vec()).ok()
+    } else {
+        None
+    }
 }
 
 /// What a **certifying** (DocMDP) signature still allows. Set this on the
@@ -344,6 +362,121 @@ pub fn timestamp(pdf: &[u8], tsa: &Signer, date: Option<&str>) -> Result<Vec<u8>
     )?;
     let der = build_timestamp_token(tsa, prepared.signed_bytes(), &gen_time)?;
     prepared.complete(&der)
+}
+
+/// Begin a **document timestamp** against a *network* RFC 3161 TSA (PAdES-B-T /
+/// AD-RT). Prepares the `/DocTimeStamp` incremental update with a placeholder
+/// `/Contents` and returns a [`SigningSession`]; the timestamp authority — not
+/// this library — performs the network round-trip, keeping the core offline and
+/// dependency-free:
+///
+/// 1. `let s = begin_timestamp(pdf)?;`
+/// 2. `let req = timestamp_request(&s.hash(), None, true);`
+/// 3. POST `req` to the TSA (`Content-Type: application/timestamp-query`) and
+///    read the `application/timestamp-reply` body.
+/// 4. `let token = timestamp_token_from_response(&reply)?;`
+/// 5. `let out = s.complete(&token)?;`
+pub fn begin_timestamp(pdf: &[u8]) -> Result<SigningSession, SignError> {
+    crate::require(license::Feature::Signatures)?;
+    prepare_internal(
+        pdf,
+        PrepareParams {
+            sig_type: "DocTimeStamp",
+            subfilter: "ETSI.RFC3161",
+            field_prefix: "Timestamp",
+            extra: Vec::new(),
+            visible: None,
+            certification: None,
+            reserved: RESERVED,
+        },
+    )
+}
+
+/// Build an RFC 3161 `TimeStampReq` (DER) for `imprint` (the SHA-256 of the
+/// bytes to timestamp — e.g. [`SigningSession::hash`]). `nonce` is optional
+/// anti-replay; `cert_req` asks the TSA to embed its certificate in the token
+/// (set it `true` so the token is self-contained for later verification/LTV).
+pub fn timestamp_request(imprint: &[u8], nonce: Option<&[u8]>, cert_req: bool) -> Vec<u8> {
+    // hashAlgorithm: SEQUENCE { OID sha256, NULL }
+    let mut alg = tlv(0x06, ID_SHA_256.as_bytes());
+    alg.extend(tlv(0x05, &[])); // NULL parameters
+    let alg = tlv(0x30, &alg);
+    // MessageImprint: SEQUENCE { hashAlgorithm, hashedMessage OCTET STRING }
+    let mut mi = alg;
+    mi.extend(tlv(0x04, imprint));
+    let mi = tlv(0x30, &mi);
+    // TimeStampReq: SEQUENCE { version 1, messageImprint, [nonce], certReq }
+    let mut body = tlv(0x02, &[1]); // version v1
+    body.extend(mi);
+    if let Some(n) = nonce {
+        body.extend(tlv(0x02, n));
+    }
+    if cert_req {
+        body.extend(tlv(0x01, &[0xFF])); // certReq TRUE (DEFAULT FALSE)
+    }
+    tlv(0x30, &body)
+}
+
+/// Extract the `TimeStampToken` (a CMS `ContentInfo`, ready for `/Contents`)
+/// from a TSA's RFC 3161 `TimeStampResp`. Errors if the response status is not
+/// *granted* / *grantedWithMods* or no token is present.
+///
+/// `TimeStampResp ::= SEQUENCE { status PKIStatusInfo, timeStampToken ContentInfo OPTIONAL }`
+pub fn timestamp_token_from_response(response: &[u8]) -> Result<Vec<u8>, SignError> {
+    let err = || SignError::Structure("malformed RFC 3161 TimeStampResp".into());
+    // Outer SEQUENCE.
+    let (tag, hdr, len) = der_header(response).ok_or_else(err)?;
+    if tag != 0x30 {
+        return Err(err());
+    }
+    let body = response.get(hdr..hdr + len).ok_or_else(err)?;
+    // First element: PKIStatusInfo (SEQUENCE) — its first field is the status INTEGER.
+    let (st_tag, st_hdr, st_len) = der_header(body).ok_or_else(err)?;
+    if st_tag != 0x30 {
+        return Err(err());
+    }
+    let status_info = body.get(st_hdr..st_hdr + st_len).ok_or_else(err)?;
+    let (status_tag, status_hdr, status_len) = der_header(status_info).ok_or_else(err)?;
+    if status_tag == 0x02 {
+        let status = status_info
+            .get(status_hdr..status_hdr + status_len)
+            .and_then(|b| b.last())
+            .copied()
+            .unwrap_or(0xFF);
+        // 0 = granted, 1 = grantedWithMods; anything else is a rejection.
+        if status != 0 && status != 1 {
+            return Err(SignError::Structure(format!(
+                "TSA rejected the request (PKIStatus {status})"
+            )));
+        }
+    }
+    // The remaining bytes after PKIStatusInfo are the timeStampToken ContentInfo.
+    let token = body.get(st_hdr + st_len..).ok_or_else(err)?;
+    if token.is_empty() || der_header(token).map(|(t, _, _)| t) != Some(0x30) {
+        return Err(SignError::Structure(
+            "TimeStampResp carried no token".into(),
+        ));
+    }
+    Ok(token.to_vec())
+}
+
+/// Read one DER TLV header: returns `(tag, header_len, content_len)`.
+fn der_header(b: &[u8]) -> Option<(u8, usize, usize)> {
+    let tag = *b.first()?;
+    let l0 = *b.get(1)?;
+    if l0 < 0x80 {
+        Some((tag, 2, l0 as usize))
+    } else {
+        let n = (l0 & 0x7f) as usize;
+        if n == 0 || n > 4 {
+            return None;
+        }
+        let mut len = 0usize;
+        for i in 0..n {
+            len = (len << 8) | *b.get(2 + i)? as usize;
+        }
+        Some((tag, 2 + n, len))
+    }
 }
 
 /// Add a Document Security Store (`/DSS`) with validation `certs` and `crls`
@@ -608,6 +741,40 @@ fn prepare_internal(pdf: &[u8], p: PrepareParams) -> Result<SigningSession, Sign
             Object::Dict(Dict::new().with("N", Reference::new(*form_num))),
         );
         let (w, h) = (x1 - x0, y1 - y0);
+
+        // Optional embedded image (handwritten signature / logo).
+        let mut xobject_res = Dict::new();
+        let mut img_dims: Option<(f64, f64)> = None;
+        if let Some(img) = vis.image.as_ref().and_then(|b| decode_signature_image(b)) {
+            let img_num = alloc();
+            let smask_ref = img.soft_mask.as_ref().map(|m| {
+                let n = alloc();
+                let d = Dict::new()
+                    .with("Type", Object::name("XObject"))
+                    .with("Subtype", Object::name("Image"))
+                    .with("Width", m.width as i64)
+                    .with("Height", m.height as i64)
+                    .with("ColorSpace", Object::name("DeviceGray"))
+                    .with("BitsPerComponent", m.bits_per_component as i64)
+                    .with("Filter", Object::name("FlateDecode"));
+                objects.push((
+                    n,
+                    Object::Stream(Stream::with_dict(d, m.data.clone())).to_bytes(),
+                ));
+                n
+            });
+            let mut idict = image_xobject_dict(&img);
+            if let Some(n) = smask_ref {
+                idict.set("SMask", Reference::new(n));
+            }
+            objects.push((
+                img_num,
+                Object::Stream(Stream::with_dict(idict, img.data.clone())).to_bytes(),
+            ));
+            xobject_res.set("SigImg", Reference::new(img_num));
+            img_dims = Some((img.width as f64, img.height as f64));
+        }
+
         let mut form_dict = Dict::new()
             .with("Type", Object::name("XObject"))
             .with("Subtype", Object::name("Form"))
@@ -615,13 +782,14 @@ fn prepare_internal(pdf: &[u8], p: PrepareParams) -> Result<SigningSession, Sign
                 "BBox",
                 Object::Array(vec![0.into(), 0.into(), w.into(), h.into()]),
             );
-        form_dict.set(
-            "Resources",
-            Object::Dict(Dict::new().with(
-                "Font",
-                Object::Dict(Dict::new().with("Helv", Reference::new(*font_num))),
-            )),
+        let mut resources = Dict::new().with(
+            "Font",
+            Object::Dict(Dict::new().with("Helv", Reference::new(*font_num))),
         );
+        if !xobject_res.is_empty() {
+            resources.set("XObject", Object::Dict(xobject_res));
+        }
+        form_dict.set("Resources", Object::Dict(resources));
         let font = Dict::new()
             .with("Type", Object::name("Font"))
             .with("Subtype", Object::name("Type1"))
@@ -631,7 +799,7 @@ fn prepare_internal(pdf: &[u8], p: PrepareParams) -> Result<SigningSession, Sign
             *form_num,
             Object::Stream(Stream::with_dict(
                 form_dict,
-                appearance_content(w, h, &vis.lines),
+                appearance_content(w, h, &vis.lines, img_dims),
             ))
             .to_bytes(),
         ));
@@ -705,9 +873,20 @@ fn prepare_internal(pdf: &[u8], p: PrepareParams) -> Result<SigningSession, Sign
     })
 }
 
-fn appearance_content(w: f64, h: f64, lines: &[String]) -> Vec<u8> {
+fn appearance_content(w: f64, h: f64, lines: &[String], image: Option<(f64, f64)>) -> Vec<u8> {
     let mut s = Vec::new();
     s.extend_from_slice(b"q\n");
+    // Embedded image (aspect-fit, centered) drawn behind any text.
+    if let Some((iw, ih)) = image {
+        if iw > 0.0 && ih > 0.0 {
+            let scale = (w / iw).min(h / ih);
+            let (dw, dh) = (iw * scale, ih * scale);
+            let (dx, dy) = ((w - dw) / 2.0, (h - dh) / 2.0);
+            s.extend_from_slice(
+                format!("q {dw:.2} 0 0 {dh:.2} {dx:.2} {dy:.2} cm /SigImg Do Q\n").as_bytes(),
+            );
+        }
+    }
     s.extend_from_slice(
         format!(
             "0.4 0.4 0.4 RG 0.8 w 0.4 0.4 {:.2} {:.2} re S\n",
@@ -1198,4 +1377,46 @@ fn escape(s: &str) -> String {
     s.replace('\\', "\\\\")
         .replace('(', "\\(")
         .replace(')', "\\)")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn timestamp_request_is_well_formed_der() {
+        let imprint = [0x11u8; 32];
+        let req = timestamp_request(&imprint, Some(&[0x42]), true);
+        // Outer SEQUENCE.
+        assert_eq!(req[0], 0x30);
+        let (_, hdr, len) = der_header(&req).unwrap();
+        assert_eq!(hdr + len, req.len(), "length covers the whole request");
+        // Contains the SHA-256 OID and the imprint bytes.
+        assert!(req.windows(imprint.len()).any(|w| w == imprint));
+        assert!(req
+            .windows(ID_SHA_256.as_bytes().len())
+            .any(|w| w == ID_SHA_256.as_bytes()));
+        // certReq TRUE (BOOLEAN 0xFF) present.
+        assert!(req.windows(3).any(|w| w == [0x01, 0x01, 0xFF]));
+    }
+
+    #[test]
+    fn extracts_token_from_granted_response() {
+        // A minimal token ContentInfo (any SEQUENCE will do for the codec test).
+        let token = tlv(0x30, &tlv(0x06, &[0x2A]));
+        // PKIStatusInfo { status INTEGER 0 }.
+        let status_info = tlv(0x30, &tlv(0x02, &[0]));
+        let mut body = status_info;
+        body.extend_from_slice(&token);
+        let resp = tlv(0x30, &body);
+        let got = timestamp_token_from_response(&resp).unwrap();
+        assert_eq!(got, token, "the ContentInfo token is returned verbatim");
+    }
+
+    #[test]
+    fn rejected_response_is_an_error() {
+        let status_info = tlv(0x30, &tlv(0x02, &[2])); // rejection
+        let resp = tlv(0x30, &status_info);
+        assert!(timestamp_token_from_response(&resp).is_err());
+    }
 }

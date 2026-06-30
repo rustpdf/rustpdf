@@ -68,6 +68,42 @@ fn valid_signature_verifies() {
 }
 
 #[test]
+fn report_exposes_rich_certificate_details() {
+    // Issue #41 P1 #5: inspection beyond subject DN + integrity.
+    let pdf = signed_pdf();
+    let r = &verify_signatures(&pdf).unwrap()[0];
+    assert!(r.signer.is_some(), "subject DN");
+    assert!(r.issuer.is_some(), "issuer DN must be exposed");
+    let serial = r.serial_number.as_deref().expect("serial number");
+    assert!(
+        serial.chars().all(|c| c.is_ascii_hexdigit()) && !serial.is_empty(),
+        "serial is uppercase hex: {serial}"
+    );
+    let from = r.valid_from.as_deref().expect("validity start");
+    let to = r.valid_to.as_deref().expect("validity end");
+    assert!(from.len() == 20 && from.ends_with('Z'), "ISO-8601: {from}");
+    assert!(to.len() == 20 && to.ends_with('Z'), "ISO-8601: {to}");
+    assert_eq!(
+        r.algorithm.as_deref(),
+        Some("SHA256withRSA"),
+        "this library signs RSA + SHA-256"
+    );
+    assert!(r.cert_count >= 1, "at least the signer cert is embedded");
+}
+
+#[test]
+fn timestamp_flag_set_for_doctimestamp() {
+    let signed = signed_pdf();
+    let stamped = pdf::timestamp(&signed, &tsa(), None).unwrap();
+    let ts = verify_signatures(&stamped)
+        .unwrap()
+        .into_iter()
+        .find(|r| r.sub_filter == "ETSI.RFC3161")
+        .unwrap();
+    assert!(ts.has_timestamp, "a DocTimeStamp reports has_timestamp");
+}
+
+#[test]
 fn tampering_breaks_the_digest() {
     let mut pdf = signed_pdf();
     // Flip a byte inside the first signed segment (the page content area).

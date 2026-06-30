@@ -56,6 +56,14 @@ module RustPdf
     AES256 = 2
   end
 
+  # Output PDF version (for set_version / normalize).
+  module Version
+    V1_4 = 0
+    V1_5 = 1
+    V1_7 = 2
+    V2_0 = 3
+  end
+
   # ZUGFeRD / Factur-X conformance profiles.
   module FacturxProfile
     MINIMUM = 0
@@ -114,12 +122,18 @@ module RustPdf
     end
   end
 
-  # Options for deferred / external signing (issue #41).
+  # Options for deferred / external signing (issue #41). The +visible_*+ fields
+  # request a visible signature appearance: +visible_rect+ is [x0,y0,x1,y1] in
+  # points, +visible_text+ is newline-separated appearance lines, and
+  # +visible_image+ is PNG/JPEG bytes of a handwritten-signature image.
   class SigningOptions
-    attr_accessor :reason, :location, :name, :pades, :certify, :container_size, :policy
+    attr_accessor :reason, :location, :name, :pades, :certify, :container_size, :policy,
+                  :visible, :visible_page, :visible_rect, :visible_text, :visible_image
 
     def initialize(reason: nil, location: nil, name: nil, pades: false,
-                   certify: Certify::NONE, container_size: 0, policy: nil)
+                   certify: Certify::NONE, container_size: 0, policy: nil,
+                   visible: false, visible_page: 0, visible_rect: nil,
+                   visible_text: nil, visible_image: nil)
       @reason = reason
       @location = location
       @name = name
@@ -127,12 +141,21 @@ module RustPdf
       @certify = certify
       @container_size = container_size
       @policy = policy
+      @visible = visible
+      @visible_page = visible_page
+      @visible_rect = visible_rect
+      @visible_text = visible_text
+      @visible_image = visible_image
     end
   end
 
   # A signature field discovered in a PDF (pre-signing inventory). +signed+ is
   # true when the field already carries a signature.
   SignatureField = Struct.new(:name, :signed)
+
+  # One positional text match from #find_text. Coordinates are in PDF points,
+  # origin lower-left; +x+/+y+ is the lower-left corner of the box.
+  TextHit = Struct.new(:page, :text, :x, :y, :width, :height)
 
   # An in-progress two-phase signature: #document holds the placeholder PDF and
   # #bytes the exact bytes the signature covers. Hand #hash to a remote signer,
@@ -202,10 +225,27 @@ module RustPdf
     count[0, Native::SIZEOF_SZ].unpack1("J")
   end
 
+  # Find every occurrence of +query+ in +pdf+, returning positional boxes.
+  # Returns an Array of TextHit (page, text, x, y, width, height) in PDF points
+  # (origin lower-left). +case_sensitive+ defaults to false. An empty Array
+  # means no match.
+  def find_text(pdf, query, case_sensitive: false)
+    js = take_bytes do |pp, pn|
+      Native.call("pdf_find_text_json", pdf, pdf.bytesize, query, case_sensitive ? 1 : 0, pp, pn)
+    end.force_encoding(Encoding::UTF_8)
+    return [] if js.empty?
+
+    JSON.parse(js).map do |h|
+      TextHit.new(h["page"], h["text"], h["x"], h["y"], h["width"], h["height"])
+    end
+  end
+
   # Validate every signature in +pdf+. Returns one Hash per signature with keys
   # "field_name", "sub_filter", "signer", "covers_whole_document",
-  # "digest_valid", "signature_valid", "is_valid" and "byte_range". An empty
-  # array means the document is unsigned.
+  # "digest_valid", "signature_valid", "is_valid" and "byte_range", plus the
+  # richer certificate fields (any may be null): "issuer", "serial_number",
+  # "valid_from", "valid_to", "algorithm", "signing_time", "cert_count" and
+  # "has_timestamp". An empty array means the document is unsigned.
   def verify_signatures(pdf)
     js = take_bytes { |pp, pn| Native.call("pdf_verify_signatures_json", pdf, pdf.bytesize, pp, pn) }
          .force_encoding(Encoding::UTF_8)
@@ -323,6 +363,42 @@ module RustPdf
     end
   end
 
+  # ---- network TSA (AD-RT) document timestamp — issue #41 -------------------
+
+  # Phase 1 of a network-TSA document timestamp (/DocTimeStamp). Prepares +pdf+
+  # and returns [document_bytes, tbs_bytes]: +tbs_bytes+ are the bytes whose
+  # SHA-256 forms the RFC 3161 message imprint. Build a TimeStampReq with
+  # #timestamp_request, POST it to the TSA, extract the token with
+  # #timestamp_token_from_response, then embed it via #complete_signature.
+  def begin_timestamp(pdf)
+    doc_p = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    doc_n = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    tbs_p = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    tbs_n = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
+    check(Native.call("pdf_timestamp_begin", pdf, pdf.bytesize, doc_p, doc_n, tbs_p, tbs_n))
+    [read_buffer(doc_p, doc_n), read_buffer(tbs_p, tbs_n)]
+  end
+
+  # Build an RFC 3161 TimeStampReq (DER) for +imprint+ (the SHA-256 of the bytes
+  # to timestamp, e.g. the +tbs_bytes+ from #begin_timestamp). +nonce+ is
+  # optional; +cert_req+ asks the TSA to embed its certificate. Returns the
+  # request bytes to POST to the TSA.
+  def timestamp_request(imprint, nonce: nil, cert_req: true)
+    take_bytes do |pp, pn|
+      Native.call("pdf_timestamp_request", imprint, imprint.bytesize,
+                  nonce, nonce ? nonce.bytesize : 0, cert_req ? 1 : 0, pp, pn)
+    end
+  end
+
+  # Extract the TimeStampToken (a CMS ContentInfo) from a TSA's RFC 3161
+  # TimeStampResp +response+ bytes. The returned token is embedded via
+  # #complete_signature(document, token).
+  def timestamp_token_from_response(response)
+    take_bytes do |pp, pn|
+      Native.call("pdf_timestamp_token_from_response", response, response.bytesize, pp, pn)
+    end
+  end
+
   # List the signature fields in +pdf+ (detect existing signatures before
   # signing). Returns an Array of SignatureField; an empty Array means there are
   # no signature fields.
@@ -346,7 +422,8 @@ module RustPdf
   # returning [packed_struct, keepalive] where +keepalive+ holds the Fiddle
   # pointers backing the struct's string/byte fields (keep it referenced until
   # the native call returns). 64-bit layout: 3 ptr, 2 int (8 bytes together),
-  # size_t, ptr, ptr, size_t, ptr, ptr.
+  # size_t, ptr, ptr, size_t, ptr, ptr, then the visible-signature tail:
+  # int (+ 4 pad), size_t, double[4], ptr, ptr, size_t.
   def build_signing_options(options)
     keep = []
     cstr = lambda do |s|
@@ -381,9 +458,26 @@ module RustPdf
       policy_uri = cstr.call(pol.uri)
     end
 
+    visible  = options&.visible ? 1 : 0
+    vis_page = (options&.visible_page || 0).to_i
+    vis_rect = Array(options&.visible_rect || [0.0, 0.0, 0.0, 0.0]).map(&:to_f)[0, 4]
+    vis_rect += [0.0] * (4 - vis_rect.size)
+    vis_text = cstr.call(options&.visible_text)
+    vis_image = 0
+    vis_image_len = 0
+    if (img = options&.visible_image) && !img.empty?
+      ip = Fiddle::Pointer[img]
+      keep << ip
+      vis_image = ip.to_i
+      vis_image_len = img.bytesize
+    end
+
     bytes = [reason, location, name].pack("J3") +
             [pades, cert].pack("l2") +
-            [est, policy_oid, policy_hash, policy_hash_len, policy_alg, policy_uri].pack("J6")
+            [est, policy_oid, policy_hash, policy_hash_len, policy_alg, policy_uri].pack("J6") +
+            [visible].pack("l") + "\x00\x00\x00\x00".b +          # int visible + 4-byte pad
+            [vis_page].pack("J") + vis_rect.pack("d4") +
+            [vis_text, vis_image, vis_image_len].pack("J3")
     [bytes, keep]
   end
 

@@ -21,6 +21,7 @@ use RustPdf\PdfException;
 use RustPdf\SignatureField;
 use RustPdf\SigningOptions;
 use RustPdf\SigningSession;
+use RustPdf\TextHit;
 
 function repoRoot(): string
 {
@@ -275,5 +276,63 @@ check(strlen($session->getBytes()) > 0, 'session to-be-signed bytes non-empty');
 check(strlen($session->getHash()) === 32, 'session hash is 32 bytes (SHA-256)');
 echo 'beginSigning (Model B) ok (doc ' . strlen($session->getDocument())
     . ' bytes, tbs ' . strlen($session->getBytes()) . " bytes, 32-byte hash)\n";
+
+// 16. Issue #41 P1: positional text search.
+$hits = Pdf::findText($pdfa, 'Título');
+check(count($hits) >= 1, 'findText found at least one hit');
+check($hits[0] instanceof TextHit, 'findText returns TextHit');
+check($hits[0]->page === 0, 'hit on page 0');
+check($hits[0]->width > 0 && $hits[0]->height > 0, 'hit has a bounding box');
+echo 'findText ok (' . count($hits) . ' hit(s); box '
+    . round($hits[0]->width, 1) . 'x' . round($hits[0]->height, 1) . ")\n";
+// Case-insensitive default vs case-sensitive.
+check(Pdf::findText($pdfa, 'título', false) !== [], 'case-insensitive match');
+
+// 17. Issue #41 P1: rich signature inspection fields are accessible.
+$rich = Pdf::verifySignatures($signedA);
+check(count($rich) >= 1, 'rich verify has a signature');
+foreach (['issuer', 'serial_number', 'valid_from', 'valid_to', 'algorithm', 'signing_time', 'cert_count', 'has_timestamp'] as $key) {
+    check(array_key_exists($key, $rich[0]), "rich sig field present: $key");
+}
+echo 'rich verify fields ok (algorithm=' . var_export($rich[0]['algorithm'], true)
+    . ', cert_count=' . var_export($rich[0]['cert_count'], true) . ")\n";
+
+// 18. Issue #41 P1: normalization (set_version / strip_pdfa / normalize).
+$normEd = EditableDoc::load($pdfa);
+$normEd->setVersion(2); // 1.7
+$v17 = $normEd->toBytes();
+check(str_starts_with($v17, '%PDF-1.7'), 'set_version produced %PDF-1.7');
+$normEd2 = EditableDoc::load($pdfa);
+$normEd2->normalize(2);
+$plainNorm = $normEd2->toBytes();
+check(!str_contains($plainNorm, 'pdfaid'), 'normalize stripped PDF/A pdfaid');
+echo "set_version + normalize ok\n";
+
+// 19. Issue #41 P1: watermark opaque background + image rotation defaults.
+$wm2 = EditableDoc::load($pdfa);
+$wm2->watermarkText('DRAFT', size: 40.0, opacity: 0.25, rotationDeg: 30.0, opaqueBackground: true);
+check(strlen($wm2->toBytes()) > 0, 'opaque-background watermark produced bytes');
+echo "watermark opaque background ok\n";
+
+// 20. Issue #41 P1: visible signature via SigningOptions (Model A).
+$visOpts = new SigningOptions(
+    reason: 'Visible',
+    pades: true,
+    visible: true,
+    visiblePage: 0,
+    visibleRect: [72.0, 72.0, 272.0, 144.0],
+    visibleText: "Signed by rustpdf\nVisible appearance",
+);
+$signedVis = Pdf::signWith($plain, $cert, $signHash, [], $visOpts);
+check(str_contains($signedVis, '/ByteRange'), 'visible signature has ByteRange');
+check(Pdf::verifySignatures($signedVis)[0]['is_valid'] === true, 'visible signature valid');
+echo 'visible signature ok (' . strlen($signedVis) . " bytes)\n";
+
+// 21. Issue #41 P1: network-TSA (AD-RT) request plumbing.
+[$tsDoc, $tsTbs] = Pdf::beginTimestamp($plain);
+check(strlen($tsDoc) > 0 && strlen($tsTbs) > 0, 'beginTimestamp returned document + tbs');
+$tsReq = Pdf::timestampRequest(hash('sha256', $tsTbs, true));
+check(strlen($tsReq) > 0, 'timestampRequest built a DER request');
+echo 'network-TSA helpers ok (req ' . strlen($tsReq) . " bytes)\n";
 
 echo "OK: full PHP binding surface exercised\n";

@@ -150,6 +150,7 @@
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
       <a href="#ed-output">Output &amp; incremental</a>
 
       <h4>Signatures</h4>
@@ -160,6 +161,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -541,10 +543,13 @@ try ed.save(to: "filled.pdf")</code></pre></div>
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>watermarkText(_:size:color:opacity:rotationDeg:)</code></div>
-      <div class="api"><code>watermarkImageFile(path:width:height:opacity:)</code></div>
+      <div class="api"><code>watermarkText(_:size:color:opacity:rotationDeg:opaqueBackground:)</code></div>
+      <div class="api"><code>watermarkImageFile(path:width:height:opacity:rotationDeg:)</code></div>
+      <p>Set <code>opaqueBackground: true</code> to fill a solid rectangle behind the text (a white-out stamp effect) instead of a transparent overlay. <code>watermarkImageFile</code> takes a <code>rotationDeg</code> to rotate the stamped image.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("report.pdf"))
-try ed.watermarkText("CONFIDENTIAL", opacity: 0.25, rotationDeg: 45)
+try ed.watermarkText("CONFIDENTIAL", opacity: 0.25, rotationDeg: 45, opaqueBackground: false)
+try ed.watermarkImageFile(path: "stamp.png", width: 180, height: 180,
+                          opacity: 0.30, rotationDeg: 30)
 try ed.save(to: "stamped.pdf")</code></pre></div>
 
       <!-- ED REDACT -->
@@ -585,6 +590,22 @@ try ed.encrypt(method: .aes256, user: "", owner: "owner-secret", readOnly: true)
 try ed.save(to: "secured.pdf")     // throws without an Encryption license</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
       <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (cross-checked against qpdf for all three ciphers). The read-only permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat read-only as a hint to well-behaved viewers, not as an access control.</div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Downgrade the output PDF version or strip PDF/A conformance so a file becomes a plain PDF. <code>setVersion</code> sets the header version (and clears any catalog <code>/Version</code> override); <code>stripPdfa</code> removes the <code>/OutputIntents</code>, the XMP <code>pdfaid</code> identifier and the <code>/Version</code>; <code>normalize</code> does both in one call (strip PDF/A and set the version, defaulting to 1.7).</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setVersion(_:)</code></td><td>Set the output PDF version (see <a href="#enums"><code>PdfVersion</code></a>).</td></tr>
+        <tr><td><code>stripPdfa()</code></td><td>Remove PDF/A conformance, leaving a plain PDF.</td></tr>
+        <tr><td><code>normalize(_:)</code></td><td>Strip PDF/A and set the version (default <code>.v17</code>).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: try read("archival.pdf"))
+try ed.normalize(.v17)              // strip PDF/A + downgrade to 1.7
+// or step by step:
+// try ed.stripPdfa()
+// try ed.setVersion(.v15)
+try ed.save(to: "plain.pdf")</code></pre></div>
 
       <!-- ED OUTPUT -->
       <h2 id="ed-output">Output &amp; incremental update</h2>
@@ -670,7 +691,19 @@ let signed    = try session.complete(container)
         <tr><td><code>certify</code></td><td><code>Certify</code></td><td>Certify the document (DocMDP). Use only on the first signature.</td></tr>
         <tr><td><code>containerSize</code></td><td><code>Int</code></td><td>Reserved <code>/Contents</code> bytes; 0 uses the library default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
         <tr><td><code>policy</code></td><td><code>SignaturePolicy?</code></td><td>Signature-policy identifier (PAdES-EPES); <code>nil</code> for none.</td></tr>
+        <tr><td><code>visible</code></td><td><code>Bool</code></td><td>Draw a visible signature appearance using the fields below.</td></tr>
+        <tr><td><code>visiblePage</code></td><td><code>Int</code></td><td>0-based page index for the visible appearance.</td></tr>
+        <tr><td><code>visibleRect</code></td><td><code>(Double, Double, Double, Double)</code></td><td>Appearance rectangle <code>(x0, y0, x1, y1)</code> in page points.</td></tr>
+        <tr><td><code>visibleText</code></td><td><code>String?</code></td><td>Appearance text lines (separated by <code>\n</code>); <code>nil</code> for none.</td></tr>
+        <tr><td><code>visibleImage</code></td><td><code>[UInt8]</code></td><td>PNG/JPEG bytes drawn aspect-fit behind any <code>visibleText</code>; empty for none.</td></tr>
       </table>
+      <p>The visible appearance can carry an embedded image: set <code>visibleImage</code> to the PNG or JPEG bytes of a handwritten-signature graphic. It is drawn aspect-fit inside <code>visibleRect</code>, behind any <code>visibleText</code>.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let sigImage: [UInt8] = Array(try Data(contentsOf: URL(fileURLWithPath: "signature.png")))
+let opts = SigningOptions(reason: "Approved", pades: true,
+                          visible: true, visiblePage: 0,
+                          visibleRect: (360, 60, 540, 130),
+                          visibleText: "Jane Doe\n2026-06-30",
+                          visibleImage: sigImage)</code></pre></div>
 
       <h4>Certify</h4>
       <table>
@@ -710,15 +743,45 @@ let lt = try Pdf.addDss(pdf: signed, certs: [cert], crls: [crl])
 let lta = try Pdf.timestamp(pdf: lt, tsaKeyDER: tsaKey, tsaCertDER: tsaCert, date: Date())</code></pre></div>
       <div class="note"><b>Pass an explicit <code>date</code>.</b> The core is deterministic, so there is no implicit “now”. If you omit <code>date</code> (or pass <code>nil</code>), the <code>/DocTimeStamp</code> is stamped with the Unix epoch (Dec&nbsp;31&nbsp;1969), which is meaningless for long-term validation. Supply the current <code>Date()</code> (or the intended timestamp time) so the B-LTA timestamp carries a real time.</div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>For a trusted document timestamp from a network RFC 3161 TSA, the library exposes transport-agnostic helpers and leaves the HTTP POST to you. The flow is: <code>beginTimestamp</code> prepares the document and returns the bytes to timestamp; SHA-256 those bytes; build a request with <code>timestampRequest</code>; POST it to the TSA; extract the token with <code>timestampToken(fromResponse:)</code>; then embed it with <code>completeSignature</code>. Free public TSAs work, for example FreeTSA (<code>https://freetsa.org/tsr</code>) or DigiCert (<code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>Pdf.beginTimestamp(_ pdf: [UInt8]) -&gt; (document: [UInt8], bytes: [UInt8])</code></div>
+      <div class="api"><code>Pdf.timestampRequest(imprint: [UInt8], nonce: [UInt8]? = nil, certReq: Bool = true) -&gt; [UInt8]</code></div>
+      <div class="api"><code>Pdf.timestampToken(fromResponse: [UInt8]) -&gt; [UInt8]</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>import CryptoKit
+
+let pdf = try read("signed.pdf")
+
+// Phase 1: prepare and hash the bytes to timestamp.
+let (document, bytes) = try Pdf.beginTimestamp(pdf)
+let imprint = Array(SHA256.hash(data: Data(bytes)))
+
+// Build the RFC 3161 request and POST it to the TSA (you do the HTTP).
+let request = try Pdf.timestampRequest(imprint: imprint)
+var req = URLRequest(url: URL(string: "https://freetsa.org/tsr")!)
+req.httpMethod = "POST"
+req.setValue("application/timestamp-query", forHTTPHeaderField: "Content-Type")
+req.httpBody = Data(request)
+let (respData, _) = try await URLSession.shared.data(for: req)
+
+// Phase 2: extract the token from the response and embed it.
+let token  = try Pdf.timestampToken(fromResponse: [UInt8](respData))
+let stamped = try Pdf.completeSignature(document, container: token)
+try Data(stamped).write(to: URL(fileURLWithPath: "ltv.pdf"))</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf.verifySignatures(_ data: [UInt8]) -&gt; [SignatureReport]</code></div>
-      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. Note that <code>fieldName</code> and <code>signer</code> are optional (<code>String?</code>) and <code>nil</code> when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each <code>SignatureReport</code> has <code>fieldName</code>, <code>subFilter</code>, <code>signer</code>, <code>coversWholeDocument</code>, <code>digestValid</code>, <code>signatureValid</code>, <code>isValid</code> and <code>byteRange</code>. It also exposes the signer-certificate and CMS details: <code>issuer</code> (RFC 4514 DN), <code>serialNumber</code> (uppercase hex), <code>validFrom</code> / <code>validTo</code> (ISO-8601 certificate validity), <code>algorithm</code> (the friendly name, e.g. <code>SHA256withRSA</code>), <code>signingTime</code> (ISO-8601, from the signed attributes), <code>certCount</code> (certificates embedded in the CMS) and <code>hasTimestamp</code> (whether an embedded or document timestamp is present). The certificate-derived fields are optional (<code>String?</code>) and <code>nil</code> when absent, as are <code>fieldName</code> and <code>signer</code>. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("contract.signed.pdf")
 for sig in try Pdf.verifySignatures(data) {
     print(sig.signer ?? "?", "valid:", sig.isValid,
           "covers whole doc:", sig.coversWholeDocument)
+    print("  issuer:", sig.issuer ?? "?", "| serial:", sig.serialNumber ?? "?")
+    print("  algorithm:", sig.algorithm ?? "?", "| signed at:", sig.signingTime ?? "?")
+    print("  valid:", sig.validFrom ?? "?", "→", sig.validTo ?? "?")
+    print("  certs:", sig.certCount, "| timestamped:", sig.hasTimestamp)
 }</code></pre></div>
 
       <!-- EXTRACT -->
@@ -731,6 +794,17 @@ print(try Pdf.extractText(data))
 
 let n = try Pdf.extractImagesToDir(data, "out_images/")   // returns how many were written
 print("wrote \(n) image(s)")</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back its position on the page. Each match is a <code>TextHit</code> carrying the 0-based <code>page</code>, the matched <code>text</code>, and a bounding box (<code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>) in PDF points with the origin at the page's lower-left corner. Pass <code>caseSensitive: true</code> for an exact-case match. An empty array means no match. See the <a href="/search-pdf">searching text in a PDF</a> guide for the concept.</p>
+      <div class="api"><code>Pdf.findText(_ pdf: [UInt8], query: String, caseSensitive: Bool = false) -&gt; [TextHit]</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try read("report.pdf")
+for hit in try Pdf.findText(data, query: "Total") {
+    print("page \(hit.page): \"\(hit.text)\" at " +
+          "(\(hit.x), \(hit.y)) \(hit.width)×\(hit.height) pt")
+}</code></pre></div>
+      <p>Coordinates match the <a href="#coords">authoring coordinate system</a>, so a hit's box can be reused directly to draw a highlight or place a <a href="#links">link</a>.</p>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -754,6 +828,14 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
         <tr><td><code>.a4</code></td><td>PDF/A-4 (ISO 19005-4, based on PDF 2.0)</td></tr>
         <tr><td><code>.a4e</code></td><td>PDF/A-4e (engineering)</td></tr>
         <tr><td><code>.a4f</code></td><td>PDF/A-4f (requires at least one embedded file)</td></tr>
+      </table>
+      <h3>PdfVersion</h3>
+      <table>
+        <tr><th>Value</th><th>Header</th></tr>
+        <tr><td><code>.v14</code></td><td>PDF 1.4</td></tr>
+        <tr><td><code>.v15</code></td><td>PDF 1.5</td></tr>
+        <tr><td><code>.v17</code></td><td>PDF 1.7 (default for <code>normalize</code>)</td></tr>
+        <tr><td><code>.v20</code></td><td>PDF 2.0</td></tr>
       </table>
       <h3>Align</h3>
       <table>
@@ -838,9 +920,11 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

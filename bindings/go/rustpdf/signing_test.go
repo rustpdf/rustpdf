@@ -92,6 +92,13 @@ func TestDeferredSigning(t *testing.T) {
 	if !reports[0].IsValid {
 		t.Fatalf("deferred signature is not valid: %+v", reports[0])
 	}
+	// Issue #41 P1: the rich certificate fields are populated for a real signer.
+	if reports[0].Issuer == nil || *reports[0].Issuer == "" {
+		t.Fatalf("expected an issuer in the report: %+v", reports[0])
+	}
+	if reports[0].CertCount < 1 {
+		t.Fatalf("expected cert_count >= 1, got %d", reports[0].CertCount)
+	}
 
 	// ListSignatures sees exactly one (signed) field afterwards.
 	after, err := ListSignatures(signed)

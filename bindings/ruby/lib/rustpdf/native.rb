@@ -97,8 +97,10 @@ module RustPdf
       "pdf_editable_set_choice"      => [[VP, VP, VP, VP], I],
       "pdf_editable_flatten_forms"   => [[VP], I],
       "pdf_editable_field_names"     => [[VP, VP, VP], I],
-      "pdf_editable_watermark_text"  => [[VP, VP, D, D, D, D, D, D], I],
-      "pdf_editable_watermark_image_file" => [[VP, VP, D, D, D], I],
+      # watermark_text gained a trailing int opaque_background; watermark_image
+      # gained a trailing double rotation_deg (issue #41 P1).
+      "pdf_editable_watermark_text"  => [[VP, VP, D, D, D, D, D, D, I], I],
+      "pdf_editable_watermark_image_file" => [[VP, VP, D, D, D, D], I],
       # Tier 2: redaction + PDF/A conversion (EditableDoc)
       "pdf_editable_redact"          => [[VP, SZ, VP, SZ, VP], I],
       "pdf_editable_convert_to_pdfa" => [[VP, I], I],
@@ -112,6 +114,15 @@ module RustPdf
       "pdf_sign_complete"            => [[VP, SZ, VP, SZ, VP, VP], I],
       "pdf_sign_with"                => [[VP, SZ, VP, SZ, VP, VP, SZ, VP, VP, VP, VP, VP], I],
       "pdf_list_signatures"          => [[VP, SZ, VP, VP], I],
+
+      # Issue #41 P1: positional text search, version normalization, network TSA.
+      "pdf_find_text_json"           => [[VP, SZ, VP, I, VP, VP], I],
+      "pdf_editable_set_version"     => [[VP, I], I],
+      "pdf_editable_strip_pdfa"      => [[VP], I],
+      "pdf_editable_normalize"       => [[VP, I], I],
+      "pdf_timestamp_begin"          => [[VP, SZ, VP, VP, VP, VP], I],
+      "pdf_timestamp_request"        => [[VP, SZ, VP, SZ, I, VP, VP], I],
+      "pdf_timestamp_token_from_response" => [[VP, SZ, VP, VP], I],
     }.freeze
 
     def lib

@@ -265,6 +265,47 @@ public final class SmokeTest {
         System.out.println("Model B (beginSigning) ok: document=" + session.document().length
                 + " bytes, tbs=" + session.bytes().length + " bytes, hash=" + session.hash().length);
 
+        // 14. Issue #41 P1: positional text search.
+        List<TextHit> hits = Pdf.findText(pdfa, "Título");
+        assertThat(!hits.isEmpty(), "findText found at least one hit");
+        TextHit hit = hits.get(0);
+        assertThat(hit.width() > 0 && hit.height() > 0, "hit has a bounding box: " + hit);
+        System.out.println("findText: " + hits.size() + " hit(s), first page=" + hit.page()
+                + " x=" + hit.x() + " y=" + hit.y() + " w=" + hit.width() + " h=" + hit.height());
+
+        // 15. Issue #41 P1: normalization (set_version / strip_pdfa / normalize).
+        byte[] normalized;
+        try (EditableDoc ed = EditableDoc.load(pdfa)) {
+            ed.setVersion(2);            // 1.7
+            ed.normalize(2);             // strip PDF/A + set 1.7
+            normalized = ed.toBytes();
+        }
+        assertThat(normalized.length > 0, "normalized bytes");
+        assertThat(!latin1(normalized).contains("pdfaid"), "PDF/A identifier stripped");
+        System.out.println("normalize ok (" + normalized.length + " bytes)");
+
+        // 16. Issue #41 P1: watermark opaque background + image rotation API.
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            ed.watermarkText("DRAFT", 48.0, 0.8, 0.1, 0.1, 0.4, 30.0, true);
+            assertThat(ed.toBytes().length > 0, "opaque watermark bytes");
+        }
+        System.out.println("watermark opaque-background ok");
+
+        // 17. Issue #41 P1: rich verify fields are accessible on the signed doc.
+        SignatureReport rich = Pdf.verifySignatures(signed).get(0);
+        System.out.println("rich verify: algorithm=" + rich.algorithm()
+                + " issuer=" + rich.issuer() + " serial=" + rich.serialNumber()
+                + " certCount=" + rich.certCount() + " hasTimestamp=" + rich.hasTimestamp());
+
+        // 18. Issue #41 P1: network-TSA (AD-RT) request plumbing.
+        SigningSession tsSession = Pdf.beginTimestamp(plain);
+        assertThat(tsSession.document().length > 0, "timestamp begin produced a document");
+        assertThat(tsSession.hash().length == 32, "timestamp tbs hashes to 32 bytes");
+        byte[] tsReq = Pdf.timestampRequest(tsSession.hash());
+        assertThat(tsReq.length > 0, "TimeStampReq built");
+        System.out.println("beginTimestamp ok: doc=" + tsSession.document().length
+                + " bytes, request=" + tsReq.length + " bytes");
+
         System.out.println("OK: full Java binding surface exercised");
     }
 
