@@ -12,6 +12,13 @@ ignore = [
     # attacker-observable timing oracle over the signing operation, which our
     # usage does not expose. Revisit when `rsa` ships a mitigation.
     "RUSTSEC-2023-0071",
+    # RUSTSEC-2026-0192 — `ttf-parser` is unmaintained (author has stated it
+    # will receive no further fixes). It is not a vulnerability: `ttf-parser` is
+    # a mature, widely-used pure-Rust font parser at the heart of `fonts`/`render`
+    # (glyph metrics + outline extraction). No drop-in successor exists; the
+    # crate is stable and its parsing is bounded/non-panicking. Revisit if a
+    # maintained fork emerges or an actual vulnerability is disclosed.
+    "RUSTSEC-2026-0192",
 ]
 
 [licenses]

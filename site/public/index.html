@@ -465,7 +465,7 @@ doc.add_page
    .show_text(f, 20, 72, 760, "Title", heading_level: 1)
 data = doc.to_bytes               # archival-grade PDF</code></pre>
 <!-- Java tab hidden until published on Maven Central
-<pre class="tab-pane" data-pane="java"><code>// Maven: dev.rustpdf:rustpdf:0.4.0
+<pre class="tab-pane" data-pane="java"><code>// Maven: dev.rustpdf:rustpdf:0.4.4
 try (Document doc = new Document()) {
     doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Report");
     int f = doc.addFontFile("Roboto-Regular.ttf");
