@@ -71,6 +71,14 @@ type SigningOptions struct {
 	Certify       Certify
 	ContainerSize int
 	Policy        *SignaturePolicy
+
+	// Visible signature appearance (issue #41 P1). When Visible is false the
+	// remaining fields are ignored.
+	Visible      bool
+	VisiblePage  int        // 0-based page index
+	VisibleRect  [4]float64 // [x0, y0, x1, y1] in points
+	VisibleText  string     // appearance lines separated by '\n'; "" = none
+	VisibleImage []byte     // PNG/JPEG handwritten-signature image; nil = none
 }
 
 // SignatureField is a signature field discovered in a PDF (a pre-signing
@@ -146,6 +154,20 @@ func buildSigningOptions(opts *SigningOptions) (C.PdfSigningOptions, func()) {
 		}
 		p.policy_hash_alg_oid = str(pol.HashAlgorithmOID)
 		p.policy_uri = str(pol.URI)
+	}
+	if opts.Visible {
+		p.visible = 1
+		p.vis_page = C.uintptr_t(opts.VisiblePage)
+		for i := 0; i < 4; i++ {
+			p.vis_rect[i] = C.double(opts.VisibleRect[i])
+		}
+		p.vis_text = str(opts.VisibleText)
+		if len(opts.VisibleImage) > 0 {
+			img := C.CBytes(opts.VisibleImage)
+			frees = append(frees, func() { C.free(img) })
+			p.vis_image = (*C.uint8_t)(img)
+			p.vis_image_len = C.uintptr_t(len(opts.VisibleImage))
+		}
 	}
 	return p, free
 }
@@ -284,4 +306,66 @@ func indexByte(s string, b byte) int {
 		}
 	}
 	return -1
+}
+
+// ---- network TSA (AD-RT) ---------------------------------------------------
+
+// BeginTimestamp prepares pdf for a network /DocTimeStamp (AD-RT, phase 1). It
+// returns the prepared document (with a zero-filled placeholder) and the bytes
+// to timestamp. SHA-256 the bytes, build a request with TimestampRequest, POST
+// it to the TSA, extract the token with TimestampTokenFromResponse, then embed
+// it via CompleteSignature.
+func BeginTimestamp(pdf []byte) (document, tbs []byte, err error) {
+	var docPtr, tbsPtr *C.uchar
+	var docLen, tbsLen C.uintptr_t
+	st := C.pdf_timestamp_begin(
+		uptr(pdf), C.uintptr_t(len(pdf)),
+		&docPtr, &docLen, &tbsPtr, &tbsLen)
+	runtime.KeepAlive(pdf)
+	if e := check(st); e != nil {
+		return nil, nil, e
+	}
+	if docPtr != nil && docLen != 0 {
+		document = C.GoBytes(unsafe.Pointer(docPtr), C.int(docLen))
+	} else {
+		document = []byte{}
+	}
+	if tbsPtr != nil && tbsLen != 0 {
+		tbs = C.GoBytes(unsafe.Pointer(tbsPtr), C.int(tbsLen))
+	} else {
+		tbs = []byte{}
+	}
+	C.pdf_buffer_free(docPtr, docLen)
+	C.pdf_buffer_free(tbsPtr, tbsLen)
+	return document, tbs, nil
+}
+
+// TimestampRequest builds an RFC 3161 TimeStampReq (DER) for imprint (the
+// SHA-256 of the bytes to timestamp). nonce is optional (nil = none); certReq
+// asks the TSA to embed its certificate.
+func TimestampRequest(imprint, nonce []byte, certReq bool) ([]byte, error) {
+	cr := C.int(0)
+	if certReq {
+		cr = 1
+	}
+	return takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_timestamp_request(
+			uptr(imprint), C.uintptr_t(len(imprint)),
+			uptr(nonce), C.uintptr_t(len(nonce)), cr, out, n)
+		runtime.KeepAlive(imprint)
+		runtime.KeepAlive(nonce)
+		return st
+	})
+}
+
+// TimestampTokenFromResponse extracts the TimeStampToken (a CMS ContentInfo)
+// from a TSA's RFC 3161 TimeStampResp. The token bytes are then embedded via
+// CompleteSignature.
+func TimestampTokenFromResponse(response []byte) ([]byte, error) {
+	return takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_timestamp_token_from_response(
+			uptr(response), C.uintptr_t(len(response)), out, n)
+		runtime.KeepAlive(response)
+		return st
+	})
 }

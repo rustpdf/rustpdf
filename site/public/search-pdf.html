@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Search Text in a PDF and Get Its Coordinates | rust-pdf</title>
+  <meta name="description" content="Positional PDF text search: find where a word or phrase appears on each page and get a bounding box in PDF points. Anchor stamps, signatures and highlights to text." />
+  <link rel="canonical" href="https://rustpdf.dev/search-pdf" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/search-pdf" />
+  <meta property="og:title" content="Search Text in a PDF and Get Its Coordinates" />
+  <meta property="og:description" content="Find where text appears on a PDF page and get a bounding box in points: the missing link between extraction and stamping signatures, highlights or redactions onto an anchor word." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Search Text in a PDF and Get Its Coordinates" />
+  <meta name="twitter:description" content="Positional text search returns a bounding box per match in PDF points, so you can place a signature, stamp or highlight exactly where an anchor word sits." />
+  <meta property="og:image:alt" content="Search text in a PDF and get bounding-box coordinates" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Search text in a PDF and get bounding-box coordinates" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+        { "@type": "ListItem", "position": 2, "name": "Search Text in a PDF", "item": "https://rustpdf.dev/search-pdf" }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "Search Text in a PDF and Get Its Coordinates",
+      "description": "How positional PDF text search works: interpreting the content stream's text and graphics matrices to assign every glyph a position, matching a query against the page's glyph stream, and returning a bounding box per match in PDF user-space points.",
+      "url": "https://rustpdf.dev/search-pdf",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF positional text search",
+        "description": "Locating a query string on each page of a PDF and returning its bounding box in points."
+      },
+      "datePublished": "2026-06-29",
+      "dateModified": "2026-06-29",
+      "author": { "@type": "Organization", "@id": "https://rustpdf.dev/#org", "logo": { "@type": "ImageObject", "url": "https://rustpdf.dev/logo.png", "width": 512, "height": 512 } },
+      "publisher": { "@type": "Organization", "@id": "https://rustpdf.dev/#org", "logo": { "@type": "ImageObject", "url": "https://rustpdf.dev/logo.png", "width": 512, "height": 512 } },
+      "@id": "https://rustpdf.dev/search-pdf#article",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://rustpdf.dev/search-pdf" },
+      "image": { "@type": "ImageObject", "url": "https://rustpdf.dev/og.png", "width": 1200, "height": 630 }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I find the position of text in a PDF?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Pass the PDF bytes and a query string to rust-pdf's find_text function. It returns one hit per occurrence, each with the page index and a bounding box (x, y, width, height) in PDF user-space points, with the origin at the page's lower-left corner. Those are the same coordinates content is drawn in, so you can feed a box straight back into an overlay or a visible signature." }
+        },
+        {
+          "@type": "Question",
+          "name": "What coordinate system are the boxes in?",
+          "acceptedAnswer": { "@type": "Answer", "text": "PDF user space: points (1/72 inch), origin at the lower-left, y pointing up. This matches the space drawing operators use, which is what makes the result directly usable for stamping. Page /Rotate is not applied; the box is where the text lives in the page's own coordinate system." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is positional search the same as extraction?",
+          "acceptedAnswer": { "@type": "Answer", "text": "They share machinery but answer different questions. Extraction flattens a page to a Unicode string. Positional search additionally tracks the text and graphics matrices so every shown glyph carries a position, then unions the boxes of the glyphs each match covers. Use extraction for reading or indexing; use positional search when you need to know where on the page something is." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it require OCR?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Positional search reads the real text the PDF author encoded and computes positions from the font metrics and text matrices in the file. A scanned PDF with no text layer has nothing to search; that would need OCR, which rust-pdf does not provide." }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /search-pdf concept page (scoped sx-) ===== */
+    .sx-lede { max-width: 760px; }
+    /* hero: a page with a highlighted match + a coordinate readout */
+    .sx-scene { position: relative; height: 240px; max-width: 460px; margin: 34px auto 0; }
+    .sx-page { position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+      width: 168px; height: 210px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 15px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 24px 52px -24px rgba(99,102,241,.45); }
+    .sx-page .ln { height: 6px; border-radius: 3px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .sx-page .ln.s { width: 60%; } .sx-page .ln.xs { width: 40%; }
+    .sx-hit { position: relative; height: 13px; width: 74px; border-radius: 3px;
+      background: rgba(252,211,77,.18); border: 1px solid rgba(252,211,77,.55);
+      animation: sxPulse 3.2s ease-in-out infinite; }
+    .sx-readout { position: absolute; right: -6px; top: 84px; width: 150px;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: .58rem; line-height: 1.7; color: #94a3b8;
+      box-shadow: 0 14px 30px -18px rgba(0,0,0,.6); }
+    .sx-readout .k { color: #67e8f9; } .sx-readout .v { color: #a5b4fc; }
+    @keyframes sxPulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+    .sx-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .sx-step { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .sx-step .num { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      display: grid; place-items: center; font-weight: 800; font-size: .72rem; color: #1a0e02; margin-bottom: 12px; }
+    .sx-step h3 { margin: 0 0 6px; font-size: 1.12rem; }
+    .sx-step p { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.6; }
+    .sx-step code { font-size: .72rem; color: #a5b4fc; }
+    .sx-uses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .sx-use { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .sx-use .ic { color: var(--brand-2); height: 30px; } .sx-use .ic svg { width: 30px; height: 30px; }
+    .sx-use h3 { margin: 12px 0 6px; font-size: 1.12rem; } .sx-use p { margin: 0; color: var(--muted); font-size: .875rem; }
+    @media (max-width: 820px) { .sx-steps, .sx-uses { grid-template-columns: 1fr; } .sx-readout { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .sx-hit { animation: none !important; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Reading PDFs</p>
+        <h1>Search Text in a PDF<br /><span class="grad">and Get Its Coordinates</span></h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
+        <p class="lede sx-lede">
+          Extraction tells you <em>what</em> a PDF says. Positional search tells
+          you <em>where</em> it says it. Give rust-pdf a query and it returns one
+          bounding box per match (page, x, y, width and height in PDF points), so
+          you can drop a signature next to an anchor word, highlight a clause, or
+          place a redaction exactly over a phrase. One call, no OCR.
+        </p>
+        <div class="sx-scene" aria-hidden="true">
+          <div class="sx-page">
+            <span class="ln"></span>
+            <span class="ln s"></span>
+            <span class="ln"></span>
+            <div class="sx-hit"></div>
+            <span class="ln s"></span>
+            <span class="ln"></span>
+            <span class="ln xs"></span>
+            <span class="ln"></span>
+            <span class="ln s"></span>
+          </div>
+          <div class="sx-readout">
+            <span class="k">page</span> <span class="v">0</span><br />
+            <span class="k">text</span> <span class="v">"Signature"</span><br />
+            <span class="k">x</span> <span class="v">72.0</span><br />
+            <span class="k">y</span> <span class="v">560.4</span><br />
+            <span class="k">w</span> <span class="v">61.8</span><br />
+            <span class="k">h</span> <span class="v">12.0</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Search a PDF with rust-pdf</a>
+          <a href="#how-it-works" class="btn btn-ghost btn-lg">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHY -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">The missing link between extraction and stamping</h2>
+        <p class="muted">
+          Plenty of tools can pull the text out of a PDF, and plenty can draw new
+          content onto a page. The gap is connecting the two: you read a contract,
+          you know it contains the word &ldquo;Signature&rdquo;, but to put a
+          signature box there you need its <b>coordinates</b>, and a flat string
+          has thrown those away.
+        </p>
+        <p class="muted">
+          Positional search keeps them. As it walks the page it tracks the current
+          text matrix, the graphics matrix (CTM) and each glyph's advance width,
+          so every character it decodes carries a position in PDF user space. When
+          your query matches a run of characters, it unions their boxes into a
+          single rectangle and hands it back. Those are the same coordinates the
+          drawing operators use, so the rectangle is immediately usable for an
+          overlay, a visible signature, a highlight or a redaction.
+        </p>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how-it-works" class="section">
+      <div class="wrap">
+        <h2 class="center">How positional search works</h2>
+        <p class="center muted narrow">
+          Three steps, all from the bytes already in the file: no font files, no
+          rendering, no OCR.
+        </p>
+        <div class="sx-steps">
+          <div class="sx-step reveal">
+            <div class="num">1</div>
+            <h3>Track the matrices</h3>
+            <p>The content stream is replayed operator by operator. <code>cm</code>, <code>Tm</code>, <code>Td</code>, <code>T*</code> and <code>TJ</code> updates keep the running text and graphics matrices, so the origin of the next glyph is always known.</p>
+          </div>
+          <div class="sx-step reveal">
+            <div class="num">2</div>
+            <h3>Advance per glyph</h3>
+            <p>Each glyph's width comes from the font's <code>/Widths</code> (simple fonts) or <code>/W</code>+<code>/DW</code> (Type0/CID fonts); no font program is parsed. Width plus matrix gives every glyph an axis-aligned box, and the code maps to Unicode via the <code>ToUnicode</code> CMap.</p>
+          </div>
+          <div class="sx-step reveal">
+            <div class="num">3</div>
+            <h3>Match and union</h3>
+            <p>Your query is matched against the page's glyph stream (case-insensitive by default). For each occurrence, the boxes of the covered glyphs are unioned into one rectangle, returned as <code>{ page, text, x, y, width, height }</code> in points.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USES -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What positional search unlocks</h2>
+        <p class="center muted narrow">
+          Once you have a box, the page becomes addressable.
+        </p>
+        <div class="sx-uses">
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>
+            <h3>Anchor a signature</h3>
+            <p>Search for &ldquo;Signature:&rdquo; or a party name, then place a visible signature widget or appearance exactly beside it, even when the layout shifts between documents.</p>
+          </div>
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+            <h3>Highlight &amp; annotate</h3>
+            <p>Turn a search term into a highlight rectangle or a link annotation on every page it appears, the way a viewer's find-and-highlight works, but headless and in bulk.</p>
+          </div>
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+            <h3>Locate table cells</h3>
+            <p>Find a column header or a label and use its coordinates to slice the region beneath it, a lightweight way to pull values out of fixed-layout reports and forms.</p>
+          </div>
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h3>Targeted redaction</h3>
+            <p>Search for sensitive phrases such as account numbers, names or regulated terms, and feed each box into a redaction so the covered content is removed, not just hidden behind a rectangle.</p>
+          </div>
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+            <h3>Verify placement</h3>
+            <p>In a generation pipeline, assert that a heading or a total landed where it should by searching for it and checking the returned coordinates in a test.</p>
+          </div>
+          <div class="sx-use reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4z"/><path d="M4 12h10v8H4z"/><path d="M18 12h2v8h-2z"/></svg></div>
+            <h3>Stamp watermarks by anchor</h3>
+            <p>Place a &ldquo;DRAFT&rdquo; or approval stamp relative to a found word rather than the page centre, so it tracks the content instead of the geometry.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CODE -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">Search a PDF in one call</h2>
+        <p class="center muted narrow">
+          Returns a list of hits, each with a page index and a bounding box in points.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+pdf = open("contract.pdf", "rb").read()
+for hit in rustpdf.find_text(pdf, "Signature"):
+    print(hit.page, hit.x, hit.y, hit.width, hit.height)</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+byte[] pdf = File.ReadAllBytes("contract.pdf");
+foreach (var hit in Pdf.FindText(pdf, "Signature"))
+    Console.WriteLine($"{hit.Page} {hit.X} {hit.Y} {hit.Width} {hit.Height}");</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+data, _ := os.ReadFile("contract.pdf")
+hits, _ := rustpdf.FindText(data, "Signature", false)
+for _, h := range hits {
+    fmt.Println(h.Page, h.X, h.Y, h.Width, h.Height)
+}</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { findText } = require("rustpdf");
+const fs = require("fs");
+
+for (const h of findText(fs.readFileSync("contract.pdf"), "Signature")) {
+  console.log(h.page, h.x, h.y, h.width, h.height);
+}</code></pre>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          The same function is available in every language binding. Full reference
+          in the <a href="/docs/">documentation</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">PDF text search FAQ</h2>
+        <details><summary>How do I find the position of text in a PDF?</summary>
+          <p>Pass the PDF bytes and a query to rust-pdf's <code>find_text</code>. It returns one hit per occurrence, each with the page index and a bounding box (<code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>) in PDF user-space points, origin at the page's lower-left. Those are the coordinates content is drawn in, so a box can be fed straight into an overlay or a visible signature.</p>
+        </details>
+        <details><summary>What coordinate system are the boxes in?</summary>
+          <p>PDF user space: points (1/72 inch), origin at the lower-left, y pointing up, the same space the drawing operators use. Page <code>/Rotate</code> is not applied; the box is where the text lives in the page's own coordinate system, which is what you want when drawing back onto it.</p>
+        </details>
+        <details><summary>Is search the same as extraction?</summary>
+          <p>They share machinery but answer different questions. <a href="/extract-text">Extraction</a> flattens a page to a string. Positional search additionally tracks the text and graphics matrices so every glyph carries a position, then unions the boxes of the glyphs each match covers. Use extraction to read or index; use search to know <em>where</em>.</p>
+        </details>
+        <details><summary>Is matching case-sensitive?</summary>
+          <p>Case-insensitive by default; an option switches it to exact matching. Each match returns a separate hit, so a word that appears five times on a page yields five boxes.</p>
+        </details>
+        <details><summary>Does it need OCR?</summary>
+          <p>No. It reads the real encoded text and computes positions from the font metrics and text matrices in the file. A scanned PDF with no text layer has nothing to search, so that would need OCR, which rust-pdf does not provide.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Search PDFs in your language</h2>
+        <p class="muted">
+          One Rust core, ten language bindings, one function call.
+          Prototype for free, license the corporate features when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/extract-text">Extract text</a>
+          <a href="/extract-images">Extract images</a>
+          <a href="/watermark-pdf">Watermark PDF</a>
+          <a href="/render-pdf">Render to image</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

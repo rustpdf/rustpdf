@@ -96,7 +96,9 @@ public sealed class Bookmark
     }
 }
 
-/// <summary>The validation result for a single signature in a PDF.</summary>
+/// <summary>The validation result for a single signature in a PDF. The
+/// certificate-detail fields (<see cref="Issuer"/> … <see cref="HasTimestamp"/>)
+/// are populated when the signer certificate could be parsed; otherwise null/0.</summary>
 public sealed record SignatureInfo(
     string? FieldName,
     string SubFilter,
@@ -105,7 +107,21 @@ public sealed record SignatureInfo(
     bool DigestValid,
     bool SignatureValid,
     bool IsValid,
-    int[] ByteRange);
+    int[] ByteRange,
+    string? Issuer = null,
+    string? SerialNumber = null,
+    string? ValidFrom = null,
+    string? ValidTo = null,
+    string? Algorithm = null,
+    string? SigningTime = null,
+    int CertCount = 0,
+    bool HasTimestamp = false);
+
+/// <summary>One positional text match from <see cref="Pdf.FindText"/>: the
+/// bounding box (PDF points, origin lower-left) of <see cref="Text"/> on
+/// <see cref="Page"/> (0-based).</summary>
+public sealed record TextHit(
+    int Page, string Text, double X, double Y, double Width, double Height);
 
 /// <summary>A signature field discovered in a PDF (pre-signing inventory).</summary>
 public sealed record SignatureField(string Name, bool Signed);
@@ -151,6 +167,19 @@ public sealed class SigningOptions
     public int ContainerSize { get; set; }
     /// <summary>Signature-policy identifier (PAdES-EPES); null = none.</summary>
     public SignaturePolicy? Policy { get; set; }
+
+    // ---- visible signature + embedded image (issue #41 P1) ------------------
+
+    /// <summary>Draw a visible signature appearance using the fields below.</summary>
+    public bool Visible { get; set; }
+    /// <summary>0-based page index for the visible appearance.</summary>
+    public int VisiblePage { get; set; }
+    /// <summary>Appearance rectangle <c>[x0, y0, x1, y1]</c> in page points.</summary>
+    public double[] VisibleRect { get; set; } = new double[4];
+    /// <summary>Appearance text lines (separated by <c>\n</c>); null = none.</summary>
+    public string? VisibleText { get; set; }
+    /// <summary>PNG/JPEG bytes of a handwritten-signature image; null = none.</summary>
+    public byte[]? VisibleImage { get; set; }
 }
 
 /// <summary>The "bring your own signer" callback: produces the raw RSA PKCS#1
@@ -223,6 +252,33 @@ public static class Pdf
         var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
             Native.pdf_extract_text(pdf, (nuint)pdf.Length, out p, out n));
         return Encoding.UTF8.GetString(bytes);
+    }
+
+    /// <summary>Find every occurrence of <paramref name="query"/> in
+    /// <paramref name="pdf"/>, returning each match's positional bounding box
+    /// (PDF points, origin lower-left). An empty list means no match.</summary>
+    public static IReadOnlyList<TextHit> FindText(byte[] pdf, string query, bool caseSensitive = false)
+    {
+        var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_find_text_json(pdf, (nuint)pdf.Length, query, caseSensitive ? 1 : 0, out p, out n));
+        var json = Encoding.UTF8.GetString(bytes);
+        var result = new List<TextHit>();
+        if (string.IsNullOrEmpty(json))
+            return result;
+        using var doc = JsonDocument.Parse(json);
+        foreach (var el in doc.RootElement.EnumerateArray())
+        {
+            double GetNum(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0.0;
+            int GetInt(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+            string GetStr(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            result.Add(new TextHit(
+                GetInt("page"), GetStr("text"),
+                GetNum("x"), GetNum("y"), GetNum("width"), GetNum("height")));
+        }
+        return result;
     }
 
     /// <summary>Extract every raster image from <paramref name="pdf"/> into
@@ -352,6 +408,44 @@ public static class Pdf
             document, (nuint)document.Length, container, (nuint)container.Length, out p, out n));
     }
 
+    /// <summary><b>Network timestamp (AD-RT), phase 1.</b> Prepare
+    /// <paramref name="pdf"/> for a <c>/DocTimeStamp</c> from a network RFC 3161
+    /// TSA. Returns the prepared <c>Document</c> (with a placeholder) and the
+    /// <c>Bytes</c> to timestamp. SHA-256 <c>Bytes</c>, build a request with
+    /// <see cref="TimestampRequest"/>, POST it to the TSA, extract the token with
+    /// <see cref="TimestampTokenFromResponse"/>, then embed it via
+    /// <see cref="CompleteSignature"/>.</summary>
+    public static (byte[] Document, byte[] Bytes) BeginTimestamp(byte[] pdf)
+    {
+        Native.Init();
+        Check(Native.pdf_timestamp_begin(
+            pdf, (nuint)pdf.Length,
+            out var docPtr, out var docLen, out var tbsPtr, out var tbsLen));
+        var document = CopyAndFree(docPtr, docLen);
+        var tbs = CopyAndFree(tbsPtr, tbsLen);
+        return (document, tbs);
+    }
+
+    /// <summary>Build an RFC 3161 <c>TimeStampReq</c> (DER) for
+    /// <paramref name="imprint"/> (the SHA-256 of the bytes to timestamp).
+    /// <paramref name="nonce"/> is optional; <paramref name="certReq"/> asks the
+    /// TSA to embed its certificate. POST the result to the TSA.</summary>
+    public static byte[] TimestampRequest(byte[] imprint, byte[]? nonce = null, bool certReq = true)
+    {
+        var nonceLen = (nuint)(nonce?.Length ?? 0);
+        return TakeBuffer((out IntPtr p, out nuint n) => Native.pdf_timestamp_request(
+            imprint, (nuint)imprint.Length, nonce, nonceLen, certReq ? 1 : 0, out p, out n));
+    }
+
+    /// <summary>Extract the <c>TimeStampToken</c> (a CMS <c>ContentInfo</c>) from a
+    /// TSA's RFC 3161 <c>TimeStampResp</c>. Embed the token via
+    /// <see cref="CompleteSignature"/>.</summary>
+    public static byte[] TimestampTokenFromResponse(byte[] response)
+    {
+        return TakeBuffer((out IntPtr p, out nuint n) => Native.pdf_timestamp_token_from_response(
+            response, (nuint)response.Length, out p, out n));
+    }
+
     /// <summary>
     /// <b>Model A — remote signer.</b> Sign <paramref name="pdf"/> without handing
     /// this library a key: it builds the CMS signed attributes and calls
@@ -450,6 +544,24 @@ public static class Pdf
             n.PolicyHashAlgOid = Str(pol.HashAlgorithmOid);
             n.PolicyUri = Str(pol.Uri);
         }
+        n.Visible = p.Visible ? 1 : 0;
+        n.VisPage = (nuint)p.VisiblePage;
+        var rect = p.VisibleRect;
+        if (rect is { Length: 4 })
+        {
+            n.VisRect0 = rect[0];
+            n.VisRect1 = rect[1];
+            n.VisRect2 = rect[2];
+            n.VisRect3 = rect[3];
+        }
+        n.VisText = Str(p.VisibleText);
+        if (p.VisibleImage is { Length: > 0 } img)
+        {
+            var h = GCHandle.Alloc(img, GCHandleType.Pinned);
+            handles.Add(h);
+            n.VisImage = h.AddrOfPinnedObject();
+            n.VisImageLen = (nuint)img.Length;
+        }
         return n;
     }
 
@@ -478,6 +590,8 @@ public static class Pdf
             string? GetStr(string k) =>
                 el.TryGetProperty(k, out var v) && v.ValueKind != JsonValueKind.Null ? v.GetString() : null;
             bool GetBool(string k) => el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.True;
+            int GetInt(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
             var range = Array.Empty<int>();
             if (el.TryGetProperty("byte_range", out var br) && br.ValueKind == JsonValueKind.Array)
                 range = br.EnumerateArray().Select(x => x.GetInt32()).ToArray();
@@ -489,7 +603,15 @@ public static class Pdf
                 GetBool("digest_valid"),
                 GetBool("signature_valid"),
                 GetBool("is_valid"),
-                range));
+                range,
+                GetStr("issuer"),
+                GetStr("serial_number"),
+                GetStr("valid_from"),
+                GetStr("valid_to"),
+                GetStr("algorithm"),
+                GetStr("signing_time"),
+                GetInt("cert_count"),
+                GetBool("has_timestamp")));
         }
         return result;
     }

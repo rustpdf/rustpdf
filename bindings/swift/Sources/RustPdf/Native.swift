@@ -68,6 +68,9 @@ typealias HFillFieldFn  = (OpaquePointer?, UnsafePointer<CChar>?, UnsafePointer<
 typealias HEncryptFn    = (OpaquePointer?, Int32, UnsafePointer<CChar>?, UnsafePointer<CChar>?, Int32) -> Int32
 typealias HIncrFn       = (OpaquePointer?, UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
 typealias ExtractTextFn = (UnsafePointer<UInt8>?, UInt, OutBuf, OutLen) -> Int32
+typealias FindTextFn    = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?, Int32, OutBuf, OutLen) -> Int32
+typealias TsBeginFn     = (UnsafePointer<UInt8>?, UInt, OutBuf, OutLen, OutBuf, OutLen) -> Int32
+typealias TsRequestFn   = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt, Int32, OutBuf, OutLen) -> Int32
 typealias RenderPageFn  = (UnsafePointer<UInt8>?, UInt, UInt, Double, OutBuf, OutLen) -> Int32
 typealias PageCountFn   = (UnsafePointer<UInt8>?, UInt, UnsafeMutablePointer<UInt>?) -> Int32
 typealias HLinkUriFn    = (OpaquePointer?, Double, Double, Double, Double, UnsafePointer<CChar>?) -> Int32
@@ -76,8 +79,8 @@ typealias HBookmarksFn  = (OpaquePointer?, UInt, UnsafePointer<Int32>?, UnsafePo
                            UnsafePointer<UInt>?, UnsafePointer<Double>?, UnsafePointer<Int32>?) -> Int32
 typealias HFacturxFn    = (OpaquePointer?, UnsafePointer<UInt8>?, UInt, Int32) -> Int32
 typealias HSetCheckFn   = (OpaquePointer?, UnsafePointer<CChar>?, Int32, UnsafeMutablePointer<Int32>?) -> Int32
-typealias HWmTextFn     = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double, Double, Double) -> Int32
-typealias HWmImageFn    = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double) -> Int32
+typealias HWmTextFn     = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double, Double, Double, Int32) -> Int32
+typealias HWmImageFn    = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double) -> Int32
 typealias HRedactFn     = (OpaquePointer?, UInt, UnsafePointer<Double>?, UInt, UnsafeMutablePointer<Int32>?) -> Int32
 typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
                              UnsafeMutablePointer<UInt>?) -> Int32
@@ -197,6 +200,9 @@ final class Native {
     let pdf_editable_watermark_image_file: HWmImageFn = CRustPdf.pdf_editable_watermark_image_file
     let pdf_editable_redact: HRedactFn = CRustPdf.pdf_editable_redact
     let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
+    let pdf_editable_set_version: H1IFn = CRustPdf.pdf_editable_set_version
+    let pdf_editable_strip_pdfa: HFn = CRustPdf.pdf_editable_strip_pdfa
+    let pdf_editable_normalize: H1IFn = CRustPdf.pdf_editable_normalize
 
     // ---- text extraction + signing ------------------------------------------
     let pdf_extract_text: ExtractTextFn = CRustPdf.pdf_extract_text
@@ -207,12 +213,18 @@ final class Native {
     let pdf_timestamp: TimestampFn = CRustPdf.pdf_timestamp
     let pdf_add_dss: AddDssFn = CRustPdf.pdf_add_dss
     let pdf_verify_signatures_json: ExtractTextFn = CRustPdf.pdf_verify_signatures_json
+    let pdf_find_text_json: FindTextFn = CRustPdf.pdf_find_text_json
 
     // ---- deferred / external (HSM) signing — issue #41 ----------------------
     let pdf_sign_begin: SignBeginFn = CRustPdf.pdf_sign_begin
     let pdf_sign_complete: SignCompleteFn = CRustPdf.pdf_sign_complete
     let pdf_sign_with: SignWithFn = CRustPdf.pdf_sign_with
     let pdf_list_signatures: ExtractTextFn = CRustPdf.pdf_list_signatures
+
+    // ---- network TSA (AD-RT) — issue #41 ------------------------------------
+    let pdf_timestamp_begin: TsBeginFn = CRustPdf.pdf_timestamp_begin
+    let pdf_timestamp_request: TsRequestFn = CRustPdf.pdf_timestamp_request
+    let pdf_timestamp_token_from_response: ExtractTextFn = CRustPdf.pdf_timestamp_token_from_response
 
     private init() {}
 }

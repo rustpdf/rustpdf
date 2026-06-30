@@ -126,6 +126,7 @@ static xcframework for macOS and iOS).
   - Node.js: https://rustpdf.dev/extract-text/node
   - PHP: https://rustpdf.dev/extract-text/php
   - Ruby: https://rustpdf.dev/extract-text/ruby
+- Search text & get coordinates: https://rustpdf.dev/search-pdf
 - Compress a PDF (hub): https://rustpdf.dev/compress-pdf
   - Go: https://rustpdf.dev/compress-pdf/go
   - Node.js: https://rustpdf.dev/compress-pdf/node

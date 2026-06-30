@@ -61,8 +61,9 @@ typedef struct PdfDocument PdfDocument;
 typedef struct PdfEditable PdfEditable;
 
 /**
- * Options for deferred / external signing (issue #41). All pointer fields are
- * NULL when unused; a zero `estimated_size` or `policy_hash_len` means "absent".
+ * Options for deferred/external signing, carried across the C ABI. NULL string
+ * fields and a zero `policy_hash_len` mean "absent". `certification` is the
+ * DocMDP `/P` value (0 = none, 1/2/3); `estimated_size` of 0 uses the default.
  */
 typedef struct {
     const char *reason;
@@ -97,6 +98,28 @@ typedef struct {
      * SPURI qualifier; NULL = none.
      */
     const char *policy_uri;
+    /**
+     * Non-zero draws a **visible** signature using the fields below.
+     */
+    int visible;
+    /**
+     * 0-based page index for the visible appearance.
+     */
+    uintptr_t vis_page;
+    /**
+     * Appearance rectangle `[x0, y0, x1, y1]` in page points.
+     */
+    double vis_rect[4];
+    /**
+     * Text lines for the appearance, separated by `\n`; NULL = none.
+     */
+    const char *vis_text;
+    /**
+     * PNG/JPEG bytes of a handwritten-signature image (with `vis_image_len`);
+     * NULL/0 = no image.
+     */
+    const uint8_t *vis_image;
+    uintptr_t vis_image_len;
 } PdfSigningOptions;
 
 /**
@@ -261,7 +284,8 @@ int pdf_document_pdfa(PdfDocument *doc);
 
 /**
  * Mark the document as PDF/A at `level`: 0=A-1b, 1=A-2b, 2=A-2a, 3=A-3b,
- * 4=A-3a. Level-A variants also enable tagging.
+ * 4=A-3a, 5=A-4, 6=A-4e, 7=A-4f. Level-A variants also enable tagging;
+ * the A-4 family is based on PDF 2.0.
  *
  * # Safety
  * `doc` must be a valid handle.
@@ -277,7 +301,7 @@ int pdf_document_pdfa_level(PdfDocument *doc, int level);
 int pdf_document_tagged(PdfDocument *doc);
 
 /**
- * Set the PDF version: 0=1.4, 1=1.5, 2=1.7.
+ * Set the PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0.
  *
  * # Safety
  * `doc` must be a valid handle.
@@ -495,39 +519,58 @@ int pdf_document_radio_group(PdfDocument *doc,
 
 /**
  * Add a clickable web link over `(x0,y0,x1,y1)` opening `uri` on the current page.
+ *
+ * # Safety
+ * `doc` must be valid with at least one page; `uri` a valid C string.
  */
 int pdf_page_link_uri(PdfDocument *doc,
-                      double x0,
-                      double y0,
-                      double x1,
-                      double y1,
-                      const char *uri);
+                            double x0,
+                            double y0,
+                            double x1,
+                            double y1,
+                            const char *uri);
 
 /**
- * Add an internal link over `(x0,y0,x1,y1)` jumping to `target_page` (0-based).
+ * Add an internal link over `(x0,y0,x1,y1)` jumping to `target_page` (0-based)
+ * on the current page. `has_top` != 0 scrolls so `top` is at the top of view.
+ *
+ * # Safety
+ * `doc` must be valid with at least one page.
  */
 int pdf_page_link_to_page(PdfDocument *doc,
-                          double x0,
-                          double y0,
-                          double x1,
-                          double y1,
-                          uintptr_t target_page,
-                          double top,
-                          int has_top);
+                                double x0,
+                                double y0,
+                                double x1,
+                                double y1,
+                                uintptr_t target_page,
+                                double top,
+                                int has_top);
 
 /**
- * Add the document outline from a flat, pre-order list.
+ * Add the document outline from a **flat, pre-order** list. Each entry has a
+ * `level` (0 = top-level, 1 = child, …), a `title`, a target `page` (0-based),
+ * and an optional `top` (used when `has_tops[i]` != 0). The nested tree is
+ * rebuilt from the level sequence.
+ *
+ * # Safety
+ * All arrays have `count` entries and are readable; `titles[i]` are valid C
+ * strings.
  */
 int pdf_document_add_bookmarks(PdfDocument *doc,
-                               uintptr_t count,
-                               const int *levels,
-                               const char *const *titles,
-                               const uintptr_t *pages,
-                               const double *tops,
-                               const int *has_tops);
+                                     uintptr_t count,
+                                     const int *levels,
+                                     const char *const *titles,
+                                     const uintptr_t *pages,
+                                     const double *tops,
+                                     const int *has_tops);
 
 /**
- * Make the document a ZUGFeRD / Factur-X invoice.
+ * Make the document a ZUGFeRD / Factur-X invoice: embed `xml` as `factur-x.xml`,
+ * mark it PDF/A-3b, and add the Factur-X XMP at `profile` (0=Minimum, 1=BasicWL,
+ * 2=Basic, 3=EN 16931, 4=Extended).
+ *
+ * # Safety
+ * `doc` valid; `xml`/`len` readable.
  */
 int pdf_document_facturx(PdfDocument *doc, const uint8_t *xml, uintptr_t len, int profile);
 
@@ -659,6 +702,137 @@ int pdf_editable_fill_text_field(PdfEditable *ed,
                                        int *out_found);
 
 /**
+ * Check/uncheck a checkbox field by name. `out_found` (if non-NULL) gets 1/0.
+ *
+ * # Safety
+ * `ed`, `name` valid; `out_found` NULL or writable.
+ */
+int pdf_editable_set_checkbox(PdfEditable *ed, const char *name, int checked, int *out_found);
+
+/**
+ * Select a radio button by its export value. `out_found` (if non-NULL) gets 1/0.
+ *
+ * # Safety
+ * `ed`, `name`, `export_value` valid; `out_found` NULL or writable.
+ */
+int pdf_editable_set_radio(PdfEditable *ed,
+                                 const char *name,
+                                 const char *export_value,
+                                 int *out_found);
+
+/**
+ * Set a choice (dropdown/list) field value. `out_found` (if non-NULL) gets 1/0.
+ *
+ * # Safety
+ * `ed`, `name`, `value` valid; `out_found` NULL or writable.
+ */
+int pdf_editable_set_choice(PdfEditable *ed,
+                                  const char *name,
+                                  const char *value,
+                                  int *out_found);
+
+/**
+ * Flatten all interactive form fields into static page content (removes the
+ * `/AcroForm` and widgets).
+ *
+ * # Safety
+ * `ed` must be valid.
+ */
+int pdf_editable_flatten_forms(PdfEditable *ed);
+
+/**
+ * Write the document's terminal field names (newline-separated) into a buffer.
+ *
+ * # Safety
+ * `ed`, `out_ptr`, `out_len` valid.
+ */
+int pdf_editable_field_names(const PdfEditable *ed,
+                                   unsigned char **out_ptr,
+                                   uintptr_t *out_len);
+
+/**
+ * Stamp a diagonal text watermark across every page (standard Helvetica).
+ * `rotation_deg` is counter-clockwise; `opacity` in 0..=1.
+ *
+ * # Safety
+ * `ed`, `text` valid.
+ */
+int pdf_editable_watermark_text(PdfEditable *ed,
+                                      const char *text,
+                                      double size,
+                                      double r,
+                                      double g,
+                                      double b,
+                                      double opacity,
+                                      double rotation_deg,
+                                      int opaque_background);
+
+/**
+ * Stamp an image (from a JPEG/PNG file `path`) centered on every page at
+ * `width`×`height` points, rotated `rotation_deg` degrees, at `opacity`.
+ * Respects page `/Rotate` and `/CropBox`.
+ *
+ * # Safety
+ * `ed`, `path` valid.
+ */
+int pdf_editable_watermark_image_file(PdfEditable *ed,
+                                            const char *path,
+                                            double width,
+                                            double height,
+                                            double opacity,
+                                            double rotation_deg);
+
+/**
+ * Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
+ * `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
+ *
+ * # Safety
+ * `ed` valid.
+ */
+int pdf_editable_set_version(PdfEditable *ed, int version);
+
+/**
+ * Strip PDF/A conformance (catalog `/OutputIntents`, XMP `/Metadata` `pdfaid`,
+ * `/Version`) so the file is a plain PDF.
+ *
+ * # Safety
+ * `ed` valid.
+ */
+int pdf_editable_strip_pdfa(PdfEditable *ed);
+
+/**
+ * Normalize to a plain PDF at `version` (strip PDF/A + set version). `version`
+ * codes as in [`pdf_editable_set_version`].
+ *
+ * # Safety
+ * `ed` valid.
+ */
+int pdf_editable_normalize(PdfEditable *ed, int version);
+
+/**
+ * Redact rectangular regions on page `index`: `rects` holds `count*4` doubles
+ * (x0,y0,x1,y1 per region). The covered content is removed and a black box is
+ * drawn. `out_found` (if non-NULL) gets 1 if the page existed.
+ *
+ * # Safety
+ * `ed` valid; `rects` points to `count*4` doubles; `out_found` NULL or writable.
+ */
+int pdf_editable_redact(PdfEditable *ed,
+                              uintptr_t index,
+                              const double *rects,
+                              uintptr_t count,
+                              int *out_found);
+
+/**
+ * Convert the loaded document to PDF/A at `level` (0=A-1b, 1=A-2b, 3=A-3b).
+ * Fails if fonts are not embedded or a level-A profile is requested.
+ *
+ * # Safety
+ * `ed` must be valid.
+ */
+int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
+
+/**
  * Drop unreferenced objects, recompress, dedupe and emit object streams on save.
  *
  * # Safety
@@ -727,31 +901,59 @@ int pdf_extract_text(const uint8_t *data,
                            uintptr_t *out_len);
 
 /**
- * Extract every raster image into directory `dir` (JPEG verbatim as `.jpg`,
- * everything else as `.png`, named `page{N}_{name}.{ext}`); writes the count
- * into `out_count`.
+ * Find every occurrence of `query` in `data`/`len` and write a JSON array of
+ * bounding boxes into `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]).
+ * Each element is `{"page":int,"text":str,"x":num,"y":num,"width":num,
+ * "height":num}` with coordinates in PDF user space (points, origin
+ * lower-left). `case_sensitive` is `0` for case-insensitive matching, non-zero
+ * for exact. An empty array `[]` means no match.
  *
  * # Safety
- * `data`/`len` readable; `dir` a valid C string; `out_count` writable.
+ * `data`/`len` readable; `query` a valid NUL-terminated UTF-8 string;
+ * `out_ptr`/`out_len` writable.
+ */
+int pdf_find_text_json(const uint8_t *data,
+                             uintptr_t len,
+                             const char *query,
+                             int case_sensitive,
+                             unsigned char **out_ptr,
+                             uintptr_t *out_len);
+
+/**
+ * Extract every raster image from `data`/`len` and write each one as a file
+ * into the directory `dir`. JPEG (`DCTDecode`) images are written verbatim as
+ * `.jpg`; everything else is re-encoded as `.png`. Files are named
+ * `page{N}_{name}.{ext}`. The number written is stored in `out_count`.
+ *
+ * # Safety
+ * `data`/`len` readable; `dir` a valid NUL-terminated UTF-8 path to an existing
+ * directory; `out_count` writable (or NULL to ignore the count).
  */
 int pdf_extract_images_to_dir(const uint8_t *data,
-                              uintptr_t len,
-                              const char *dir,
-                              uintptr_t *out_count);
+                                    uintptr_t len,
+                                    const char *dir,
+                                    uintptr_t *out_count);
 
 /**
  * Render page `page_index` (0-based) of the PDF in `data`/`len` to a PNG image
- * at `dpi` dots-per-inch. Page rendering is a licensed (Pro) feature.
+ * at `dpi` dots-per-inch. The PNG bytes are returned in `out_ptr`/`out_len`,
+ * to be released with [`pdf_buffer_free`].
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable, non-aliasing.
  */
 int pdf_render_page_to_png(const uint8_t *data,
-                           uintptr_t len,
-                           uintptr_t page_index,
-                           double dpi,
-                           unsigned char **out_ptr,
-                           uintptr_t *out_len);
+                                 uintptr_t len,
+                                 uintptr_t page_index,
+                                 double dpi,
+                                 unsigned char **out_ptr,
+                                 uintptr_t *out_len);
 
 /**
  * Number of pages in the PDF in `data`/`len`, written to `out_count`.
+ *
+ * # Safety
+ * `data`/`len` readable; `out_count` writable.
  */
 int pdf_page_count(const uint8_t *data, uintptr_t len, uintptr_t *out_count);
 
@@ -814,134 +1016,144 @@ int pdf_add_dss(const uint8_t *pdf,
                       uintptr_t *out_len);
 
 /**
- * Check/uncheck a checkbox field by name. `out_found` (if non-NULL) gets 1/0.
+ * **Two-phase signing, phase 1.** Prepare `pdf` for deferred signing: returns
+ * the prepared PDF (`out_doc`/`out_doc_len`, with a zero-filled `/Contents`
+ * placeholder) and the exact bytes to be signed (`out_tbs`/`out_tbs_len`).
+ * Hash `out_tbs` (SHA-256), sign remotely / build the CMS container, then call
+ * [`pdf_sign_complete`]. The private key never reaches this library.
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; `params` NULL or a valid [`PdfSigningOptions`]; the
+ * four out pointers writable. Both emitted buffers are freed with
+ * `pdf_buffer_free`.
  */
-int pdf_editable_set_checkbox(PdfEditable *ed, const char *name, int checked, int *out_found);
+int pdf_sign_begin(const uint8_t *pdf,
+                         uintptr_t pdf_len,
+                         const PdfSigningOptions *params,
+                         unsigned char **out_doc,
+                         uintptr_t *out_doc_len,
+                         unsigned char **out_tbs,
+                         uintptr_t *out_tbs_len);
 
 /**
- * Select a radio button by its export value. `out_found` (if non-NULL) gets 1/0.
+ * **Two-phase signing, phase 2.** Embed a complete DER CMS / PKCS#7 `container`
+ * into the prepared `document` (from [`pdf_sign_begin`]), producing the final
+ * signed PDF in `out_ptr`/`out_len`.
+ *
+ * # Safety
+ * `document`/`container` readable for their lengths; `out_ptr`/`out_len`
+ * writable.
  */
-int pdf_editable_set_radio(PdfEditable *ed,
-                           const char *name,
-                           const char *export_value,
-                           int *out_found);
-
-/**
- * Set a choice (dropdown/list) field value. `out_found` (if non-NULL) gets 1/0.
- */
-int pdf_editable_set_choice(PdfEditable *ed,
-                            const char *name,
-                            const char *value,
-                            int *out_found);
-
-/**
- * Flatten all interactive form fields into static page content.
- */
-int pdf_editable_flatten_forms(PdfEditable *ed);
-
-/**
- * Write the document's terminal field names (newline-separated) into a buffer.
- */
-int pdf_editable_field_names(const PdfEditable *ed,
+int pdf_sign_complete(const uint8_t *document,
+                            uintptr_t document_len,
+                            const uint8_t *container,
+                            uintptr_t container_len,
                             unsigned char **out_ptr,
                             uintptr_t *out_len);
 
 /**
- * Stamp a diagonal text watermark across every page.
+ * **Network timestamp (AD-RT), phase 1.** Prepare `pdf` for a `/DocTimeStamp`
+ * from a network RFC 3161 TSA: returns the prepared PDF (`out_doc`) and the
+ * bytes to timestamp (`out_tbs`). SHA-256 `out_tbs`, build a request with
+ * [`pdf_timestamp_request`], POST it to the TSA, extract the token with
+ * [`pdf_timestamp_token_from_response`], then embed it via [`pdf_sign_complete`].
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; the four out pointers writable (buffers freed
+ * with `pdf_buffer_free`).
  */
-int pdf_editable_watermark_text(PdfEditable *ed,
-                                const char *text,
-                                double size,
-                                double r,
-                                double g,
-                                double b,
-                                double opacity,
-                                double rotation_deg);
+int pdf_timestamp_begin(const uint8_t *pdf,
+                              uintptr_t pdf_len,
+                              unsigned char **out_doc,
+                              uintptr_t *out_doc_len,
+                              unsigned char **out_tbs,
+                              uintptr_t *out_tbs_len);
 
 /**
- * Stamp an image (from a JPEG/PNG file `path`) centered on every page.
+ * Build an RFC 3161 `TimeStampReq` (DER) for `imprint` (the SHA-256 of the
+ * bytes to timestamp). `nonce`/`nonce_len` is optional (NULL/0 = none);
+ * `cert_req` non-zero asks the TSA to embed its certificate. Result in
+ * `out_ptr`/`out_len` (freed with `pdf_buffer_free`).
+ *
+ * # Safety
+ * `imprint` readable for `imprint_len`; `nonce` NULL or readable for
+ * `nonce_len`; out pointers writable.
  */
-int pdf_editable_watermark_image_file(PdfEditable *ed,
-                                      const char *path,
-                                      double width,
-                                      double height,
-                                      double opacity);
+int pdf_timestamp_request(const uint8_t *imprint,
+                                uintptr_t imprint_len,
+                                const uint8_t *nonce,
+                                uintptr_t nonce_len,
+                                int cert_req,
+                                unsigned char **out_ptr,
+                                uintptr_t *out_len);
 
 /**
- * Redact rectangular regions on page `index`: `rects` holds `count*4` doubles.
+ * Extract the `TimeStampToken` (a CMS `ContentInfo`) from a TSA's RFC 3161
+ * `TimeStampResp` in `response`/`response_len`. The token bytes (for
+ * [`pdf_sign_complete`]) are returned in `out_ptr`/`out_len`.
+ *
+ * # Safety
+ * `response` readable for `response_len`; out pointers writable.
  */
-int pdf_editable_redact(PdfEditable *ed,
-                        uintptr_t index,
-                        const double *rects,
-                        uintptr_t count,
-                        int *out_found);
+int pdf_timestamp_token_from_response(const uint8_t *response,
+                                            uintptr_t response_len,
+                                            unsigned char **out_ptr,
+                                            uintptr_t *out_len);
 
 /**
- * Convert the loaded document to PDF/A at `level` (0=A-1b, 1=A-2b, 3=A-3b).
+ * **Model A — external signer callback.** Sign `pdf` without handing this
+ * library a key: it builds the CMS signed attributes and calls `callback`
+ * (with `ctx`) for the raw RSA signature, then assembles and embeds the CMS.
+ * `cert_der` is the signer certificate; `chain_ptrs`/`chain_lens`/`chain_count`
+ * are intermediate certificates (DER), supplied independently of the key.
+ *
+ * # Safety
+ * `pdf`/`cert_der` readable for their lengths; each `chain_ptrs[i]` readable
+ * for `chain_lens[i]`; `params` NULL or valid; `callback` a valid function
+ * pointer; `out_ptr`/`out_len` writable.
  */
-int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
+int pdf_sign_with(const uint8_t *pdf,
+                        uintptr_t pdf_len,
+                        const uint8_t *cert_der,
+                        uintptr_t cert_len,
+                        const uint8_t *const *chain_ptrs,
+                        const uintptr_t *chain_lens,
+                        uintptr_t chain_count,
+                        const PdfSigningOptions *params,
+                        PdfSignHashFn callback,
+                        void *ctx,
+                        unsigned char **out_ptr,
+                        uintptr_t *out_len);
+
+/**
+ * List the signature fields in `pdf` (detect existing signatures before
+ * signing). Emits a newline-separated text buffer in `out_ptr`/`out_len`; each
+ * line is `<0|1>\t<field-name>` where the first column is 1 when the field is
+ * already signed. An empty buffer means no signature fields.
+ *
+ * # Safety
+ * `pdf` readable for `pdf_len`; `out_ptr`/`out_len` writable. The buffer is
+ * freed with `pdf_buffer_free`.
+ */
+int pdf_list_signatures(const uint8_t *pdf,
+                              uintptr_t pdf_len,
+                              unsigned char **out_ptr,
+                              uintptr_t *out_len);
 
 /**
  * Validate every signature in `data`/`len` and write a JSON array describing
- * each one into `out_ptr`/`out_len` (freed with `pdf_buffer_free`).
+ * each one into `out_ptr`/`out_len` (freed with `pdf_buffer_free`). Each element
+ * is `{"field_name","sub_filter","signer","covers_whole_document","digest_valid",
+ * "signature_valid","is_valid","byte_range":[..4]}`. An empty array `[]` means
+ * the document is unsigned.
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable.
  */
 int pdf_verify_signatures_json(const uint8_t *data,
-                               uintptr_t len,
-                               unsigned char **out_ptr,
-                               uintptr_t *out_len);
-
-/**
- * **Deferred signing, phase 1.** Prepare `pdf` for external signing: returns the
- * prepared PDF (`out_doc`/`out_doc_len`, with a zero-filled `/Contents`
- * placeholder) and the exact bytes to be signed (`out_tbs`/`out_tbs_len`). Both
- * buffers are freed with `pdf_buffer_free`. The private key never reaches the
- * library.
- */
-int pdf_sign_begin(const uint8_t *pdf,
-                   uintptr_t pdf_len,
-                   const PdfSigningOptions *params,
-                   unsigned char **out_doc,
-                   uintptr_t *out_doc_len,
-                   unsigned char **out_tbs,
-                   uintptr_t *out_tbs_len);
-
-/**
- * **Deferred signing, phase 2.** Embed a complete DER CMS / PKCS#7 `container`
- * into the prepared `document` (from `pdf_sign_begin`), producing the final
- * signed PDF in `out_ptr`/`out_len`.
- */
-int pdf_sign_complete(const uint8_t *document,
-                      uintptr_t document_len,
-                      const uint8_t *container,
-                      uintptr_t container_len,
-                      unsigned char **out_ptr,
-                      uintptr_t *out_len);
-
-/**
- * **Model A — external signer callback.** Sign `pdf` without handing the library
- * a key: it builds the CMS signed attributes and calls `callback` (with `ctx`)
- * for the raw RSA signature, then assembles and embeds the CMS.
- */
-int pdf_sign_with(const uint8_t *pdf,
-                  uintptr_t pdf_len,
-                  const uint8_t *cert_der,
-                  uintptr_t cert_len,
-                  const uint8_t *const *chain_ptrs,
-                  const uintptr_t *chain_lens,
-                  uintptr_t chain_count,
-                  const PdfSigningOptions *params,
-                  PdfSignHashFn callback,
-                  void *ctx,
-                  unsigned char **out_ptr,
-                  uintptr_t *out_len);
-
-/**
- * List the signature fields in `pdf` (one line per field, `<0|1>\t<name>`).
- */
-int pdf_list_signatures(const uint8_t *pdf,
-                        uintptr_t pdf_len,
-                        unsigned char **out_ptr,
-                        uintptr_t *out_len);
+                                     uintptr_t len,
+                                     unsigned char **out_ptr,
+                                     uintptr_t *out_len);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -56,6 +56,39 @@ public struct SignatureReport: Sendable, Decodable {
     public let isValid: Bool
     /// The four `/ByteRange` integers.
     public let byteRange: [Int]
+    /// The signer certificate issuer (RFC 4514 DN), if available.
+    public let issuer: String?
+    /// The signer certificate serial number (uppercase hex), if available.
+    public let serialNumber: String?
+    /// The certificate's not-before date (ISO-8601), if available.
+    public let validFrom: String?
+    /// The certificate's not-after date (ISO-8601), if available.
+    public let validTo: String?
+    /// The signature algorithm friendly name (e.g. `SHA256withRSA`), if known.
+    public let algorithm: String?
+    /// The signing time from the signed attributes (ISO-8601), if present.
+    public let signingTime: String?
+    /// The number of certificates embedded in the CMS.
+    public let certCount: Int
+    /// Whether the signature carries an embedded (or document) timestamp.
+    public let hasTimestamp: Bool
+}
+
+/// One positional text match from ``Pdf/findText(_:query:caseSensitive:)``.
+/// Coordinates are in PDF points with origin at the page's lower-left corner.
+public struct TextHit: Sendable, Decodable {
+    /// The 0-based page index the match was found on.
+    public let page: Int
+    /// The matched text.
+    public let text: String
+    /// The bounding-box left edge (points).
+    public let x: Double
+    /// The bounding-box bottom edge (points).
+    public let y: Double
+    /// The bounding-box width (points).
+    public let width: Double
+    /// The bounding-box height (points).
+    public let height: Double
 }
 
 /// A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB).
@@ -96,10 +129,23 @@ public struct SigningOptions: Sendable {
     public var containerSize: Int
     /// Signature-policy identifier (PAdES-EPES); `nil` = none.
     public var policy: SignaturePolicy?
+    /// Draw a visible signature appearance (using the fields below).
+    public var visible: Bool
+    /// 0-based page index for the visible appearance.
+    public var visiblePage: Int
+    /// Appearance rectangle `[x0, y0, x1, y1]` in page points.
+    public var visibleRect: (Double, Double, Double, Double)
+    /// Appearance text lines (separated by `\n`); `nil` = none.
+    public var visibleText: String?
+    /// PNG/JPEG bytes of a handwritten-signature image; empty = none.
+    public var visibleImage: [UInt8]
 
     public init(reason: String? = nil, location: String? = nil, name: String? = nil,
                 pades: Bool = false, certify: Certify = .none,
-                containerSize: Int = 0, policy: SignaturePolicy? = nil) {
+                containerSize: Int = 0, policy: SignaturePolicy? = nil,
+                visible: Bool = false, visiblePage: Int = 0,
+                visibleRect: (Double, Double, Double, Double) = (0, 0, 0, 0),
+                visibleText: String? = nil, visibleImage: [UInt8] = []) {
         self.reason = reason
         self.location = location
         self.name = name
@@ -107,6 +153,11 @@ public struct SigningOptions: Sendable {
         self.certify = certify
         self.containerSize = containerSize
         self.policy = policy
+        self.visible = visible
+        self.visiblePage = visiblePage
+        self.visibleRect = visibleRect
+        self.visibleText = visibleText
+        self.visibleImage = visibleImage
     }
 }
 
@@ -181,6 +232,23 @@ public enum Pdf {
             }
         }
         return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// Find every occurrence of `query` in `pdf`, returning a positional
+    /// ``TextHit`` (page + bounding box, in PDF points, origin lower-left) for
+    /// each match. `caseSensitive` is `false` for case-insensitive matching.
+    /// An empty array means no match.
+    public static func findText(_ pdf: [UInt8], query: String,
+                                caseSensitive: Bool = false) throws -> [TextHit] {
+        let bytes = try withBytes(pdf) { ptr, len in
+            try query.withCString { q in
+                try takeBytes { out, outLen in
+                    Native.shared.pdf_find_text_json(ptr, len, q, caseSensitive ? 1 : 0, out, outLen)
+                }
+            }
+        }
+        if bytes.isEmpty { return [] }
+        return try JSONDecoder().decode([TextHit].self, from: Data(bytes))
     }
 
     /// Extract every raster image from `pdf` into directory `dir` (JPEG verbatim
@@ -388,6 +456,53 @@ public enum Pdf {
         return fields
     }
 
+    // MARK: - Network timestamp (AD-RT) — issue #41
+
+    /// **Network timestamp, phase 1.** Prepare `pdf` for a `/DocTimeStamp` from a
+    /// network RFC 3161 TSA. Returns the prepared `document` (with a zero-filled
+    /// `/Contents` placeholder) and the `bytes` to be timestamped. SHA-256 the
+    /// bytes, build a request with ``timestampRequest(imprint:nonce:certReq:)``,
+    /// POST it to the TSA, extract the token with
+    /// ``timestampToken(fromResponse:)``, then embed it via
+    /// ``completeSignature(_:container:)``.
+    public static func beginTimestamp(_ pdf: [UInt8]) throws -> (document: [UInt8], bytes: [UInt8]) {
+        var docPtr: UnsafeMutablePointer<UInt8>?
+        var docLen: UInt = 0
+        var tbsPtr: UnsafeMutablePointer<UInt8>?
+        var tbsLen: UInt = 0
+        try withBytes(pdf) { pp, pl in
+            try check(Native.shared.pdf_timestamp_begin(
+                pp, pl, &docPtr, &docLen, &tbsPtr, &tbsLen))
+        }
+        return (copyAndFree(docPtr, docLen), copyAndFree(tbsPtr, tbsLen))
+    }
+
+    /// Build an RFC 3161 `TimeStampReq` (DER) for `imprint` (the SHA-256 of the
+    /// bytes to timestamp). `nonce` is optional (`nil` = none); `certReq`
+    /// asks the TSA to embed its certificate.
+    public static func timestampRequest(imprint: [UInt8], nonce: [UInt8]? = nil,
+                                        certReq: Bool = true) throws -> [UInt8] {
+        try withBytes(imprint) { ip, il in
+            try withBytes(nonce ?? []) { np, nl in
+                try takeBytes { out, outLen in
+                    Native.shared.pdf_timestamp_request(
+                        ip, il, np, nl, certReq ? 1 : 0, out, outLen)
+                }
+            }
+        }
+    }
+
+    /// Extract the `TimeStampToken` (a CMS `ContentInfo`) from a TSA's RFC 3161
+    /// `TimeStampResp`. The returned token is embedded via
+    /// ``completeSignature(_:container:)``.
+    public static func timestampToken(fromResponse response: [UInt8]) throws -> [UInt8] {
+        try withBytes(response) { rp, rl in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_timestamp_token_from_response(rp, rl, out, outLen)
+            }
+        }
+    }
+
     /// Build a C ``PdfSigningOptions`` from `options` and run `body` with a
     /// pointer to it (or `nil` when `options` is `nil`). Heap C strings are freed
     /// afterwards; the policy hash is borrowed for the duration of `body`.
@@ -402,29 +517,42 @@ public enum Pdf {
         let policyOid = dupCString(o.policy?.oid)
         let policyHashAlg = dupCString(o.policy?.hashAlgorithmOid)
         let policyUri = dupCString(o.policy?.uri)
+        let visText = dupCString(o.visibleText)
         defer {
             free(reason); free(location); free(name)
             free(policyOid); free(policyHashAlg); free(policyUri)
+            free(visText)
         }
         func c(_ p: UnsafeMutablePointer<CChar>?) -> UnsafePointer<CChar>? { p.map { UnsafePointer($0) } }
 
         let hash = o.policy?.hash ?? []
+        let image = o.visibleImage
         return try hash.withUnsafeBufferPointer { hbuf in
-            var params = PdfSigningOptions()
-            params.reason = c(reason)
-            params.location = c(location)
-            params.name = c(name)
-            params.pades = o.pades ? 1 : 0
-            params.certification = o.certify.rawValue
-            params.estimated_size = o.containerSize > 0 ? UInt(o.containerSize) : 0
-            params.policy_oid = c(policyOid)
-            if o.policy != nil, !hash.isEmpty {
-                params.policy_hash = hbuf.baseAddress
-                params.policy_hash_len = UInt(hash.count)
+            try image.withUnsafeBufferPointer { ibuf in
+                var params = PdfSigningOptions()
+                params.reason = c(reason)
+                params.location = c(location)
+                params.name = c(name)
+                params.pades = o.pades ? 1 : 0
+                params.certification = o.certify.rawValue
+                params.estimated_size = o.containerSize > 0 ? UInt(o.containerSize) : 0
+                params.policy_oid = c(policyOid)
+                if o.policy != nil, !hash.isEmpty {
+                    params.policy_hash = hbuf.baseAddress
+                    params.policy_hash_len = UInt(hash.count)
+                }
+                params.policy_hash_alg_oid = c(policyHashAlg)
+                params.policy_uri = c(policyUri)
+                params.visible = o.visible ? 1 : 0
+                params.vis_page = UInt(o.visiblePage)
+                params.vis_rect = (o.visibleRect.0, o.visibleRect.1, o.visibleRect.2, o.visibleRect.3)
+                params.vis_text = c(visText)
+                if !image.isEmpty {
+                    params.vis_image = ibuf.baseAddress
+                    params.vis_image_len = UInt(image.count)
+                }
+                return try withUnsafePointer(to: &params) { try body($0) }
             }
-            params.policy_hash_alg_oid = c(policyHashAlg)
-            params.policy_uri = c(policyUri)
-            return try withUnsafePointer(to: &params) { try body($0) }
         }
     }
 }

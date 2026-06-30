@@ -191,6 +191,7 @@ final class EditableDoc
         array $color = [0.5, 0.5, 0.5],
         float $opacity = 0.30,
         float $rotationDeg = 45.0,
+        bool $opaqueBackground = false,
     ): self {
         Ffi::check($this->ffi->pdf_editable_watermark_text(
             $this->h(),
@@ -201,14 +202,44 @@ final class EditableDoc
             $color[2],
             $opacity,
             $rotationDeg,
+            $opaqueBackground ? 1 : 0,
         ));
         return $this;
     }
 
     /** Stamp an image watermark (from a file) across every page. */
-    public function watermarkImageFile(string $path, float $width, float $height, float $opacity = 0.30): self
+    public function watermarkImageFile(
+        string $path,
+        float $width,
+        float $height,
+        float $opacity = 0.30,
+        float $rotationDeg = 0.0,
+    ): self {
+        Ffi::check($this->ffi->pdf_editable_watermark_image_file($this->h(), $path, $width, $height, $opacity, $rotationDeg));
+        return $this;
+    }
+
+    /**
+     * Set the output PDF version (downgrade/normalize). Version codes:
+     * `0`=1.4, `1`=1.5, `2`=1.7, `3`=2.0.
+     */
+    public function setVersion(int $version): self
     {
-        Ffi::check($this->ffi->pdf_editable_watermark_image_file($this->h(), $path, $width, $height, $opacity));
+        Ffi::check($this->ffi->pdf_editable_set_version($this->h(), $version));
+        return $this;
+    }
+
+    /** Strip PDF/A conformance (OutputIntents, XMP pdfaid, /Version). */
+    public function stripPdfa(): self
+    {
+        Ffi::check($this->ffi->pdf_editable_strip_pdfa($this->h()));
+        return $this;
+    }
+
+    /** Normalize to a plain PDF at `$version` (strip PDF/A + set version). */
+    public function normalize(int $version = 2): self
+    {
+        Ffi::check($this->ffi->pdf_editable_normalize($this->h(), $version));
         return $this;
     }
 

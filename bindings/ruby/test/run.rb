@@ -226,6 +226,16 @@ model_a = RustPdf.sign_with(plain, cert, chain: [], options: opts) do |data|
   signer_key.sign(OpenSSL::Digest.new("SHA256"), data)
 end
 check(model_a.include?("/ByteRange"), "Model A signature ByteRange")
+# Visible signature variant: exercises the new PdfSigningOptions tail fields.
+vis_opts = RustPdf::SigningOptions.new(reason: "HSM", pades: true, visible: true,
+                                       visible_page: 0, visible_rect: [72, 60, 320, 120],
+                                       visible_text: "Signed by Ada\nrust-pdf")
+model_a_vis = RustPdf.sign_with(plain, cert, chain: [], options: vis_opts) do |data|
+  signer_key.sign(OpenSSL::Digest.new("SHA256"), data)
+end
+check(model_a_vis.include?("/ByteRange"), "visible Model A signature ByteRange")
+check(RustPdf.verify_signatures(model_a_vis).first["is_valid"], "visible signature must validate")
+puts "Model A visible signature ok (#{model_a_vis.bytesize} bytes, valid)"
 ma_sigs = RustPdf.verify_signatures(model_a)
 check(ma_sigs.size >= 1, "Model A produced a signature, got #{ma_sigs.inspect}")
 check(ma_sigs.first["is_valid"], "Model A signature must validate: #{ma_sigs.first.inspect}")
@@ -244,5 +254,42 @@ check(fields.size >= 1, "expected >=1 signature field, got #{fields.inspect}")
 check(fields.first.signed, "field should be signed: #{fields.first.inspect}")
 check(RustPdf.list_signatures(plain).empty?, "unsigned doc has no signature fields")
 puts "list_signatures ok (#{fields.size} field(s))"
+
+# 16. Positional text search (issue #41 P1).
+hits = RustPdf.find_text(pdfa, "Título")
+check(hits.size >= 1, "expected >=1 find_text hit, got #{hits.inspect}")
+hit = hits.first
+check(hit.is_a?(RustPdf::TextHit), "find_text returns TextHit")
+check(hit.page == 0, "hit on page 0: #{hit.inspect}")
+check(hit.width > 0 && hit.height > 0, "hit has a box: #{hit.inspect}")
+check(RustPdf.find_text(pdfa, "no-such-string-xyz").empty?, "no match -> empty")
+puts "find_text ok (#{hits.size} hit(s), box #{hit.width.round(1)}x#{hit.height.round(1)})"
+
+# 17. Version normalization (issue #41 P1).
+norm_ed = RustPdf::EditableDoc.load(pdfa)
+norm_ed.set_version(RustPdf::Version::V1_7)
+v17 = norm_ed.to_bytes
+check(v17.start_with?("%PDF-1.7".b), "set_version -> 1.7 header: #{v17[0, 8].inspect}")
+norm2 = RustPdf::EditableDoc.load(pdfa)
+norm2.normalize(RustPdf::Version::V1_4)
+plain_a = norm2.to_bytes
+check(plain_a.start_with?("%PDF-1.4".b), "normalize -> 1.4 header")
+check(!plain_a.include?("pdfaid"), "normalize stripped PDF/A metadata")
+puts "set_version + normalize ok"
+
+# 18. Rich signature inspection fields (issue #41 P1).
+rich = RustPdf.verify_signatures(model_a).first
+%w[issuer serial_number valid_from valid_to algorithm signing_time cert_count has_timestamp].each do |k|
+  check(rich.key?(k), "verify field #{k} accessible: #{rich.keys.inspect}")
+end
+puts "rich verify fields ok (issuer=#{rich['issuer'].inspect}, alg=#{rich['algorithm'].inspect})"
+
+# 19. Network-TSA document timestamp phase 1 (issue #41 P1).
+ts_doc, ts_tbs = RustPdf.begin_timestamp(signed)
+check(!ts_doc.empty? && !ts_tbs.empty?, "begin_timestamp produced doc + tbs")
+imprint = Digest::SHA256.digest(ts_tbs)
+req = RustPdf.timestamp_request(imprint, cert_req: true)
+check(!req.empty?, "timestamp_request produced a DER request")
+puts "network TSA phase 1 ok (doc #{ts_doc.bytesize} B, req #{req.bytesize} B)"
 
 puts "OK: full Ruby binding surface exercised"

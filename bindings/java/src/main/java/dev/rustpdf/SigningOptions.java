@@ -17,5 +17,17 @@ public final class SigningOptions {
     /** Signature-policy identifier (PAdES-EPES); {@code null} = none. */
     public SignaturePolicy policy;
 
+    // ---- visible signature appearance (issue #41 P1) ------------------------
+    /** Draw a visible signature appearance using the fields below. */
+    public boolean visible;
+    /** 0-based page index for the visible appearance. */
+    public long visiblePage;
+    /** Appearance rectangle {@code [x0, y0, x1, y1]} in page points. */
+    public double[] visibleRect;
+    /** Appearance text lines, separated by {@code '\n'}; {@code null} = none. */
+    public String visibleText;
+    /** PNG/JPEG bytes of a handwritten-signature image; {@code null} = none. */
+    public byte[] visibleImage;
+
     public SigningOptions() {}
 }

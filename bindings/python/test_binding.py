@@ -157,6 +157,25 @@ def exercise_full_surface() -> None:
     png = rustpdf.render_page_to_png(with_img, page=0, dpi=72.0)
     assert png[:8] == b"\x89PNG\r\n\x1a\n", "render_page_to_png did not return a PNG"
 
+    # 8a. Positional text search (issue #41 P1): locate text with a box.
+    hits = rustpdf.find_text(pdfa, "Título")
+    assert hits, "find_text found no matches"
+    hit = hits[0]
+    assert isinstance(hit, rustpdf.TextHit)
+    assert "Título" in hit.text
+    assert hit.width > 0 and hit.height > 0, f"bad box: {hit}"
+    assert rustpdf.find_text(pdfa, "nonexistent-zzz") == [], "expected no matches"
+
+    # 8b. Normalization (issue #41 P1): downgrade + strip PDF/A on a loaded doc.
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        ed.set_version(2)  # 1.7
+        normalized = ed.to_bytes()
+    assert normalized.startswith(b"%PDF-1.7"), "set_version did not downgrade header"
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        ed.normalize(2)  # strip PDF/A + version 1.7
+        plain_pdfa = ed.to_bytes()
+    assert b"pdfaid" not in plain_pdfa, "normalize must strip the PDF/A identifier"
+
     # 9. Deferred / external (HSM) signing — issue #41 P0. The private key never
     # reaches the library: it asks our remote signer for the raw RSA signature.
     fixtures = (
@@ -185,6 +204,11 @@ def exercise_full_surface() -> None:
     assert b"/ByteRange" in external, "Model A output missing /ByteRange"
     sigs = rustpdf.verify_signatures(external)
     assert sigs and sigs[0]["is_valid"], f"Model A signature must verify: {sigs}"
+    # Rich signature inspection (issue #41 P1): new certificate fields present.
+    for key in ("issuer", "serial_number", "valid_from", "valid_to", "algorithm",
+                "signing_time", "cert_count", "has_timestamp"):
+        assert key in sigs[0], f"verify_signatures missing rich field {key!r}"
+    assert sigs[0]["cert_count"] >= 1, f"cert_count should be >=1: {sigs[0]}"
 
     # list_signatures now detects exactly one signed field.
     fields = rustpdf.list_signatures(external)
@@ -204,6 +228,18 @@ def exercise_full_surface() -> None:
     assert len(session.hash) == 32, "session hash must be a 32-byte SHA-256 digest"
     assert b"/DocMDP" in session.document, "DocMDP certification missing"
     print("OK: deferred signing (Model A end-to-end + Model B session) verified")
+
+    # 10. Network TSA (AD-RT) — issue #41 P1. Prepare a timestamp, build the
+    # RFC 3161 request the integrator would POST to the TSA. We can't reach a
+    # live TSA here, so assert the prepared buffers + DER request are well-formed.
+    import hashlib
+
+    ts_doc, ts_tbs = rustpdf.begin_timestamp(external)
+    assert ts_doc and ts_tbs, "begin_timestamp returned empty buffers"
+    imprint = hashlib.sha256(ts_tbs).digest()
+    req = rustpdf.timestamp_request(imprint, cert_req=True)
+    assert req and req[0] == 0x30, "TimeStampReq must be a DER SEQUENCE"
+    print("OK: network-TSA helpers (begin_timestamp + timestamp_request) verified")
 
 
 def _make_rsa_signer(key_pk8: bytes):

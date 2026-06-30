@@ -52,6 +52,13 @@ impl Json {
         }
     }
 
+    pub(crate) fn as_f64(&self) -> Option<f64> {
+        match self {
+            Json::Num(n) => Some(*n),
+            _ => None,
+        }
+    }
+
     pub(crate) fn is_null(&self) -> bool {
         matches!(self, Json::Null)
     }

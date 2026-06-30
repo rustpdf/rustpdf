@@ -30,6 +30,7 @@ mod error;
 mod ffi;
 mod json;
 mod loader;
+mod signing;
 mod util;
 
 use std::ffi::CStr;
@@ -37,8 +38,15 @@ use std::ptr;
 
 pub use document::{Bookmark, Document};
 pub use editable::EditableDoc;
-pub use enums::{AFRelationship, Align, Encryption, FacturxProfile, PdfVersion, PdfaLevel};
+pub use enums::{
+    AFRelationship, Align, Certify, Encryption, FacturxProfile, PdfVersion, PdfaLevel,
+};
 pub use error::{PdfError, PdfStatus, Result};
+pub use signing::{
+    begin_signing, begin_timestamp, complete_signature, list_signatures, sign_with,
+    timestamp_request, timestamp_token_from_response, SignatureField, SignaturePolicy,
+    SigningOptions, SigningSession,
+};
 
 use util::{check, cstr, opt_cstr, take_buffer};
 
@@ -165,6 +173,22 @@ pub struct SignatureReport {
     pub is_valid: bool,
     /// The signature's `/ByteRange` (`[start, len, start, len]`).
     pub byte_range: [i64; 4],
+    /// The signer certificate's issuer DN (`None` if unavailable).
+    pub issuer: Option<String>,
+    /// The signer certificate's serial number, hex (`None` if unavailable).
+    pub serial_number: Option<String>,
+    /// The certificate's "not before" validity bound, ISO-8601 (`None` if unavailable).
+    pub valid_from: Option<String>,
+    /// The certificate's "not after" validity bound, ISO-8601 (`None` if unavailable).
+    pub valid_to: Option<String>,
+    /// The signature algorithm (e.g. `SHA256withRSA`; `None` if unavailable).
+    pub algorithm: Option<String>,
+    /// The claimed signing time, ISO-8601 (`None` if absent).
+    pub signing_time: Option<String>,
+    /// Number of certificates embedded in the CMS.
+    pub cert_count: usize,
+    /// Whether the signature carries an embedded (PAdES) timestamp.
+    pub has_timestamp: bool,
 }
 
 /// Validate every signature in `data`. Returns one [`SignatureReport`] per
@@ -235,6 +259,95 @@ pub fn verify_signatures(data: &[u8]) -> Result<Vec<SignatureReport>> {
                 .and_then(json::Json::as_bool)
                 .unwrap_or(false),
             byte_range,
+            issuer: opt_str("issuer"),
+            serial_number: opt_str("serial_number"),
+            valid_from: opt_str("valid_from"),
+            valid_to: opt_str("valid_to"),
+            algorithm: opt_str("algorithm"),
+            signing_time: opt_str("signing_time"),
+            cert_count: item
+                .get("cert_count")
+                .and_then(json::Json::as_i64)
+                .unwrap_or(0)
+                .max(0) as usize,
+            has_timestamp: item
+                .get("has_timestamp")
+                .and_then(json::Json::as_bool)
+                .unwrap_or(false),
+        });
+    }
+    Ok(out)
+}
+
+/// One positional match from [`find_text`]. Coordinates are in PDF user space
+/// (points, origin lower-left).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextHit {
+    /// 0-based page index.
+    pub page: usize,
+    /// The matched text.
+    pub text: String,
+    /// Lower-left x of the bounding box.
+    pub x: f64,
+    /// Lower-left y of the bounding box.
+    pub y: f64,
+    /// Box width.
+    pub width: f64,
+    /// Box height.
+    pub height: f64,
+}
+
+/// Find every occurrence of `query` in `data`, returning a [`TextHit`] (with a
+/// bounding box) per match. An empty vector means no match.
+pub fn find_text(data: &[u8], query: &str, case_sensitive: bool) -> Result<Vec<TextHit>> {
+    let a = ffi::api()?;
+    let query = cstr(query)?;
+    let mut ptr: *mut u8 = ptr::null_mut();
+    let mut len: usize = 0;
+    check(a, unsafe {
+        (a.pdf_find_text_json)(
+            data.as_ptr(),
+            data.len(),
+            query.as_ptr(),
+            case_sensitive as i32,
+            &mut ptr,
+            &mut len,
+        )
+    })?;
+    let bytes = take_buffer(a, ptr, len);
+    let text = String::from_utf8_lossy(&bytes);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let value = json::parse(trimmed).ok_or_else(|| {
+        PdfError::new(
+            PdfStatus::Parse,
+            format!("could not parse find_text JSON: {trimmed}"),
+        )
+    })?;
+    let array = value
+        .as_array()
+        .ok_or_else(|| PdfError::new(PdfStatus::Parse, "find_text JSON was not an array"))?;
+    let num =
+        |item: &json::Json, key: &str| item.get(key).and_then(json::Json::as_f64).unwrap_or(0.0);
+    let mut out = Vec::with_capacity(array.len());
+    for item in array {
+        out.push(TextHit {
+            page: item
+                .get("page")
+                .and_then(json::Json::as_i64)
+                .unwrap_or(0)
+                .max(0) as usize,
+            text: item
+                .get("text")
+                .and_then(json::Json::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            x: num(item, "x"),
+            y: num(item, "y"),
+            width: num(item, "width"),
+            height: num(item, "height"),
         });
     }
     Ok(out)

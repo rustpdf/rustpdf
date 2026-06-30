@@ -322,4 +322,59 @@ let plain;
   console.log(`Model B (beginSigning) ok — document=${session.document.length}B, tbs=${session.bytes.length}B, hash=${session.hash.length}B`);
 }
 
+// 15. Positional text search (issue #41 P1).
+{
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'findme needle here');
+  const doc = d.toBytes();
+  d.close();
+
+  const hits = rp.findText(doc, 'needle');
+  assert.ok(Array.isArray(hits) && hits.length >= 1, `findText: expected >=1 hit, got ${hits.length}`);
+  const h = hits[0];
+  assert.ok(typeof h.page === 'number', 'hit.page');
+  assert.ok(h.width > 0 && h.height > 0, `hit has a box: ${JSON.stringify(h)}`);
+  // case-sensitive search for a different case should miss.
+  assert.strictEqual(rp.findText(doc, 'NEEDLE', true).length, 0, 'case-sensitive miss');
+  console.log(`findText ok — ${hits.length} hit(s), box=${h.width.toFixed(1)}x${h.height.toFixed(1)}`);
+}
+
+// 16. Normalization: set_version + normalize on a loaded doc (issue #41 P1).
+{
+  const ed = rp.EditableDoc.load(pdfa);
+  ed.setVersion(rp.PdfVersion.V1_7);
+  const v17 = ed.toBytes();
+  assert.ok(v17.length > 0, 'set_version bytes');
+  ed.close();
+
+  const ed2 = rp.EditableDoc.load(pdfa);
+  ed2.normalize(rp.PdfVersion.V1_7);
+  const norm = ed2.toBytes();
+  assert.ok(!norm.includes(Buffer.from('pdfaid')), 'normalize strips PDF/A identifier');
+  ed2.close();
+  console.log(`set_version + normalize ok (${norm.length} bytes)`);
+}
+
+// 17. Rich signature inspection fields (issue #41 P1).
+{
+  const fx = path.join(root, 'crates', 'pdf', 'tests', 'fixtures');
+  const key = fs.readFileSync(path.join(fx, 'signer_key.pk8'));
+  const cert = fs.readFileSync(path.join(fx, 'signer_cert.der'));
+  const d = new rp.Document();
+  const fnt = d.addFontFile(font);
+  d.addPage().showText(fnt, 14, 72, 700, 'rich verify');
+  const doc = d.toBytes();
+  d.close();
+
+  const signed = rp.sign(doc, key, cert, { reason: 'rich' });
+  const s = rp.verifySignatures(signed)[0];
+  for (const k of ['issuer', 'serial_number', 'valid_from', 'valid_to', 'algorithm', 'signing_time', 'cert_count', 'has_timestamp']) {
+    assert.ok(k in s, `rich verify field ${k} present`);
+  }
+  assert.ok(typeof s.cert_count === 'number', 'cert_count is a number');
+  assert.ok(typeof s.has_timestamp === 'boolean', 'has_timestamp is a boolean');
+  console.log(`rich verify fields ok — issuer=${s.issuer}, algorithm=${s.algorithm}, certs=${s.cert_count}`);
+}
+
 console.log('OK: full Node binding surface exercised');

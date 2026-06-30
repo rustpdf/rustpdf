@@ -262,6 +262,10 @@ internal static partial class Native
     internal static partial int pdf_extract_text(byte[] data, nuint len, out IntPtr outPtr, out nuint outLen);
 
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_find_text_json(
+        byte[] data, nuint len, string query, int caseSensitive, out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_extract_images_to_dir(byte[] data, nuint len, string dir, out nuint outCount);
 
     [LibraryImport(Lib)]
@@ -329,11 +333,23 @@ internal static partial class Native
 
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_editable_watermark_text(
-        IntPtr ed, string text, double size, double r, double g, double b, double opacity, double rotationDeg);
+        IntPtr ed, string text, double size, double r, double g, double b, double opacity,
+        double rotationDeg, int opaqueBackground);
 
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int pdf_editable_watermark_image_file(
-        IntPtr ed, string path, double width, double height, double opacity);
+        IntPtr ed, string path, double width, double height, double opacity, double rotationDeg);
+
+    // ---- normalization (issue #41 P1) ---------------------------------------
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_set_version(IntPtr ed, int version);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_strip_pdfa(IntPtr ed);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_normalize(IntPtr ed, int version);
 
     // ---- Tier 2: redaction + PDF/A conversion (EditableDoc) -----------------
 
@@ -369,6 +385,19 @@ internal static partial class Native
         public nuint PolicyHashLen;
         public IntPtr PolicyHashAlgOid;
         public IntPtr PolicyUri;
+
+        // ---- visible signature + embedded image (issue #41 P1) --------------
+        public int Visible;
+        public nuint VisPage;
+        // vis_rect[4] flattened to four doubles to keep the struct blittable
+        // without requiring an `unsafe` fixed buffer.
+        public double VisRect0;
+        public double VisRect1;
+        public double VisRect2;
+        public double VisRect3;
+        public IntPtr VisText;
+        public IntPtr VisImage;
+        public nuint VisImageLen;
     }
 
     [LibraryImport(Lib)]
@@ -392,4 +421,20 @@ internal static partial class Native
     [LibraryImport(Lib)]
     internal static partial int pdf_list_signatures(
         byte[] pdf, nuint pdfLen, out IntPtr outPtr, out nuint outLen);
+
+    // ---- network TSA (AD-RT) — issue #41 P1 ---------------------------------
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_timestamp_begin(
+        byte[] pdf, nuint pdfLen,
+        out IntPtr outDoc, out nuint outDocLen, out IntPtr outTbs, out nuint outTbsLen);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_timestamp_request(
+        byte[] imprint, nuint imprintLen, byte[]? nonce, nuint nonceLen, int certReq,
+        out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_timestamp_token_from_response(
+        byte[] response, nuint responseLen, out IntPtr outPtr, out nuint outLen);
 }

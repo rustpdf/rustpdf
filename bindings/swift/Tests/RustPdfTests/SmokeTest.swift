@@ -7,6 +7,10 @@
 //
 
 import XCTest
+import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 @testable import RustPdf
 
 final class SmokeTest: XCTestCase {
@@ -70,6 +74,17 @@ final class SmokeTest: XCTestCase {
         // 3. Text extraction.
         let text = try Pdf.extractText(pdfa)
         XCTAssertTrue(text.contains("Título"), "extracted text: \(text)")
+
+        // 3a. Positional text search (issue #41).
+        let hits = try Pdf.findText(pdfa, query: "Título")
+        XCTAssertGreaterThanOrEqual(hits.count, 1, "expected at least one text hit")
+        if let h = hits.first {
+            XCTAssertEqual(h.page, 0, "hit should be on page 0")
+            XCTAssertFalse(h.text.isEmpty, "hit text should be set")
+            XCTAssertTrue(h.width > 0 && h.height > 0, "hit should have a non-empty box: \(h)")
+        }
+        XCTAssertTrue(try Pdf.findText(pdfa, query: "no-such-string-xyz").isEmpty,
+                      "missing query should yield no hits")
 
         // 3b. Page rendering (Pro feature; license already active).
         XCTAssertEqual(try Pdf.pageCount(pdfa), 1)
@@ -234,6 +249,14 @@ final class SmokeTest: XCTestCase {
             try ed.convertToPdfa(.a2b)
             let out = try ed.toBytes()
             XCTAssertTrue(contains(out, "pdfaid"), "PDF/A identifier missing after conversion")
+
+            // 14b. Normalize back to a plain PDF (strip PDF/A + set version).
+            let ed2 = try EditableDoc(loading: out)
+            try ed2.setVersion(.v17)
+            try ed2.normalize(.v17)
+            let plainAgain = try ed2.toBytes()
+            XCTAssertFalse(contains(plainAgain, "pdfaid"), "pdfaid should be gone after normalize")
+            XCTAssertTrue(plainAgain.starts(with: Array("%PDF-1.7".utf8)), "header should be 1.7")
         }
 
         // 15. Verify signatures on the freshly-signed document from step 8.
@@ -242,6 +265,12 @@ final class SmokeTest: XCTestCase {
         if let r = reports.first {
             XCTAssertEqual(r.byteRange.count, 4, "byteRange should have 4 ints")
             XCTAssertFalse(r.subFilter.isEmpty, "subFilter should be set")
+            // Rich signature inspection (issue #41): new fields are accessible.
+            XCTAssertGreaterThanOrEqual(r.certCount, 1, "expected at least one cert")
+            XCTAssertNotNil(r.algorithm, "algorithm should be reported")
+            XCTAssertNotNil(r.serialNumber, "serial number should be reported")
+            XCTAssertNotNil(r.validFrom, "validFrom should be reported")
+            _ = r.issuer; _ = r.validTo; _ = r.signingTime; _ = r.hasTimestamp
         }
         XCTAssertTrue(try Pdf.verifySignatures(plain).isEmpty, "unsigned doc should report no signatures")
 
@@ -290,6 +319,25 @@ final class SmokeTest: XCTestCase {
         XCTAssertFalse(session.document.isEmpty, "Model B: prepared document must be non-empty")
         XCTAssertFalse(session.bytes.isEmpty, "Model B: to-be-signed bytes must be non-empty")
         XCTAssertEqual(session.hash.count, 32, "Model B: SHA-256 hash must be 32 bytes")
+
+        // 16b. Visible signature appearance (Model A) — issue #41.
+        let visOpts = SigningOptions(
+            reason: "Visible", name: "HSM signer", visible: true,
+            visiblePage: 0, visibleRect: (72, 600, 272, 660),
+            visibleText: "Signed by HSM\nrustpdf")
+        let signedVis = try Pdf.signWith(plain, certificate: cert, options: visOpts, sign: rsaSign)
+        XCTAssertTrue(contains(signedVis, "/ByteRange"), "visible sig ByteRange missing")
+        XCTAssertGreaterThanOrEqual(try Pdf.verifySignatures(signedVis).count, 1,
+                                    "visible signature should verify")
+
+        // 17. Network timestamp (AD-RT) — issue #41. Offline phases only: prepare,
+        // hash, and build the RFC 3161 request (no live TSA in the smoke test).
+        let (tsDoc, tsBytes) = try Pdf.beginTimestamp(plain)
+        XCTAssertFalse(tsDoc.isEmpty, "timestamp prepared doc must be non-empty")
+        XCTAssertFalse(tsBytes.isEmpty, "timestamp to-be-signed bytes must be non-empty")
+        let imprint = Array(SHA256.hash(data: Data(tsBytes)))
+        let tsReq = try Pdf.timestampRequest(imprint: imprint)
+        XCTAssertFalse(tsReq.isEmpty, "RFC 3161 request must be non-empty")
     }
 
     /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).

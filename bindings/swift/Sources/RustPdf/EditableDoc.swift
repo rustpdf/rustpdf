@@ -215,23 +215,29 @@ public final class EditableDoc {
     // MARK: - Watermarks + redaction
 
     /// Stamp a diagonal text watermark (standard Helvetica) across every page.
+    /// `opaqueBackground` draws a filled rectangle behind the text (for a stamp
+    /// effect) instead of a transparent overlay.
     @discardableResult
     public func watermarkText(_ text: String, size: Double = 64.0,
                               color: (Double, Double, Double) = (0.5, 0.5, 0.5),
-                              opacity: Double = 0.30, rotationDeg: Double = 45.0) throws -> EditableDoc {
+                              opacity: Double = 0.30, rotationDeg: Double = 45.0,
+                              opaqueBackground: Bool = false) throws -> EditableDoc {
         try text.withCString {
             try check(Native.shared.pdf_editable_watermark_text(
-                handle, $0, size, color.0, color.1, color.2, opacity, rotationDeg))
+                handle, $0, size, color.0, color.1, color.2, opacity, rotationDeg,
+                opaqueBackground ? 1 : 0))
         }
         return self
     }
 
-    /// Stamp an image (from a JPEG/PNG file at `path`) centered on every page.
+    /// Stamp an image (from a JPEG/PNG file at `path`) centered on every page,
+    /// rotated `rotationDeg` degrees.
     @discardableResult
     public func watermarkImageFile(path: String, width: Double, height: Double,
-                                   opacity: Double = 0.30) throws -> EditableDoc {
+                                   opacity: Double = 0.30, rotationDeg: Double = 0.0) throws -> EditableDoc {
         try path.withCString {
-            try check(Native.shared.pdf_editable_watermark_image_file(handle, $0, width, height, opacity))
+            try check(Native.shared.pdf_editable_watermark_image_file(
+                handle, $0, width, height, opacity, rotationDeg))
         }
         return self
     }
@@ -256,6 +262,28 @@ public final class EditableDoc {
     @discardableResult
     public func convertToPdfa(_ level: PdfaLevel = .a2b) throws -> EditableDoc {
         try check(Native.shared.pdf_editable_convert_to_pdfa(handle, level.rawValue)); return self
+    }
+
+    // MARK: - Normalization
+
+    /// Set the output PDF version (downgrade/normalize). Clears any catalog
+    /// `/Version` override.
+    @discardableResult
+    public func setVersion(_ version: PdfVersion) throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_set_version(handle, version.rawValue)); return self
+    }
+
+    /// Strip PDF/A conformance (`/OutputIntents`, XMP `pdfaid`, `/Version`) so
+    /// the file is a plain PDF.
+    @discardableResult
+    public func stripPdfa() throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_strip_pdfa(handle)); return self
+    }
+
+    /// Normalize to a plain PDF at `version` (strip PDF/A + set the version).
+    @discardableResult
+    public func normalize(_ version: PdfVersion = .v17) throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_normalize(handle, version.rawValue)); return self
     }
 
     // MARK: - Output

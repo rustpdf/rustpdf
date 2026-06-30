@@ -36,6 +36,40 @@ final class Pdf
     }
 
     /**
+     * Find every occurrence of `$query` in `$pdf`, returning a positioned hit
+     * (page + bounding box in PDF points, origin lower-left) for each match.
+     * `$caseSensitive` defaults to a case-insensitive search.
+     *
+     * @return list<TextHit>
+     */
+    public static function findText(string $pdf, string $query, bool $caseSensitive = false): array
+    {
+        $json = Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf, $query, $caseSensitive) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_find_text_json($b, $l, $query, $caseSensitive ? 1 : 0, $o, $n);
+        });
+        if ($json === '') {
+            return [];
+        }
+        $decoded = json_decode($json, true);
+        if (!\is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded as $h) {
+            $out[] = new TextHit(
+                (int) ($h['page'] ?? 0),
+                (string) ($h['text'] ?? ''),
+                (float) ($h['x'] ?? 0.0),
+                (float) ($h['y'] ?? 0.0),
+                (float) ($h['width'] ?? 0.0),
+                (float) ($h['height'] ?? 0.0),
+            );
+        }
+        return $out;
+    }
+
+    /**
      * Extract every raster image from `$pdf` into directory `$dir` (JPEGs are
      * written verbatim as .jpg, everything else as .png; files are named
      * page{N}_{name}.{ext}). Returns the number of images written.
@@ -127,7 +161,10 @@ final class Pdf
      * Validate every signature in `$data`. Returns one associative array per
      * signature with keys `field_name`, `sub_filter`, `signer`,
      * `covers_whole_document`, `digest_valid`, `signature_valid`, `is_valid`
-     * and `byte_range`. An empty array means the document is unsigned.
+     * and `byte_range`, plus certificate detail (any may be null): `issuer`,
+     * `serial_number`, `valid_from`, `valid_to`, `algorithm`, `signing_time`,
+     * `cert_count` and `has_timestamp`. An empty array means the document is
+     * unsigned.
      *
      * @return list<array<string, mixed>>
      */
@@ -259,6 +296,62 @@ final class Pdf
         });
     }
 
+    // ---- Network timestamp (AD-RT / PAdES-B-LTA over a remote TSA) ----------
+
+    /**
+     * **Network timestamp, phase 1.** Prepare `$pdf` for a `/DocTimeStamp` from
+     * a network RFC 3161 TSA. Returns `[document, tbs]`: SHA-256 `$tbs`, build a
+     * request with {@see timestampRequest()}, POST it to the TSA, extract the
+     * token with {@see timestampTokenFromResponse()}, then embed it via
+     * {@see completeSignature()}.
+     *
+     * @return array{0: string, 1: string} `[document, to-be-signed bytes]`
+     */
+    public static function beginTimestamp(string $pdf): array
+    {
+        $ffi = Ffi::get();
+        [$pb, $pl] = Ffi::bytes($pdf);
+        $docPtr = $ffi->new('uint8_t*');
+        $docLen = $ffi->new('uintptr_t');
+        $tbsPtr = $ffi->new('uint8_t*');
+        $tbsLen = $ffi->new('uintptr_t');
+        Ffi::check($ffi->pdf_timestamp_begin(
+            $pb,
+            $pl,
+            \FFI::addr($docPtr),
+            \FFI::addr($docLen),
+            \FFI::addr($tbsPtr),
+            \FFI::addr($tbsLen),
+        ));
+        return [self::takeOut($docPtr, $docLen), self::takeOut($tbsPtr, $tbsLen)];
+    }
+
+    /**
+     * Build an RFC 3161 `TimeStampReq` (DER) for `$imprint` (the SHA-256 of the
+     * to-be-signed bytes from {@see beginTimestamp()}). POST the result to the
+     * TSA. `$nonce` is optional; `$certReq` asks the TSA to embed its certificate.
+     */
+    public static function timestampRequest(string $imprint, ?string $nonce = null, bool $certReq = true): string
+    {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($imprint, $nonce, $certReq) {
+            [$ib, $il] = Ffi::bytes($imprint);
+            [$nb, $nl] = Ffi::bytes($nonce ?? '');
+            return $ffi->pdf_timestamp_request($ib, $il, $nb, $nl, $certReq ? 1 : 0, $o, $n);
+        });
+    }
+
+    /**
+     * Extract the `TimeStampToken` (CMS) from a TSA's RFC 3161 `TimeStampResp`.
+     * Embed the returned token via {@see completeSignature()}.
+     */
+    public static function timestampTokenFromResponse(string $response): string
+    {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($response) {
+            [$rb, $rl] = Ffi::bytes($response);
+            return $ffi->pdf_timestamp_token_from_response($rb, $rl, $o, $n);
+        });
+    }
+
     /**
      * List the signature fields in `$pdf` (detect existing signatures before
      * signing — the iText `SignatureUtil.getSignatureNames` equivalent). An
@@ -344,6 +437,25 @@ final class Pdf
             }
             if (($uri = $cstr($pol->uri)) !== null) {
                 $params->policy_uri = $uri;
+            }
+        }
+        // Visible signature appearance (issue #41 P1).
+        if ($options->visible) {
+            $params->visible = 1;
+            $params->vis_page = $options->visiblePage;
+            for ($i = 0; $i < 4; $i++) {
+                $params->vis_rect[$i] = (float) ($options->visibleRect[$i] ?? 0.0);
+            }
+            if (($vt = $cstr($options->visibleText)) !== null) {
+                $params->vis_text = $vt;
+            }
+            if ($options->visibleImage !== null && $options->visibleImage !== '') {
+                [$ib, $il] = Ffi::bytes($options->visibleImage);
+                if ($ib !== null) {
+                    $params->vis_image = $ffi->cast('uint8_t*', $ib);
+                    $params->vis_image_len = $il;
+                    $keep[] = $ib;
+                }
             }
         }
         return [$params, $keep];

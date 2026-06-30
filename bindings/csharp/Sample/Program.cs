@@ -270,6 +270,40 @@ Assert(sigs[0].ByteRange.Length == 4, "signature byte range has 4 ints");
 Console.WriteLine($"verify_signatures ok: {sigs.Count} signature(s), first sub_filter={sigs[0].SubFilter}, valid={sigs[0].IsValid}");
 Assert(Pdf.VerifySignatures(plain).Count == 0, "unsigned doc has no signatures");
 
+// 14b. Rich signature inspection (issue #41 P1): the new certificate-detail
+// fields are accessible on the verify report.
+Console.WriteLine(
+    $"  signer cert: issuer={sigs[0].Issuer}, alg={sigs[0].Algorithm}, " +
+    $"certs={sigs[0].CertCount}, hasTimestamp={sigs[0].HasTimestamp}");
+Assert(sigs[0].CertCount >= 1, "signed doc embeds at least one certificate");
+
+// 15. Positional text search (issue #41 P1).
+var hits = Pdf.FindText(pdfa, "parágrafo");
+Assert(hits.Count >= 1, $"find_text found at least one hit, got {hits.Count}");
+Assert(hits[0].Width > 0 && hits[0].Height > 0, "hit has a non-empty bounding box");
+Console.WriteLine(
+    $"find_text ok: {hits.Count} hit(s); first @page {hits[0].Page} " +
+    $"({hits[0].X:F1},{hits[0].Y:F1}) {hits[0].Width:F1}x{hits[0].Height:F1}");
+
+// 16. Normalization (issue #41 P1): strip PDF/A + downgrade version.
+byte[] normalized;
+using (var ed = EditableDoc.Load(pdfa))
+{
+    ed.Normalize(2); // strip PDF/A + set version 1.7
+    normalized = ed.ToBytes();
+}
+Assert(!System.Text.Encoding.Latin1.GetString(normalized).Contains("pdfaid"),
+    "normalize stripped PDF/A metadata");
+byte[] versioned;
+using (var ed = EditableDoc.Load(plain))
+{
+    ed.SetVersion(3); // 2.0
+    versioned = ed.ToBytes();
+}
+Assert(System.Text.Encoding.Latin1.GetString(versioned).Contains("%PDF-2.0"),
+    "set_version wrote the 2.0 header");
+Console.WriteLine("normalize + set_version + strip_pdfa ok");
+
 Console.WriteLine("OK: full C# binding surface exercised");
 
 // Build a detached CMS/PKCS#7 container over `data` using .NET's SignedCms —

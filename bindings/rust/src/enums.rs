@@ -126,6 +126,32 @@ impl FacturxProfile {
     }
 }
 
+/// DocMDP certification level applied by a certifying signature (the first
+/// signature only). Passed via [`crate::SigningOptions::certify`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Certify {
+    /// Not a certifying signature (an ordinary approval signature).
+    #[default]
+    None,
+    /// `/P 1` — no changes permitted after signing.
+    Locked,
+    /// `/P 2` — form-filling and signing permitted.
+    Forms,
+    /// `/P 3` — form-filling, signing and annotations permitted.
+    FormsAndAnnotations,
+}
+
+impl Certify {
+    pub(crate) fn code(self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::Locked => 1,
+            Self::Forms => 2,
+            Self::FormsAndAnnotations => 3,
+        }
+    }
+}
+
 /// PDF header version. Passed to [`crate::Document::set_version`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PdfVersion {

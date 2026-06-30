@@ -2,7 +2,7 @@
 
 use std::ptr;
 
-use crate::enums::{Encryption, PdfaLevel};
+use crate::enums::{Encryption, PdfVersion, PdfaLevel};
 use crate::error::{PdfError, PdfStatus, Result};
 use crate::ffi::{self, RawEditable};
 use crate::util::{check, cstr, last_error, take_buffer};
@@ -215,7 +215,8 @@ impl EditableDoc {
             .collect())
     }
 
-    /// Stamp a diagonal text watermark across every page.
+    /// Stamp a diagonal text watermark across every page. `opaque_background`
+    /// draws a filled (non-transparent) plate behind the text.
     #[allow(clippy::too_many_arguments)]
     pub fn watermark_text(
         &mut self,
@@ -224,6 +225,7 @@ impl EditableDoc {
         color: (f64, f64, f64),
         opacity: f64,
         rotation_deg: f64,
+        opaque_background: bool,
     ) -> Result<&mut Self> {
         let a = ffi::api()?;
         let text = cstr(text)?;
@@ -238,18 +240,21 @@ impl EditableDoc {
                 b,
                 opacity,
                 rotation_deg,
+                opaque_background as i32,
             )
         })?;
         Ok(self)
     }
 
-    /// Stamp an image watermark (from a file path) across every page.
+    /// Stamp an image watermark (from a file path) across every page, rotated
+    /// `rotation_deg` degrees.
     pub fn watermark_image_file(
         &mut self,
         path: &str,
         width: f64,
         height: f64,
         opacity: f64,
+        rotation_deg: f64,
     ) -> Result<&mut Self> {
         let a = ffi::api()?;
         let path = cstr(path)?;
@@ -260,7 +265,35 @@ impl EditableDoc {
                 width,
                 height,
                 opacity,
+                rotation_deg,
             )
+        })?;
+        Ok(self)
+    }
+
+    /// Set the output PDF version (downgrade / normalize). Clears any catalog
+    /// `/Version` override.
+    pub fn set_version(&mut self, version: PdfVersion) -> Result<&mut Self> {
+        let a = ffi::api()?;
+        check(a, unsafe {
+            (a.pdf_editable_set_version)(self.handle, version.code())
+        })?;
+        Ok(self)
+    }
+
+    /// Strip PDF/A conformance (`/OutputIntents`, XMP `pdfaid`, `/Version`) so
+    /// the file is a plain PDF.
+    pub fn strip_pdfa(&mut self) -> Result<&mut Self> {
+        let a = ffi::api()?;
+        check(a, unsafe { (a.pdf_editable_strip_pdfa)(self.handle) })?;
+        Ok(self)
+    }
+
+    /// Normalize to a plain PDF at `version` (strip PDF/A + set the version).
+    pub fn normalize(&mut self, version: PdfVersion) -> Result<&mut Self> {
+        let a = ffi::api()?;
+        check(a, unsafe {
+            (a.pdf_editable_normalize)(self.handle, version.code())
         })?;
         Ok(self)
     }

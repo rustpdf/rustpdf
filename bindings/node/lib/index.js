@@ -23,6 +23,8 @@ const Align = Object.freeze({ Left: 0, Right: 1, Center: 2, Justify: 3 });
 const AFRelationship = Object.freeze({ Source: 0, Data: 1, Alternative: 2, Supplement: 3, Unspecified: 4 });
 const Encryption = Object.freeze({ Rc4: 0, Aes128: 1, Aes256: 2 });
 const FacturxProfile = Object.freeze({ Minimum: 0, BasicWL: 1, Basic: 2, EN16931: 3, Extended: 4 });
+// PDF version codes (Document.setVersion / EditableDoc.setVersion / normalize).
+const PdfVersion = Object.freeze({ V1_4: 0, V1_5: 1, V1_7: 2, V2_0: 3 });
 // DocMDP certification level applied by the first (certifying) signature.
 const Certify = Object.freeze({ None: 0, Locked: 1, Forms: 2, FormsAndAnnotations: 3 });
 
@@ -130,6 +132,13 @@ const SigningOptionsStruct = koffi.struct('PdfSigningOptions', {
   policy_hash_len: 'size_t',
   policy_hash_alg_oid: 'const char *',
   policy_uri: 'const char *',
+  // Visible signature + embedded image — issue #41 P1 (appended at the end).
+  visible: 'int',
+  vis_page: 'size_t',
+  vis_rect: koffi.array('double', 4),
+  vis_text: 'const char *',
+  vis_image: 'const uint8_t *',
+  vis_image_len: 'size_t',
 });
 void SigningOptionsStruct; // registered by name; referenced in func strings below
 
@@ -212,8 +221,13 @@ const f = {
   edSetChoice: lib.func('int pdf_editable_set_choice(void *ed, const char *name, const char *value, _Out_ int *found)'),
   edFlatten: lib.func('int pdf_editable_flatten_forms(void *ed)'),
   edFieldNames: lib.func('int pdf_editable_field_names(void *ed, _Out_ uint8_t **out, _Out_ size_t *len)'),
-  edWatermarkText: lib.func('int pdf_editable_watermark_text(void *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg)'),
-  edWatermarkImage: lib.func('int pdf_editable_watermark_image_file(void *ed, const char *path, double width, double height, double opacity)'),
+  edWatermarkText: lib.func('int pdf_editable_watermark_text(void *ed, const char *text, double size, double r, double g, double b, double opacity, double rotation_deg, int opaque_background)'),
+  edWatermarkImage: lib.func('int pdf_editable_watermark_image_file(void *ed, const char *path, double width, double height, double opacity, double rotation_deg)'),
+
+  // Normalization (issue #41 P1) — version downgrade / strip PDF/A (EditableDoc).
+  edSetVersion: lib.func('int pdf_editable_set_version(void *ed, int version)'),
+  edStripPdfa: lib.func('int pdf_editable_strip_pdfa(void *ed)'),
+  edNormalize: lib.func('int pdf_editable_normalize(void *ed, int version)'),
 
   // Tier 2: redaction + PDF/A conversion (EditableDoc)
   edRedact: lib.func('int pdf_editable_redact(void *ed, size_t index, const double *rects, size_t count, _Out_ int *found)'),
@@ -221,6 +235,9 @@ const f = {
 
   // Tier 2: signature verification (module-level)
   verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+
+  // Positional text search (issue #41 P1) — JSON array of bounding boxes.
+  findText: lib.func('int pdf_find_text_json(const uint8_t *data, size_t len, const char *query, int case_sensitive, _Out_ uint8_t **out, _Out_ size_t *len2)'),
 
   extractText: lib.func('int pdf_extract_text(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
   extractImagesToDir: lib.func('int pdf_extract_images_to_dir(const uint8_t *data, size_t len, const char *dir, _Out_ size_t *out_count)'),
@@ -235,6 +252,11 @@ const f = {
   signComplete: lib.func('int pdf_sign_complete(const uint8_t *document, size_t dl, const uint8_t *container, size_t cl, _Out_ uint8_t **out, _Out_ size_t *len)'),
   signWith: lib.func('int pdf_sign_with(const uint8_t *pdf, size_t pl, const uint8_t *cert, size_t cl, const uint8_t **chain_ptrs, const size_t *chain_lens, size_t chain_count, const PdfSigningOptions *params, PdfSignHashFn *callback, void *ctx, _Out_ uint8_t **out, _Out_ size_t *len)'),
   listSignatures: lib.func('int pdf_list_signatures(const uint8_t *pdf, size_t pl, _Out_ uint8_t **out, _Out_ size_t *len)'),
+
+  // Network TSA (AD-RT) — issue #41 P1.
+  timestampBegin: lib.func('int pdf_timestamp_begin(const uint8_t *pdf, size_t pl, _Out_ uint8_t **out_doc, _Out_ size_t *out_doc_len, _Out_ uint8_t **out_tbs, _Out_ size_t *out_tbs_len)'),
+  timestampRequest: lib.func('int pdf_timestamp_request(const uint8_t *imprint, size_t il, const uint8_t *nonce, size_t nl, int cert_req, _Out_ uint8_t **out, _Out_ size_t *len)'),
+  timestampTokenFromResponse: lib.func('int pdf_timestamp_token_from_response(const uint8_t *response, size_t rl, _Out_ uint8_t **out, _Out_ size_t *len)'),
 };
 
 // ---- helpers ---------------------------------------------------------------
@@ -316,6 +338,15 @@ function verifySignatures(pdf) {
   return js ? JSON.parse(js) : [];
 }
 
+// Find every occurrence of `query` in `pdf`; returns an array of bounding boxes
+// { page, text, x, y, width, height } (coords in PDF points, origin lower-left).
+// `caseSensitive` defaults to false (case-insensitive). Empty array = no match.
+function findText(pdf, query, caseSensitive = false) {
+  const b = asBuf(pdf);
+  const js = takeBytes((o, n) => f.findText(b, b.length, query, caseSensitive ? 1 : 0, o, n)).toString('utf8');
+  return js ? JSON.parse(js) : [];
+}
+
 function sign(pdf, keyDer, certDer, opts = {}) {
   const p = asBuf(pdf), k = asBuf(keyDer), c = asBuf(certDer);
   return takeBytes((o, n) => f.sign(
@@ -341,11 +372,14 @@ function addDss(pdf, certs = [], crls = []) {
 
 // Marshal a JS SigningOptions object into the native PdfSigningOptions struct.
 // SigningOptions: { reason?, location?, name?, pades?, certify?, containerSize?,
-//   policy? }, where policy = { oid, hash, hashAlgorithmOid?, uri? }.
+//   policy?, visible?, visiblePage?, visibleRect?, visibleText?, visibleImage? },
+// where policy = { oid, hash, hashAlgorithmOid?, uri? }.
 function buildSigningOptions(options) {
   const o = options || {};
   const pol = o.policy || null;
   const hash = pol && pol.hash ? asBuf(pol.hash) : null;
+  const visImg = o.visibleImage ? asBuf(o.visibleImage) : null;
+  const visRect = Array.isArray(o.visibleRect) ? o.visibleRect : [0, 0, 0, 0];
   return {
     reason: o.reason ?? null,
     location: o.location ?? null,
@@ -358,6 +392,13 @@ function buildSigningOptions(options) {
     policy_hash_len: hash ? hash.length : 0,
     policy_hash_alg_oid: pol ? pol.hashAlgorithmOid ?? null : null,
     policy_uri: pol ? pol.uri ?? null : null,
+    // Visible signature + embedded image (issue #41 P1).
+    visible: o.visible ? 1 : 0,
+    vis_page: o.visiblePage && o.visiblePage > 0 ? o.visiblePage : 0,
+    vis_rect: [visRect[0] || 0, visRect[1] || 0, visRect[2] || 0, visRect[3] || 0],
+    vis_text: o.visibleText ?? null,
+    vis_image: visImg && visImg.length > 0 ? visImg : null,
+    vis_image_len: visImg ? visImg.length : 0,
   };
 }
 
@@ -447,6 +488,38 @@ function listSignatures(pdf) {
     out.push({ name: line.slice(tab + 1), signed: line.slice(0, tab) === '1' });
   }
   return out;
+}
+
+// ---- network TSA (AD-RT) — issue #41 P1 ------------------------------------
+
+// Phase 1 of a network (RFC 3161) timestamp. Prepare `pdf` for a /DocTimeStamp
+// and return { document, bytes }: SHA-256 `bytes`, build a request with
+// timestampRequest, POST it to the TSA, extract the token with
+// timestampTokenFromResponse, then embed it via completeSignature(document, token).
+function beginTimestamp(pdf) {
+  const p = asBuf(pdf);
+  const outDoc = [null], outDocLen = [0n], outTbs = [null], outTbsLen = [0n];
+  check(f.timestampBegin(p, p.length, outDoc, outDocLen, outTbs, outTbsLen));
+  const document = copyAndFree(outDoc[0], Number(outDocLen[0]));
+  const bytes = copyAndFree(outTbs[0], Number(outTbsLen[0]));
+  return { document, bytes };
+}
+
+// Build an RFC 3161 TimeStampReq (DER) for `imprint` (the SHA-256 of the bytes
+// to timestamp). `nonce` is optional (null = none); `certReq` asks the TSA to
+// embed its certificate. POST the returned bytes to the TSA.
+function timestampRequest(imprint, nonce = null, certReq = true) {
+  const im = asBuf(imprint);
+  const nb = nonce ? asBuf(nonce) : null;
+  return takeBytes((o, n) => f.timestampRequest(
+    im, im.length, nb, nb ? nb.length : 0, certReq ? 1 : 0, o, n));
+}
+
+// Extract the TimeStampToken (CMS ContentInfo) from a TSA's RFC 3161
+// TimeStampResp. Embed the result via completeSignature(document, token).
+function timestampTokenFromResponse(response) {
+  const r = asBuf(response);
+  return takeBytes((o, n) => f.timestampTokenFromResponse(r, r.length, o, n));
 }
 
 // ---- Document --------------------------------------------------------------
@@ -644,16 +717,21 @@ class EditableDoc {
     return text.split('\n').filter((s) => s.length > 0);
   }
 
-  // watermarks (Tier 1)
-  watermarkText(text, { size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0 } = {}) {
+  // watermarks (Tier 1; opaqueBackground / rotationDeg added in issue #41 P1)
+  watermarkText(text, { size = 64.0, color = [0.5, 0.5, 0.5], opacity = 0.30, rotationDeg = 45.0, opaqueBackground = false } = {}) {
     const [r, g, b] = color;
-    check(f.edWatermarkText(this._ptr, text, size, r, g, b, opacity, rotationDeg));
+    check(f.edWatermarkText(this._ptr, text, size, r, g, b, opacity, rotationDeg, opaqueBackground ? 1 : 0));
     return this;
   }
-  watermarkImageFile(path, width, height, opacity = 0.30) {
-    check(f.edWatermarkImage(this._ptr, path, width, height, opacity));
+  watermarkImageFile(path, width, height, opacity = 0.30, rotationDeg = 0.0) {
+    check(f.edWatermarkImage(this._ptr, path, width, height, opacity, rotationDeg));
     return this;
   }
+
+  // normalization (issue #41 P1): downgrade version / strip PDF/A.
+  setVersion(version) { check(f.edSetVersion(this._ptr, version)); return this; }
+  stripPdfa() { check(f.edStripPdfa(this._ptr)); return this; }
+  normalize(version = 2) { check(f.edNormalize(this._ptr, version)); return this; }
 
   // redaction + PDF/A conversion (Tier 2)
   redact(pageIndex, rects) {
@@ -688,6 +766,7 @@ module.exports = {
   AFRelationship,
   Encryption,
   FacturxProfile,
+  PdfVersion,
   Certify,
   Bookmark,
   SigningSession,
@@ -700,6 +779,7 @@ module.exports = {
   renderPageToPng,
   pageCount,
   verifySignatures,
+  findText,
   sign,
   timestamp,
   addDss,
@@ -707,4 +787,7 @@ module.exports = {
   beginSigning,
   completeSignature,
   listSignatures,
+  beginTimestamp,
+  timestampRequest,
+  timestampTokenFromResponse,
 };

@@ -49,10 +49,12 @@ __all__ = [
     "SigningOptions",
     "SignatureField",
     "SigningSession",
+    "TextHit",
     "version",
     "library_path",
     "activate_license",
     "extract_text",
+    "find_text",
     "extract_images_to_dir",
     "render_page_to_png",
     "page_count",
@@ -64,6 +66,9 @@ __all__ = [
     "begin_signing",
     "complete_signature",
     "list_signatures",
+    "begin_timestamp",
+    "timestamp_request",
+    "timestamp_token_from_response",
 ]
 
 
@@ -156,6 +161,16 @@ class SigningOptions:
     cloud-HSM CMS containers."""
     policy: SignaturePolicy | None = None
     """Signature-policy identifier (PAdES-EPES); ``None`` = none."""
+    visible: bool = False
+    """Draw a visible signature appearance using the ``visible_*`` fields."""
+    visible_page: int = 0
+    """0-based page index for the visible appearance."""
+    visible_rect: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    """Appearance rectangle ``[x0, y0, x1, y1]`` in page points."""
+    visible_text: str | None = None
+    """Appearance text lines, separated by ``\\n``; ``None`` = none."""
+    visible_image: bytes | None = None
+    """PNG/JPEG bytes of a handwritten-signature image; ``None`` = none."""
 
 
 @dataclass
@@ -164,6 +179,19 @@ class SignatureField:
 
     name: str
     signed: bool
+
+
+@dataclass
+class TextHit:
+    """One positional match from :func:`find_text` (coords in PDF points,
+    origin lower-left)."""
+
+    page: int
+    text: str
+    x: float
+    y: float
+    width: float
+    height: float
 
 
 class SigningSession:
@@ -424,18 +452,42 @@ _ed_field_names = _bind("pdf_editable_field_names", c_int, [_ED, *_OUTBUF])
 _ed_watermark_text = _bind(
     "pdf_editable_watermark_text",
     c_int,
-    [_ED, c_char_p, c_double, c_double, c_double, c_double, c_double, c_double],
+    [_ED, c_char_p, c_double, c_double, c_double, c_double, c_double, c_double, c_int],
 )
 _ed_watermark_image = _bind(
-    "pdf_editable_watermark_image_file", c_int, [_ED, c_char_p, c_double, c_double, c_double]
+    "pdf_editable_watermark_image_file",
+    c_int,
+    [_ED, c_char_p, c_double, c_double, c_double, c_double],
 )
 # Tier 2: redaction + PDF/A conversion (EditableDoc)
 _ed_redact = _bind(
     "pdf_editable_redact", c_int, [_ED, c_size_t, POINTER(c_double), c_size_t, POINTER(c_int)]
 )
 _ed_convert_pdfa = _bind("pdf_editable_convert_to_pdfa", c_int, [_ED, c_int])
+# Normalization (issue #41 P1)
+_ed_set_version = _bind("pdf_editable_set_version", c_int, [_ED, c_int])
+_ed_strip_pdfa = _bind("pdf_editable_strip_pdfa", c_int, [_ED])
+_ed_normalize = _bind("pdf_editable_normalize", c_int, [_ED, c_int])
 # Tier 2: signature validation (module-level)
 _verify_sigs = _bind("pdf_verify_signatures_json", c_int, [_U8, c_size_t, *_OUTBUF])
+# Positional text search (issue #41 P1)
+_find_text = _bind(
+    "pdf_find_text_json", c_int, [_U8, c_size_t, c_char_p, c_int, *_OUTBUF]
+)
+# Network TSA (AD-RT) — issue #41 P1
+_timestamp_begin = _bind(
+    "pdf_timestamp_begin",
+    c_int,
+    [_U8, c_size_t, POINTER(_U8), POINTER(c_size_t), POINTER(_U8), POINTER(c_size_t)],
+)
+_timestamp_request = _bind(
+    "pdf_timestamp_request",
+    c_int,
+    [_U8, c_size_t, _U8, c_size_t, c_int, *_OUTBUF],
+)
+_timestamp_token_from_response = _bind(
+    "pdf_timestamp_token_from_response", c_int, [_U8, c_size_t, *_OUTBUF]
+)
 
 
 # Deferred / external (HSM) signing — issue #41 P0.
@@ -454,6 +506,13 @@ class _SigningOptionsNative(ctypes.Structure):
         ("policy_hash_len", c_size_t),
         ("policy_hash_alg_oid", c_char_p),
         ("policy_uri", c_char_p),
+        # Visible signature + embedded image (issue #41 P1) — appended at the end.
+        ("visible", c_int),
+        ("vis_page", c_size_t),
+        ("vis_rect", c_double * 4),
+        ("vis_text", c_char_p),
+        ("vis_image", _U8),
+        ("vis_image_len", c_size_t),
     ]
 
 
@@ -894,14 +953,34 @@ class EditableDoc:
 
     def watermark_text(self, text: str, *, size: float = 64.0,
                        color: tuple[float, float, float] = (0.5, 0.5, 0.5),
-                       opacity: float = 0.30, rotation_deg: float = 45.0) -> "EditableDoc":
+                       opacity: float = 0.30, rotation_deg: float = 45.0,
+                       opaque_background: bool = False) -> "EditableDoc":
         r, g, b = color
-        _check(_ed_watermark_text(self._ptr(), _enc(text), size, r, g, b, opacity, rotation_deg))
+        _check(_ed_watermark_text(self._ptr(), _enc(text), size, r, g, b, opacity,
+                                  rotation_deg, 1 if opaque_background else 0))
         return self
 
     def watermark_image_file(self, path, width: float, height: float,
-                             opacity: float = 0.30) -> "EditableDoc":
-        _check(_ed_watermark_image(self._ptr(), _enc(str(path)), width, height, opacity))
+                             opacity: float = 0.30,
+                             rotation_deg: float = 0.0) -> "EditableDoc":
+        _check(_ed_watermark_image(self._ptr(), _enc(str(path)), width, height,
+                                   opacity, rotation_deg))
+        return self
+
+    # normalization (issue #41 P1)
+    def set_version(self, version: int) -> "EditableDoc":
+        """Set the output PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0."""
+        _check(_ed_set_version(self._ptr(), int(version)))
+        return self
+
+    def strip_pdfa(self) -> "EditableDoc":
+        """Strip PDF/A conformance (`/OutputIntents`, XMP `pdfaid`, `/Version`)."""
+        _check(_ed_strip_pdfa(self._ptr()))
+        return self
+
+    def normalize(self, version: int = 2) -> "EditableDoc":
+        """Normalize to a plain PDF at ``version`` (strip PDF/A + set version)."""
+        _check(_ed_normalize(self._ptr(), int(version)))
         return self
 
     def redact(self, page_index: int, rects: list) -> bool:
@@ -955,6 +1034,26 @@ def extract_text(data: bytes) -> str:
     return _take(lambda p, ln: _extract_text(ptr, n, p, ln)).decode("utf-8")
 
 
+def find_text(data: bytes, query: str, case_sensitive: bool = False) -> list[TextHit]:
+    """Find every occurrence of ``query`` in ``data``, returning a list of
+    :class:`TextHit` with a bounding box (PDF points, origin lower-left). An
+    empty list means no match."""
+    import json
+
+    ptr, n, _keep = _as_u8(bytes(data))
+    js = _take(
+        lambda p, ln: _find_text(ptr, n, _enc(query), 1 if case_sensitive else 0, p, ln)
+    ).decode("utf-8")
+    hits = json.loads(js) if js else []
+    return [
+        TextHit(
+            page=h["page"], text=h["text"], x=h["x"], y=h["y"],
+            width=h["width"], height=h["height"],
+        )
+        for h in hits
+    ]
+
+
 def extract_images_to_dir(data: bytes, out_dir: str) -> int:
     """Extract every raster image from ``data`` into directory ``out_dir``.
 
@@ -989,8 +1088,11 @@ def page_count(data: bytes) -> int:
 def verify_signatures(data: bytes) -> list[dict]:
     """Validate every signature in ``data``. Returns one dict per signature with
     keys ``field_name``, ``sub_filter``, ``signer``, ``covers_whole_document``,
-    ``digest_valid``, ``signature_valid``, ``is_valid`` and ``byte_range``. An
-    empty list means the document is unsigned."""
+    ``digest_valid``, ``signature_valid``, ``is_valid`` and ``byte_range``, plus
+    the rich certificate fields ``issuer``, ``serial_number``, ``valid_from``,
+    ``valid_to``, ``algorithm``, ``signing_time`` (all may be ``None``),
+    ``cert_count`` (int) and ``has_timestamp`` (bool). An empty list means the
+    document is unsigned."""
     import json
 
     ptr, n, _keep = _as_u8(bytes(data))
@@ -1067,6 +1169,17 @@ def _build_signing_options(options: "SigningOptions | None"):
             n.policy_hash_len = len(pol.hash)
         n.policy_hash_alg_oid = s(pol.hash_algorithm_oid)
         n.policy_uri = s(pol.uri)
+    # Visible signature appearance (issue #41 P1).
+    n.visible = 1 if options.visible else 0
+    n.vis_page = int(options.visible_page)
+    n.vis_rect = (c_double * 4)(*[float(c) for c in options.visible_rect])
+    n.vis_text = s(options.visible_text)
+    if options.visible_image:
+        img = bytes(options.visible_image)
+        arr = (c_ubyte * len(img)).from_buffer_copy(img)
+        keep.append(arr)
+        n.vis_image = ctypes.cast(arr, _U8)
+        n.vis_image_len = len(img)
     return n, keep
 
 
@@ -1169,3 +1282,43 @@ def list_signatures(pdf: bytes) -> list[SignatureField]:
             continue
         result.append(SignatureField(name=line[tab + 1:], signed=line[:tab] == "1"))
     return result
+
+
+# ---- network TSA (AD-RT) — issue #41 P1 ------------------------------------
+
+
+def begin_timestamp(pdf: bytes) -> tuple[bytes, bytes]:
+    """**Network-TSA, phase 1.** Prepare ``pdf`` for a document timestamp and
+    return ``(document, to_be_signed)``: the prepared PDF (with a zero-filled
+    ``/Contents`` placeholder) and the exact bytes covered by the timestamp.
+    SHA-256 the ``to_be_signed`` bytes to build the TSA request."""
+    pp, pn, _k = _as_u8(bytes(pdf))
+    doc_ptr, doc_len = _U8(), c_size_t(0)
+    tbs_ptr, tbs_len = _U8(), c_size_t(0)
+    _check(
+        _timestamp_begin(
+            pp, pn,
+            byref(doc_ptr), byref(doc_len),
+            byref(tbs_ptr), byref(tbs_len),
+        )
+    )
+    return _copy_free(doc_ptr, doc_len), _copy_free(tbs_ptr, tbs_len)
+
+
+def timestamp_request(imprint: bytes, nonce: bytes | None = None,
+                      cert_req: bool = True) -> bytes:
+    """Build an RFC 3161 ``TimeStampReq`` (DER) for ``imprint`` (the SHA-256 of
+    the bytes to timestamp). POST the result to the TSA. ``nonce`` is optional;
+    ``cert_req`` asks the TSA to embed its certificate."""
+    ip, iln, _k1 = _as_u8(bytes(imprint))
+    np_, nln, _k2 = _as_u8(bytes(nonce) if nonce else b"")
+    return _take(
+        lambda p, ln: _timestamp_request(ip, iln, np_, nln, 1 if cert_req else 0, p, ln)
+    )
+
+
+def timestamp_token_from_response(response: bytes) -> bytes:
+    """Extract the ``TimeStampToken`` (a CMS ``ContentInfo``) from a TSA's RFC
+    3161 ``TimeStampResp``. Embed the result via :func:`complete_signature`."""
+    rp, rn, _k = _as_u8(bytes(response))
+    return _take(lambda p, ln: _timestamp_token_from_response(rp, rn, p, ln))
