@@ -241,6 +241,42 @@ func (e *EditableDoc) PlaceText(pageIndex int, x, y float64, text string, size, 
 	return found != 0
 }
 
+// PlaceTextAligned draws a line of text on page pageIndex (0-based) like
+// PlaceText, but shifts the start point along the baseline so the text is
+// horizontally aligned to the anchor (x, y) per align (left/right/center;
+// justify behaves like left for a single line). It returns whether the page
+// existed. Coordinates are in the page's visible space (origin lower-left,
+// y up).
+func (e *EditableDoc) PlaceTextAligned(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64, align Align) bool {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var found C.int
+	C.pdf_editable_place_text_aligned(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), c, C.double(size),
+		C.double(r), C.double(g), C.double(b), C.double(rotationDeg), C.int(align), &found)
+	return found != 0
+}
+
+// MaskedText fills an opaque rectangle [x, y, x+width, y+height] in bgColor on
+// page pageIndex (0-based), then writes text (standard Helvetica at size points,
+// in textColor) horizontally aligned per align and vertically centered within
+// the box. It returns whether the page existed. Coordinates are in the page's
+// visible space (origin lower-left, y up) — useful for masking a placeholder
+// region with replacement text. textColor and bgColor are [r, g, b] triples
+// (each 0..=1).
+func (e *EditableDoc) MaskedText(pageIndex int, x, y, width, height float64, text string, size float64, textColor, bgColor [3]float64, align Align) bool {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var found C.int
+	C.pdf_editable_masked_text(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), C.double(width), C.double(height),
+		c, C.double(size),
+		C.double(textColor[0]), C.double(textColor[1]), C.double(textColor[2]),
+		C.double(bgColor[0]), C.double(bgColor[1]), C.double(bgColor[2]),
+		C.int(align), &found)
+	return found != 0
+}
+
 // DrawImage stamps an image (in-memory PNG or JPEG bytes, dispatched on the
 // file signature) onto page index (0-based) with its lower-left corner at
 // (x, y), scaled to width×height points, and returns whether the page existed.

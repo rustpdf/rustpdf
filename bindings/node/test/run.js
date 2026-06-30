@@ -429,13 +429,27 @@ let plain;
   const ed = rp.EditableDoc.load(pdfa);
   assert.strictEqual(ed.fillRect(0, 60, 60, 200, 40, [1, 1, 1], 1.0), true, 'fillRect page 0');
   assert.strictEqual(ed.placeText(0, 70, 72, 'STAMPED-XYZ', 18, [0, 0, 0], 0.0), true, 'placeText page 0');
+  // aligned placeText (right-aligned about the anchor) — issue #50 follow-up.
+  assert.strictEqual(
+    ed.placeText(0, 500, 100, 'RIGHT-ALIGNED', 14, [0, 0, 0], 0.0, rp.Align.Right),
+    true, 'placeText aligned page 0');
+  // maskedText: paint a box and write centered text over it.
+  assert.strictEqual(
+    ed.maskedText(0, 60, 120, 200, 30, 'MASKED-ABC', 14, [0, 0, 0], [1, 1, 0], rp.Align.Center),
+    true, 'maskedText page 0');
   // missing page returns false.
   assert.strictEqual(ed.fillRect(99, 0, 0, 10, 10), false, 'fillRect missing page');
   assert.strictEqual(ed.placeText(99, 0, 0, 'nope'), false, 'placeText missing page');
+  assert.strictEqual(ed.placeText(99, 0, 0, 'nope', 12, [0, 0, 0], 0.0, rp.Align.Center), false, 'placeText aligned missing page');
+  assert.strictEqual(ed.maskedText(99, 0, 0, 10, 10, 'nope'), false, 'maskedText missing page');
   const out = ed.toBytes();
   ed.close();
   assert.ok(rp.extractText(out).includes('STAMPED-XYZ'), 'placed text extracts');
-  console.log(`fillRect + placeText ok (${out.length} bytes)`);
+  assert.ok(rp.extractText(out).includes('RIGHT-ALIGNED'), 'aligned text extracts');
+  assert.ok(rp.extractText(out).includes('MASKED-ABC'), 'masked text extracts');
+  // extractPageText: single-page extraction returns the same stamped text.
+  assert.ok(rp.extractPageText(out, 0).includes('STAMPED-XYZ'), 'extractPageText page 0');
+  console.log(`fillRect + placeText(align) + maskedText + extractPageText ok (${out.length} bytes)`);
 }
 
 // 21. Stamp an image onto an existing page (issue #50).

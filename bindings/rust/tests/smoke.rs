@@ -394,11 +394,82 @@ fn full_surface() {
     assert!(!paint
         .draw_image(99, png, 0.0, 0.0, 10.0, 10.0, 0.0)
         .unwrap());
+    // --- place_text_aligned + masked_text (ForSign integration) ---
+    assert!(
+        paint
+            .place_text_aligned(
+                0,
+                300.0,
+                480.0,
+                "ALIGNED_MARKER",
+                14.0,
+                (0.0, 0.0, 0.0),
+                0.0,
+                Align::Center,
+            )
+            .unwrap(),
+        "place_text_aligned should report the page existed"
+    );
+    assert!(
+        paint
+            .masked_text(
+                0,
+                72.0,
+                440.0,
+                200.0,
+                24.0,
+                "MASKED_MARKER",
+                12.0,
+                (0.0, 0.0, 0.0),
+                (1.0, 1.0, 1.0),
+                Align::Left,
+            )
+            .unwrap(),
+        "masked_text should report the page existed"
+    );
+    assert!(!paint
+        .place_text_aligned(99, 0.0, 0.0, "x", 12.0, (0.0, 0.0, 0.0), 0.0, Align::Right)
+        .unwrap());
+    assert!(!paint
+        .masked_text(
+            99,
+            0.0,
+            0.0,
+            10.0,
+            10.0,
+            "x",
+            12.0,
+            (0.0, 0.0, 0.0),
+            (1.0, 1.0, 1.0),
+            Align::Left,
+        )
+        .unwrap());
+
     let painted = paint.to_bytes().expect("paint to bytes");
     let painted_text = rustpdf::extract_text(&painted).expect("extract painted text");
     assert!(
         painted_text.contains("PLACED_MARKER"),
         "placed text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("ALIGNED_MARKER"),
+        "aligned text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("MASKED_MARKER"),
+        "masked text should be extractable, got: {painted_text:?}"
+    );
+
+    // --- extract_page_text (single page) ---
+    let page0 = rustpdf::extract_page_text(&painted, 0).expect("extract page 0 text");
+    assert!(
+        page0.contains("PLACED_MARKER"),
+        "page-0 text should contain the placed marker, got: {page0:?}"
+    );
+    // Out-of-range page is an error, not a panic.
+    assert!(
+        rustpdf::extract_page_text(&painted, 999).is_err(),
+        "out-of-range page should error"
     );
 
     // --- deferred signing: Model A callback wiring + visible appearance ---

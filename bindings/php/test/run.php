@@ -401,4 +401,20 @@ $imgDrawn = $imgEd->toBytes();
 check(strlen($imgDrawn) > 0, 'image-drawn bytes produced');
 echo "drawImage ok (image stamped onto page)\n";
 
+// 26. Single-page text extraction.
+$pageText = Pdf::extractPageText($pdfa, 0);
+check(str_contains($pageText, 'Título'), "extractPageText page 0: $pageText");
+echo "extractPageText ok\n";
+
+// 27. Aligned positioned text + masked text (placeholder masking).
+$alignEd = EditableDoc::load($pdfa);
+check($alignEd->placeText(0, 300.0, 200.0, 'RIGHTALIGNED', 14.0, [0.0, 0.0, 0.0], 0.0, Align::Right), 'aligned placeText page 0 existed');
+check(!$alignEd->placeText(99, 0.0, 0.0, 'x', 12.0, [0.0, 0.0, 0.0], 0.0, Align::Center), 'aligned placeText missing page returns false');
+check($alignEd->maskedText(0, 80.0, 300.0, 200.0, 30.0, 'MASKEDVALUE', 14.0, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], Align::Center), 'maskedText page 0 existed');
+check(!$alignEd->maskedText(99, 0.0, 0.0, 10.0, 10.0, 'x'), 'maskedText missing page returns false');
+$aligned = $alignEd->toBytes();
+check(strlen($aligned) > 0, 'aligned/masked bytes produced');
+check(str_contains(Pdf::extractText($aligned), 'MASKEDVALUE'), 'masked text is extractable');
+echo "placeText align + maskedText ok\n";
+
 echo "OK: full PHP binding surface exercised\n";

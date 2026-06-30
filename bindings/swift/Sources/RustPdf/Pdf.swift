@@ -296,6 +296,20 @@ public enum Pdf {
         return String(decoding: bytes, as: UTF8.self)
     }
 
+    /// Extract the text of a single page (0-based `pageIndex`) of `pdf` — a fast
+    /// path that avoids building a one-page document.
+    ///
+    /// - Throws: ``PdfError`` with status ``PdfStatus/invalidArgument`` if
+    ///   `pageIndex` is out of range.
+    public static func extractPageText(_ pdf: [UInt8], pageIndex: Int) throws -> String {
+        let bytes = try withBytes(pdf) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_extract_page_text(ptr, len, UInt(pageIndex), out, outLen)
+            }
+        }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
     /// Find every occurrence of `query` in `pdf`, returning a positional
     /// ``TextHit`` (page + bounding box, in PDF points, origin lower-left) for
     /// each match. `caseSensitive` is `false` for case-insensitive matching.

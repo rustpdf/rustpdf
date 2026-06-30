@@ -228,6 +228,13 @@ module RustPdf
       .force_encoding(Encoding::UTF_8)
   end
 
+  # Extract the text of a single 0-based +page_index+ (Unicode via ToUnicode),
+  # without building an intermediate one-page document.
+  def extract_page_text(pdf, page_index)
+    take_bytes { |pp, pn| Native.call("pdf_extract_page_text", pdf, pdf.bytesize, page_index, pp, pn) }
+      .force_encoding(Encoding::UTF_8)
+  end
+
   # Extract every raster image into +dir+ (JPEG verbatim as .jpg, others as
   # .png; files named page{N}_{name}.{ext}). Returns the number written.
   def extract_images_to_dir(pdf, dir)

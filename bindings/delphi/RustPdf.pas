@@ -340,7 +340,20 @@ type
       the text counter-clockwise about the (X, Y) anchor. Returns False if the
       page does not exist. Issue #45 P1. }
     function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String;
-                       Size, R, G, B, RotationDeg: Double): Boolean;
+                       Size, R, G, B, RotationDeg: Double;
+                       Align: TPdfAlign = paLeft): Boolean;
+    { Draw a line of standard-Helvetica text over an opaque background box
+      [X, Y, X+Width, Y+Height] on page PageIndex (0-based): fills the box in the
+      bg colour (each 0..1), then writes Text (Size points, text colour each 0..1)
+      horizontally aligned per Align and vertically centred in the box. Coordinates
+      are in the page's VISIBLE space (origin lower-left, y up), regardless of
+      /Rotate. Text colour defaults to black, background to white. Returns False if
+      the page does not exist. Issue #50. }
+    function MaskedText(PageIndex: Integer; X, Y, Width, Height: Double;
+                        const Text: UTF8String; Size: Double;
+                        TextR: Double = 0.0; TextG: Double = 0.0; TextB: Double = 0.0;
+                        BgR: Double = 1.0; BgG: Double = 1.0; BgB: Double = 1.0;
+                        Align: TPdfAlign = paLeft): Boolean;
     { Draw an image (PNG or JPEG bytes; the core dispatches on the signature) on
       page PageIndex (0-based), the image's lower-left corner at (X, Y), scaled to
       Width x Height points. Coordinates are in the page's VISIBLE space (origin
@@ -373,6 +386,9 @@ type
     class function Version: string; static;
     class procedure ActivateLicense(const Token: string); static;
     class function ExtractText(const PdfBytes: TBytes): string; static;
+    { Extract the text of a single page (PageIndex, 0-based). Raises ERustPdf
+      (psInvalidArgument) if the page is out of range. }
+    class function ExtractPageText(const PdfBytes: TBytes; PageIndex: NativeUInt): string; static;
     class function ExtractImagesToDir(const PdfBytes: TBytes; const Dir: string): NativeUInt; static;
     { Render page PageIndex (0-based) of PdfBytes to a PNG at Dpi dots-per-inch.
       Page rendering is a licensed Pro feature: raises ERustPdf unless a license
@@ -614,6 +630,9 @@ type
   Tpdf_editable_fill_rect   = function(ed: Pointer; index: Integer; x, y, width, height, r, g, b, opacity: Double; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_place_text  = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_draw_image  = function(ed: Pointer; index: Integer; data: PByte; len: NativeUInt; x, y, width, height, rotation_deg: Double; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_place_text_aligned = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; align: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_masked_text = function(ed: Pointer; index: Integer; x, y, width, height: Double; text: PAnsiChar; size, text_r, text_g, text_b, bg_r, bg_g, bg_b: Double; align: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_extract_page_text    = function(data: PByte; len: NativeUInt; page_index: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
 
 { ---- deferred / external signing (issue #41) ---- }
 
@@ -765,6 +784,9 @@ var
   Fpdf_editable_fill_rect: Tpdf_editable_fill_rect;
   Fpdf_editable_place_text: Tpdf_editable_place_text;
   Fpdf_editable_draw_image: Tpdf_editable_draw_image;
+  Fpdf_editable_place_text_aligned: Tpdf_editable_place_text_aligned;
+  Fpdf_editable_masked_text: Tpdf_editable_masked_text;
+  Fpdf_extract_page_text: Tpdf_extract_page_text;
   Fpdf_sign_begin: Tpdf_sign_begin;
   Fpdf_sign_complete: Tpdf_sign_complete;
   Fpdf_sign_with: Tpdf_sign_with;
@@ -965,6 +987,9 @@ begin
   Fpdf_editable_fill_rect := Tpdf_editable_fill_rect(Bind('pdf_editable_fill_rect'));
   Fpdf_editable_place_text := Tpdf_editable_place_text(Bind('pdf_editable_place_text'));
   Fpdf_editable_draw_image := Tpdf_editable_draw_image(Bind('pdf_editable_draw_image'));
+  Fpdf_editable_place_text_aligned := Tpdf_editable_place_text_aligned(Bind('pdf_editable_place_text_aligned'));
+  Fpdf_editable_masked_text := Tpdf_editable_masked_text(Bind('pdf_editable_masked_text'));
+  Fpdf_extract_page_text := Tpdf_extract_page_text(Bind('pdf_extract_page_text'));
   Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
   Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
   Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
@@ -2030,13 +2055,26 @@ begin
 end;
 
 function TPdfEditable.PlaceText(PageIndex: Integer; X, Y: Double;
-  const Text: UTF8String; Size, R, G, B, RotationDeg: Double): Boolean;
+  const Text: UTF8String; Size, R, G, B, RotationDeg: Double;
+  Align: TPdfAlign): Boolean;
 var
   found: Integer;
 begin
   found := 0;
-  Check(Fpdf_editable_place_text(H, PageIndex, X, Y, PAnsiChar(Text), Size,
-        R, G, B, RotationDeg, found));
+  Check(Fpdf_editable_place_text_aligned(H, PageIndex, X, Y, PAnsiChar(Text), Size,
+        R, G, B, RotationDeg, Ord(Align), found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.MaskedText(PageIndex: Integer; X, Y, Width, Height: Double;
+  const Text: UTF8String; Size: Double; TextR, TextG, TextB, BgR, BgG, BgB: Double;
+  Align: TPdfAlign): Boolean;
+var
+  found: Integer;
+begin
+  found := 0;
+  Check(Fpdf_editable_masked_text(H, PageIndex, X, Y, Width, Height, PAnsiChar(Text),
+        Size, TextR, TextG, TextB, BgR, BgG, BgB, Ord(Align), found));
   Result := found <> 0;
 end;
 
@@ -2590,6 +2628,16 @@ var
 begin
   EnsureLoaded;
   Check(Fpdf_extract_text(BytePtr(PdfBytes), Length(PdfBytes), P, Len));
+  Result := Utf8BytesToString(TakeBuffer(P, Len));
+end;
+
+class function Pdf.ExtractPageText(const PdfBytes: TBytes; PageIndex: NativeUInt): string;
+var
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_extract_page_text(BytePtr(PdfBytes), Length(PdfBytes), PageIndex, P, Len));
   Result := Utf8BytesToString(TakeBuffer(P, Len));
 end;
 

@@ -224,7 +224,7 @@ targets: [
       <p>Import it and verify the version:</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>import RustPdf
 
-print(Pdf.version)   // native library version, e.g. "0.4.5"</code></pre></div>
+print(Pdf.version)   // native library version, e.g. "0.4.6"</code></pre></div>
 
       <!-- QUICKSTART -->
       <h2 id="quickstart">Quick start</h2>
@@ -559,14 +559,17 @@ try ed.save(to: "stamped.pdf")</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>func fillRect(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, color: (Double, Double, Double) = (1, 1, 1), opacity: Double = 1.0) -&gt; Bool</code></div>
-      <div class="api"><code>func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), rotationDeg: Double = 0.0) -&gt; Bool</code></div>
+      <div class="api"><code>func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), rotationDeg: Double = 0.0, align: Align = .left) -&gt; Bool</code></div>
+      <div class="api"><code>func maskedText(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, _ text: String, size: Double = 12, textColor: (Double, Double, Double) = (0, 0, 0), bgColor: (Double, Double, Double) = (1, 1, 1), align: Align = .left) -&gt; Bool</code></div>
       <div class="api"><code>func drawImage(_ pageIndex: Int, image: [UInt8], x: Double, y: Double, width: Double, height: Double, rotationDeg: Double = 0.0) -&gt; Bool</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>placeText</code> takes an <code>align</code> (<code>.left</code>, <code>.right</code> or <code>.center</code>) that shifts the start point along the baseline so the anchor <code>(x, y)</code> is the text's left, right or center edge. <code>maskedText</code> does the mask-and-write in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code> (default white), then writes the text horizontally aligned per <code>align</code> and vertically centered within the box, so you never hand-compute the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "invoice.pdf")))
 let g = try Pdf.measurePage(data, 0)              // read the page geometry first
 let ed = try EditableDoc(data)
 _ = ed.fillRect(0, 400, g.height - 60, 120, 18)   // mask: default opaque white
-_ = ed.placeText(0, 404, g.height - 56, "PAID", size: 12, color: (0, 0.5, 0))
+_ = ed.placeText(0, 520, g.height - 56, "PAID", size: 12, color: (0, 0.5, 0), align: .right)
+// mask + stamp in one call, centered in the box:
+_ = ed.maskedText(0, 400, g.height - 60, 120, 18, "PAID", size: 12, align: .center)
 let logo = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "logo.png")))
 _ = ed.drawImage(0, image: logo, x: 404, y: g.height - 120, width: 120, height: 48)
 try ed.save(to: "stamped.pdf")</code></pre></div>

@@ -226,9 +226,21 @@ def exercise_full_surface() -> None:
     with rustpdf.EditableDoc.load(pdfa) as ed:
         assert ed.fill_rect(0, 100, 100, 200, 50, color=(1.0, 1.0, 1.0)) is True
         assert ed.place_text(0, 110, 115, "STAMPED-45", size=18) is True
+        # place_text with alignment (routes through pdf_editable_place_text_aligned).
+        assert ed.place_text(0, 400, 150, "RIGHT-ALIGNED", size=12,
+                             align=rustpdf.Align.RIGHT) is True
+        # masked_text: opaque box + vertically-centered, aligned text over it.
+        assert ed.masked_text(0, 100, 200, 200, 24, "MASKED-CENTER", size=12,
+                              align=rustpdf.Align.CENTER) is True
+        assert ed.masked_text(9, 0, 0, 10, 10, "x") is False, "missing page must return False"
         assert ed.fill_rect(9, 0, 0, 10, 10) is False, "missing page must return False"
         stamped = ed.to_bytes()
     assert "STAMPED-45" in rustpdf.extract_text(stamped), "placed text not extractable"
+    assert "RIGHT-ALIGNED" in rustpdf.extract_text(stamped), "aligned text not extractable"
+    assert "MASKED-CENTER" in rustpdf.extract_text(stamped), "masked text not extractable"
+    # extract_page_text: single-page extraction matches the placed text on page 0.
+    page0 = rustpdf.extract_page_text(stamped, 0)
+    assert "STAMPED-45" in page0, "extract_page_text missing placed text"
 
     # 9. Deferred / external (HSM) signing — issue #41 P0. The private key never
     # reaches the library: it asks our remote signer for the raw RSA signature.

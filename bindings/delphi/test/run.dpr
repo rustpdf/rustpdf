@@ -235,6 +235,9 @@ var
   RotEd, PlaceEd: TPdfEditable;
   RotBytes, PlaceBytes, DrawImgBytes: TBytes;
   Ovw: TPdfOverview;
+  { issue #50 — place_text_aligned / masked_text / extract_page_text }
+  AlignedBytes, MaskedBytes: TBytes;
+  PageText: string;
 {$IFDEF UNIX}
   Signer: TOpenSslSigner;
   KeyPemPath: string;
@@ -698,6 +701,51 @@ begin
          StartsWith(DrawImgBytes, TEncoding.ASCII.GetBytes('%PDF')),
     'draw_image output is a valid, larger PDF');
   Writeln(Format('draw_image ok (%d bytes)', [Length(DrawImgBytes)]));
+
+  { 16. place_text aligned + masked_text (issue #50). Center-aligned placed text
+    and a masked (boxed) right-aligned label both round-trip through extraction. }
+  PlaceEd := TPdfEditable.Load(PlainBytes);
+  try
+    Assert(PlaceEd.PlaceText(0, 300, 520, 'CENTERED', 16, 0.0, 0.0, 0.0, 0.0, paCenter),
+      'place_text (centered) on page 0 succeeds');
+    Assert(not PlaceEd.PlaceText(99, 0, 0, 'X', 12, 0, 0, 0, 0.0, paRight),
+      'place_text aligned on a missing page -> false');
+    AlignedBytes := PlaceEd.ToBytes;
+  finally
+    PlaceEd.Free;
+  end;
+  Assert(TextContains(Pdf.ExtractText(AlignedBytes), 'CENTERED'),
+    'centered placed text is extractable');
+
+  PlaceEd := TPdfEditable.Load(PlainBytes);
+  try
+    { Default text colour black, background white; right-aligned in the box. }
+    Assert(PlaceEd.MaskedText(0, 60, 440, 200, 24, 'MASKED-LABEL', 14,
+            0.0, 0.0, 0.0, 1.0, 1.0, 1.0, paRight),
+      'masked_text on page 0 succeeds');
+    Assert(not PlaceEd.MaskedText(99, 0, 0, 10, 10, 'X', 12),
+      'masked_text on a missing page -> false');
+    MaskedBytes := PlaceEd.ToBytes;
+  finally
+    PlaceEd.Free;
+  end;
+  Assert(TextContains(Pdf.ExtractText(MaskedBytes), 'MASKED-LABEL'),
+    'masked text is extractable');
+  Writeln('place_text aligned + masked_text ok');
+
+  { 17. extract_page_text (issue #50): single-page extraction; out-of-range page
+    raises psInvalidArgument. }
+  PageText := Pdf.ExtractPageText(MaskedBytes, 0);
+  Assert(TextContains(PageText, 'MASKED-LABEL'), 'extract_page_text returns page 0 text');
+  Blocked := False;
+  try
+    Pdf.ExtractPageText(MaskedBytes, 99);
+  except
+    on E: ERustPdf do
+      Blocked := E.Status = psInvalidArgument;
+  end;
+  Assert(Blocked, 'extract_page_text on a missing page raises psInvalidArgument');
+  Writeln('extract_page_text ok');
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

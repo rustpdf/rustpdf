@@ -241,6 +241,54 @@ public final class EditableDoc implements AutoCloseable {
     }
 
     /**
+     * Draw a line of positioned text on page {@code pageIndex} (0-based) like
+     * {@link #placeText(int, double, double, String, double, double, double, double, double)},
+     * but horizontally {@code align}ed about the anchor {@code (x, y)}: for
+     * {@link Align#RIGHT}/{@link Align#CENTER} the start point is shifted back by
+     * the measured text width (Helvetica metrics). Coordinates are in the page's
+     * visible space (origin lower-left, y up). Returns whether the page existed.
+     */
+    public boolean placeText(int pageIndex, double x, double y, String text, double size,
+                             double r, double g, double b, double rotationDeg, Align align) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_place_text_aligned(
+                h(), pageIndex, x, y, text, size, r, g, b, rotationDeg, align.code, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Draw {@code text} over an opaque background box {@code [x, y, x+width, y+height]}
+     * on page {@code pageIndex} (0-based): fills the box in {@code bgColor}
+     * ({@code {r, g, b}}, each 0..=1), then writes the text (standard Helvetica at
+     * {@code size} points in {@code textColor}) horizontally {@code align}ed and
+     * vertically centered within the box. The classic use is masking a placeholder
+     * and stamping the real value over it without hand-computing the baseline.
+     * Coordinates are in the page's visible space (origin lower-left, y up).
+     * Returns whether the page existed.
+     */
+    public boolean maskedText(int pageIndex, double x, double y, double width, double height,
+                              String text, double size,
+                              double[] textColor, double[] bgColor, Align align) {
+        double[] tc = textColor == null ? new double[] {0.0, 0.0, 0.0} : textColor;
+        double[] bc = bgColor == null ? new double[] {1.0, 1.0, 1.0} : bgColor;
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_masked_text(
+                h(), pageIndex, x, y, width, height, text, size,
+                tc[0], tc[1], tc[2], bc[0], bc[1], bc[2], align.code, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Draw {@code text} over an opaque <em>white</em> box with <em>black</em> text,
+     * left-aligned — see
+     * {@link #maskedText(int, double, double, double, double, String, double, double[], double[], Align)}.
+     */
+    public boolean maskedText(int pageIndex, double x, double y, double width, double height,
+                              String text, double size) {
+        return maskedText(pageIndex, x, y, width, height, text, size, null, null, Align.LEFT);
+    }
+
+    /**
      * Stamp an image (PNG or JPEG bytes — the format is detected from the data
      * signature) onto page {@code pageIndex} (0-based), with the image's lower-left
      * corner at {@code (x, y)}, scaled to {@code width}×{@code height} points.

@@ -197,9 +197,9 @@
       <div class="code has-label"><span class="lbl">xml</span><pre><code>&lt;dependency&gt;
   &lt;groupId&gt;dev.rustpdf&lt;/groupId&gt;
   &lt;artifactId&gt;rustpdf&lt;/artifactId&gt;
-  &lt;version&gt;0.4.5&lt;/version&gt;
+  &lt;version&gt;0.4.6&lt;/version&gt;
 &lt;/dependency&gt;</code></pre></div>
-      <div class="code has-label"><span class="lbl">gradle</span><pre><code>implementation("dev.rustpdf:rustpdf:0.4.5")</code></pre></div>
+      <div class="code has-label"><span class="lbl">gradle</span><pre><code>implementation("dev.rustpdf:rustpdf:0.4.6")</code></pre></div>
       <p>Requires Java 17+. Verify it loaded:</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.Pdf;
 System.out.println(Pdf.version());   // native library version</code></pre></div>
@@ -597,14 +597,26 @@ try (EditableDoc sec = EditableDoc.loadFile(Path.of("secured.pdf"), "user-or-own
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>boolean fillRect(int pageIndex, double x, double y, double width, double height, double r, double g, double b, double opacity)</code></div>
       <div class="api"><code>boolean placeText(int pageIndex, double x, double y, String text, double size, double r, double g, double b, double rotationDeg)</code></div>
+      <div class="api"><code>boolean placeText(int pageIndex, double x, double y, String text, double size, double r, double g, double b, double rotationDeg, Align align)</code></div>
       <div class="api"><code>boolean drawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg)</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points (an overload drops the trailing <code>rotationDeg</code>).</p>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points (an overload drops the trailing <code>rotationDeg</code>). The <code>placeText</code> overload taking an <code>Align</code> (<code>LEFT</code>/<code>RIGHT</code>/<code>CENTER</code>/<code>JUSTIFY</code>) shifts the start point back along the baseline by the measured text width, so the anchor <code>(x, y)</code> becomes the right edge or centre instead of the left.</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("invoice.pdf"));
 PageGeometry g = Pdf.measurePage(data, 0);              // read the page geometry first
 try (EditableDoc ed = EditableDoc.load(data)) {
     ed.fillRect(0, 400, g.height() - 60, 120, 18, 1, 1, 1, 1);     // mask: opaque white
     ed.placeText(0, 404, g.height() - 56, "PAID", 12, 0, 0.5, 0, 0);
+    ed.placeText(0, 520, g.height() - 56, "R$ 1.200,00", 12, 0, 0, 0, 0, Align.RIGHT);  // right-aligned
     ed.drawImage(0, Files.readAllBytes(Path.of("logo.png")), 404, g.height() - 120, 120, 48);
+    ed.save("stamped.pdf");
+}</code></pre></div>
+
+      <p>For the common mask-then-stamp pattern, <code>maskedText</code> does it in one call: it fills an opaque background box <code>[x, y, x+width, y+height]</code>, then writes the text horizontally aligned per <code>align</code> and vertically centred within the box — no need to hand-compute the baseline. Text defaults to black on a white box; pass <code>{r, g, b}</code> arrays (each 0..1) to override.</p>
+      <div class="api"><code>boolean maskedText(int pageIndex, double x, double y, double width, double height, String text, double size, double[] textColor, double[] bgColor, Align align)</code></div>
+      <div class="api"><code>boolean maskedText(int pageIndex, double x, double y, double width, double height, String text, double size)</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.load(data)) {
+    // white-out the placeholder box and stamp the value centred over it
+    ed.maskedText(0, 400, g.height() - 62, 130, 20, "APPROVED", 12,
+                  new double[]{0, 0.4, 0}, new double[]{1, 1, 1}, Align.CENTER);
     ed.save("stamped.pdf");
 }</code></pre></div>
 
@@ -841,9 +853,12 @@ for (SignatureReport sig : Pdf.verifySignatures(data)) {
       <h2 id="extract">Text &amp; image extraction</h2>
       <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist.</p>
       <div class="api"><code>Pdf.extractText(byte[] data) → String</code> <span class="badge free">free</span></div>
+      <div class="api"><code>Pdf.extractPageText(byte[] data, int pageIndex) → String</code> <span class="badge free">free</span></div>
       <div class="api"><code>Pdf.extractImagesToDir(byte[] data, String outDir) → long</code> <span class="badge free">free</span></div>
+      <p><code>extractPageText</code> pulls the text of a single page (0-based) without building an intermediate one-page document — the fast path when you only need one page. It throws <code>PdfException</code> if the page is out of range.</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
 System.out.println(Pdf.extractText(data));
+System.out.println(Pdf.extractPageText(data, 0));       // just the first page
 
 long n = Pdf.extractImagesToDir(data, "out_images/");   // returns how many were written
 System.out.println("wrote " + n + " image(s)");</code></pre></div>

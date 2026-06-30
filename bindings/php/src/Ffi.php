@@ -213,6 +213,7 @@ int pdf_editable_to_bytes_incremental(PdfEditable *ed, const uint8_t *original, 
 int pdf_editable_save(PdfEditable *ed, const char *path);
 
 int pdf_extract_text(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
+int pdf_extract_page_text(const uint8_t *data, uintptr_t len, uintptr_t page_index, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_extract_images_to_dir(const uint8_t *data, uintptr_t len, const char *dir, uintptr_t *out_count);
 int pdf_render_page_to_png(const uint8_t *data, uintptr_t len, uintptr_t page_index, double dpi, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_page_count(const uint8_t *data, uintptr_t len, uintptr_t *out_count);
@@ -237,6 +238,8 @@ int pdf_editable_normalize(PdfEditable *ed, int version);
 int pdf_editable_redact(PdfEditable *ed, uintptr_t index, const double *rects, uintptr_t count, int *out_found);
 int pdf_editable_fill_rect(PdfEditable *ed, int index, double x, double y, double width, double height, double r, double g, double b, double opacity, int *out_found);
 int pdf_editable_place_text(PdfEditable *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int *out_found);
+int pdf_editable_place_text_aligned(PdfEditable *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, int *out_found);
+int pdf_editable_masked_text(PdfEditable *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, int *out_found);
 int pdf_editable_draw_image(PdfEditable *ed, int index, const uint8_t *data, uintptr_t len, double x, double y, double width, double height, double rotation_deg, int *out_found);
 int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
 int pdf_verify_signatures_json(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);

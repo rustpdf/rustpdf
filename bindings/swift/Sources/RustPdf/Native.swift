@@ -86,8 +86,14 @@ typealias HFillRectFn   = (OpaquePointer?, Int32, Double, Double, Double, Double
                            Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
 typealias HPlaceTextFn  = (OpaquePointer?, Int32, Double, Double, UnsafePointer<CChar>?, Double,
                            Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HPlaceTextAlignedFn = (OpaquePointer?, Int32, Double, Double, UnsafePointer<CChar>?, Double,
+                           Double, Double, Double, Double, Int32, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HMaskedTextFn = (OpaquePointer?, Int32, Double, Double, Double, Double, UnsafePointer<CChar>?,
+                           Double, Double, Double, Double, Double, Double, Double, Int32,
+                           UnsafeMutablePointer<Int32>?) -> Int32
 typealias HDrawImageFn  = (OpaquePointer?, Int32, UnsafePointer<UInt8>?, UInt, Double, Double,
                            Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
+typealias ExtractPageTextFn = (UnsafePointer<UInt8>?, UInt, UInt, OutBuf, OutLen) -> Int32
 typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
                              UnsafeMutablePointer<UInt>?) -> Int32
 typealias SignFn        = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
@@ -207,6 +213,8 @@ final class Native {
     let pdf_editable_redact: HRedactFn = CRustPdf.pdf_editable_redact
     let pdf_editable_fill_rect: HFillRectFn = CRustPdf.pdf_editable_fill_rect
     let pdf_editable_place_text: HPlaceTextFn = CRustPdf.pdf_editable_place_text
+    let pdf_editable_place_text_aligned: HPlaceTextAlignedFn = CRustPdf.pdf_editable_place_text_aligned
+    let pdf_editable_masked_text: HMaskedTextFn = CRustPdf.pdf_editable_masked_text
     let pdf_editable_draw_image: HDrawImageFn = CRustPdf.pdf_editable_draw_image
     let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
     let pdf_editable_set_version: H1IFn = CRustPdf.pdf_editable_set_version
@@ -215,6 +223,7 @@ final class Native {
 
     // ---- text extraction + signing ------------------------------------------
     let pdf_extract_text: ExtractTextFn = CRustPdf.pdf_extract_text
+    let pdf_extract_page_text: ExtractPageTextFn = CRustPdf.pdf_extract_page_text
     let pdf_extract_images_to_dir: ExtractImagesFn = CRustPdf.pdf_extract_images_to_dir
     let pdf_render_page_to_png: RenderPageFn = CRustPdf.pdf_render_page_to_png
     let pdf_page_count: PageCountFn = CRustPdf.pdf_page_count

@@ -622,6 +622,55 @@ func TestFullSurface(t *testing.T) {
 			t.Fatalf("draw_image output not a PDF: %d bytes", len(out))
 		}
 	}
+
+	// 22. ForSign follow-ups: ExtractPageText, PlaceTextAligned, MaskedText.
+	{
+		// Per-page extraction matches the whole-document extraction for page 0.
+		page0, err := ExtractPageText(pdfa, 0)
+		if err != nil {
+			t.Fatalf("extract page text: %v", err)
+		}
+		if !strings.Contains(page0, "Título") {
+			t.Fatalf("page-0 extraction missing text: %q", page0)
+		}
+		// Out-of-range page errors.
+		if _, err := ExtractPageText(pdfa, 9); err == nil {
+			t.Fatal("ExtractPageText on missing page must error")
+		}
+
+		// PlaceTextAligned + MaskedText land visible text on an existing page.
+		ed, err := Load(plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+		if ok := ed.PlaceTextAligned(0, 300, 480, "ALIGNED", 18, 0, 0, 0, 0, AlignCenter); !ok {
+			t.Fatal("PlaceTextAligned: page should exist")
+		}
+		if ok := ed.MaskedText(0, 72, 440, 200, 24, "MASKED", 14,
+			[3]float64{1, 1, 1}, [3]float64{0, 0, 0.6}, AlignRight); !ok {
+			t.Fatal("MaskedText: page should exist")
+		}
+		// Out-of-range pages return false (no panic, no content).
+		if ok := ed.PlaceTextAligned(9, 0, 0, "x", 12, 0, 0, 0, 0, AlignLeft); ok {
+			t.Fatal("PlaceTextAligned on missing page should return false")
+		}
+		if ok := ed.MaskedText(9, 0, 0, 10, 10, "x", 12,
+			[3]float64{0, 0, 0}, [3]float64{1, 1, 1}, AlignLeft); ok {
+			t.Fatal("MaskedText on missing page should return false")
+		}
+		out, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		txt, err := ExtractText(out)
+		if err != nil {
+			t.Fatalf("extract aligned/masked text: %v", err)
+		}
+		if !strings.Contains(txt, "ALIGNED") || !strings.Contains(txt, "MASKED") {
+			t.Fatalf("aligned/masked text missing from extraction: %q", txt)
+		}
+	}
 }
 
 // makePNG encodes a tiny solid-color PNG in memory.

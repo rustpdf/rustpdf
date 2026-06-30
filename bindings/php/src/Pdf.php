@@ -36,6 +36,18 @@ final class Pdf
     }
 
     /**
+     * Extract the text of a single page (0-based `$pageIndex`), without building
+     * an intermediate one-page document (Unicode via ToUnicode).
+     */
+    public static function extractPageText(string $pdf, int $pageIndex): string
+    {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf, $pageIndex) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_extract_page_text($b, $l, $pageIndex, $o, $n);
+        });
+    }
+
+    /**
      * Find every occurrence of `$query` in `$pdf`, returning a positioned hit
      * (page + bounding box in PDF points, origin lower-left) for each match.
      * `$caseSensitive` defaults to a case-insensitive search.

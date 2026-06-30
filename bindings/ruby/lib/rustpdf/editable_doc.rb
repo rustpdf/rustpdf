@@ -167,14 +167,37 @@ module RustPdf
     # +page_index+ (0-based), using standard Helvetica at +size+ points in RGB
     # +color+ (each 0..1, default black). +rotation_deg+ rotates the text
     # counter-clockwise about its anchor (match the page rotation to follow a
-    # rotated page). Coordinates are in the page's VISIBLE space (origin
-    # lower-left, y up), regardless of the page's /Rotate. Returns whether the
-    # page existed.
-    def place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0)
+    # rotated page). +align+ (RustPdf::Align, default LEFT) shifts the start
+    # point along the baseline direction by the text width for RIGHT/CENTER
+    # alignment. Coordinates are in the page's VISIBLE space (origin lower-left,
+    # y up), regardless of the page's /Rotate. Returns whether the page existed.
+    def place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0,
+                   align: Align::LEFT)
       r, g, b = color
       found = RustPdf.out_int do |buf|
-        Native.call("pdf_editable_place_text", ptr, page_index, x.to_f, y.to_f, text,
-                    size.to_f, r.to_f, g.to_f, b.to_f, rotation_deg.to_f, buf)
+        Native.call("pdf_editable_place_text_aligned", ptr, page_index, x.to_f, y.to_f, text,
+                    size.to_f, r.to_f, g.to_f, b.to_f, rotation_deg.to_f, align, buf)
+      end
+      found != 0
+    end
+
+    # Mask a placeholder: fill an opaque background box +[x, y, x+width,
+    # y+height]+ in +bg_color+ (each 0..1, default white), then write +text+
+    # over it using standard Helvetica at +size+ points in +text_color+ (each
+    # 0..1, default black), horizontally aligned per +align+ (RustPdf::Align,
+    # default LEFT) and vertically centered within the box. Saves hand-computing
+    # the baseline when stamping a real value over a placeholder. Coordinates are
+    # in the page's VISIBLE space (origin lower-left, y up). Returns whether the
+    # page existed.
+    def masked_text(page_index, x, y, width, height, text, size = 12.0,
+                    text_color = [0.0, 0.0, 0.0], bg_color = [1.0, 1.0, 1.0],
+                    align: Align::LEFT)
+      tr, tg, tb = text_color
+      br, bg, bb = bg_color
+      found = RustPdf.out_int do |buf|
+        Native.call("pdf_editable_masked_text", ptr, page_index, x.to_f, y.to_f,
+                    width.to_f, height.to_f, text, size.to_f,
+                    tr.to_f, tg.to_f, tb.to_f, br.to_f, bg.to_f, bb.to_f, align, buf)
       end
       found != 0
     end

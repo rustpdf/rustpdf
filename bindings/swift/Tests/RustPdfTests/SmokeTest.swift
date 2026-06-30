@@ -398,6 +398,27 @@ final class SmokeTest: XCTestCase {
             XCTAssertTrue(stamped.count > 8 && stamped[0] == 0x25 && stamped[1] == 0x50,
                           "serialized PDF with drawn image")
         }
+
+        // 22. Aligned positioned text + masked text (ForSign integration).
+        var aligned: [UInt8] = []
+        do {
+            let ed = try EditableDoc(loading: pdfa)
+            XCTAssertTrue(ed.placeText(0, 300, 200, "RIGHT", size: 12, align: .right),
+                          "place_text aligned page existed")
+            XCTAssertTrue(ed.maskedText(0, 100, 150, 200, 24, "MASKED",
+                                        size: 12, align: .center),
+                          "masked_text page existed")
+            XCTAssertFalse(ed.maskedText(99, 0, 0, 1, 1, "x"), "masked_text missing page")
+            aligned = try ed.toBytes()
+        }
+        XCTAssertTrue(try Pdf.extractText(aligned).contains("MASKED"),
+                      "masked text should be extractable")
+
+        // 23. Single-page text extraction (fast path).
+        let page0 = try Pdf.extractPageText(pdfa, pageIndex: 0)
+        XCTAssertTrue(page0.contains("Título"), "single-page extraction returns page text")
+        XCTAssertThrowsError(try Pdf.extractPageText(pdfa, pageIndex: 99),
+                             "out-of-range page index throws")
     }
 
     /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).

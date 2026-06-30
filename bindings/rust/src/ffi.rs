@@ -295,6 +295,7 @@ ffi_api! {
     ) -> c_int;
     fn pdf_editable_save(*const RawEditable, *const c_char) -> c_int;
     fn pdf_extract_text(*const u8, usize, *mut *mut u8, *mut usize) -> c_int;
+    fn pdf_extract_page_text(*const u8, usize, usize, *mut *mut u8, *mut usize) -> c_int;
     fn pdf_find_text_json(
         *const u8,
         usize,
@@ -344,6 +345,38 @@ ffi_api! {
         c_double,
         c_double,
         c_double,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_place_text_aligned(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_masked_text(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
         *mut c_int,
     ) -> c_int;
 

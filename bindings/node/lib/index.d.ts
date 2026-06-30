@@ -220,9 +220,21 @@ export class EditableDoc {
    * `pageIndex` (0-based), `size` points, `color` (RGB, each 0..1). `rotationDeg`
    * rotates the text counter-clockwise about its anchor `(x, y)`. Coordinates are
    * in the page VISIBLE space (origin lower-left, y up); content lands where
-   * viewed regardless of `/Rotate`. Returns `false` if the page does not exist.
+   * viewed regardless of `/Rotate`. `align` shifts the start point along the
+   * baseline so the text is left/right/center aligned about `(x, y)` (Justify
+   * behaves like Left). Returns `false` if the page does not exist.
    */
-  placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number): boolean;
+  placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number, align?: number): boolean;
+  /**
+   * Draw `text` over an opaque background box `[x, y, x+width, y+height]`: fills
+   * the box in `bgColor` (default white), then writes the text (standard
+   * Helvetica, `size` points, `textColor`, default black) horizontally aligned
+   * per `align` and vertically centered within the box — the "mask a placeholder
+   * and stamp the real value over it" convenience. Coordinates are in the page
+   * VISIBLE space (origin lower-left, y up). Returns `false` if the page does
+   * not exist.
+   */
+  maskedText(pageIndex: number, x: number, y: number, width: number, height: number, text: string, size?: number, textColor?: [number, number, number], bgColor?: [number, number, number], align?: number): boolean;
   /**
    * Stamp an image (`image` is PNG or JPEG bytes — the core dispatches on the
    * signature) onto page `pageIndex` (0-based). The image's lower-left corner
@@ -325,6 +337,8 @@ export function listSignatures(pdf: Bytes): SignatureField[];
 export function version(): string;
 export function activateLicense(token: string): void;
 export function extractText(pdf: Bytes): string;
+/** Extract the text of a single page (0-based) — the fast per-page path. */
+export function extractPageText(pdf: Bytes, pageIndex: number): string;
 export function extractImagesToDir(pdf: Bytes, dir: string): number;
 /**
  * Render page `page` (0-based) of `pdf` to a PNG image at `dpi` dots-per-inch.

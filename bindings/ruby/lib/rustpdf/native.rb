@@ -78,6 +78,7 @@ module RustPdf
       "pdf_editable_save"            => [[VP, VP], I],
 
       "pdf_extract_text"             => [[VP, SZ, VP, VP], I],
+      "pdf_extract_page_text"        => [[VP, SZ, SZ, VP, VP], I],
       "pdf_extract_images_to_dir"    => [[VP, SZ, VP, VP], I],
       "pdf_render_page_to_png"       => [[VP, SZ, SZ, D, VP, VP], I],
       "pdf_page_count"               => [[VP, SZ, VP], I],
@@ -129,6 +130,8 @@ module RustPdf
       "pdf_inspect_json"             => [[VP, SZ, VP, VP], I],
       "pdf_editable_fill_rect"       => [[VP, I, D, D, D, D, D, D, D, D, VP], I],
       "pdf_editable_place_text"      => [[VP, I, D, D, VP, D, D, D, D, D, VP], I],
+      "pdf_editable_place_text_aligned" => [[VP, I, D, D, VP, D, D, D, D, D, I, VP], I],
+      "pdf_editable_masked_text"     => [[VP, I, D, D, D, D, VP, D, D, D, D, D, D, D, I, VP], I],
       # Issue #50: stamp a PNG/JPEG image onto an existing page. The image bytes
       # cross as the (uint8_t* data, uintptr_t len) pair, like pdf_editable_load.
       "pdf_editable_draw_image"      => [[VP, I, VP, SZ, D, D, D, D, D, VP], I],

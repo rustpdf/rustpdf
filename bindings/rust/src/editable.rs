@@ -2,7 +2,7 @@
 
 use std::ptr;
 
-use crate::enums::{Encryption, PdfVersion, PdfaLevel};
+use crate::enums::{Align, Encryption, PdfVersion, PdfaLevel};
 use crate::error::{PdfError, PdfStatus, Result};
 use crate::ffi::{self, RawEditable};
 use crate::util::{check, cstr, last_error, take_buffer};
@@ -383,6 +383,97 @@ impl EditableDoc {
                 g,
                 b,
                 rotation_deg,
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Like [`place_text`](Self::place_text) but shifts the anchor along the
+    /// baseline by the text width per `align`: `Align::Left` starts at `(x, y)`,
+    /// `Align::Right` ends there, and `Align::Center` centers on it
+    /// (`Align::Justify` behaves like `Align::Left`). `rotation_deg` rotates the
+    /// text counter-clockwise about the (shifted) anchor. Coordinates are in the
+    /// page's **visible** space (origin lower-left, y up), regardless of the page
+    /// `/Rotate`. Returns whether the page existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_aligned(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (r, g, b) = color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_place_text_aligned)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                text.as_ptr(),
+                size,
+                r,
+                g,
+                b,
+                rotation_deg,
+                align.code(),
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Draw `text` over an opaque background box `[x, y, x+width, y+height]` on
+    /// page `page_index` (0-based): fills the box in `bg_color`, then writes the
+    /// text (standard Helvetica at `size` points in `text_color`) horizontally
+    /// aligned per `align` and vertically centered within the box. The classic
+    /// use is masking a placeholder and stamping the real value over it without
+    /// hand-computing the baseline. Coordinates are in the page's **visible**
+    /// space (origin lower-left, y up). Returns whether the page existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (tr, tg, tb) = text_color;
+        let (br, bg, bb) = bg_color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_masked_text)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                width,
+                height,
+                text.as_ptr(),
+                size,
+                tr,
+                tg,
+                tb,
+                br,
+                bg,
+                bb,
+                align.code(),
                 &mut found,
             )
         })?;

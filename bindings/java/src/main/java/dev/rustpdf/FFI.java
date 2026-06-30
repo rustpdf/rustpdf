@@ -159,6 +159,8 @@ final class FFI {
 
         // ---- extract + sign -------------------------------------------------
         int pdf_extract_text(byte[] data, long len, PointerByReference outPtr, LongByReference outLen);
+        int pdf_extract_page_text(byte[] data, long len, long pageIndex,
+                                  PointerByReference outPtr, LongByReference outLen);
         int pdf_extract_images_to_dir(byte[] data, long len, String dir, LongByReference outCount);
         int pdf_render_page_to_png(byte[] data, long len, long pageIndex, double dpi,
                                    PointerByReference outPtr, LongByReference outLen);
@@ -203,6 +205,14 @@ final class FFI {
         int pdf_editable_place_text(Pointer ed, int index, double x, double y, String text,
                                     double size, double r, double g, double b,
                                     double rotationDeg, IntByReference outFound);
+        int pdf_editable_place_text_aligned(Pointer ed, int index, double x, double y, String text,
+                                            double size, double r, double g, double b,
+                                            double rotationDeg, int align, IntByReference outFound);
+        int pdf_editable_masked_text(Pointer ed, int index, double x, double y,
+                                     double width, double height, String text, double size,
+                                     double textR, double textG, double textB,
+                                     double bgR, double bgG, double bgB,
+                                     int align, IntByReference outFound);
         int pdf_editable_draw_image(Pointer ed, int index, byte[] data, long len,
                                     double x, double y, double width, double height,
                                     double rotationDeg, IntByReference outFound);

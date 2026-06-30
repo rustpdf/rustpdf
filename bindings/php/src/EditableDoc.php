@@ -303,7 +303,9 @@ final class EditableDoc
      * `$pageIndex` (0-based), in standard Helvetica. Coordinates are in the
      * page's VISIBLE space (origin lower-left, y up), regardless of any
      * `/Rotate`. `$rotationDeg` rotates the text counter-clockwise about the
-     * anchor `($x, $y)`. `$color` is RGB in 0..1.
+     * anchor `($x, $y)`. `$align` shifts the start point along the baseline so
+     * the text is left/right/center aligned about `($x, $y)`. `$color` is RGB
+     * in 0..1.
      *
      * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
      * @return bool whether the page existed
@@ -316,9 +318,10 @@ final class EditableDoc
         float $size = 12.0,
         array $color = [0.0, 0.0, 0.0],
         float $rotationDeg = 0.0,
+        Align $align = Align::Left,
     ): bool {
         $found = $this->ffi->new('int');
-        Ffi::check($this->ffi->pdf_editable_place_text(
+        Ffi::check($this->ffi->pdf_editable_place_text_aligned(
             $this->h(),
             $pageIndex,
             $x,
@@ -329,6 +332,54 @@ final class EditableDoc
             $color[1],
             $color[2],
             $rotationDeg,
+            $align->value,
+            \FFI::addr($found),
+        ));
+        return $found->cdata !== 0;
+    }
+
+    /**
+     * Draw `$text` over an opaque background box `[$x, $y, $x+$width, $y+$height]`
+     * on page `$pageIndex` (0-based): fills the box in `$bgColor`, then writes the
+     * text (standard Helvetica, `$size` points, `$textColor`) horizontally aligned
+     * per `$align` and vertically centered within the box. The classic use is
+     * masking a placeholder and stamping the real value over it without
+     * hand-computing the baseline. Coordinates are in the page's VISIBLE space
+     * (origin lower-left, y up).
+     *
+     * @param array{0: float, 1: float, 2: float} $textColor RGB in 0..1 (default black)
+     * @param array{0: float, 1: float, 2: float} $bgColor   RGB in 0..1 (default white)
+     * @return bool whether the page existed
+     */
+    public function maskedText(
+        int $pageIndex,
+        float $x,
+        float $y,
+        float $width,
+        float $height,
+        string $text,
+        float $size = 12.0,
+        array $textColor = [0.0, 0.0, 0.0],
+        array $bgColor = [1.0, 1.0, 1.0],
+        Align $align = Align::Left,
+    ): bool {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_masked_text(
+            $this->h(),
+            $pageIndex,
+            $x,
+            $y,
+            $width,
+            $height,
+            $text,
+            $size,
+            $textColor[0],
+            $textColor[1],
+            $textColor[2],
+            $bgColor[0],
+            $bgColor[1],
+            $bgColor[2],
+            $align->value,
             \FFI::addr($found),
         ));
         return $found->cdata !== 0;

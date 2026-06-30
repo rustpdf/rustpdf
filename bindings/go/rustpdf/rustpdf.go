@@ -191,6 +191,19 @@ func ExtractText(pdf []byte) (string, error) {
 	return string(b), err
 }
 
+// ExtractPageText extracts the text of a single page (0-based pageIndex) from a
+// PDF, decoded to Unicode via each font's ToUnicode map. It returns an error if
+// pageIndex is out of range.
+func ExtractPageText(pdf []byte, pageIndex int) (string, error) {
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_extract_page_text(
+			uptr(pdf), C.uintptr_t(len(pdf)), C.uintptr_t(pageIndex), out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+	return string(b), err
+}
+
 // ExtractImagesToDir extracts every raster image from a PDF and writes each
 // into the directory dir (which must already exist): JPEG images verbatim as
 // .jpg, everything else re-encoded as .png, named page{N}_{name}.{ext}. It

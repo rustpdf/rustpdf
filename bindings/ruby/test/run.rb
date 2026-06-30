@@ -344,4 +344,21 @@ stamped = img_ed.to_bytes
 check(stamped.bytesize > 8 && stamped.byteslice(0, 5) == "%PDF-", "draw_image serialized a PDF")
 puts "draw_image ok (#{stamped.bytesize} bytes)"
 
+# 24. Aligned place_text + masked_text (ForSign follow-ups).
+mask_ed = RustPdf::EditableDoc.load(pdfa)
+check(mask_ed.place_text(0, 300, 200, "RIGHT", 12, [0, 0, 0], 0, align: RustPdf::Align::RIGHT),
+      "place_text aligned page existed")
+check(mask_ed.masked_text(0, 100, 150, 200, 24, "MASKED", 12,
+                          [1, 1, 1], [0, 0, 0], align: RustPdf::Align::CENTER),
+      "masked_text page existed")
+check(!mask_ed.masked_text(99, 0, 0, 1, 1, "x"), "masked_text missing page")
+masked = mask_ed.to_bytes
+check(RustPdf.extract_text(masked).include?("MASKED"), "masked text is extractable")
+puts "place_text align + masked_text ok (#{masked.bytesize} bytes)"
+
+# 25. Per-page text extraction (issue #45 / #50 follow-up).
+page0 = RustPdf.extract_page_text(masked, 0)
+check(page0.include?("MASKED"), "extract_page_text returns page 0 text")
+puts "extract_page_text ok (#{page0.bytesize} bytes)"
+
 puts "OK: full Ruby binding surface exercised"

@@ -279,18 +279,42 @@ public final class EditableDoc {
     /// `pageIndex` (0-based), standard Helvetica at `size` points in RGB `color`
     /// (each 0..=1, default black). `rotationDeg` rotates the text
     /// counter-clockwise about its anchor `(x, y)` (match the page rotation to
-    /// follow a rotated page). Coordinates are in the page's **visible** space
-    /// (origin lower-left, y up), regardless of the page's `/Rotate`. Returns
-    /// whether the page existed.
+    /// follow a rotated page). `align` shifts the start point along the baseline
+    /// so the anchor `(x, y)` is the text's left (default), right or center.
+    /// Coordinates are in the page's **visible** space (origin lower-left, y up),
+    /// regardless of the page's `/Rotate`. Returns whether the page existed.
     @discardableResult
     public func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String,
                           size: Double = 12, color: (Double, Double, Double) = (0, 0, 0),
-                          rotationDeg: Double = 0.0) -> Bool {
+                          rotationDeg: Double = 0.0, align: Align = .left) -> Bool {
         var found: Int32 = 0
         text.withCString { t in
-            try? check(Native.shared.pdf_editable_place_text(
+            try? check(Native.shared.pdf_editable_place_text_aligned(
                 handle, Int32(pageIndex), x, y, t, size,
-                color.0, color.1, color.2, rotationDeg, &found))
+                color.0, color.1, color.2, rotationDeg, align.rawValue, &found))
+        }
+        return found != 0
+    }
+
+    /// Draw `text` over an opaque background box `[x, y, x+width, y+height]`:
+    /// fills the box in `bgColor` (default white), then writes the text (standard
+    /// Helvetica at `size` points in `textColor`, default black) horizontally
+    /// aligned per `align` and vertically centered within the box. The classic
+    /// use is masking a placeholder and stamping the real value over it without
+    /// hand-computing the baseline. Coordinates are in the page's **visible**
+    /// space (origin lower-left, y up). Returns whether the page existed.
+    @discardableResult
+    public func maskedText(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double,
+                           _ text: String, size: Double = 12,
+                           textColor: (Double, Double, Double) = (0, 0, 0),
+                           bgColor: (Double, Double, Double) = (1, 1, 1),
+                           align: Align = .left) -> Bool {
+        var found: Int32 = 0
+        text.withCString { t in
+            try? check(Native.shared.pdf_editable_masked_text(
+                handle, Int32(pageIndex), x, y, width, height, t, size,
+                textColor.0, textColor.1, textColor.2,
+                bgColor.0, bgColor.1, bgColor.2, align.rawValue, &found))
         }
         return found != 0
     }

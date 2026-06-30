@@ -588,9 +588,9 @@ $ed-&gt;watermarkText('CONFIDENTIAL', opacity: 0.25, rotationDeg: 45.0, opaqueBa
 
       <!-- ED DRAW -->
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
-      <p>Paint a filled rectangle or a line of positioned text at an exact spot on an existing page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of any <code>/Rotate</code>. <code>placeText</code> uses the standard Helvetica font (WinAnsi / Latin-1) and <code>rotationDeg</code> rotates the text counter-clockwise about the anchor. <code>drawImage</code> takes raw JPEG/PNG image bytes (a binary string) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. All three return <code>false</code> if the page index does not exist.</p>
+      <p>Paint a filled rectangle or a line of positioned text at an exact spot on an existing page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of any <code>/Rotate</code>. <code>placeText</code> uses the standard Helvetica font (WinAnsi / Latin-1) and <code>rotationDeg</code> rotates the text counter-clockwise about the anchor; <code>align</code> (an <code>Align</code> case) shifts the start point along the baseline so the text is left/right/center aligned about the anchor. <code>drawImage</code> takes raw JPEG/PNG image bytes (a binary string) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. They all return <code>false</code> if the page index does not exist.</p>
       <div class="api"><code>fillRect(pageIndex, x, y, width, height, color = [1.0, 1.0, 1.0], opacity = 1.0): bool</code></div>
-      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotationDeg = 0.0): bool</code></div>
+      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotationDeg = 0.0, align = Align::Left): bool</code></div>
       <div class="api"><code>drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0): bool</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
 use RustPdf\EditableDoc;
@@ -603,6 +603,16 @@ $ed-&gt;fillRect(0, 100.0, $geo-&gt;height - 120.0, 180.0, 16.0, [1.0, 1.0, 1.0]
 $ed-&gt;placeText(0, 104.0, $geo-&gt;height - 116.0, 'PAID', 12.0, [0.0, 0.4, 0.0], 0.0);
 $ed-&gt;drawImage(0, file_get_contents('logo.png'), 104.0, $geo-&gt;height - 180.0, 120.0, 48.0);
 $ed-&gt;save('invoice-paid.pdf');</code></pre></div>
+
+      <p><code>maskedText</code> bundles the mask-then-stamp pattern into one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code> (default white), then writes <code>text</code> (standard Helvetica) horizontally aligned per <code>align</code> and vertically centered within the box. The classic use is masking a placeholder and stamping the real value over it without hand-computing the baseline. Returns <code>false</code> if the page index does not exist.</p>
+      <div class="api"><code>maskedText(pageIndex, x, y, width, height, text, size = 12.0, textColor = [0.0, 0.0, 0.0], bgColor = [1.0, 1.0, 1.0], align = Align::Left): bool</code></div>
+      <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Align;
+use RustPdf\EditableDoc;
+
+$ed = EditableDoc::loadFile('contract.pdf');
+// Replace a {{name}} placeholder box, centered.
+$ed-&gt;maskedText(0, 200.0, 540.0, 220.0, 24.0, 'Ada Lovelace', 14.0, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], Align::Center);
+$ed-&gt;save('contract-filled.pdf');</code></pre></div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>

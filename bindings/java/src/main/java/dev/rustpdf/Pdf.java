@@ -46,6 +46,18 @@ public final class Pdf {
     }
 
     /**
+     * Extract the text of a single page (0-based {@code pageIndex}), without
+     * building an intermediate one-page document.
+     *
+     * @throws PdfException if {@code pageIndex} is out of range.
+     */
+    public static String extractPageText(byte[] pdf, int pageIndex) {
+        byte[] bytes = takeBuffer((p, n) ->
+                FFI.C.pdf_extract_page_text(pdf, pdf.length, pageIndex, p, n));
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
      * Extract every raster image from {@code pdf} into directory {@code dir}
      * (JPEG verbatim as {@code .jpg}, everything else as {@code .png}; files named
      * {@code page{N}_{name}.{ext}}). Returns the number of images written.

@@ -204,7 +204,7 @@ export RUSTPDF_LIB=/path/to/target/debug/libpdf_ffi.dylib   # optional</code></p
       <p>or with Delphi's command-line compiler:</p>
       <div class="code has-label"><span class="lbl">shell</span><pre><code>dcc64 -Ubindings/delphi hello.dpr</code></pre></div>
       <p>Verify the library loads:</p>
-      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Writeln(Pdf.Version);   // native library version, e.g. 0.4.5</code></pre></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Writeln(Pdf.Version);   // native library version, e.g. 0.4.6</code></pre></div>
 
       <!-- QUICKSTART -->
       <h2 id="quickstart">Quick start</h2>
@@ -607,9 +607,10 @@ end;</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>RotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>function FillRect(PageIndex: Integer; X, Y, Width, Height, R, G, B, Opacity: Double): Boolean;</code></div>
-      <div class="api"><code>function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String; Size, R, G, B, RotationDeg: Double): Boolean;</code></div>
+      <div class="api"><code>function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String; Size, R, G, B, RotationDeg: Double; Align: TPdfAlign = paLeft): Boolean;</code></div>
+      <div class="api"><code>function MaskedText(PageIndex: Integer; X, Y, Width, Height: Double; const Text: UTF8String; Size: Double; TextR, TextG, TextB, BgR, BgG, BgB: Double; Align: TPdfAlign = paLeft): Boolean;</code></div>
       <div class="api"><code>function DrawImage(PageIndex: Integer; const Image: TBytes; X, Y, Width, Height, RotationDeg: Double): Boolean;</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(X, Y)</code> scaled to <code>Width × Height</code> points.</p>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. The optional <code>Align</code> (<code>paLeft</code>, <code>paRight</code>, <code>paCenter</code>, <code>paJustify</code>) on <code>PlaceText</code> shifts the start point along the baseline so the text is left/right/center-aligned about <code>(X, Y)</code>. <code>MaskedText</code> does the mask-then-write in one call: it fills the box <code>[X, Y, X+Width, Y+Height]</code> in the background colour (each <code>0..1</code>; defaults to white), then writes the text in the text colour (defaults to black) horizontally aligned per <code>Align</code> and vertically centered in the box. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(X, Y)</code> scaled to <code>Width × Height</code> points.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Data: TBytes;
     G: TPageGeometry;
     Ed: TPdfEditable;
@@ -848,13 +849,15 @@ else
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist. <code>ExtractImagesToDir</code> returns how many images were written.</p>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. <code>ExtractPageText</code> does the same for a single page (0-based), raising <code>ERustPdf</code> (<code>psInvalidArgument</code>) if the page is out of range. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist. <code>ExtractImagesToDir</code> returns how many images were written.</p>
       <div class="api"><code>Pdf.ExtractText(PdfBytes: TBytes): string</code> <span class="badge free">free</span></div>
+      <div class="api"><code>Pdf.ExtractPageText(PdfBytes: TBytes; PageIndex: NativeUInt): string</code> <span class="badge free">free</span></div>
       <div class="api"><code>Pdf.ExtractImagesToDir(PdfBytes: TBytes; Dir: string): NativeUInt</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var N: NativeUInt;
 …
 Data := ...;   // TBytes of report.pdf
 Writeln(Pdf.ExtractText(Data));
+Writeln(Pdf.ExtractPageText(Data, 0));   // just the first page
 
 N := Pdf.ExtractImagesToDir(Data, 'out_images/');   // count of images written
 Writeln(Format('wrote %d image(s)', [Int64(N)]));</code></pre></div>

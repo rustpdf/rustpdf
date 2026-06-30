@@ -826,6 +826,55 @@ int pdf_editable_place_text(PdfEditable *ed,
                                   int *out_found);
 
 /**
+ * Like `pdf_editable_place_text` but with horizontal `align` (0=Left, 1=Right,
+ * 2=Center, 3=Justify) relative to the anchor `(x, y)`. `out_found` receives `1`
+ * if the page existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_place_text_aligned(PdfEditable *ed,
+                                  int index,
+                                  double x,
+                                  double y,
+                                  const char *text,
+                                  double size,
+                                  double r,
+                                  double g,
+                                  double b,
+                                  double rotation_deg,
+                                  int align,
+                                  int *out_found);
+
+/**
+ * Draw `text` over an opaque background box `[x, y, x+width, y+height]`: fills
+ * the box in `bg_*` color, then writes the text (standard Helvetica, `size`
+ * points, `text_*` color) horizontally aligned per `align` (0=Left, 1=Right,
+ * 2=Center, 3=Justify) and vertically centered. Coordinates are in the page's
+ * visible space (origin lower-left, y up). `out_found` receives `1` if the page
+ * existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_masked_text(PdfEditable *ed,
+                                  int index,
+                                  double x,
+                                  double y,
+                                  double width,
+                                  double height,
+                                  const char *text,
+                                  double size,
+                                  double text_r,
+                                  double text_g,
+                                  double text_b,
+                                  double bg_r,
+                                  double bg_g,
+                                  double bg_b,
+                                  int align,
+                                  int *out_found);
+
+/**
  * Draw an image (from in-memory JPEG/PNG bytes `data`/`len`, dispatched on the
  * file signature) on page `index` (0-based) with its lower-left corner at
  * `(x, y)`, scaled to `width`×`height` points, rotated `rotation_deg` degrees
@@ -962,6 +1011,20 @@ int pdf_editable_save(const PdfEditable *ed, const char *path);
  */
 int pdf_extract_text(const uint8_t *data,
                            uintptr_t len,
+                           unsigned char **out_ptr,
+                           uintptr_t *out_len);
+
+/**
+ * Extract the text of a single page (0-based `page_index`) into a UTF-8 buffer
+ * (`out_ptr`/`out_len`). Returns `PdfStatus::InvalidArgument` if the page is
+ * out of range (no buffer is written).
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable.
+ */
+int pdf_extract_page_text(const uint8_t *data,
+                           uintptr_t len,
+                           uintptr_t page_index,
                            unsigned char **out_ptr,
                            uintptr_t *out_len);
 

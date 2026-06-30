@@ -237,6 +237,8 @@ const f = {
   edFillRect: lib.func('int pdf_editable_fill_rect(void *ed, int index, double x, double y, double width, double height, double r, double g, double b, double opacity, _Out_ int *found)'),
   edPlaceText: lib.func('int pdf_editable_place_text(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, _Out_ int *found)'),
   edDrawImage: lib.func('int pdf_editable_draw_image(void *ed, int index, const uint8_t *data, size_t len, double x, double y, double width, double height, double rotation_deg, _Out_ int *found)'),
+  edPlaceTextAligned: lib.func('int pdf_editable_place_text_aligned(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, _Out_ int *found)'),
+  edMaskedText: lib.func('int pdf_editable_masked_text(void *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, _Out_ int *found)'),
 
   // Tier 2: signature verification (module-level)
   verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
@@ -249,6 +251,7 @@ const f = {
   inspect: lib.func('int pdf_inspect_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
 
   extractText: lib.func('int pdf_extract_text(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+  extractPageText: lib.func('int pdf_extract_page_text(const uint8_t *data, size_t len, size_t page_index, _Out_ uint8_t **out, _Out_ size_t *len2)'),
   extractImagesToDir: lib.func('int pdf_extract_images_to_dir(const uint8_t *data, size_t len, const char *dir, _Out_ size_t *out_count)'),
   renderPageToPng: lib.func('int pdf_render_page_to_png(const uint8_t *data, size_t len, size_t page_index, double dpi, _Out_ uint8_t **out, _Out_ size_t *len2)'),
   pageCount: lib.func('int pdf_page_count(const uint8_t *data, size_t len, _Out_ size_t *out_count)'),
@@ -317,6 +320,13 @@ function activateLicense(token) {
 function extractText(pdf) {
   const b = asBuf(pdf);
   return takeBytes((o, n) => f.extractText(b, b.length, o, n)).toString('utf8');
+}
+
+// Extract the text of a single page (0-based) — the fast per-page path (no need
+// to extract the whole document). Returns the page's UTF-8 text.
+function extractPageText(pdf, pageIndex) {
+  const b = asBuf(pdf);
+  return takeBytes((o, n) => f.extractPageText(b, b.length, pageIndex, o, n)).toString('utf8');
 }
 
 function extractImagesToDir(pdf, dir) {
@@ -805,10 +815,25 @@ class EditableDoc {
     return found[0] !== 0;
   }
   // `rotationDeg` rotates the text counter-clockwise about its anchor (x, y).
-  placeText(pageIndex, x, y, text, size = 12.0, color = [0, 0, 0], rotationDeg = 0.0) {
+  // `align` (Align.*) shifts the start point along the baseline so the text is
+  // left/right/center aligned about (x, y) (Justify behaves like Left here).
+  placeText(pageIndex, x, y, text, size = 12.0, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left) {
     const [r, g, b] = color;
     const found = [0];
-    check(f.edPlaceText(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, found));
+    check(f.edPlaceTextAligned(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, align, found));
+    return found[0] !== 0;
+  }
+  // Draw `text` over an opaque background box [x, y, x+width, y+height]: fills the
+  // box in `bgColor`, then writes the text (standard Helvetica, `size` points,
+  // `textColor`) horizontally aligned per `align` and vertically centered within
+  // the box — the classic "mask a placeholder and stamp the real value over it"
+  // convenience. Coordinates are in the page VISIBLE space (origin lower-left,
+  // y up). Returns false if the page index does not exist.
+  maskedText(pageIndex, x, y, width, height, text, size = 12.0, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left) {
+    const [tr, tg, tb] = textColor;
+    const [br, bg, bb] = bgColor;
+    const found = [0];
+    check(f.edMaskedText(this._ptr, pageIndex, x, y, width, height, text, size, tr, tg, tb, br, bg, bb, align, found));
     return found[0] !== 0;
   }
   // Stamp an image (PNG or JPEG bytes) onto an existing page. The image's
@@ -852,6 +877,7 @@ module.exports = {
   version,
   activateLicense,
   extractText,
+  extractPageText,
   extractImagesToDir,
   renderPageToPng,
   pageCount,

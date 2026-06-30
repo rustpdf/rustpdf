@@ -117,6 +117,20 @@ pub fn extract_text(data: &[u8]) -> Result<String> {
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
+/// Extract the text of a single page (0-based `index`) into a UTF-8 string.
+/// Returns [`PdfStatus::InvalidArgument`](crate::PdfStatus::InvalidArgument) if
+/// the page is out of range.
+pub fn extract_page_text(data: &[u8], index: usize) -> Result<String> {
+    let a = ffi::api()?;
+    let mut ptr: *mut u8 = ptr::null_mut();
+    let mut len: usize = 0;
+    check(a, unsafe {
+        (a.pdf_extract_page_text)(data.as_ptr(), data.len(), index, &mut ptr, &mut len)
+    })?;
+    let bytes = take_buffer(a, ptr, len);
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
 /// Extract every raster image from `data` into directory `dir` (JPEGs are
 /// written verbatim as `.jpg`, everything else as `.png`; files are named
 /// `page{N}_{name}.{ext}`). Returns the number of images written.

@@ -361,6 +361,38 @@ public final class SmokeTest {
         assertThat(Pdf.extractText(drawn).contains("PlacedHere"), "placed text extracted");
         System.out.println("fillRect + placeText + drawImage ok (" + drawn.length + " bytes)");
 
+        // 22. ForSign follow-ups: extractPageText + aligned placeText + maskedText.
+        String page0Text = Pdf.extractPageText(pdfa, 0);
+        assertThat(page0Text.contains("Título"), "extractPageText page 0: " + page0Text);
+        boolean pageOob = false;
+        try {
+            Pdf.extractPageText(pdfa, 9);
+        } catch (PdfException e) {
+            pageOob = true;
+        }
+        assertThat(pageOob, "extractPageText out-of-range throws PdfException");
+
+        byte[] aligned;
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            assertThat(ed.placeText(0, 300, 200, "RightAligned", 14.0, 0.0, 0.0, 0.0, 0.0,
+                    Align.RIGHT), "aligned placeText page 0");
+            assertThat(ed.maskedText(0, 100, 250, 200, 24, "Masked", 12.0,
+                    new double[] {0, 0, 0}, new double[] {1, 1, 1}, Align.CENTER),
+                    "maskedText page 0");
+            assertThat(ed.maskedText(0, 100, 300, 200, 24, "MaskedDefault", 12.0),
+                    "maskedText default overload");
+            assertThat(!ed.placeText(9, 0, 0, "x", 12.0, 0, 0, 0, 0.0, Align.LEFT),
+                    "aligned placeText missing page false");
+            assertThat(!ed.maskedText(9, 0, 0, 10, 10, "x", 12.0),
+                    "maskedText missing page false");
+            aligned = ed.toBytes();
+        }
+        assertThat(aligned.length > 0, "aligned/masked bytes");
+        assertThat(Pdf.extractText(aligned).contains("RightAligned"), "aligned text extracted");
+        assertThat(Pdf.extractText(aligned).contains("Masked"), "masked text extracted");
+        System.out.println("extractPageText + aligned placeText + maskedText ok ("
+                + aligned.length + " bytes)");
+
         System.out.println("OK: full Java binding surface exercised");
     }
 

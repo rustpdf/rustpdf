@@ -607,16 +607,22 @@ ed.close();</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Place a filled rectangle or a line of text at exact coordinates on a page, for stamping a value into a form, masking a region, or adding a small note. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1).</p>
       <div class="api"><code>fillRect(pageIndex, x, y, width, height, color = [1, 1, 1], opacity = 1.0) → boolean</code></div>
-      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0) → boolean</code></div>
+      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left) → boolean</code></div>
+      <div class="api"><code>maskedText(pageIndex, x, y, width, height, text, size = 12, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left) → boolean</code></div>
       <div class="api"><code>drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0) → boolean</code></div>
-      <p>All three return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text or image counter-clockwise about its anchor <code>(x, y)</code>. <code>drawImage</code> takes raw JPEG/PNG image bytes (a Buffer or Uint8Array) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. A common pattern: read the page geometry, white-out a region with an opaque rectangle, then place your value over it.</p>
+      <p>All four return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text or image counter-clockwise about its anchor <code>(x, y)</code>. <code>placeText</code>'s optional <code>align</code> (an <code>Align</code> value) shifts the start point along the baseline so the text is left/right/center aligned about <code>(x, y)</code> (<code>Justify</code> behaves like <code>Left</code>). <code>maskedText</code> bundles the mask-then-stamp pattern: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code>, then writes the text horizontally aligned per <code>align</code> and vertically centered within the box — handy for replacing a placeholder without hand-computing the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes (a Buffer or Uint8Array) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("form.pdf");
 const { width, height } = rustpdf.measurePage(fs.readFileSync("form.pdf"), 0);
 
 // mask a region with an opaque white box, then stamp a value over it
 ed.fillRect(0, 60, height - 100, 200, 24, [1, 1, 1], 1.0);
 ed.placeText(0, 64, height - 94, "APPROVED", 18, [0, 0, 0], 0.0);
-ed.drawImage(0, fs.readFileSync("logo.png"), 64, height - 150, 120, 48);
+
+// or do both in one call — fill + centered text over the box
+ed.maskedText(0, 60, height - 160, 200, 24, "APPROVED", 18,
+              [0, 0, 0], [1, 1, 1], rustpdf.Align.Center);
+
+ed.drawImage(0, fs.readFileSync("logo.png"), 64, height - 200, 120, 48);
 ed.save("stamped.pdf");
 ed.close();</code></pre></div>
 
@@ -851,11 +857,13 @@ const exact = rustpdf.findText(data, "Total", true);</code></pre></div>
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
-      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist.</p>
+      <p>Extract a document's text, mapping shown glyph codes back to Unicode through each font's <code>ToUnicode</code> map, with space/line inference. Pass a 0-based page index to <code>extractPageText</code> to read just one page (the fast per-page path, no whole-document scan). Raster images can be pulled out too: JPEGs are written verbatim as <code>.jpg</code>, everything else as <code>.png</code>. The output directory is created automatically if it does not already exist.</p>
       <div class="api"><code>rustpdf.extractText(data: Buffer) → string</code> <span class="badge free">free</span></div>
+      <div class="api"><code>rustpdf.extractPageText(data: Buffer, pageIndex: number) → string</code> <span class="badge free">free</span></div>
       <div class="api"><code>rustpdf.extractImagesToDir(data: Buffer, outDir: string) → number</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const data = fs.readFileSync("report.pdf");
 console.log(rustpdf.extractText(data));
+console.log(rustpdf.extractPageText(data, 0));   // just the first page
 
 const n = rustpdf.extractImagesToDir(data, "out_images/");   // returns how many were written
 console.log(`wrote ${n} image(s)`);</code></pre></div>

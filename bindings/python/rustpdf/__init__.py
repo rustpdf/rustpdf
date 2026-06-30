@@ -57,6 +57,7 @@ __all__ = [
     "library_path",
     "activate_license",
     "extract_text",
+    "extract_page_text",
     "find_text",
     "measure_pages",
     "measure_page",
@@ -451,6 +452,9 @@ _ed_incremental = _bind("pdf_editable_to_bytes_incremental", c_int, [_ED, _U8, c
 _ed_save = _bind("pdf_editable_save", c_int, [_ED, c_char_p])
 # extract + sign
 _extract_text = _bind("pdf_extract_text", c_int, [_U8, c_size_t, *_OUTBUF])
+_extract_page_text = _bind(
+    "pdf_extract_page_text", c_int, [_U8, c_size_t, c_size_t, *_OUTBUF]
+)
 _extract_images_to_dir = _bind(
     "pdf_extract_images_to_dir", c_int, [_U8, c_size_t, c_char_p, POINTER(c_size_t)]
 )
@@ -545,6 +549,18 @@ _ed_place_text = _bind(
     c_int,
     [_ED, c_int, c_double, c_double, c_char_p, c_double,
      c_double, c_double, c_double, c_double, POINTER(c_int)],
+)
+_ed_place_text_aligned = _bind(
+    "pdf_editable_place_text_aligned",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_double, c_int, POINTER(c_int)],
+)
+_ed_masked_text = _bind(
+    "pdf_editable_masked_text",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_double, c_double, c_double, c_int, POINTER(c_int)],
 )
 _ed_draw_image = _bind(
     "pdf_editable_draw_image",
@@ -1063,17 +1079,41 @@ class EditableDoc:
 
     def place_text(self, page_index: int, x: float, y: float, text: str,
                    size: float = 12.0, color: tuple[float, float, float] = (0.0, 0.0, 0.0),
-                   rotation_deg: float = 0.0) -> bool:
+                   rotation_deg: float = 0.0, align: Align = Align.LEFT) -> bool:
         """Draw a line of positioned text with baseline at ``(x, y)`` on page
         ``page_index`` (0-based), standard Helvetica at ``size`` points in RGB
         ``color``. ``rotation_deg`` rotates the text counter-clockwise about its
-        anchor. Coordinates are in the page's VISIBLE space (origin lower-left, y
-        up) — the text lands where a viewer sees it regardless of ``/Rotate``.
-        Returns whether the page existed."""
+        anchor. ``align`` shifts the start point along the baseline so the text is
+        ``Align.LEFT`` (start at ``x``), ``Align.RIGHT`` (end at ``x``) or
+        ``Align.CENTER`` (centered on ``x``) — ``Align.JUSTIFY`` behaves like left.
+        Coordinates are in the page's VISIBLE space (origin lower-left, y up) — the
+        text lands where a viewer sees it regardless of ``/Rotate``. Returns
+        whether the page existed."""
         r, g, b = color
         found = c_int(0)
-        _check(_ed_place_text(self._ptr(), page_index, x, y, _enc(text), size,
-                              r, g, b, rotation_deg, byref(found)))
+        _check(_ed_place_text_aligned(self._ptr(), page_index, x, y, _enc(text), size,
+                                      r, g, b, rotation_deg, int(align), byref(found)))
+        return bool(found.value)
+
+    def masked_text(self, page_index: int, x: float, y: float, width: float,
+                    height: float, text: str, size: float = 12.0,
+                    text_color: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                    bg_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
+                    align: Align = Align.LEFT) -> bool:
+        """Draw ``text`` over an opaque background box ``[x, y, x+width, y+height]``
+        on page ``page_index`` (0-based): fill the box in ``bg_color`` (default
+        white), then write the text (standard Helvetica at ``size`` points in
+        ``text_color``, default black) horizontally aligned per ``align`` and
+        vertically centered within the box. The classic use is masking a
+        placeholder and stamping the real value over it without hand-computing the
+        baseline. Coordinates are in the page's VISIBLE space (origin lower-left, y
+        up). Returns whether the page existed."""
+        tr, tg, tb = text_color
+        br, bg, bb = bg_color
+        found = c_int(0)
+        _check(_ed_masked_text(self._ptr(), page_index, x, y, width, height,
+                               _enc(text), size, tr, tg, tb, br, bg, bb,
+                               int(align), byref(found)))
         return bool(found.value)
 
     def draw_image(self, page_index: int, image: bytes, x: float, y: float,
@@ -1155,6 +1195,16 @@ def extract_text(data: bytes) -> str:
     """Extract a document's text (Unicode via ``ToUnicode``)."""
     ptr, n, _keep = _as_u8(bytes(data))
     return _take(lambda p, ln: _extract_text(ptr, n, p, ln)).decode("utf-8")
+
+
+def extract_page_text(data: bytes, page_index: int) -> str:
+    """Extract the text of a single page (0-based ``page_index``), without
+    building an intermediate one-page document. Raises :class:`PdfError` if the
+    page is out of range."""
+    ptr, n, _keep = _as_u8(bytes(data))
+    return _take(
+        lambda p, ln: _extract_page_text(ptr, n, page_index, p, ln)
+    ).decode("utf-8")
 
 
 def find_text(data: bytes, query: str, case_sensitive: bool = False) -> list[TextHit]:
