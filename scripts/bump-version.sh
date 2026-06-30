@@ -99,3 +99,10 @@ echo
 echo "Next steps (release — see docs/RELEASING.md):"
 echo "  git commit -am \"chore: bump version to $NEW\" && git push origin HEAD:main"
 echo "  then push each per-binding tag ONE AT A TIME: py-v$NEW node-v$NEW ruby-v$NEW ..."
+echo
+echo "  NOTE: Go has no manifest, so this script does NOT bump it — its version IS"
+echo "  the git tag. Go release is TWO steps (RELEASING.md 'Go specifics'):"
+echo "    1) push go-v$NEW  → CI builds the prod-key libs + tag bindings/go/v$NEW"
+echo "    2) MANUAL: push the public mirror rustpdf/rustpdf-go @ v$NEW (auto-mirror"
+echo "       is deferred). Skipping step 2 leaves 'go get ...rustpdf-go@latest' on"
+echo "       the OLD version even though every other binding shipped."

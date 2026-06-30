@@ -72,14 +72,59 @@ exists") *and* points the module tag at a commit without the native libs.
 | Java | `java-v*` | `release-java.yml` | **Maven Central** (Sonatype) | `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` / `MAVEN_GPG_PRIVATE_KEY` / `MAVEN_GPG_PASSPHRASE` + pubkey | |
 | Rust | `rust-v*` | `release-rust.yml` | **private cargo registry** | `CARGO_REGISTRY_INDEX` + `CARGO_REGISTRY_TOKEN` + pubkey | crate loads `libpdf_ffi` at runtime (no embedded binary) |
 
-### Go specifics
+### Go specifics — TWO steps (the second is manual and easy to forget)
 
-Go has no registry — `go get` fetches the tree at a git tag. Because the module
-lives in a subdirectory, its import path needs the tag `bindings/go/v<version>`
-(not `go-v<version>`). The `go-v*` tag only **triggers** the workflow; the
-workflow builds the native libs for every platform, makes a commit that stages
-them under `bindings/go/.../resources/`, and pushes the `bindings/go/v*` tag at
-*that* commit. Never create `bindings/go/v*` by hand.
+Go has no registry — `go get` fetches the tree at a git tag. **Publishing Go is
+two steps, and the bump script does NOT touch Go (its version is purely the
+tag).** Both are required; doing only step 1 leaves customers stuck on the old
+version even though every other binding shipped (this is exactly what happened to
+0.4.3 — see the 2026-06-29 incident note below).
+
+**Step 1 — build the prod-key native libs (CI, automatic).** Pushing the `go-v*`
+trigger tag runs `release-go.yml`, which builds `libpdf_ffi.a` for all five
+platforms, makes a commit staging them under
+`bindings/go/rustpdf/lib/<os>_<arch>/libpdf_ffi.a`, and pushes the module tag
+`bindings/go/v<version>` at *that* commit. **Never create `bindings/go/v*` by
+hand.** This tag is consumable only as the *in-monorepo* subdir module
+`github.com/rustpdf/rustpdf/bindings/go/rustpdf@vX.Y.Z` — which needs repo read
+access + `GOPRIVATE`, so **external customers cannot use it**.
+
+**Step 2 — publish the PUBLIC mirror (MANUAL — auto-mirror is deferred).** The
+site and all docs tell customers `go get github.com/rustpdf/rustpdf-go`, a
+standalone **public** repo (root layout, plain `v*` tags) carrying the committed
+`.a` per platform. It is NOT updated by any workflow yet — you must push it by
+hand each release, reusing the prod-key `.a` that step 1 already built (no CI
+rerun). From the monorepo root, with `<V>` = version (e.g. `0.4.3`):
+
+```sh
+V=0.4.3
+W=$(mktemp -d)
+# 1. pull the module tag + extract the prod-key .a tree CI just built
+git fetch origin tag "bindings/go/v$V"
+git archive "bindings/go/v$V" bindings/go | tar -x -C "$W"
+# 2. clone the public mirror (currently at the previous version)
+git clone https://github.com/rustpdf/rustpdf-go.git "$W/mirror"
+# 3. the Go SOURCE rarely changes between patch releases — usually ONLY the 5 .a
+#    differ. Swap them in (diff the *.go first if a release changed Go code):
+for k in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64 windows_amd64; do
+  cp "$W/bindings/go/rustpdf/lib/$k/libpdf_ffi.a" "$W/mirror/lib/$k/libpdf_ffi.a"
+done
+# 4. verify locally (host slice → default tags static-link), then publish
+cd "$W/mirror"
+gofmt -l . && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go run ./smoke   # prints "smoke OK <V>"
+git add -A && git commit -m "release v$V"
+git push origin main           # ~324MB of .a — can take a few minutes; don't run under a 2-min timeout
+git tag "v$V" && git push origin "v$V"   # the tag is what `go get` resolves
+```
+
+Notes / gotchas:
+- The mirror's `rustpdf.go` package doc is intentionally reworded vs the monorepo
+  (drops build-tag/monorepo wording) — keep the mirror's version, only swap `.a`.
+- The mirror's `.gitignore` must NOT contain `*.a` (the libs are committed here).
+- GitHub warns the 4 largest `.a` exceed its 50MB *recommended* size — harmless
+  (all < the 100MB hard limit). git-lfs is NOT an option (breaks `go get`).
+- Each release adds ~324MB to the public repo's git history; acceptable for now.
+- See the `rust-pdf-go-public-mirror` memory for the full first-time bootstrap.
 
 ### PHP specifics (two parts)
 
@@ -118,7 +163,10 @@ curl -s https://api.nuget.org/v3-flatcontainer/rustpdf/index.json | jq -r '.vers
 gh release view swift-v0.4.0 --repo rustpdf/rustpdf --json assets             # Swift
 gh release view delphi-v0.4.0 --repo rustpdf/rustpdf --json assets            # Delphi
 git ls-remote --tags https://github.com/rustpdf/rustpdf-php | grep v0.4.0     # PHP mirror
-# Go: git ls-remote --tags origin | grep 'bindings/go/v0.4.0'
+# Go step 1 (in-monorepo libs):  git ls-remote --tags origin | grep 'bindings/go/v0.4.0'
+# Go step 2 (CUSTOMER-FACING mirror — the one that actually matters):
+git ls-remote --tags https://github.com/rustpdf/rustpdf-go | grep v0.4.0       # public mirror
+go list -m -versions github.com/rustpdf/rustpdf-go                             # what the Go proxy serves
 ```
 
 Confirm each `release-<lang>` run is `success` (`gh run list --event push`),
@@ -134,4 +182,8 @@ batch-push trap bit you again.
   pubkey secret.
 - **Go `tag ... already exists`** → you pushed `bindings/go/v*` by hand; delete
   it (`git push origin :refs/tags/bindings/go/v0.4.0`) and rerun `release-go`.
+- **`go get github.com/rustpdf/rustpdf-go@latest` returns the OLD version** → you
+  did step 1 but skipped the manual **step 2** (public-mirror push) in *Go
+  specifics*. The `release-go` run being green only means the in-monorepo libs
+  were built — it does NOT publish the customer-facing mirror. Run step 2.
 - **A failed job after a fix** → `gh run rerun <run-id> --failed`.

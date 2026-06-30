@@ -129,7 +129,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/styles.css?v=4" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -164,8 +164,8 @@
           <a href="#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
         </div>
         <div class="validators">
-          Validated by independent tools you can run yourself:
-          <a class="vtool vtool-primary" href="https://verapdf.org" target="_blank" rel="noopener">veraPDF</a><a class="vtool" href="https://poppler.freedesktop.org/" target="_blank" rel="noopener">pdfsig</a><a class="vtool" href="https://www.openssl.org/" target="_blank" rel="noopener">openssl&nbsp;cms</a><a class="vtool" href="https://qpdf.sourceforge.io/" target="_blank" rel="noopener">qpdf</a><span>mutool</span>
+          Validated by the independent reference validator you can run yourself:
+          <a class="vtool vtool-primary" href="https://verapdf.org/" target="_blank" rel="noopener">veraPDF</a>
           <a class="vverify" href="#verify">→ verify it yourself</a>
         </div>
       </div>
@@ -510,25 +510,53 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
       <div class="wrap narrow center">
         <h2>Don't take our word for it. Run the validators.</h2>
         <p class="muted">
-          Generate a document, then check it with the same independent tools we
+          Generate a document, then check it with the same independent validator we
           gate every release on. No account, no upload: it all runs on your
-          machine, against the bytes rust-pdf produced.
+          machine, against the bytes rust-pdf produced. PDF/A and accessibility
+          are licensed features, so this demo needs an active
+          <a href="#pricing">Pro / Enterprise</a> token.
         </p>
-        <pre class="verify-code"><code><span class="c"># 1 · author an archival, accessible, signed PDF (Rust example shown)</span>
-cargo run --release -p pdf --example report -- out.pdf
+        <pre class="verify-code"><code><span class="c"># 0 · PDF/A &amp; accessibility need a license (Pro / Enterprise):</span>
+<span class="c">#     export RUSTPDF_LICENSE="…the token we email you…"</span>
 
-<span class="c"># 2 · PDF/A + PDF/UA conformance, reference validator</span>
-verapdf --flavour 2a out.pdf          <span class="c">→ <span class="ok">PASS</span>, isCompliant=true</span>
+<span class="c"># 1 · author an archival, accessible PDF/A-2a (report.py)</span>
+<span class="c">#     pip install rustpdf</span>
+from rustpdf import Document, PdfaLevel, Align
 
-<span class="c"># 3 · signature + RFC 3161 timestamp</span>
-pdfsig signed.pdf                     <span class="c">→ <span class="ok">Signature is Valid</span></span>
-openssl cms -verify -inform DER ...   <span class="c">→ <span class="ok">CMS Verification successful</span></span>
+with Document() as doc:
+    doc.pdfa(PdfaLevel.A2A).tagged()   <span class="c"># PDF/A-2a + tagged (PDF/UA)</span>
+    doc.set_info(title="Quarterly Report", author="rust-pdf")
+    font = doc.add_font_file("DejaVuSans.ttf")  <span class="c"># embedded + subset</span>
+    doc.add_page((595, 842))           <span class="c"># A4, points</span>
+    doc.show_text(font, 24, 72, 760, "Quarterly Report", heading_level=1)
+    doc.paragraph(font, 11, 72, 700, 451,
+                  "Deterministic bytes, no timestamps, "
+                  "fully tagged for accessibility.", Align.JUSTIFY)
+    doc.save("out.pdf")
 
-<span class="c"># 4 · structure</span>
-qpdf --check out.pdf && mutool info out.pdf</code></pre>
+<span class="c"># 2 · or PDF/A-4f (PDF 2.0) with an embedded file (af.py)</span>
+with Document() as doc:
+    doc.pdfa(PdfaLevel.A4F)   <span class="c"># PDF/A-4f (PDF 2.0)</span>
+    doc.set_info(title="Invoice 2026-001")
+    font = doc.add_font_file("DejaVuSans.ttf")
+    doc.add_page((595, 842))
+    doc.show_text(font, 14, 72, 760, "Invoice 2026-001")
+    doc.attach_file("invoice.xml", "application/xml",
+                    open("invoice.xml", "rb").read())  <span class="c"># payload</span>
+    doc.save("af.pdf")
+
+<span class="c"># 3 · validate with veraPDF, the reference validator (offline):</span>
+verapdf out.pdf          <span class="c">→ auto-detects flavour, <span class="ok">isCompliant=true</span></span>
+verapdf -f 2a out.pdf    <span class="c">→ PDF/A-2a (archival) <span class="ok">PASS</span></span>
+verapdf -f ua1 out.pdf   <span class="c">→ PDF/UA-1 (accessibility) <span class="ok">PASS</span></span>
+verapdf -f 4f af.pdf     <span class="c">→ PDF/A-4f (embedded files) <span class="ok">PASS</span></span>
+
+<span class="c"># 4 · machine-readable report + your own rules, for CI</span>
+verapdf --format xml -f 2a out.pdf > report.xml
+verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules</span></code></pre>
         <p class="muted" style="font-size:0.86rem">
-          Each release is gated on these passing for PDF/A&nbsp;1b–3a and A-4, PDF/UA-1 and
-          PAdES&nbsp;B-B/B-LT/B-LTA. More in the <a href="#faq">validation FAQ</a> or
+          Every release is gated on this passing for PDF/A&nbsp;1b–3a and A-4 and
+          PDF/UA-1. More in the <a href="#faq">validation FAQ</a> or
           your language's <a href="/docs/">reference docs</a>.
         </p>
       </div>
@@ -646,7 +674,7 @@ qpdf --check out.pdf && mutool info out.pdf</code></pre>
           <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
         </details>
         <details><summary>How is this validated?</summary>
-          <p>Output is checked by independent tools: veraPDF (PDF/A 1b–3a and A-4 + PDF/UA-1), pdfsig and <code>openssl cms</code> (signatures), and qpdf/mutool (structure). It isn't "conformance marketing".</p>
+          <p>Output is checked by the independent reference validator veraPDF (PDF/A 1b–3a and A-4 + PDF/UA-1). It isn't "conformance marketing".</p>
         </details>
         <details><summary>What happens when the license expires?</summary>
           <p>The corporate features stop producing output and return a clear license error; basic generation keeps working. Renew to receive a fresh token.</p>

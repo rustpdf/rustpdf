@@ -194,7 +194,7 @@ a.lang:hover small { color: #cbd5e1; }
 .tok-f { color: #61afef; }
 
 /* verify-it-yourself block */
-.verify-code { margin: 26px 0 18px; background: #0b1120; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; overflow-x: auto; font-size: 0.85rem; line-height: 1.7; }
+.verify-code { margin: 26px 0 18px; background: #0b1120; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; overflow-x: auto; font-size: 0.85rem; line-height: 1.7; text-align: left; }
 .verify-code code { color: #d6e2f0; white-space: pre; }
 .verify-code .c { color: #7f8da6; font-style: italic; }
 .verify-code .ok { color: var(--green); }
