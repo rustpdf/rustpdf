@@ -141,7 +141,7 @@ static xcframework for macOS and iOS).
 
 ## Product data
 
-- Current stable version: 0.4.4 (2026-06)
+- Current stable version: 0.4.5 (2026-06)
 - License verification: offline Ed25519 token, no network call
 - Distribution: native shared library (.so / .dylib / .dll) wrapped by each binding
 - Deterministic output: identical input produces byte-identical PDFs across languages
