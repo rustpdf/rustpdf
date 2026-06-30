@@ -162,6 +162,7 @@
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
@@ -171,6 +172,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -550,10 +552,12 @@ with EditableDoc.load_file("form.pdf") as ed:
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>watermark_text(text, *, size=64.0, color=(0.5,0.5,0.5), opacity=0.30, rotation_deg=45.0)</code></div>
-      <div class="api"><code>watermark_image_file(path, width, height, opacity=0.30)</code></div>
+      <div class="api"><code>watermark_text(text, *, size=64.0, color=(0.5,0.5,0.5), opacity=0.30, rotation_deg=45.0, opaque_background=False)</code></div>
+      <div class="api"><code>watermark_image_file(path, width, height, opacity=0.30, rotation_deg=0.0)</code></div>
+      <p>Set <code>opaque_background=True</code> to white out the stamped region first (an opaque background behind the mark) instead of drawing over the existing content. <code>watermark_image_file</code> takes a <code>rotation_deg</code> to rotate the image stamp.</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>with EditableDoc.load_file("report.pdf") as ed:
     ed.watermark_text("CONFIDENTIAL", opacity=0.25, rotation_deg=45)
+    ed.watermark_image_file("stamp.png", 200, 80, opacity=0.4, rotation_deg=30)
     ed.save("stamped.pdf")</code></pre></div>
 
       <!-- ED REDACT -->
@@ -613,6 +617,21 @@ with EditableDoc.load(original) as ed:
     ed.set_info("Subject", "reviewed")
     incremental = ed.to_bytes_incremental(original)   # original bytes preserved verbatim
 open("reviewed.pdf", "wb").write(incremental)</code></pre></div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Remove PDF/A conformance and downgrade the PDF version of an existing document. <code>strip_pdfa</code> drops the archival markers (<code>/OutputIntents</code>, the XMP <code>pdfaid</code> identifier, the catalog <code>/Version</code>); <code>set_version</code> sets the output version; <code>normalize</code> does both in one call, producing a plain PDF at the given version.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>set_version(version)</code></td><td>Set the output PDF version (<code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0).</td></tr>
+        <tr><td><code>strip_pdfa()</code></td><td>Strip PDF/A conformance (output intent, XMP <code>pdfaid</code>, <code>/Version</code>).</td></tr>
+        <tr><td><code>normalize(version=2)</code></td><td>Strip PDF/A and set the version in one step.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>with EditableDoc.load_file("archival.pdf") as ed:
+    ed.normalize(version=2)          # plain PDF 1.7, PDF/A markers removed
+    # or step by step:
+    # ed.strip_pdfa().set_version(2)
+    ed.save("plain.pdf")</code></pre></div>
 
       <!-- SIGN -->
       <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
@@ -676,14 +695,22 @@ open("contract.signed.pdf", "wb").write(signed)</code></pre></div>
 
       <h3>Signing options</h3>
       <p>Both models accept a <code>SigningOptions</code>. It carries the visible metadata plus the cryptographic profile.</p>
-      <div class="api"><code>SigningOptions(reason=None, location=None, name=None, pades=False, certify=Certify.NONE, container_size=0, policy=None)</code></div>
+      <div class="api"><code>SigningOptions(reason=None, location=None, name=None, pades=False, certify=Certify.NONE, container_size=0, policy=None, visible=False, visible_page=0, visible_rect=(0,0,0,0), visible_text=None, visible_image=None)</code></div>
       <ul>
         <li><code>reason</code>, <code>location</code>, <code>name</code>: human-readable signature metadata.</li>
         <li><code>pades=True</code>: produce a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>) instead of a plain PKCS#7 one.</li>
         <li><code>certify</code>: a <code>Certify</code> level (DocMDP) for a certifying signature. Use it only on the first signature: <code>NONE</code>, <code>LOCKED</code> (no changes allowed after signing), <code>FORMS</code> (form filling and signing allowed), <code>FORMS_AND_ANNOTATIONS</code>.</li>
         <li><code>container_size</code>: reserved <code>/Contents</code> bytes (0 = default, 8192). Raise it when a cloud HSM returns a large CMS container.</li>
         <li><code>policy</code>: a <code>SignaturePolicy</code> identifier (PAdES-EPES) when your PKI mandates one.</li>
+        <li><code>visible</code>, <code>visible_page</code>, <code>visible_rect</code>, <code>visible_text</code>: draw a visible signature appearance in the rectangle <code>(x0, y0, x1, y1)</code> on the given page.</li>
+        <li><code>visible_image</code>: PNG/JPEG bytes of a handwritten-signature image, drawn aspect-fit behind any <code>visible_text</code>.</li>
       </ul>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>opts = rustpdf.SigningOptions(
+    reason="Approved", pades=True,
+    visible=True, visible_page=0, visible_rect=(360, 60, 540, 130),
+    visible_text="Jane Doe\n2026-06-30",
+    visible_image=open("signature.png", "rb").read(),   # drawn aspect-fit behind the text
+)</code></pre></div>
       <div class="api"><code>SignaturePolicy(oid, hash, hash_algorithm_oid=None, uri=None)</code></div>
       <p>The policy <code>oid</code> is the dotted-decimal policy identifier, <code>hash</code> is the policy document digest (under <code>hash_algorithm_oid</code>, defaulting to SHA-256), and <code>uri</code> is an optional location where the policy can be retrieved.</p>
       <div class="note"><b>The key never enters the library.</b> Deferred signing exists so that the signing key can stay in dedicated hardware or a managed service. The library only sees the certificate, the bytes to be signed, and the finished signature, so it is a fit for any external-key PKI (national PKI, eIDAS, AATL).</div>
@@ -702,15 +729,38 @@ lt = rustpdf.add_dss(signed, certs=[cert_der], crls=[crl_der])
 lta = rustpdf.timestamp(lt, tsa_key_der, tsa_cert_der)
 open("contract.lta.pdf", "wb").write(lta)</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To timestamp against a real, trusted TSA over the network, use the transport-agnostic helpers: prepare the document, build an RFC 3161 request, POST it to the TSA yourself, then embed the returned token. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>rustpdf.begin_timestamp(pdf) → (document, to_be_signed)</code></div>
+      <div class="api"><code>rustpdf.timestamp_request(imprint, nonce=None, cert_req=True) → bytes</code></div>
+      <div class="api"><code>rustpdf.timestamp_token_from_response(response) → bytes</code></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>import hashlib, urllib.request, rustpdf
+
+document, tbs = rustpdf.begin_timestamp(open("contract.signed.pdf", "rb").read())
+req = rustpdf.timestamp_request(hashlib.sha256(tbs).digest())   # RFC 3161 DER
+
+# You do the HTTP POST to any RFC 3161 TSA:
+http = urllib.request.Request("https://freetsa.org/tsr", data=req,
+                              headers={"Content-Type": "application/timestamp-query"})
+response = urllib.request.urlopen(http).read()
+
+token = rustpdf.timestamp_token_from_response(response)
+lta = rustpdf.complete_signature(document, token)
+open("contract.lta.pdf", "wb").write(lta)</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>rustpdf.verify_signatures(data: bytes) → list[dict]</code></div>
-      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Note that <code>field_name</code> and <code>signer</code> may be <code>None</code> when absent from the signature. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>, plus the rich certificate fields <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>) and <code>signing_time</code> (all may be <code>None</code>), <code>cert_count</code> (int) and <code>has_timestamp</code> (bool). Note that <code>field_name</code> and <code>signer</code> may be <code>None</code> when absent from the signature. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, and is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("contract.signed.pdf", "rb").read()
 for sig in rustpdf.verify_signatures(data):
     print(sig["signer"], "valid:", sig["is_valid"],
-          "covers whole doc:", sig["covers_whole_document"])</code></pre></div>
+          "covers whole doc:", sig["covers_whole_document"])
+    print("  issuer:", sig["issuer"], "serial:", sig["serial_number"])
+    print("  algorithm:", sig["algorithm"], "signed at:", sig["signing_time"])
+    print("  valid:", sig["valid_from"], "→", sig["valid_to"],
+          "| certs:", sig["cert_count"], "| timestamped:", sig["has_timestamp"])</code></pre></div>
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
@@ -722,6 +772,15 @@ print(rustpdf.extract_text(data))
 
 n = rustpdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
 print(f"wrote {n} image(s)")</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get its position on the page, useful for highlighting, redaction targeting or click regions. Returns a list of <code>TextHit</code>, each with the matched <code>page</code> (0-based), the matched <code>text</code>, and a bounding box <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code> in PDF points with the origin at the lower-left. An empty list means no match. See the <a href="/search-pdf">searching PDF text</a> guide for background.</p>
+      <div class="api"><code>rustpdf.find_text(data: bytes, query: str, case_sensitive=False) → list[TextHit]</code></div>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("report.pdf", "rb").read()
+for hit in rustpdf.find_text(data, "Invoice", case_sensitive=False):
+    print(f"page {hit.page}: '{hit.text}' at "
+          f"({hit.x:.1f}, {hit.y:.1f}) {hit.width:.1f}×{hit.height:.1f} pt")</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -831,9 +890,11 @@ except PdfError as e:
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

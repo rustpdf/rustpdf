@@ -163,6 +163,7 @@
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
@@ -172,6 +173,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -577,10 +579,13 @@ try (EditableDoc sec = EditableDoc.loadFile(Path.of("secured.pdf"), "user-or-own
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>watermarkText(text)</code> &nbsp; <code>watermarkText(text, size, r, g, b, opacity, rotationDeg)</code></div>
-      <div class="api"><code>watermarkImageFile(path, width, height, opacity)</code></div>
+      <div class="api"><code>watermarkText(text)</code> &nbsp; <code>watermarkText(text, size, r, g, b, opacity, rotationDeg)</code> &nbsp; <code>watermarkText(text, size, r, g, b, opacity, rotationDeg, boolean opaqueBackground)</code></div>
+      <div class="api"><code>watermarkImageFile(path, width, height, opacity)</code> &nbsp; <code>watermarkImageFile(path, width, height, opacity, rotationDeg)</code></div>
+      <p>The final <code>opaqueBackground</code> argument draws the text over an opaque filled box (a white-out stamp, e.g. a redaction label) instead of letting the page show through. <code>watermarkImageFile</code> takes an optional <code>rotationDeg</code> to rotate the image stamp.</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("report.pdf"))) {
-    ed.watermarkText("CONFIDENTIAL", 64, 0.7, 0.1, 0.1, 0.25, 45);
+    ed.watermarkText("CONFIDENTIAL", 64, 0.7, 0.1, 0.1, 0.25, 45);          // translucent diagonal
+    ed.watermarkText("VOID", 48, 0, 0, 0, 1.0, 0, true);                    // opaque white-out stamp
+    ed.watermarkImageFile("stamp.png", 180, 180, 0.4, 30);                  // rotated image stamp
     ed.save("stamped.pdf");
 }</code></pre></div>
 
@@ -649,6 +654,27 @@ try (EditableDoc ed = EditableDoc.load(original)) {
     ed.setInfo("Subject", "reviewed");
     byte[] incremental = ed.toBytesIncremental(original);   // original bytes preserved verbatim
     Files.write(Path.of("reviewed.pdf"), incremental);
+}</code></pre></div>
+
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Drop PDF/A conformance and downgrade the PDF version, turning an archival or newer file into a plain, broadly compatible PDF. <code>setVersion</code> rewrites only the header/catalog version; <code>stripPdfa</code> removes the PDF/A markers (the catalog <code>/OutputIntents</code>, the XMP <code>pdfaid</code> block and <code>/Version</code>); <code>normalize</code> does both in one call. Version codes match <code>Document.setVersion</code>: <code>0</code> → 1.4, <code>1</code> → 1.5, <code>2</code> → 1.7, <code>3</code> → 2.0.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>setVersion(version)</code></td><td>Set the output PDF version (header + catalog).</td></tr>
+        <tr><td><code>stripPdfa()</code></td><td>Remove PDF/A conformance so the file becomes a plain PDF.</td></tr>
+        <tr><td><code>normalize(version)</code></td><td>Strip PDF/A then set the version (the common case).</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.loadFile(Path.of("archival.pdf"))) {
+    ed.normalize(2);                 // strip PDF/A, downgrade to PDF 1.7
+    ed.save("plain.pdf");
+}
+
+// or step by step:
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("v2.pdf"))) {
+    ed.stripPdfa();
+    ed.setVersion(0);                // PDF 1.4
+    ed.save("compat.pdf");
 }</code></pre></div>
 
       <!-- SIGN -->
@@ -724,7 +750,18 @@ Files.write(Path.of("contract.signed.pdf"), signed);</code></pre></div>
         <tr><td><code>certify</code></td><td>Certify the document (DocMDP); use only on the first signature. See <code>Certify</code> below.</td></tr>
         <tr><td><code>containerSize</code></td><td>Reserved <code>/Contents</code> bytes; <code>0</code> uses the default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
         <tr><td><code>policy</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>null</code> for none.</td></tr>
+        <tr><td><code>visible</code></td><td><code>true</code> draws a visible signature appearance using the fields below.</td></tr>
+        <tr><td><code>visiblePage</code>, <code>visibleRect</code></td><td>0-based page index and rectangle <code>double[]{x0, y0, x1, y1}</code> (points) for the appearance.</td></tr>
+        <tr><td><code>visibleText</code></td><td>Appearance text lines (separated by <code>'\n'</code>); <code>null</code> for none.</td></tr>
+        <tr><td><code>visibleImage</code></td><td>PNG/JPEG <code>byte[]</code> (e.g. a handwritten-signature scan) drawn aspect-fit behind any text; <code>null</code> for none.</td></tr>
       </table>
+      <p>Set <code>visible = true</code> and supply a rectangle to draw the appearance; <code>visibleImage</code> embeds a PNG or JPEG (scaled aspect-fit) behind <code>visibleText</code>.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>SigningOptions options = new SigningOptions();
+options.visible      = true;
+options.visiblePage  = 0;
+options.visibleRect  = new double[]{72, 96, 272, 156};
+options.visibleText  = "Jane Doe\nApproved";
+options.visibleImage = Files.readAllBytes(Path.of("signature.png"));   // drawn aspect-fit</code></pre></div>
       <h4>Certify</h4>
       <table>
         <tr><th>Value</th><th>DocMDP level</th></tr>
@@ -750,15 +787,36 @@ byte[] lt = Pdf.addDss(signed, List.of(certDer), List.of(crlDer));
 byte[] lta = Pdf.timestamp(lt, tsaKeyDer, tsaCertDer, null);
 Files.write(Path.of("contract.lta.pdf"), lta);</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>To stamp with a real network RFC 3161 TSA, use the transport-agnostic helpers and do the HTTP POST yourself. Phase 1 <code>beginTimestamp</code> prepares the PDF and returns a <code>SigningSession</code>; build the request from its <code>hash()</code> with <code>timestampRequest</code>, POST it to the TSA, extract the token from the response with <code>timestampTokenFromResponse</code>, then embed it via <code>session.complete(token)</code>. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>Pdf.beginTimestamp(pdf) → SigningSession</code> &nbsp; <code>Pdf.timestampRequest(imprint[, nonce, certReq]) → byte[]</code> &nbsp; <code>Pdf.timestampTokenFromResponse(response) → byte[]</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>SigningSession session = Pdf.beginTimestamp(signed);
+byte[] tsq = Pdf.timestampRequest(session.hash());        // RFC 3161 TimeStampReq (DER)
+
+// POST tsq to the TSA (Content-Type: application/timestamp-query) — your HTTP client:
+byte[] tsr = httpPost("https://freetsa.org/tsr", "application/timestamp-query", tsq);
+
+byte[] token = Pdf.timestampTokenFromResponse(tsr);       // the CMS TimeStampToken
+byte[] lta   = session.complete(token);
+Files.write(Path.of("contract.lta.pdf"), lta);</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf.verifySignatures(byte[] pdf) → List&lt;SignatureReport&gt;</code></div>
-      <p>Each <code>SignatureReport</code> is a record with <code>fieldName()</code>, <code>subFilter()</code>, <code>signer()</code>, <code>coversWholeDocument()</code>, <code>digestValid()</code>, <code>signatureValid()</code>, <code>isValid()</code> and <code>byteRange()</code>. <code>fieldName()</code> and <code>signer()</code> may be <code>null</code> when absent. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
+      <p>Each <code>SignatureReport</code> is a record with <code>fieldName()</code>, <code>subFilter()</code>, <code>signer()</code>, <code>coversWholeDocument()</code>, <code>digestValid()</code>, <code>signatureValid()</code>, <code>isValid()</code> and <code>byteRange()</code>. It also carries the signer-certificate and timestamp details: <code>issuer()</code> (RFC 4514 DN), <code>serialNumber()</code> (uppercase hex), <code>validFrom()</code> / <code>validTo()</code> (ISO-8601 certificate validity), <code>algorithm()</code> (e.g. <code>SHA256withRSA</code>), <code>signingTime()</code> (claimed signing time, ISO-8601), <code>certCount()</code> (number of certificates in the CMS) and <code>hasTimestamp()</code> (whether an embedded timestamp is present). The string accessors may be <code>null</code> when absent. An empty list means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("contract.signed.pdf"));
-for (SignatureReport sig : Pdf.verifySignatures(data))
+for (SignatureReport sig : Pdf.verifySignatures(data)) {
     System.out.println(sig.signer() + " valid: " + sig.isValid()
-                     + " covers whole doc: " + sig.coversWholeDocument());</code></pre></div>
+                     + " covers whole doc: " + sig.coversWholeDocument());
+    System.out.println("  issuer: " + sig.issuer()
+                     + " serial: " + sig.serialNumber()
+                     + " algorithm: " + sig.algorithm());
+    System.out.println("  valid " + sig.validFrom() + " .. " + sig.validTo()
+                     + " signed: " + sig.signingTime()
+                     + " certs: " + sig.certCount()
+                     + " timestamped: " + sig.hasTimestamp());
+}</code></pre></div>
 
       <!-- EXTRACT -->
       <h2 id="extract">Text &amp; image extraction</h2>
@@ -770,6 +828,18 @@ System.out.println(Pdf.extractText(data));
 
 long n = Pdf.extractImagesToDir(data, "out_images/");   // returns how many were written
 System.out.println("wrote " + n + " image(s)");</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back its <b>position</b> on the page, not just the text. Each match is a <code>TextHit</code> with a 0-based <code>page()</code> and a bounding box (<code>x()</code>, <code>y()</code>, <code>width()</code>, <code>height()</code>) in PDF points, origin at the lower-left. Search is case-insensitive by default; pass a flag to make it case-sensitive. Useful for highlighting, redaction targeting or click-to-locate. See the <a href="/search-pdf">searching text in a PDF</a> concept guide.</p>
+      <div class="api"><code>Pdf.findText(byte[] pdf, String query) → List&lt;TextHit&gt;</code> &nbsp; <code>Pdf.findText(byte[] pdf, String query, boolean caseSensitive) → List&lt;TextHit&gt;</code></div>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("invoice.pdf"));
+for (TextHit hit : Pdf.findText(data, "Total"))
+    System.out.printf("page %d  box [%.1f %.1f %.1f %.1f]  %s%n",
+        hit.page(), hit.x(), hit.y(), hit.width(), hit.height(), hit.text());
+
+// case-sensitive
+List&lt;TextHit&gt; exact = Pdf.findText(data, "INV-2026-001", true);</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>pageCount</code> is free.</p>
@@ -879,10 +949,12 @@ try (Document doc = new Document()) {
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#deferred">Deferred / HSM signing</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

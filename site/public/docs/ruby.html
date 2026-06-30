@@ -162,6 +162,7 @@
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
@@ -170,6 +171,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -541,10 +543,13 @@ ed.close</code></pre></div>
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
       <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL".</p>
-      <div class="api"><code>watermark_text(text, size: 64.0, color: [0.5, 0.5, 0.5], opacity: 0.30, rotation_deg: 45.0)</code></div>
-      <div class="api"><code>watermark_image_file(path, width, height, opacity: 0.30)</code></div>
+      <div class="api"><code>watermark_text(text, size: 64.0, color: [0.5, 0.5, 0.5], opacity: 0.30, rotation_deg: 45.0, opaque_background: false)</code></div>
+      <div class="api"><code>watermark_image_file(path, width, height, opacity: 0.30, rotation_deg: 0.0)</code></div>
+      <p>When <code>opaque_background</code> is true, the text is drawn over an opaque white box (a white-out stamp) instead of being blended into the page content. <code>watermark_image_file</code> rotates the image <code>rotation_deg</code> degrees counter-clockwise.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("report.pdf")
-ed.watermark_text("CONFIDENTIAL", opacity: 0.25, rotation_deg: 45)
+ed.watermark_text("CONFIDENTIAL", opacity: 0.25, rotation_deg: 45,
+                  opaque_background: true)
+ed.watermark_image_file("stamp.png", 120, 120, opacity: 0.20, rotation_deg: 30)
 ed.save("stamped.pdf")
 ed.close</code></pre></div>
 
@@ -606,6 +611,22 @@ incremental = ed.to_bytes_incremental(original)   # original bytes preserved ver
 File.binwrite("reviewed.pdf", incremental)
 ed.close</code></pre></div>
 
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Set the output PDF version or strip PDF/A conformance from a loaded document. <code>set_version</code> downgrades (or upgrades) the header version; <code>strip_pdfa</code> removes the PDF/A markers (OutputIntents, the XMP <code>pdfaid</code> identifier and catalog <code>/Version</code>) so the file is a plain PDF; <code>normalize</code> does both at once.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>set_version(version)</code></td><td>Set the output version using a <a href="#enums"><code>Version</code></a> code (<code>V1_4</code>, <code>V1_5</code>, <code>V1_7</code>, <code>V2_0</code>).</td></tr>
+        <tr><td><code>strip_pdfa</code></td><td>Remove PDF/A conformance, leaving a plain PDF.</td></tr>
+        <tr><td><code>normalize(version = RustPdf::Version::V1_7)</code></td><td>Strip PDF/A and set the version in one call.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("archival.pdf")
+ed.normalize(RustPdf::Version::V1_7)   # strip PDF/A + downgrade to 1.7
+# or step by step:
+# ed.strip_pdfa.set_version(RustPdf::Version::V1_7)
+ed.save("plain.pdf")
+ed.close</code></pre></div>
+
       <!-- SIGN -->
       <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
       <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER byte <code>String</code>s. <code>pades: true</code> switches to PAdES-B-B.</p>
@@ -656,7 +677,15 @@ end</code></pre></div>
         <tr><td><code>certify:</code></td><td>Certify the document (DocMDP) with a <code>Certify</code> value; use only on the first signature.</td></tr>
         <tr><td><code>container_size:</code></td><td>Reserved <code>/Contents</code> bytes; 0 = default. Raise it for large cloud-KMS CMS containers.</td></tr>
         <tr><td><code>policy:</code></td><td>A <code>SignaturePolicy</code> identifier (PAdES-EPES); <code>nil</code> = none.</td></tr>
+        <tr><td><code>visible:</code> / <code>visible_page:</code> / <code>visible_rect:</code> / <code>visible_text:</code></td><td>Draw a visible signature appearance. <code>visible_rect</code> is <code>[x0, y0, x1, y1]</code> in points on <code>visible_page</code>; <code>visible_text</code> is newline-separated appearance lines.</td></tr>
+        <tr><td><code>visible_image:</code></td><td>PNG/JPEG bytes of a handwritten-signature image, drawn aspect-fit behind any <code>visible_text</code>.</td></tr>
       </table>
+      <p>A visible signature with an embedded image:</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>opts = RustPdf::SigningOptions.new(
+  reason: "Approved", name: "Jane Doe",
+  visible: true, visible_page: 0, visible_rect: [360, 60, 540, 130],
+  visible_text: "Jane Doe\n2026-06-30",
+  visible_image: File.binread("signature.png"))   # PNG/JPEG, aspect-fit behind the text</code></pre></div>
       <p><code>RustPdf::Certify</code> selects the DocMDP level: <code>NONE</code> (not certifying), <code>LOCKED</code> (no changes permitted), <code>FORMS</code> (form-filling and signing permitted) and <code>FORMS_AND_ANNOTATIONS</code> (also annotations). <code>RustPdf::SignaturePolicy.new(oid:, hash:, hash_algorithm_oid:, uri:)</code> carries a policy OID, its document hash bytes (under <code>hash_algorithm_oid</code>, <code>nil</code> = SHA-256) and an optional SPURI.</p>
 
       <!-- LTV -->
@@ -673,15 +702,40 @@ lt = RustPdf.add_dss(signed, certs: [cert_der], crls: [crl_der])
 lta = RustPdf.timestamp(lt, tsa_key_der, tsa_cert_der)
 File.binwrite("contract.lta.pdf", lta)</code></pre></div>
 
+      <h3>Network TSA timestamp (AD-RT)</h3>
+      <p>To timestamp against a real network TSA instead of a local key, use the transport-agnostic helpers: you do the HTTP POST, the library does the cryptography. <code>begin_timestamp</code> prepares the document and returns <code>[document, tbs]</code>; build an RFC 3161 request with <code>timestamp_request</code>, POST it to the TSA, extract the token with <code>timestamp_token_from_response</code>, then embed it with <code>complete_signature</code>. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>RustPdf.begin_timestamp(pdf) → [document, tbs]</code></div>
+      <div class="api"><code>RustPdf.timestamp_request(imprint, nonce:, cert_req:) → String</code></div>
+      <div class="api"><code>RustPdf.timestamp_token_from_response(response) → String</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>require "net/http"
+require "digest"
+
+signed = File.binread("contract.signed.pdf")
+document, tbs = RustPdf.begin_timestamp(signed)
+
+imprint = Digest::SHA256.digest(tbs)               # RFC 3161 message imprint
+req     = RustPdf.timestamp_request(imprint, cert_req: true)
+
+resp = Net::HTTP.post(URI("https://freetsa.org/tsr"), req,
+                      "Content-Type" =&gt; "application/timestamp-query")
+token = RustPdf.timestamp_token_from_response(resp.body)
+
+lta = RustPdf.complete_signature(document, token)  # embed the /DocTimeStamp
+File.binwrite("contract.lta.pdf", lta)</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>RustPdf.verify_signatures(data) → Array&lt;Hash&gt;</code></div>
-      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code> and <code>"signer"</code> (both <code>nil</code> when absent), plus <code>"sub_filter"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each entry is a <code>Hash</code> with keys <code>"field_name"</code> and <code>"signer"</code> (both <code>nil</code> when absent), plus <code>"sub_filter"</code>, <code>"covers_whole_document"</code>, <code>"digest_valid"</code>, <code>"signature_valid"</code>, <code>"is_valid"</code> and <code>"byte_range"</code>. Each report also carries the richer certificate fields (any may be <code>nil</code>): <code>"issuer"</code>, <code>"serial_number"</code>, <code>"valid_from"</code>, <code>"valid_to"</code>, <code>"algorithm"</code> (e.g. <code>SHA256withRSA</code>), <code>"signing_time"</code>, <code>"cert_count"</code> and <code>"has_timestamp"</code>. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("contract.signed.pdf")
 RustPdf.verify_signatures(data).each do |sig|
   puts "#{sig['signer']} valid: #{sig['is_valid']} " \
        "covers whole doc: #{sig['covers_whole_document']}"
+  puts "  issuer: #{sig['issuer']} serial: #{sig['serial_number']}"
+  puts "  algorithm: #{sig['algorithm']} signed: #{sig['signing_time']}"
+  puts "  valid #{sig['valid_from']} → #{sig['valid_to']}, " \
+       "certs: #{sig['cert_count']}, timestamped: #{sig['has_timestamp']}"
 end</code></pre></div>
 
       <!-- EXTRACT -->
@@ -695,6 +749,17 @@ puts RustPdf.extract_text(data)
 n = RustPdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
 puts "wrote #{n} image(s)"</code></pre></div>
       <div class="note"><b>Extracted text is best-effort, not byte-faithful.</b> Two things to expect when comparing the output against your source string. (1) <b>Unicode normalization can differ.</b> A character you wrote pre-composed (e.g. <code>"à"</code>, U+00E0) may come back de-composed (<code>"a"</code> + U+0300), so the result can mix NFC and NFD forms. Normalize both sides (<code>str.unicode_normalize</code>) before any byte-for-byte comparison. (2) <b>Layout is inferred, not exact.</b> Spaces and line breaks are reconstructed from glyph positions, so independently positioned runs may be joined or split differently than you laid them out. Treat <code>extract_text</code> as a search/indexing aid (good for RAG), not as a lossless inverse of authoring.</div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get back its position on the page. Each hit is a box in PDF points (origin lower-left), so you can highlight, redact or link the result. See the concept page <a href="/search-pdf">searching text in a PDF</a> for background.</p>
+      <div class="api"><code>RustPdf.find_text(pdf, query, case_sensitive: false) → Array&lt;TextHit&gt;</code></div>
+      <p>Returns an Array of <code>TextHit</code> (a <code>Struct</code> with <code>page</code>, <code>text</code>, <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>); <code>x</code>/<code>y</code> is the lower-left corner of the box. <code>case_sensitive</code> defaults to <code>false</code>. An empty Array means no match.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("report.pdf")
+RustPdf.find_text(data, "Total").each do |hit|
+  puts "page #{hit.page}: '#{hit.text}' at " \
+       "(#{hit.x}, #{hit.y}) #{hit.width}×#{hit.height} pt"
+end</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -741,6 +806,14 @@ File.binwrite("page1.png", RustPdf.render_page_to_png(data, 0, 150.0))</code></p
         <tr><td><code>RustPdf::Cipher::RC4</code></td><td>RC4 (legacy)</td></tr>
         <tr><td><code>RustPdf::Cipher::AES128</code></td><td>AES-128</td></tr>
         <tr><td><code>RustPdf::Cipher::AES256</code></td><td>AES-256 (V5/R6): recommended</td></tr>
+      </table>
+      <h3>Version</h3>
+      <table>
+        <tr><th>Value</th><th>PDF version</th></tr>
+        <tr><td><code>RustPdf::Version::V1_4</code></td><td>PDF 1.4</td></tr>
+        <tr><td><code>RustPdf::Version::V1_5</code></td><td>PDF 1.5</td></tr>
+        <tr><td><code>RustPdf::Version::V1_7</code></td><td>PDF 1.7 (default of <code>normalize</code>)</td></tr>
+        <tr><td><code>RustPdf::Version::V2_0</code></td><td>PDF 2.0</td></tr>
       </table>
       <h3>FacturxProfile</h3>
       <table>
@@ -804,9 +877,11 @@ end</code></pre></div>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

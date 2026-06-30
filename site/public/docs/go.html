@@ -163,6 +163,7 @@
       <a href="#ed-optimize">Optimize</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#ed-output">Output &amp; incremental</a>
+      <a href="#ed-normalize">Normalize &amp; downgrade</a>
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
@@ -172,6 +173,7 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -604,13 +606,14 @@ _ = ed.Save("filled.pdf")</code></pre></div>
 
       <!-- ED WATERMARK -->
       <h2 id="ed-watermark">Watermarks <span class="badge free">free</span></h2>
-      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". The color is RGB in <code>0.0..1.0</code>, opacity in <code>0.0..1.0</code>, and rotation is in degrees.</p>
-      <div class="api"><code>WatermarkText(text string, size, r, g, b, opacity, rotationDeg float64) error</code></div>
-      <div class="api"><code>WatermarkImageFile(path string, width, height, opacity float64) error</code></div>
+      <p>Stamp a diagonal <b>text</b> watermark or a centered <b>image</b> watermark across every page, drawn semi-transparently over the existing content. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1) for stamps like "CONFIDENTIAL". The color is RGB in <code>0.0..1.0</code>, opacity in <code>0.0..1.0</code>, and rotation is in degrees. <code>opaqueBackground</code> draws a solid white box behind the text first (a white-out stamp). <code>WatermarkImageFile</code> now also takes a <code>rotationDeg</code>.</p>
+      <div class="api"><code>WatermarkText(text string, size, r, g, b, opacity, rotationDeg float64, opaqueBackground bool) error</code></div>
+      <div class="api"><code>WatermarkImageFile(path string, width, height, opacity, rotationDeg float64) error</code></div>
       <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
 ed, _ := rustpdf.Load(data)
 defer ed.Close()
-_ = ed.WatermarkText("CONFIDENTIAL", 64, 0.5, 0.5, 0.5, 0.25, 45)
+_ = ed.WatermarkText("CONFIDENTIAL", 64, 0.5, 0.5, 0.5, 0.25, 45, false)
+_ = ed.WatermarkImageFile("stamp.png", 64, 64, 0.3, 30)
 _ = ed.Save("stamped.pdf")</code></pre></div>
 
       <!-- ED REDACT -->
@@ -687,6 +690,21 @@ _ = ed.SetInfo("Subject", "reviewed")
 incremental, _ := ed.ToBytesIncremental(original)   // original bytes preserved verbatim
 _ = os.WriteFile("reviewed.pdf", incremental, 0o644)</code></pre></div>
 
+      <!-- ED NORMALIZE -->
+      <h2 id="ed-normalize">Normalize &amp; downgrade <span class="badge free">free</span></h2>
+      <p>Adjust the output PDF version and strip PDF/A conformance. <code>SetVersion</code> sets the version code (<code>0</code> = 1.4, <code>1</code> = 1.5, <code>2</code> = 1.7, <code>3</code> = 2.0). <code>StripPdfa</code> removes the catalog <code>/OutputIntents</code> and the XMP <code>pdfaid</code> identifier so the file is no longer claimed as PDF/A. <code>Normalize</code> does both in one call.</p>
+      <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>SetVersion(version int) error</code></td><td>Set the output PDF version (codes above).</td></tr>
+        <tr><td><code>StripPdfa() error</code></td><td>Remove PDF/A conformance (output intents + pdfaid).</td></tr>
+        <tr><td><code>Normalize(version int) error</code></td><td>Strip PDF/A and set the version in one step.</td></tr>
+      </table>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("archival.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+_ = ed.Normalize(2)   // strip PDF/A + downgrade to PDF 1.7
+_ = ed.Save("plain.pdf")</code></pre></div>
+
       <!-- SIGN -->
       <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
       <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER bytes. <code>PAdES: true</code> switches to PAdES-B-B.</p>
@@ -745,6 +763,15 @@ for _, f := range fields {
 }</code></pre></div>
 
       <p><code>SigningOptions</code> carries <code>Reason</code>, <code>Location</code>, <code>Name</code>, <code>PAdES</code> (produce a PAdES-B-B signature), <code>Certify</code> (a DocMDP certification level, use only on the first signature), <code>ContainerSize</code> (reserved <code>/Contents</code> bytes; <code>0</code> uses the default, raise it for large cloud CMS containers) and <code>Policy</code> (an optional PAdES-EPES signature-policy identifier).</p>
+      <p>For a <b>visible signature</b>, set <code>Visible: true</code> with <code>VisiblePage</code> (0-based), <code>VisibleRect</code> (<code>[4]float64{x0, y0, x1, y1}</code> in points) and optional <code>VisibleText</code> (lines separated by <code>\n</code>). <code>VisibleImage</code> accepts a PNG or JPEG (e.g. a scanned handwritten signature) drawn aspect-fit behind any text.</p>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>img, _ := os.ReadFile("signature.png")
+opts := &amp;rustpdf.SigningOptions{
+	Visible:      true,
+	VisiblePage:  0,
+	VisibleRect:  [4]float64{72, 72, 272, 144},
+	VisibleText:  "Jane Doe\nApproved",
+	VisibleImage: img,   // PNG/JPEG drawn aspect-fit behind the text
+}</code></pre></div>
       <h3>Certify</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -769,11 +796,29 @@ lt, _ := rustpdf.AddDss(signed, [][]byte{certDER}, [][]byte{crlDER})
 lta, _ := rustpdf.Timestamp(lt, tsaKeyDER, tsaCertDER, "")
 _ = os.WriteFile("contract.lta.pdf", lta, 0o644)</code></pre></div>
 
+      <h3>Network timestamp (AD-RT)</h3>
+      <p>For a trusted document timestamp from a real Time Stamping Authority, use the transport-agnostic helpers and do the HTTP POST yourself. <code>BeginTimestamp</code> prepares the document and returns the bytes to timestamp; build an RFC 3161 request with <code>TimestampRequest</code>, POST it to the TSA, extract the token with <code>TimestampTokenFromResponse</code>, then embed it with <code>CompleteSignature</code>. Free public TSAs work (FreeTSA <code>https://freetsa.org/tsr</code>, DigiCert <code>http://timestamp.digicert.com</code>).</p>
+      <div class="api"><code>rustpdf.BeginTimestamp(pdf []byte) (document, tbs []byte, err error)</code></div>
+      <div class="api"><code>rustpdf.TimestampRequest(imprint, nonce []byte, certReq bool) ([]byte, error)</code></div>
+      <div class="api"><code>rustpdf.TimestampTokenFromResponse(response []byte) ([]byte, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>document, tbs, _ := rustpdf.BeginTimestamp(signed)
+imprint := sha256.Sum256(tbs)
+req, _ := rustpdf.TimestampRequest(imprint[:], nil, true)
+
+// you POST the request to the TSA (application/timestamp-query)
+resp, _ := http.Post("https://freetsa.org/tsr", "application/timestamp-query",
+	bytes.NewReader(req))
+body, _ := io.ReadAll(resp.Body)
+
+token, _ := rustpdf.TimestampTokenFromResponse(body)
+final, _ := rustpdf.CompleteSignature(document, token)
+_ = os.WriteFile("contract.tsa.pdf", final, 0o644)</code></pre></div>
+
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>rustpdf.VerifySignatures(pdf []byte) ([]SignatureReport, error)</code></div>
-      <p>Each <code>SignatureReport</code> has <code>FieldName</code> and <code>Signer</code> (both <code>*string</code>, and <code>nil</code> when absent, so dereference only after a nil check as the example does for <code>Signer</code>), plus <code>SubFilter</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. An empty slice means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Each <code>SignatureReport</code> has <code>FieldName</code> and <code>Signer</code> (both <code>*string</code>, and <code>nil</code> when absent, so dereference only after a nil check as the example does for <code>Signer</code>), plus <code>SubFilter</code>, <code>CoversWholeDocument</code>, <code>DigestValid</code>, <code>SignatureValid</code>, <code>IsValid</code> and <code>ByteRange</code>. Each report also carries certificate and signature details: <code>Issuer</code>, <code>SerialNumber</code>, <code>ValidFrom</code>, <code>ValidTo</code>, <code>Algorithm</code> (e.g. <code>SHA256withRSA</code>) and <code>SigningTime</code> (all <code>*string</code>, any may be <code>nil</code>), plus <code>CertCount</code> (certificates embedded in the CMS) and <code>HasTimestamp</code> (whether a signature timestamp is present). An empty slice means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, and is not available on the free tier.</p>
       <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("contract.signed.pdf")
 reports, _ := rustpdf.VerifySignatures(data)
 for _, sig := range reports {
@@ -783,6 +828,13 @@ for _, sig := range reports {
 	}
 	fmt.Printf("%s valid:%v covers whole doc:%v\n",
 		signer, sig.IsValid, sig.CoversWholeDocument)
+	if sig.Issuer != nil {
+		fmt.Printf("  issuer:%s certs:%d timestamp:%v\n",
+			*sig.Issuer, sig.CertCount, sig.HasTimestamp)
+	}
+	if sig.Algorithm != nil {
+		fmt.Printf("  algorithm:%s\n", *sig.Algorithm)
+	}
 }</code></pre></div>
 
       <!-- EXTRACT -->
@@ -796,6 +848,17 @@ fmt.Println(text)
 
 n, _ := rustpdf.ExtractImagesToDir(data, "out_images/")   // returns how many were written
 fmt.Printf("wrote %d image(s)\n", n)</code></pre></div>
+
+      <!-- SEARCH -->
+      <h2 id="search">Positional text search <span class="badge free">free</span></h2>
+      <p>Find every occurrence of a query string and get its bounding box, useful for highlighting or redaction targeting. With <code>caseSensitive</code> false the match is case-insensitive. Each <code>TextHit</code> carries <code>Page</code>, <code>Text</code> and the box <code>X</code>, <code>Y</code>, <code>Width</code>, <code>Height</code> in PDF points (origin lower-left). An empty slice means no match. See the concept page <a href="/search-pdf">Search inside a PDF</a> for background.</p>
+      <div class="api"><code>rustpdf.FindText(pdf []byte, query string, caseSensitive bool) ([]TextHit, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
+hits, _ := rustpdf.FindText(data, "Invoice", false)
+for _, h := range hits {
+	fmt.Printf("page %d: %q at (%.1f, %.1f) %.1fx%.1f\n",
+		h.Page, h.Text, h.X, h.Y, h.Width, h.Height)
+}</code></pre></div>
 
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
@@ -912,10 +975,12 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
+      <a href="#ed-normalize">Normalize</a>
       <a href="#sign">Signatures</a>
       <a href="#sign-deferred">Deferred / HSM signing</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

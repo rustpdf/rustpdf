@@ -592,6 +592,12 @@ const lta    = timestamp(lt, tsaKey, tsaCert);                            // B-L
         <details><summary>Do I need a trusted TSA?</summary>
           <p>For production use, yes. A timestamp token is only as trustworthy as the TSA that issued it. Qualified TSAs in the EU are listed on the ETSI Trusted List. rust-pdf builds the standards-compliant RFC 3161 container offline; you supply the TSA key and certificate. For development and testing a self-issued TSA is sufficient to exercise the full workflow.</p>
         </details>
+        <details><summary>Can I use a network TSA over HTTP?</summary>
+          <p>Yes. rust-pdf keeps the network out of the library and gives you the pieces to talk to any RFC 3161 TSA: <code>begin_timestamp</code> prepares the document and the bytes to stamp, <code>timestamp_request</code> builds the DER <code>TimeStampReq</code>, you POST it to the TSA, and <code>timestamp_token_from_response</code> extracts the token to embed. This works with free public TSAs (for example FreeTSA at <code>https://freetsa.org/tsr</code> or DigiCert at <code>http://timestamp.digicert.com</code>) and with any accredited authority in production. Keeping the HTTP call on your side means no network stack is forced into the core, which stays deterministic and portable.</p>
+        </details>
+        <details><summary>What does signature inspection report?</summary>
+          <p>Validating a signed PDF returns, per signature, the signer and issuer distinguished names, the certificate serial number, its validity window (not-before / not-after), the signature algorithm, the claimed signing time, the number of embedded certificates, whether a timestamp is present, and whether the digest and signature are valid and cover the whole document.</p>
+        </details>
       </div>
     </section>
 

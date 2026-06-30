@@ -412,7 +412,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2l-19 19"/><path d="M12 2a10 10 0 0 0 10 10"/><path d="M2 12a10 10 0 0 0 10 10"/></svg>
             </div>
             <h3>Rotation</h3>
-            <p>Angle in degrees counter-clockwise. 45 is the classic diagonal. Use 0 for a horizontal banner at the top or bottom of the page.</p>
+            <p>Angle in degrees counter-clockwise. 45 is the classic diagonal. Use 0 for a horizontal banner at the top or bottom of the page. Image watermarks take a rotation angle too, and stamps stay upright on pages with a 90/180/270 <code>/Rotate</code>.</p>
+          </div>
+          <div class="wm-opt reveal">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 12h18"/></svg>
+            </div>
+            <h3>Opaque white-out</h3>
+            <p>Set the opaque-background option to draw a solid white box behind fully opaque text, turning the stamp into a white-out that covers the content under it instead of a translucent overlay. The crop box and page rotation are respected so it lands in the visible area.</p>
           </div>
         </div>
       </div>
@@ -566,7 +573,10 @@ ed.save("report_watermarked.pdf");</code></pre>
           <p>Load the existing PDF into an <code>EditableDoc</code> and call <code>watermark_text</code> with the text, size, color, opacity and rotation you want. rust-pdf stamps the overlay onto every page and you save the result. The call is one line in Python, C#, Go, Node, PHP, Ruby, Delphi or Swift.</p>
         </details>
         <details><summary>Can I use an image as a watermark?</summary>
-          <p>Yes. Use <code>watermark_image_file</code> (or <code>WatermarkImageFile</code> in C# and Go) and pass the path to your image file along with the target width, height and opacity. This is useful for stamping a faint logo or brand mark across every page.</p>
+          <p>Yes. Use <code>watermark_image_file</code> (or <code>WatermarkImageFile</code> in C# and Go) and pass the path to your image file along with the target width, height, opacity and a rotation angle. This is useful for stamping a faint logo or brand mark across every page.</p>
+        </details>
+        <details><summary>Can the stamp cover the content instead of being see-through?</summary>
+          <p>Yes. Turn on the opaque-background option on the text watermark: rust-pdf draws a solid white box behind fully opaque text, so the stamp covers (white-out) whatever is underneath rather than letting it show through. It respects the page crop box and rotation, so it stays in the visible area even on rotated pages.</p>
         </details>
         <details><summary>What options can I set (opacity, rotation, color)?</summary>
           <p>For a text watermark you can set the text string, font size, RGB color as three floats between 0 and 1, opacity as a float between 0 and 1, and rotation in degrees. The classic diagonal stamp uses 45 degrees and an opacity of around 0.15 to 0.25 so the underlying content stays readable. For an image watermark you set width, height and opacity.</p>
