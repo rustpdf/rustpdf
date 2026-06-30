@@ -274,6 +274,58 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
   - **`/VRI`** (Validation-Related Info por assinatura) e **`/OCSPs`** no DSS.
   - `issuerSerial` no ESSCertIDv2 (hoje só `certHash`); ECDSA/RSA-PSS/SHA-384-512.
   - Validação num verificador PAdES de referência (DSS/Adobe) — sem acesso aqui.
+- ✅ **Issue #41 P0 — assinatura diferida / HSM ("bring your own signer").** A
+  chave privada **nunca** entra na biblioteca:
+  - **Model A — callback externo** (`pdf::sign_with`): a lib monta os
+    signedAttrs do CMS e chama de volta para a assinatura RSA bruta (do HSM —
+    Azure Key Vault/VIDaaS/BirdID), depois assembla e embute o CMS. Prova de
+    correção: `sign_with` delegando à mesma chave gera **bytes idênticos** ao
+    `sign` local (teste `external_signing_matches_local_signing_byte_for_byte`).
+  - **Model B — duas fases** (`pdf::begin_signing` → `SigningSession::complete`
+    ou o stateless `pdf::complete_signing`): a fase 1 devolve o PDF preparado + o
+    hash/bytes a assinar; o integrador (BouncyCastle/SignedCms nos servidores
+    deles) constrói o container CMS e a fase 2 o injeta no placeholder. Cruza
+    fronteira async/HTTP.
+  - **Tamanho reservado configurável** (`SignOptions::estimated_size`) para
+    containers de HSM que variam.
+  - **DocMDP / certificação** (`Certify`, `/Perms /DocMDP` +
+    `/Reference` no dict de assinatura) — P=1/2/3 (`CERTIFIED_FORM_FILLING_AND_ANNOTATIONS`).
+  - **Signature policy identifier** (`SignaturePolicy`, atributo assinado
+    `id-aa-ets-sigPolicyId`, PAdES-EPES) para a Política de Assinatura ICP-Brasil
+    (AD-RB) com OID + hash + SPURI.
+  - **Listar assinaturas existentes** antes de assinar (`pdf::list_signatures`,
+    equivalente ao `SignatureUtil.getSignatureNames` do iText).
+  - **FFI** (`pdf_sign_begin`/`pdf_sign_complete`/`pdf_sign_with` +
+    `PdfSigningOptions`/`PdfSignHashFn`, `pdf_list_signatures`) + **binding
+    C#** (`Pdf.SignWith`/`BeginSigning`/`CompleteSignature`/`ListSignatures`,
+    `IRemoteSigner`, `SigningOptions`, `SignaturePolicy`) — exercitados no `Sample`.
+  - ✅ **Validado com cert ICP-Brasil REAL (2026-06-29):** assinado um PDF com
+    um e-CNPJ A1 (RFB/AC Certisign RFB G5) que reside **só no Keychain do macOS**,
+    via `sign_with` (chave nunca exportada — helper Swift `SecKeyCreateSignature`);
+    cadeia completa embutida. **APROVADO no Verificador de Conformidade do ICP-Brasil
+    (ITI)** + `pdfsig` "Signature is Valid" + `openssl cms -verify` "successful".
+    Exemplos `crates/pdf/examples/sign_icp_keychain.rs` + `verify_pdf.rs`.
+  - ✅ **Bug corrigido (exposto pelo teste real):** `verify.rs::signer_cert`
+    pegava o **primeiro** cert do CMS SET; com cadeia embutida o `cms` crate
+    ordena o SET por DER e o signatário não fica em 1º → `signature_valid` dava
+    falso-negativo. Agora casa o cert pelo `SignerIdentifier` (issuer+serial).
+    Regressão `signature_with_embedded_chain_verifies`. Corrige o `.ValidateSignature()`
+    (P1 #5) em **todos** os bindings.
+  - ✅ **APROVADO no Verificador de Conformidade do ICP-Brasil (ITI/VALIDAR)** com
+    e-CNPJ real: PAdES AD-RB (DocMDP P=2 `Certify::Forms` + política PAdES OID
+    `2.16.76.1.7.1.11.1.3` / `PA_PAdES_AD_RB_v1_3.der` + cadeia até a Raiz v5).
+    Descoberta-chave: a política **PAdES** tem arco de OID próprio
+    (`2.16.76.1.7.1.11.x`), distinto do **CAdES** (`2.16.76.1.7.1.1.x`); usar o do
+    CAdES num PAdES reprova. Exemplo `crates/pdf/examples/sign_icp_keychain.rs`.
+  - ✅ **Deferred signing propagado para TODOS os bindings** (Python/Node/Go/Ruby/
+    PHP/Java/Swift/Delphi + C#): `SignWith`/`BeginSigning`/`CompleteSignature`/
+    `ListSignatures` + `SigningOptions`/`SignaturePolicy`/`Certify`, cada um com o
+    mecanismo de callback FFI nativo da linguagem (Model A provado end-to-end no
+    smoke test de cada binding). Página `/icp-brasil` no site (EN).
+  - **Ainda pendentes do issue #41:** **Adobe Acrobat** (trusted, sem warnings —
+    requer as raízes ICP-Brasil/AATL no validador); **AD-RT** (carimbo de tempo,
+    precisa de TSA em rede); P1 (busca posicional de texto → bounding boxes,
+    inspeção rica de assinatura com DN/serial/validade) e P2 (layout) abertos.
 - ✅ **7.4 PDF/A — níveis 1b/2b/2a/3b/3a.** `Document::pdfa()` (=A-2b),
   `pdfa_a()` (=A-2a) e `pdfa_with(PdfaLevel)` cobrem **A-1b** (header PDF 1.4,
   `/CIDSet` no descritor lido do programa de subset, sem object streams),

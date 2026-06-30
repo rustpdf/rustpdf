@@ -19,6 +19,10 @@ export const Encryption: { readonly Rc4: 0; readonly Aes128: 1; readonly Aes256:
 export const FacturxProfile: {
   readonly Minimum: 0; readonly BasicWL: 1; readonly Basic: 2; readonly EN16931: 3; readonly Extended: 4;
 };
+/** DocMDP certification level applied by the first (certifying) signature. */
+export const Certify: {
+  readonly None: 0; readonly Locked: 1; readonly Forms: 2; readonly FormsAndAnnotations: 3;
+};
 
 export type Rect = [number, number, number, number];
 export type Bytes = Buffer | Uint8Array;
@@ -146,6 +150,78 @@ export class EditableDoc {
   toBytesIncremental(original: Bytes): Buffer;
   save(path: string): void;
 }
+
+/** A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB). */
+export interface SignaturePolicy {
+  /** The policy OID (dotted-decimal), e.g. the ICP-Brasil AD-RB OID. */
+  oid: string;
+  /** The policy document hash (under `hashAlgorithmOid`). */
+  hash: Bytes;
+  /** Hash algorithm OID; omit for SHA-256. */
+  hashAlgorithmOid?: string | null;
+  /** Optional SPURI qualifier — where the policy can be retrieved. */
+  uri?: string | null;
+}
+
+/** Options for deferred / external signing (issue #41 P0). */
+export interface SigningOptions {
+  reason?: string | null;
+  location?: string | null;
+  name?: string | null;
+  /** Produce a PAdES-B-B signature (`ETSI.CAdES.detached`). */
+  pades?: boolean;
+  /** Certify the document (DocMDP) — use only on the first signature. */
+  certify?: number;
+  /** Reserved `/Contents` bytes; 0/omitted = default (8192). */
+  containerSize?: number;
+  /** Signature-policy identifier (PAdES-EPES); omit for none. */
+  policy?: SignaturePolicy | null;
+}
+
+/** A signature field discovered in a PDF (pre-signing inventory). */
+export interface SignatureField {
+  name: string;
+  signed: boolean;
+}
+
+/**
+ * The "bring your own signer" callback: returns the raw RSA PKCS#1 v1.5
+ * signature over SHA-256 of `data`, typically by calling a remote HSM. The
+ * private key never reaches this library.
+ */
+export type SignHash = (data: Buffer) => Bytes;
+
+/**
+ * An in-progress two-phase signature (Model B): `document` holds the prepared
+ * PDF and `bytes` the exact bytes the signature covers. Hand `hash` to a remote
+ * signer, build the CMS container, then call `complete`.
+ */
+export class SigningSession {
+  /** The prepared PDF (with a zero-filled `/Contents` placeholder). */
+  document: Uint8Array;
+  /** The exact bytes covered by the signature (the two ByteRange segments). */
+  bytes: Uint8Array;
+  /** SHA-256 of `bytes` — the value an HSM signs. */
+  readonly hash: Buffer;
+  /** Phase 2: embed a finished DER CMS / PKCS#7 container, returning the PDF. */
+  complete(container: Bytes): Buffer;
+}
+
+/**
+ * Model A — remote signer. Sign `pdf` without handing this library a key: it
+ * builds the CMS signed attributes and calls `signHash` for the raw RSA
+ * signature, then assembles and embeds the CMS. `certDer` is the signer
+ * certificate; `chain` are intermediates (DER), supplied independently of the key.
+ */
+export function signWith(
+  pdf: Bytes, certDer: Bytes, signHash: SignHash, chain?: Bytes[], options?: SigningOptions,
+): Buffer;
+/** Model B — two-phase signing, phase 1. Prepare `pdf` for deferred signing. */
+export function beginSigning(pdf: Bytes, options?: SigningOptions): SigningSession;
+/** Model B — two-phase signing, phase 2. Embed a CMS container into a prepared PDF. */
+export function completeSignature(document: Bytes, container: Bytes): Buffer;
+/** List the signature fields in `pdf` (empty array means none). */
+export function listSignatures(pdf: Bytes): SignatureField[];
 
 export function version(): string;
 export function activateLicense(token: string): void;

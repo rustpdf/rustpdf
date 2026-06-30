@@ -104,6 +104,14 @@ module RustPdf
       "pdf_editable_convert_to_pdfa" => [[VP, I], I],
       # Tier 2: signature validation (module-level)
       "pdf_verify_signatures_json"   => [[VP, SZ, VP, VP], I],
+
+      # Deferred / external (HSM) signing — issue #41 P0. The PdfSigningOptions
+      # struct crosses as an opaque pointer (VP); the Model-A callback is a
+      # Fiddle::Closure passed as a function pointer (VP).
+      "pdf_sign_begin"               => [[VP, SZ, VP, VP, VP, VP, VP], I],
+      "pdf_sign_complete"            => [[VP, SZ, VP, SZ, VP, VP], I],
+      "pdf_sign_with"                => [[VP, SZ, VP, SZ, VP, VP, SZ, VP, VP, VP, VP, VP], I],
+      "pdf_list_signatures"          => [[VP, SZ, VP, VP], I],
     }.freeze
 
     def lib

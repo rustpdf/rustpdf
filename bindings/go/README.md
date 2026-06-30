@@ -104,6 +104,54 @@ func main() {
 }
 ```
 
+## Deferred / HSM signing
+
+Sign without ever handing the library a private key. The key stays in an HSM,
+cloud KMS, smartcard or PKI token; you supply only the signer certificate and a
+way to produce the raw RSA PKCS#1 v1.5 signature over SHA-256. This works with
+any PKI (eIDAS, AATL and other trust frameworks).
+
+**Model A** is one call with a sign-hash callback. `SignWith` assembles the CMS
+signed attributes, calls your closure for the raw signature, then embeds the
+finished CMS. `chain` are intermediate certificates (DER), supplied
+independently of the key; `options` may be `nil`.
+
+```go
+pdf, _ := os.ReadFile("contract.pdf")
+certDER, _ := os.ReadFile("signer.der") // X.509 certificate (DER), no key
+
+signed, err := rustpdf.SignWith(pdf, certDER,
+	func(tbs []byte) ([]byte, error) {
+		return hsm.SignRSA(tbs) // remote HSM / KMS / smartcard
+	},
+	nil, // chain: intermediate certs (DER)
+	&rustpdf.SigningOptions{Reason: "Approved", PAdES: true})
+if err != nil {
+	log.Fatal(err)
+}
+_ = os.WriteFile("contract.signed.pdf", signed, 0o644)
+```
+
+**Model B** is a two-phase flow for an asynchronous signer, where you build the
+DER CMS / PKCS#7 container yourself. `BeginSigning` returns a `SigningSession`
+exposing `Document()` (the placeholder PDF), `Bytes()` (the covered bytes),
+`Hash()` (SHA-256 of those bytes) and `Complete()`.
+
+```go
+sess, _ := rustpdf.BeginSigning(pdf, &rustpdf.SigningOptions{PAdES: true})
+digest := sess.Hash()                       // [32]byte sent to the remote signer
+container := buildCMS(digest, certDER, sig) // your DER CMS / PKCS#7
+final, _ := sess.Complete(container)        // or rustpdf.CompleteSignature(sess.Document(), container)
+```
+
+List existing signature fields before signing with
+`rustpdf.ListSignatures(pdf) ([]SignatureField, error)` (each is
+`SignatureField{Name, Signed}`). `SigningOptions` also carries `Location`,
+`Name`, a `Certify` DocMDP level (`CertifyNone`/`CertifyLocked`/`CertifyForms`/
+`CertifyFormsAndAnnotations`, first signature only), `ContainerSize` (reserved
+`/Contents` bytes; `0` = default, raise it for large cloud CMS containers) and a
+PAdES-EPES `Policy` (`SignaturePolicy{OID, Hash, HashAlgorithmOID, URI}`).
+
 Corporate features (PDF/A, signing, encryption, accessibility, page rendering
 — a **Pro** feature) require a license;
 without one they return an `*Error`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).

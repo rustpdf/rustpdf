@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICP-Brasil Digital Signatures: A PAdES Signing Guide | rust-pdf</title>
+  <meta name="description" content="ICP-Brasil signing explained: Brazil's national PKI, the AD-RB and AD-RT PAdES profiles, signing with an HSM or A3 token without exposing the key, and passing ITI's VALIDAR." />
+  <!-- Not published yet: keep out of search indexes and don't pass link equity. Flip to "index, follow" to launch. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://rustpdf.dev/icp-brasil" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/icp-brasil" />
+  <meta property="og:title" content="ICP-Brasil Digital Signatures: A PAdES Signing Guide" />
+  <meta property="og:description" content="Brazil's national PKI explained: the AD-RB and AD-RT profiles, HSM signing without exposing the key, and passing ITI's official validator." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ICP-Brasil Digital Signatures: A PAdES Signing Guide" />
+  <meta name="twitter:description" content="The AD-RB / AD-RT profiles, HSM signing without exposing the key, and passing ITI's VALIDAR, with real code in four languages." />
+  <meta property="og:image:alt" content="ICP-Brasil digital signatures, a PAdES signing guide" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="ICP-Brasil digital signatures, a PAdES signing guide" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+        { "@type": "ListItem", "position": 2, "name": "ICP-Brasil signing", "item": "https://rustpdf.dev/icp-brasil" }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "ICP-Brasil digital signatures: a PAdES signing guide",
+      "description": "A plain-language guide to ICP-Brasil digital signatures: Brazil's national PKI, the AD-RB / AD-RT / AD-RC / AD-RA profiles, signing with an HSM or A3 token without exposing the private key, the signature policy, and passing ITI's VALIDAR.",
+      "url": "https://rustpdf.dev/icp-brasil",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "ICP-Brasil",
+        "description": "Infraestrutura de Chaves Publicas Brasileira, Brazil's national public-key infrastructure for legally valid digital signatures."
+      },
+      "datePublished": "2026-06-30",
+      "dateModified": "2026-06-30",
+      "author": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": { "@type": "ImageObject", "url": "https://rustpdf.dev/logo.png", "width": 512, "height": 512 }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://rustpdf.dev/#org",
+        "logo": { "@type": "ImageObject", "url": "https://rustpdf.dev/logo.png", "width": 512, "height": 512 }
+      },
+      "@id": "https://rustpdf.dev/icp-brasil#article",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://rustpdf.dev/icp-brasil" },
+      "image": { "@type": "ImageObject", "url": "https://rustpdf.dev/og.png", "width": 1200, "height": 630 }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is ICP-Brasil?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ICP-Brasil (Infraestrutura de Chaves Publicas Brasileira) is Brazil's national public-key infrastructure, run by the ITI (Instituto Nacional de Tecnologia da Informacao). Certificates issued under it, such as the e-CPF for individuals and the e-CNPJ for companies, give a digital signature the same legal weight as a handwritten one under Brazilian law (MP 2.200-2 of 2001). Signatures must follow the official document standard DOC-ICP-15, whose PDF profile is PAdES."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are the AD-RB, AD-RT, AD-RC and AD-RA signature profiles?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "They are ICP-Brasil's signature profiles, each one stricter than the last. AD-RB (Referencia Basica) is the baseline: a signature plus a reference to a signature policy, with no timestamp. It maps to PAdES-B-B. AD-RT adds a trusted timestamp (PAdES-B-T). AD-RC adds complete validation-data references, and AD-RA adds embedded validation data and an archival timestamp for long-term validation (PAdES-B-LTA). For PAdES the policy lives in its own OID arc, 2.16.76.1.7.1.11.x, which is different from the CAdES arc."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I sign with an HSM or A3 token without exposing the private key?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. ICP-Brasil keys often live in a cloud HSM (Azure Key Vault, VIDaaS, BirdID) or an A3 token or smartcard, where the private key is non-exportable by design. rust-pdf supports deferred signing: it prepares the PDF, computes the bytes to be signed, and asks your code (or HSM) for the raw RSA signature, then assembles and embeds the CMS. The private key never reaches the library. There are two models: a synchronous signer callback, and a two-phase prepare and complete flow for asynchronous HSM calls."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I make a signature pass ITI's VALIDAR (Verificador de Conformidade)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Three things matter beyond a cryptographically valid signature. First, the first signature must carry a DocMDP transform (the modification-detection dictionary), or VALIDAR reports the result as indeterminate. Second, the signature-policy identifier must use the PAdES policy OID (2.16.76.1.7.1.11.1.x with the matching artifact hash), not the CAdES one. Third, the full certificate chain up to the ICP-Brasil root must be embedded. rust-pdf does all three: a signature produced this way with a real e-CNPJ was approved by ITI's VALIDAR."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does rust-pdf support PAdES for ICP-Brasil?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. rust-pdf produces PAdES (ETSI.CAdES.detached) signatures with the ESS signing-certificate-v2 attribute, an explicit signature policy (the id-aa-ets-sigPolicyId attribute), DocMDP certification, an embedded certificate chain, and deferred (HSM) signing so the key never leaves your control. The same API is available in Python, C#, Go, Node, PHP, Ruby, Java, Swift and Delphi."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    /* ===== /icp-brasil concept page (scoped, animations respect reduced-motion) ===== */
+    .ib-lede { max-width: 720px; }
+
+    /* hero art: a signed document, with the key kept outside in the HSM */
+    .ib-scene { position: relative; height: 250px; max-width: 460px; margin: 34px auto 0; }
+    .ib-paper { position: absolute; right: 8%; top: 50%; transform: translateY(-50%);
+      width: 150px; height: 188px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 30px 60px -30px rgba(52,211,153,.5); }
+    .ib-paper .ln { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#243049,#2c3a57); }
+    .ib-paper .ln.s { width: 58%; }
+    .ib-seal { position: absolute; bottom: -12px; right: -10px; display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(52,211,153,.16); color: #34d399; border: 1px solid rgba(52,211,153,.4);
+      font-size: .78rem; font-weight: 800; letter-spacing: .02em; padding: 5px 10px; border-radius: 999px;
+      animation: ibPulse 4s ease-in-out infinite; }
+    .ib-seal svg { width: 13px; height: 13px; }
+    .ib-key { position: absolute; left: 4%; top: 50%; transform: translateY(-50%);
+      width: 116px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 14px; text-align: center; animation: ibFloat 5s ease-in-out infinite; }
+    .ib-key .ic { color: var(--brand-2); }
+    .ib-key .ic svg { width: 28px; height: 28px; }
+    .ib-key .t { display: block; margin-top: 8px; font-size: .78rem; font-weight: 700; color: #cbd5e1; }
+    .ib-key .t span { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .ib-flow { position: absolute; left: 31%; right: 35%; top: 50%; height: 2px; transform: translateY(-50%);
+      background: linear-gradient(90deg, var(--brand-2), #34d399); opacity: .5; }
+    .ib-flow .dot { position: absolute; top: -3px; width: 8px; height: 8px; border-radius: 50%;
+      background: #e6edf6; box-shadow: 0 0 9px 1px rgba(230,237,246,.8); animation: ibDot 3.2s ease-in-out infinite; }
+    @keyframes ibFloat { 0%,100% { transform: translateY(-50%); } 50% { transform: translateY(-58%); } }
+    @keyframes ibPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,.0); } 50% { box-shadow: 0 0 0 6px rgba(52,211,153,.12); } }
+    @keyframes ibDot { 0% { left: 0; } 100% { left: 100%; } }
+
+    /* profile ladder */
+    .ib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
+    .ib-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
+    .ib-card h3 { margin: 0 0 4px; }
+    .ib-card .badge { color: var(--brand-2); font-weight: 700; font-size: .78rem; }
+    .ib-card p { color: var(--muted); margin: 8px 0 0; }
+
+    /* requirement cards */
+    .ib-reqs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .ib-req { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .ib-req .ic { color: var(--brand-2); height: 30px; }
+    .ib-req .ic svg { width: 28px; height: 28px; }
+    .ib-req h3 { margin: 12px 0 6px; }
+    .ib-req p { margin: 0; color: var(--muted); }
+
+    /* matrix */
+    .ib-matrix { width: 100%; border-collapse: collapse; margin-top: 36px; }
+    .ib-matrix th, .ib-matrix td { border: 1px solid var(--border); padding: 12px 14px; text-align: left; }
+    .ib-matrix th { background: var(--panel-2); color: #cbd5e1; font-weight: 700; }
+    .ib-matrix td b { color: var(--text); }
+
+    /* validated banner */
+    .ib-verdict { display: flex; align-items: center; gap: 14px; justify-content: center; flex-wrap: wrap;
+      background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3); border-radius: 14px;
+      padding: 18px 22px; margin: 34px auto 0; max-width: 640px; }
+    .ib-verdict .chk { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(52,211,153,.18); color: #34d399; flex: none; }
+    .ib-verdict .chk svg { width: 18px; height: 18px; }
+    .ib-verdict p { margin: 0; color: #cbd5e1; }
+
+    @media (max-width: 820px) {
+      .ib-grid, .ib-reqs { grid-template-columns: 1fr; }
+      .ib-scene { max-width: 360px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ib-seal, .ib-key, .ib-flow .dot { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Concept &middot; Brazilian digital signatures</p>
+        <h1>What is <span class="grad">ICP-Brasil</span> signing,<br />and how do you do it right?</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-30</p>
+        <p class="lede ib-lede">
+          ICP-Brasil is Brazil's national PKI: a signature made with an e-CPF or e-CNPJ
+          certificate carries the same legal weight as ink on paper. Getting a PDF to pass
+          the government validator takes more than a valid signature, and the private key
+          usually lives in a token or HSM that must never hand the key out. This guide
+          explains the profiles, the rules, and how to sign without ever exposing the key.
+        </p>
+        <div class="ib-scene" aria-hidden="true">
+          <div class="ib-key">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 19 4"/><path d="m16 6 3 3"/><path d="m14 8 2 2"/></svg></span>
+            <span class="t">HSM / A3 token<span>key never leaves</span></span>
+          </div>
+          <div class="ib-flow"><span class="dot"></span></div>
+          <div class="ib-paper">
+            <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+            <span class="ln"></span><span class="ln s"></span><span class="ln"></span>
+            <span class="ib-seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> ICP-Brasil</span>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:34px">
+          <a href="#how" class="btn btn-lg">Sign with rust-pdf</a>
+          <a href="#profiles" class="btn btn-ghost btn-lg">Jump to the profiles</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IS IT -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">A signature with the weight of a handwritten one</h2>
+        <p class="muted">
+          ICP-Brasil (<i>Infraestrutura de Chaves Publicas Brasileira</i>) is the public-key
+          infrastructure operated by Brazil's ITI. Under it, accredited authorities issue
+          certificates such as the <b>e-CPF</b> for people and the <b>e-CNPJ</b> for
+          companies. Because the law (MP 2.200-2 of 2001) recognizes these signatures as
+          legally equivalent to a handwritten one, they are used for invoices, contracts,
+          notarial acts, court filings and anything that must hold up as evidence.
+        </p>
+        <p class="muted">
+          The catch is that "valid signature" is not the same as "accepted by the
+          government validator". A file is only an ICP-Brasil signature if it follows the
+          official standard, <b>DOC-ICP-15</b>, whose profile for PDF is <b>PAdES</b>. Miss
+          one of its rules and ITI's validator will mark the document as
+          <i>indeterminate</i> or reject the chain, even though the math is perfect.
+        </p>
+      </div>
+    </section>
+
+    <!-- PROFILES -->
+    <section id="profiles" class="section">
+      <div class="wrap">
+        <h2 class="center">The profiles: AD-RB, AD-RT, AD-RC, AD-RA</h2>
+        <p class="center muted narrow">
+          ICP-Brasil defines a ladder of signature profiles, each one adding a guarantee on
+          top of the last. They line up directly with the PAdES baseline levels.
+        </p>
+        <div class="ib-grid">
+          <div class="ib-card reveal">
+            <h3>AD-RB <span class="badge">Basic reference</span></h3>
+            <p>A signature plus a reference to a signature policy, with no timestamp. The baseline, and what most documents need. Maps to PAdES-B-B.</p>
+          </div>
+          <div class="ib-card reveal">
+            <h3>AD-RT <span class="badge">Time reference</span></h3>
+            <p>Adds a trusted timestamp from an accredited time-stamping authority, proving when the signature was made. Maps to PAdES-B-T.</p>
+          </div>
+          <div class="ib-card reveal">
+            <h3>AD-RC <span class="badge">Complete references</span></h3>
+            <p>Adds references to the validation data (the certificate chain and revocation status) so the signature can be checked later.</p>
+          </div>
+          <div class="ib-card reveal">
+            <h3>AD-RA <span class="badge">Archival references</span></h3>
+            <p>Embeds the validation data and an archival timestamp for long-term validation, so the signature survives the certificate's expiry. Maps to PAdES-B-LTA.</p>
+          </div>
+        </div>
+        <p class="center muted narrow" style="margin-top:26px">
+          A subtle but critical detail: for PAdES the policy lives in its <b>own OID arc</b>,
+          <code>2.16.76.1.7.1.11.x</code>, separate from the CAdES arc
+          <code>2.16.76.1.7.1.1.x</code>. Reference the CAdES policy in a PDF and the
+          validator will not recognize it.
+        </p>
+      </div>
+    </section>
+
+    <!-- KEY NEVER LEAVES -->
+    <section class="band">
+      <div class="wrap">
+        <h2 class="center">The key never leaves your HSM or token</h2>
+        <p class="center muted narrow">
+          ICP-Brasil private keys are meant to be non-exportable: an A3 token, a smartcard,
+          or a cloud HSM such as Azure Key Vault, VIDaaS or BirdID. A signing library that
+          asks you to hand over the key is a non-starter. rust-pdf uses <b>deferred
+          signing</b> instead: it does the PDF work, hands you the bytes to be signed, and
+          embeds the signature you get back. The key stays where it belongs.
+        </p>
+        <div class="grid-2" style="margin-top:34px">
+          <ul class="check-list">
+            <li><b>Signer callback</b>: the library builds the signed attributes and calls your code for the raw RSA signature, then assembles the CMS.</li>
+            <li><b>Two-phase prepare and complete</b>: phase one returns the hash to sign, you send it to the HSM across an async boundary, phase two embeds the container.</li>
+          </ul>
+          <ul class="check-list">
+            <li><b>You supply the certificate chain</b> separately from the key, exactly as a cloud cert plus intermediates.</li>
+            <li><b>RSA with SHA-256</b>, the algorithm e-CPF and e-CNPJ A1 and A3 certificates use, with a configurable reserved size for variable HSM containers.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT MAKES IT PASS -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="center">What makes a signature pass ITI's VALIDAR</h2>
+        <p class="center muted narrow">
+          ITI's <i>Verificador de Conformidade</i> checks more than the cryptography. Three
+          things decide whether a PAdES signature is accepted as ICP-Brasil conformant.
+        </p>
+        <div class="ib-reqs">
+          <div class="ib-req reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h3>DocMDP</h3>
+            <p>The first signature must carry the modification-detection transform (P=2, V=1.2). Without it the validator reports the result as indeterminate.</p>
+          </div>
+          <div class="ib-req reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg></div>
+            <h3>The PAdES policy</h3>
+            <p>The signature-policy identifier must use the PAdES policy OID and the matching artifact hash, not the CAdES policy. This is the most common mistake.</p>
+          </div>
+          <div class="ib-req reveal">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h3>The full chain</h3>
+            <p>The signer certificate plus every intermediate authority up to the ICP-Brasil root must be embedded, so the validator can build trust.</p>
+          </div>
+        </div>
+        <div class="ib-verdict reveal">
+          <span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p>A signature produced with rust-pdf, using a real e-CNPJ whose key stayed in the
+          macOS keychain, was <b>approved by ITI's VALIDAR</b>, and confirmed independently
+          by <code>pdfsig</code> and <code>openssl</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- AT A GLANCE -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">ICP-Brasil PAdES at a glance</h2>
+        <table class="ib-matrix">
+          <tr><th>Requirement</th><th>What it means</th></tr>
+          <tr><td>SubFilter</td><td><b>ETSI.CAdES.detached</b> (PAdES)</td></tr>
+          <tr><td>Digest</td><td><b>SHA-256</b> with RSA PKCS#1 v1.5</td></tr>
+          <tr><td>Signed attributes</td><td>content-type, message-digest, <b>signing-certificate-v2</b>, <b>signature-policy-identifier</b></td></tr>
+          <tr><td>Certification</td><td><b>DocMDP</b> on the first signature (P=2, V=1.2)</td></tr>
+          <tr><td>Policy OID arc</td><td><b>2.16.76.1.7.1.11.x</b> (PAdES, not CAdES)</td></tr>
+          <tr><td>Certificate chain</td><td><b>Embedded</b> up to the ICP-Brasil root</td></tr>
+          <tr><td>Private key</td><td><b>Stays in your HSM or token</b> (deferred signing)</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- HOW (code) -->
+    <section id="how" class="section">
+      <div class="wrap">
+        <h2 class="center">How to sign for ICP-Brasil with rust-pdf</h2>
+        <p class="center muted narrow">
+          You provide the certificate and a callback that returns the raw RSA signature from
+          your HSM or token. rust-pdf builds a PAdES signature with DocMDP, the AD-RB policy
+          and your chain. The policy values below are the official ICP-Brasil PAdES AD-RB
+          v1.3 artifact.
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+
+# Your HSM/token signs the bytes. The private key never enters the library.
+def hsm_sign(data: bytes) -> bytes:
+    return my_hsm.sign_rsa_sha256(data)        # Azure Key Vault, VIDaaS, A3 token...
+
+policy = rustpdf.SignaturePolicy(
+    oid="2.16.76.1.7.1.11.1.3",                # ICP-Brasil PAdES AD-RB v1.3
+    hash=bytes.fromhex("23e4be4b9b362172e4ebb0e72b86a133ece5aad843d8651c6e38a0ba3f08fc60"),
+    uri="http://politicas.icpbrasil.gov.br/PA_PAdES_AD_RB_v1_3.der",
+)
+opts = rustpdf.SigningOptions(
+    pades=True,
+    certify=rustpdf.Certify.FORMS,             # DocMDP P=2
+    policy=policy,
+)
+signed = rustpdf.sign_with(pdf, cert_der, hsm_sign, chain=chain, options=opts)</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+// The HSM signs; the private key never enters the library.
+byte[] HsmSign(byte[] data) =&gt; myHsm.SignRsaSha256(data);
+
+var policy = new SignaturePolicy {
+    Oid  = "2.16.76.1.7.1.11.1.3",             // ICP-Brasil PAdES AD-RB v1.3
+    Hash = Convert.FromHexString("23E4BE4B9B362172E4EBB0E72B86A133ECE5AAD843D8651C6E38A0BA3F08FC60"),
+    Uri  = "http://politicas.icpbrasil.gov.br/PA_PAdES_AD_RB_v1_3.der",
+};
+var opts = new SigningOptions { Pades = true, Certify = Certify.Forms, Policy = policy };
+byte[] signed = Pdf.SignWith(pdf, certDer, HsmSign, chain, opts);</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+policy := &amp;rustpdf.SignaturePolicy{
+    OID:  "2.16.76.1.7.1.11.1.3",              // ICP-Brasil PAdES AD-RB v1.3
+    Hash: policyHash,                          // SHA-256 of the artifact
+    URI:  "http://politicas.icpbrasil.gov.br/PA_PAdES_AD_RB_v1_3.der",
+}
+opts := &amp;rustpdf.SigningOptions{Pades: true, Certify: rustpdf.CertifyForms, Policy: policy}
+
+// hsmSign returns the raw RSA signature; the key stays in your HSM.
+signed, _ := rustpdf.SignWith(pdf, certDer, hsmSign, chain, opts)</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { signWith, Certify } = require("rustpdf");
+
+// hsmSign(data) returns a Buffer; the key never enters the library.
+const policy = {
+  oid:  "2.16.76.1.7.1.11.1.3",               // ICP-Brasil PAdES AD-RB v1.3
+  hash: policyHash,                           // SHA-256 of the artifact
+  uri:  "http://politicas.icpbrasil.gov.br/PA_PAdES_AD_RB_v1_3.der",
+};
+const opts = { pades: true, certify: Certify.Forms, policy };
+const signed = signWith(pdf, certDer, hsmSign, chain, opts);</code></pre>
+        </div>
+        <div class="validators" style="text-align:center">
+          Verified with:
+          <span>ITI VALIDAR</span><span>pdfsig</span><span>openssl</span>
+        </div>
+        <p class="center muted narrow" style="margin-top:22px">
+          Prefer an asynchronous HSM call? Use the two-phase flow:
+          <code>begin_signing</code> returns the hash to sign, and the session's
+          <code>complete</code> embeds the container once it comes back. Full details in the
+          <a href="/docs/">documentation</a>, and the broader standard in
+          <a href="/pades">what is PAdES</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="band">
+      <div class="wrap narrow">
+        <h2 class="center">ICP-Brasil signing FAQ</h2>
+        <details><summary>What is ICP-Brasil?</summary>
+          <p>ICP-Brasil (Infraestrutura de Chaves Publicas Brasileira) is Brazil's national public-key infrastructure, run by the ITI. Certificates issued under it, such as the e-CPF for individuals and the e-CNPJ for companies, give a digital signature the same legal weight as a handwritten one under Brazilian law (MP 2.200-2 of 2001). Signatures must follow the official document standard DOC-ICP-15, whose PDF profile is PAdES.</p>
+        </details>
+        <details><summary>What are the AD-RB, AD-RT, AD-RC and AD-RA profiles?</summary>
+          <p>They are ICP-Brasil's signature profiles, each one stricter than the last. AD-RB (Referencia Basica) is the baseline: a signature plus a reference to a signature policy, with no timestamp, mapping to PAdES-B-B. AD-RT adds a trusted timestamp (PAdES-B-T). AD-RC adds complete validation-data references, and AD-RA adds embedded validation data and an archival timestamp for long-term validation (PAdES-B-LTA). For PAdES the policy lives in its own OID arc, 2.16.76.1.7.1.11.x, separate from the CAdES arc.</p>
+        </details>
+        <details><summary>Can I sign with an HSM or A3 token without exposing the private key?</summary>
+          <p>Yes. ICP-Brasil keys often live in a cloud HSM (Azure Key Vault, VIDaaS, BirdID) or an A3 token or smartcard, where the private key is non-exportable by design. rust-pdf uses deferred signing: it prepares the PDF, computes the bytes to be signed, and asks your code or HSM for the raw RSA signature, then assembles and embeds the CMS. The key never reaches the library. There is a synchronous signer callback and a two-phase prepare-and-complete flow for asynchronous HSM calls.</p>
+        </details>
+        <details><summary>How do I make a signature pass ITI's VALIDAR?</summary>
+          <p>Three things matter beyond a cryptographically valid signature. First, the first signature must carry a DocMDP transform, or VALIDAR reports the result as indeterminate. Second, the signature-policy identifier must use the PAdES policy OID (2.16.76.1.7.1.11.1.x with the matching artifact hash), not the CAdES one. Third, the full certificate chain up to the ICP-Brasil root must be embedded. rust-pdf does all three, and a signature produced this way with a real e-CNPJ was approved by VALIDAR.</p>
+        </details>
+        <details><summary>Does rust-pdf support PAdES for ICP-Brasil?</summary>
+          <p>Yes. rust-pdf produces PAdES (ETSI.CAdES.detached) signatures with the ESS signing-certificate-v2 attribute, an explicit signature policy, DocMDP certification, an embedded certificate chain, and deferred (HSM) signing so the key never leaves your control. The same API is available in Python, C#, Go, Node, PHP, Ruby, Java, Swift and Delphi.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section">
+      <div class="wrap narrow center">
+        <h2>Sign for ICP-Brasil in your language</h2>
+        <p class="muted">
+          One core, the same PAdES signing across nine languages, with the key always in
+          your HSM or token. Prototype for free, license the signing feature when you ship.
+        </p>
+        <div class="cta-row">
+          <a href="/docs/" class="btn btn-lg">Read the docs</a>
+          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+        </div>
+        <div class="sibling-langs">
+          <a href="/pades">What is PAdES?</a>
+          <a href="/sign-pdf">Sign a PDF</a>
+          <a href="/eidas">What is eIDAS?</a>
+          <a href="/pdf-timestamp">PDF timestamps</a>
+          <a href="/pdf-a">What is PDF/A?</a>
+          <a href="/docs/">All languages</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/consent.js" defer></script>
+</body>
+</html>

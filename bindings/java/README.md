@@ -72,6 +72,7 @@ Maven profile is off by default, so local `make java-test` needs no GPG key.
 
 ```java
 import dev.rustpdf.*;
+import java.util.List;
 
 // Authoring — try-with-resources frees the native handle.
 try (Document doc = new Document()) {
@@ -103,7 +104,29 @@ try (EditableDoc ed = EditableDoc.load(bytes)) {
 
 // Digital signature (PKCS#7 detached / PAdES-B-B).
 byte[] signed = Pdf.sign(bytes, keyDer, certDer, "Approved", null, null, true);
+
+// Deferred / HSM signing — the private key never enters the library. You return
+// the raw RSA signature (from an HSM, cloud KMS, smartcard or PKI token) and
+// rust-pdf assembles and embeds the CMS / PKCS#7 container. Works with any PKI
+// (eIDAS, AATL, a national CA).
+SigningOptions opts = new SigningOptions();
+opts.reason = "Approved";
+opts.pades  = true;
+byte[] hsmSigned = Pdf.signWith(bytes, certDer,
+        dataToSign -> hsm.signRsaPkcs1Sha256(dataToSign),   // your remote signer
+        List.of(intermediateDer), opts);
+
+// …or two-phase, for an asynchronous / out-of-band signer:
+SigningSession session = Pdf.beginSigning(bytes, opts);
+byte[] container = buildCmsContainer(session.hash());       // sign session.hash() remotely
+byte[] twoPhase  = session.complete(container);
 ```
+
+For deferred signing, list any existing signature fields first with
+`Pdf.listSignatures(bytes)` (each `SignatureField` has `name()` and `signed()`).
+`SigningOptions` also carries `location`, `name`, `certify` (a `Certify` DocMDP
+level), `containerSize` (raise it for large cloud-HSM containers) and `policy` (a
+`SignaturePolicy` for PAdES-EPES).
 
 ## Test
 

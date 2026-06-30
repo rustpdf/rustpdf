@@ -52,6 +52,19 @@ public enum FacturxProfile: Int32, Sendable {
     case extended = 4
 }
 
+/// DocMDP certification level applied by the first (certifying) signature
+/// (``SigningOptions/certify``).
+public enum Certify: Int32, Sendable {
+    /// Not a certifying signature.
+    case none = 0
+    /// `/P 1` — no changes permitted after signing.
+    case locked = 1
+    /// `/P 2` — form-filling and signing permitted.
+    case forms = 2
+    /// `/P 3` — form-filling, signing and annotations permitted.
+    case formsAndAnnotations = 3
+}
+
 /// The PDF version written in the header (argument to ``Document/setVersion(_:)``).
 public enum PdfVersion: Int32, Sendable {
     case v14 = 0

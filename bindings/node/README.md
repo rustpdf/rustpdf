@@ -66,6 +66,43 @@ const signed = rp.sign(data, keyDer, certDer, { pades: true });
 Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
 without one they throw `PdfError`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
 
+## Deferred / HSM signing
+
+Sign without ever handing this library a private key — the key stays in an HSM,
+cloud KMS, smartcard or PKI token. It works with any PKI (eIDAS, AATL and other
+trust lists): the binding only builds and embeds the CMS. Two models.
+
+**Model A — bring your own signer.** `signWith` builds the CMS and calls your
+callback for the raw RSA signature over the document hash:
+
+```js
+const { signWith } = require('rustpdf');
+
+// signHash receives the bytes to sign and returns the raw RSA signature from
+// your HSM / KMS / smartcard. The private key never enters the library.
+const signed = signWith(pdf, certDer, (data) => hsm.signRsaSha256(data), [], {
+  reason: 'Approved', name: 'Jane Doe', pades: true,
+});
+```
+
+**Model B — two-phase.** `beginSigning` prepares the PDF and exposes the bytes
+(and their `hash`) to sign; send the hash to a remote/asynchronous signer, wrap
+the result in a DER CMS / PKCS#7 container, then `complete`:
+
+```js
+const { beginSigning, listSignatures } = require('rustpdf');
+
+listSignatures(pdf);                       // inventory existing fields ([] = none)
+
+const session = beginSigning(pdf, { pades: true });
+const container = await remoteSigner.buildCms(session.hash);   // DER CMS / PKCS#7
+const signed = session.complete(container);
+```
+
+`SigningOptions` also carries `certify` (DocMDP), `containerSize` (reserved
+`/Contents` bytes) and a `policy` (PAdES-EPES) identifier; see the TypeScript
+types in [`lib/index.d.ts`](lib/index.d.ts).
+
 ## Test
 
 ```sh

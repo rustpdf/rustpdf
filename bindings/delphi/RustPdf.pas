@@ -57,6 +57,68 @@ type
   { ZUGFeRD / Factur-X conformance profile (TPdfDocument.Facturx). }
   TFacturxProfile = (fxMinimum, fxBasicWL, fxBasic, fxEN16931, fxExtended);
 
+  { DocMDP certification level applied by the first (certifying) signature:
+    CertifyNone = not certifying; CertifyLocked = /P 1 (no changes); CertifyForms
+    = /P 2 (form-filling + signing); CertifyFormsAndAnnotations = /P 3. }
+  TCertify = (CertifyNone, CertifyLocked, CertifyForms, CertifyFormsAndAnnotations);
+
+  { A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB). OID is the
+    dotted-decimal policy OID; Hash is the policy-document digest (under
+    HashAlgorithmOID, '' = SHA-256); URI ('' = none) is the SPURI qualifier. }
+  TSignaturePolicy = record
+    OID: UTF8String;
+    Hash: TBytes;
+    HashAlgorithmOID: UTF8String;
+    URI: UTF8String;
+  end;
+
+  { Options for deferred / external signing (issue #41). Reason/Location/Name
+    populate the signature dict; Pades selects ETSI.CAdES.detached; Certify
+    applies DocMDP (only on the first signature); ContainerSize overrides the
+    reserved /Contents size (0 = default 8192); set HasPolicy to attach Policy. }
+  TSigningOptions = record
+    Reason: UTF8String;
+    Location: UTF8String;
+    Name: UTF8String;
+    Pades: Boolean;
+    Certify: TCertify;
+    ContainerSize: Integer;
+    HasPolicy: Boolean;
+    Policy: TSignaturePolicy;
+  end;
+
+  { A signature field discovered in a PDF (pre-signing inventory, Pdf.ListSignatures). }
+  TSignatureField = record
+    Name: UTF8String;
+    Signed: Boolean;
+  end;
+  TSignatureFields = array of TSignatureField;
+
+  { Model A "bring your own signer" callback: given the bytes to sign, return
+    the raw RSA PKCS#1 v1.5 signature over their SHA-256 (typically by calling a
+    remote HSM). The private key never reaches this library. A method pointer so
+    it can carry state (FPC 3.2 has no anonymous methods). }
+  TPdfRemoteSign = function(const DataToSign: TBytes): TBytes of object;
+
+  { Model B two-phase signature in progress. Document is the prepared PDF (with a
+    zero-filled /Contents placeholder); Bytes are the exact bytes the signature
+    covers (the two ByteRange segments). Hand Hash to a remote signer, build a
+    DER CMS/PKCS#7 container, then call Complete. Free with .Free. }
+  TSigningSession = class(TObject)
+  private
+    FDocument: TBytes;
+    FBytes: TBytes;
+  public
+    constructor Create(const ADocument, ABytes: TBytes);
+    { SHA-256 of Bytes — the value a remote signer / HSM signs. }
+    function Hash: TBytes;
+    { Phase 2: embed a finished DER CMS/PKCS#7 container, returning the final
+      signed PDF. }
+    function Complete(const Container: TBytes): TBytes;
+    property Document: TBytes read FDocument;
+    property Bytes: TBytes read FBytes;
+  end;
+
   { Dynamic array of strings (TPdfEditable.FieldNames). Declared locally so the
     unit stays self-contained across Delphi/FPC RTL versions. }
   TPdfStringArray = array of string;
@@ -252,10 +314,42 @@ type
     class function AddDss(const PdfBytes: TBytes;
                          const Certs: array of TBytes;
                          const Crls: array of TBytes): TBytes; static;
+
+    { ---- deferred / external (HSM) signing — issue #41 ---- }
+
+    { List the signature fields in PdfBytes (detect existing signatures before
+      signing). An empty result means there are no signature fields. }
+    class function ListSignatures(const PdfBytes: TBytes): TSignatureFields; static;
+
+    { Model B, phase 1: prepare PdfBytes for deferred signing. Hand the returned
+      session's Hash to a remote signer, build the DER CMS container, then call
+      session.Complete. The caller owns the session (free with .Free). }
+    class function BeginSigning(const PdfBytes: TBytes): TSigningSession; overload; static;
+    class function BeginSigning(const PdfBytes: TBytes;
+                                const Options: TSigningOptions): TSigningSession; overload; static;
+
+    { Model B, phase 2: embed a complete DER CMS/PKCS#7 Container into a prepared
+      Document (from BeginSigning), producing the final signed PDF. }
+    class function CompleteSignature(const Document, Container: TBytes): TBytes; static;
+
+    { Model A: sign PdfBytes without handing this library a key. It builds the
+      CMS signed attributes and calls Callback for the raw RSA signature, then
+      assembles and embeds the CMS. CertDer is the signer certificate; Chain are
+      intermediate certificates (DER), supplied independently of the key. }
+    class function SignWith(const PdfBytes, CertDer: TBytes;
+                            Callback: TPdfRemoteSign): TBytes; overload; static;
+    class function SignWith(const PdfBytes, CertDer: TBytes; Callback: TPdfRemoteSign;
+                            const Chain: array of TBytes): TBytes; overload; static;
+    class function SignWith(const PdfBytes, CertDer: TBytes; Callback: TPdfRemoteSign;
+                            const Chain: array of TBytes;
+                            const Options: TSigningOptions): TBytes; overload; static;
   end;
 
 { Convenience constructor for a TPdfRect. }
 function PdfRect(X0, Y0, X1, Y1: Double): TPdfRect;
+
+{ A zero-initialised TSigningOptions (records have no constructors). }
+function SigningOptions: TSigningOptions;
 
 implementation
 
@@ -396,6 +490,48 @@ type
   Tpdf_add_dss              = function(pdf: PByte; pdf_len: NativeUInt; cert_ptrs: Pointer; cert_lens: Pointer; cert_count: NativeUInt; crl_ptrs: Pointer; crl_lens: Pointer; crl_count: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_verify_signatures_json = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
 
+{ ---- deferred / external signing (issue #41) ---- }
+
+type
+  PSizeUInt = ^NativeUInt;
+
+  { Mirrors the C-ABI PdfSigningOptions (include/pdf.h). NOT packed — laid out
+    with natural C alignment (8-byte pointers/sizes, two contiguous 4-byte ints),
+    which Delphi/FPC record alignment reproduces exactly on LP64 targets. NULL
+    pointer fields and a zero EstimatedSize / PolicyHashLen mean "absent". }
+  TPdfSigningOptionsC = record
+    Reason: PAnsiChar;
+    Location: PAnsiChar;
+    Name: PAnsiChar;
+    Pades: Integer;
+    Certification: Integer;
+    EstimatedSize: NativeUInt;
+    PolicyOid: PAnsiChar;
+    PolicyHash: PByte;
+    PolicyHashLen: NativeUInt;
+    PolicyHashAlgOid: PAnsiChar;
+    PolicyUri: PAnsiChar;
+  end;
+  PPdfSigningOptionsC = ^TPdfSigningOptionsC;
+
+  { Raw C callback: write the RSA signature of SHA-256(data) into sig_buf
+    (capacity sig_cap), set sig_len^, return 0 on success (non-zero = failure). }
+  TPdfSignHashFn = function(ctx: Pointer; data: PByte; data_len: NativeUInt;
+    sig_buf: PByte; sig_cap: NativeUInt; sig_len: PSizeUInt): Integer; cdecl;
+
+  Tpdf_sign_begin = function(pdf: PByte; pdf_len: NativeUInt; params: PPdfSigningOptionsC;
+    out out_doc: PByte; out out_doc_len: NativeUInt;
+    out out_tbs: PByte; out out_tbs_len: NativeUInt): Integer; cdecl;
+  Tpdf_sign_complete = function(document: PByte; document_len: NativeUInt;
+    container: PByte; container_len: NativeUInt;
+    out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_sign_with = function(pdf: PByte; pdf_len: NativeUInt; cert_der: PByte; cert_len: NativeUInt;
+    chain_ptrs: Pointer; chain_lens: Pointer; chain_count: NativeUInt;
+    params: PPdfSigningOptionsC; callback: TPdfSignHashFn; ctx: Pointer;
+    out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_list_signatures = function(pdf: PByte; pdf_len: NativeUInt;
+    out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+
 { ===================== bound function table ============================= }
 
 var
@@ -480,6 +616,10 @@ var
   Fpdf_timestamp: Tpdf_timestamp;
   Fpdf_add_dss: Tpdf_add_dss;
   Fpdf_verify_signatures_json: Tpdf_verify_signatures_json;
+  Fpdf_sign_begin: Tpdf_sign_begin;
+  Fpdf_sign_complete: Tpdf_sign_complete;
+  Fpdf_sign_with: Tpdf_sign_with;
+  Fpdf_list_signatures: Tpdf_list_signatures;
 
 { ===================== loader ========================================== }
 
@@ -664,6 +804,10 @@ begin
   Fpdf_timestamp := Tpdf_timestamp(Bind('pdf_timestamp'));
   Fpdf_add_dss := Tpdf_add_dss(Bind('pdf_add_dss'));
   Fpdf_verify_signatures_json := Tpdf_verify_signatures_json(Bind('pdf_verify_signatures_json'));
+  Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
+  Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
+  Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
+  Fpdf_list_signatures := Tpdf_list_signatures(Bind('pdf_list_signatures'));
 
   GLoaded := True;
 end;
@@ -783,6 +927,170 @@ begin
   Result := string(U);
 end;
 
+{ ===================== SHA-256 (self-contained) ======================== }
+
+{ A compact, dependency-free SHA-256 so TSigningSession.Hash works identically
+  under Delphi and Free Pascal (this FPC ships no hash unit). Overflow/range
+  checks are disabled locally because the compression function relies on the
+  natural mod-2^32 wrap of Cardinal arithmetic. }
+
+{$PUSH}
+{$Q-}
+{$R-}
+
+function RotR32(X: Cardinal; N: Byte): Cardinal; inline;
+begin
+  Result := (X shr N) or (X shl (32 - N));
+end;
+
+function Sha256Bytes(const Data: TBytes): TBytes;
+const
+  K: array[0..63] of Cardinal = (
+    $428a2f98, $71374491, $b5c0fbcf, $e9b5dba5, $3956c25b, $59f111f1, $923f82a4, $ab1c5ed5,
+    $d807aa98, $12835b01, $243185be, $550c7dc3, $72be5d74, $80deb1fe, $9bdc06a7, $c19bf174,
+    $e49b69c1, $efbe4786, $0fc19dc6, $240ca1cc, $2de92c6f, $4a7484aa, $5cb0a9dc, $76f988da,
+    $983e5152, $a831c66d, $b00327c8, $bf597fc7, $c6e00bf3, $d5a79147, $06ca6351, $14292967,
+    $27b70a85, $2e1b2138, $4d2c6dfc, $53380d13, $650a7354, $766a0abb, $81c2c92e, $92722c85,
+    $a2bfe8a1, $a81a664b, $c24b8b70, $c76c51a3, $d192e819, $d6990624, $f40e3585, $106aa070,
+    $19a4c116, $1e376c08, $2748774c, $34b0bcb5, $391c0cb3, $4ed8aa4a, $5b9cca4f, $682e6ff3,
+    $748f82ee, $78a5636f, $84c87814, $8cc70208, $90befffa, $a4506ceb, $bef9a3f7, $c67178f2);
+var
+  H: array[0..7] of Cardinal;
+  W: array[0..63] of Cardinal;
+  a, b, c, d, e, f, g, hh, t1, t2, s0, s1, ch, maj: Cardinal;
+  Msg: TBytes;
+  ml: UInt64;
+  i, t, base, nblocks, padLen: Integer;
+begin
+  H[0] := $6a09e667; H[1] := $bb67ae85; H[2] := $3c6ef372; H[3] := $a54ff53a;
+  H[4] := $510e527f; H[5] := $9b05688c; H[6] := $1f83d9ab; H[7] := $5be0cd19;
+
+  ml := UInt64(Length(Data)) * 8;
+  padLen := Length(Data) + 1;
+  while (padLen mod 64) <> 56 do
+    Inc(padLen);
+  SetLength(Msg, padLen + 8);
+  if Length(Data) > 0 then
+    Move(Data[0], Msg[0], Length(Data));
+  Msg[Length(Data)] := $80;
+  for i := Length(Data) + 1 to padLen - 1 do
+    Msg[i] := 0;
+  for i := 0 to 7 do
+    Msg[padLen + i] := Byte((ml shr ((7 - i) * 8)) and $FF);
+
+  nblocks := (padLen + 8) div 64;
+  for base := 0 to nblocks - 1 do
+  begin
+    for t := 0 to 15 do
+      W[t] := (Cardinal(Msg[base * 64 + t * 4]) shl 24) or
+              (Cardinal(Msg[base * 64 + t * 4 + 1]) shl 16) or
+              (Cardinal(Msg[base * 64 + t * 4 + 2]) shl 8) or
+              (Cardinal(Msg[base * 64 + t * 4 + 3]));
+    for t := 16 to 63 do
+    begin
+      s0 := RotR32(W[t - 15], 7) xor RotR32(W[t - 15], 18) xor (W[t - 15] shr 3);
+      s1 := RotR32(W[t - 2], 17) xor RotR32(W[t - 2], 19) xor (W[t - 2] shr 10);
+      W[t] := W[t - 16] + s0 + W[t - 7] + s1;
+    end;
+    a := H[0]; b := H[1]; c := H[2]; d := H[3];
+    e := H[4]; f := H[5]; g := H[6]; hh := H[7];
+    for t := 0 to 63 do
+    begin
+      s1 := RotR32(e, 6) xor RotR32(e, 11) xor RotR32(e, 25);
+      ch := (e and f) xor ((not e) and g);
+      t1 := hh + s1 + ch + K[t] + W[t];
+      s0 := RotR32(a, 2) xor RotR32(a, 13) xor RotR32(a, 22);
+      maj := (a and b) xor (a and c) xor (b and c);
+      t2 := s0 + maj;
+      hh := g; g := f; f := e; e := d + t1;
+      d := c; c := b; b := a; a := t1 + t2;
+    end;
+    Inc(H[0], a); Inc(H[1], b); Inc(H[2], c); Inc(H[3], d);
+    Inc(H[4], e); Inc(H[5], f); Inc(H[6], g); Inc(H[7], hh);
+  end;
+
+  SetLength(Result, 32);
+  for i := 0 to 7 do
+  begin
+    Result[i * 4]     := Byte((H[i] shr 24) and $FF);
+    Result[i * 4 + 1] := Byte((H[i] shr 16) and $FF);
+    Result[i * 4 + 2] := Byte((H[i] shr 8) and $FF);
+    Result[i * 4 + 3] := Byte(H[i] and $FF);
+  end;
+end;
+
+{$POP}
+
+{ ===================== signing-options helpers ========================= }
+
+{ Pointer to a UTF-8 buffer, or nil for an empty string (NULL = "absent"). }
+function U8Ptr(const U: UTF8String): PAnsiChar; inline;
+begin
+  if Length(U) = 0 then
+    Result := nil
+  else
+    Result := PAnsiChar(U);
+end;
+
+{ Build the C options record. The PAnsiChar/PByte fields alias the caller's
+  Options record, which stays alive for the duration of the native call. }
+function MakeSignOpts(const Options: TSigningOptions): TPdfSigningOptionsC;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  Result.Reason := U8Ptr(Options.Reason);
+  Result.Location := U8Ptr(Options.Location);
+  Result.Name := U8Ptr(Options.Name);
+  Result.Pades := Ord(Options.Pades);
+  Result.Certification := Ord(Options.Certify);
+  if Options.ContainerSize > 0 then
+    Result.EstimatedSize := NativeUInt(Options.ContainerSize);
+  if Options.HasPolicy then
+  begin
+    Result.PolicyOid := U8Ptr(Options.Policy.OID);
+    if Length(Options.Policy.Hash) > 0 then
+    begin
+      Result.PolicyHash := BytePtr(Options.Policy.Hash);
+      Result.PolicyHashLen := Length(Options.Policy.Hash);
+    end;
+    Result.PolicyHashAlgOid := U8Ptr(Options.Policy.HashAlgorithmOID);
+    Result.PolicyUri := U8Ptr(Options.Policy.URI);
+  end;
+end;
+
+{ The Model A signer is threaded through a per-thread variable rather than the
+  C ctx pointer: the native call invokes the callback synchronously on the same
+  thread, so this is reentrant across threads, and it sidesteps the Delphi/FPC
+  divergence in what `@` of a method-pointer variable yields. }
+threadvar
+  GActiveSigner: TPdfRemoteSign;
+
+{ The single global cdecl trampoline for Model A: invoke the active signer,
+  copying its signature into the native-supplied buffer. }
+function SignHashTrampoline(ctx: Pointer; data: PByte; data_len: NativeUInt;
+  sig_buf: PByte; sig_cap: NativeUInt; sig_len: PSizeUInt): Integer; cdecl;
+var
+  inBytes, sig: TBytes;
+  cb: TPdfRemoteSign;
+begin
+  try
+    cb := GActiveSigner;
+    if not Assigned(cb) then
+      Exit(3);  { no signer registered for this thread }
+    SetLength(inBytes, data_len);
+    if data_len > 0 then
+      Move(data^, inBytes[0], data_len);
+    sig := cb(inBytes);
+    if NativeUInt(Length(sig)) > sig_cap then
+      Exit(2);  { signature larger than the reserved buffer }
+    if Length(sig) > 0 then
+      Move(sig[0], sig_buf^, Length(sig));
+    sig_len^ := NativeUInt(Length(sig));
+    Result := 0;
+  except
+    Result := 1;  { the signer raised }
+  end;
+end;
+
 { ===================== ERustPdf ======================================== }
 
 constructor ERustPdf.Create(const Msg: string; AStatus: TPdfStatus);
@@ -802,6 +1110,37 @@ begin
   Result.Y0 := Y0;
   Result.X1 := X1;
   Result.Y1 := Y1;
+end;
+
+function SigningOptions: TSigningOptions;
+begin
+  { A managed local record is already zero-initialised; return it as-is. }
+  Result.Reason := '';
+  Result.Location := '';
+  Result.Name := '';
+  Result.Pades := False;
+  Result.Certify := CertifyNone;
+  Result.ContainerSize := 0;
+  Result.HasPolicy := False;
+end;
+
+{ ===================== TSigningSession ================================= }
+
+constructor TSigningSession.Create(const ADocument, ABytes: TBytes);
+begin
+  inherited Create;
+  FDocument := ADocument;
+  FBytes := ABytes;
+end;
+
+function TSigningSession.Hash: TBytes;
+begin
+  Result := Sha256Bytes(FBytes);
+end;
+
+function TSigningSession.Complete(const Container: TBytes): TBytes;
+begin
+  Result := Pdf.CompleteSignature(FDocument, Container);
 end;
 
 { ===================== TPdfBookmark =================================== }
@@ -1665,6 +2004,109 @@ begin
   Check(Fpdf_add_dss(BytePtr(PdfBytes), Length(PdfBytes),
         BPtr(certPtrs), SzPtr(certLens), Length(Certs),
         BPtr(crlPtrs), SzPtr(crlLens), Length(Crls), P, Len));
+  Result := TakeBuffer(P, Len);
+end;
+
+class function Pdf.ListSignatures(const PdfBytes: TBytes): TSignatureFields;
+var
+  P: PByte;
+  Len: NativeUInt;
+  Raw: string;
+  Lines: TStringList;
+  I, Tab: Integer;
+begin
+  EnsureLoaded;
+  Check(Fpdf_list_signatures(BytePtr(PdfBytes), Length(PdfBytes), P, Len));
+  Raw := Utf8BytesToString(TakeBuffer(P, Len));
+  SetLength(Result, 0);
+  Lines := TStringList.Create;
+  try
+    Lines.Text := Raw;
+    for I := 0 to Lines.Count - 1 do
+    begin
+      if Lines[I] = '' then
+        Continue;
+      Tab := Pos(#9, Lines[I]);
+      if Tab < 1 then
+        Continue;
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)].Signed := Copy(Lines[I], 1, Tab - 1) = '1';
+      Result[High(Result)].Name := UTF8String(Copy(Lines[I], Tab + 1, MaxInt));
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+class function Pdf.BeginSigning(const PdfBytes: TBytes): TSigningSession;
+begin
+  Result := BeginSigning(PdfBytes, SigningOptions);
+end;
+
+class function Pdf.BeginSigning(const PdfBytes: TBytes;
+  const Options: TSigningOptions): TSigningSession;
+var
+  C: TPdfSigningOptionsC;
+  DocP, TbsP: PByte;
+  DocLen, TbsLen: NativeUInt;
+begin
+  EnsureLoaded;
+  C := MakeSignOpts(Options);
+  Check(Fpdf_sign_begin(BytePtr(PdfBytes), Length(PdfBytes), @C,
+        DocP, DocLen, TbsP, TbsLen));
+  Result := TSigningSession.Create(TakeBuffer(DocP, DocLen), TakeBuffer(TbsP, TbsLen));
+end;
+
+class function Pdf.CompleteSignature(const Document, Container: TBytes): TBytes;
+var
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  Check(Fpdf_sign_complete(BytePtr(Document), Length(Document),
+        BytePtr(Container), Length(Container), P, Len));
+  Result := TakeBuffer(P, Len);
+end;
+
+class function Pdf.SignWith(const PdfBytes, CertDer: TBytes;
+  Callback: TPdfRemoteSign): TBytes;
+begin
+  Result := SignWith(PdfBytes, CertDer, Callback, [], SigningOptions);
+end;
+
+class function Pdf.SignWith(const PdfBytes, CertDer: TBytes; Callback: TPdfRemoteSign;
+  const Chain: array of TBytes): TBytes;
+begin
+  Result := SignWith(PdfBytes, CertDer, Callback, Chain, SigningOptions);
+end;
+
+class function Pdf.SignWith(const PdfBytes, CertDer: TBytes; Callback: TPdfRemoteSign;
+  const Chain: array of TBytes; const Options: TSigningOptions): TBytes;
+var
+  chainPtrs: array of PByte;
+  chainLens: array of NativeUInt;
+  I: Integer;
+  C: TPdfSigningOptionsC;
+  P: PByte;
+  Len: NativeUInt;
+begin
+  EnsureLoaded;
+  SetLength(chainPtrs, Length(Chain));
+  SetLength(chainLens, Length(Chain));
+  for I := 0 to High(Chain) do
+  begin
+    chainPtrs[I] := BytePtr(Chain[I]);
+    chainLens[I] := Length(Chain[I]);
+  end;
+  C := MakeSignOpts(Options);
+  GActiveSigner := Callback;  { recovered by the trampoline on this thread }
+  try
+    Check(Fpdf_sign_with(BytePtr(PdfBytes), Length(PdfBytes), BytePtr(CertDer), Length(CertDer),
+          BPtr(chainPtrs), SzPtr(chainLens), Length(Chain), @C,
+          TPdfSignHashFn(@SignHashTrampoline), nil, P, Len));
+  finally
+    GActiveSigner := nil;
+  end;
   Result := TakeBuffer(P, Len);
 end;
 

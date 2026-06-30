@@ -244,6 +244,84 @@ final class SmokeTest: XCTestCase {
             XCTAssertFalse(r.subFilter.isEmpty, "subFilter should be set")
         }
         XCTAssertTrue(try Pdf.verifySignatures(plain).isEmpty, "unsigned doc should report no signatures")
+
+        // 16. Deferred / external signing (issue #41).
+        //
+        // Model A: the library never sees the private key — it calls back into
+        // Swift for the raw RSA-PKCS#1-v1.5-SHA256 signature, which we produce by
+        // shelling out to `openssl` over the PKCS#8 DER fixture key (proving the
+        // key stays outside the library, exactly like a remote HSM).
+        let keyPK8 = fx.appendingPathComponent("signer_key.pk8").path
+        guard let opensslPath = Self.findOpenssl() else {
+            throw XCTSkip("openssl not found on PATH — skipping deferred-signing proof")
+        }
+        let rsaSign: ([UInt8]) throws -> [UInt8] = { data in
+            try Self.opensslSign(opensslPath: opensslPath, keyDerPath: keyPK8, data: data)
+        }
+
+        let signedA = try Pdf.signWith(
+            plain, certificate: cert,
+            options: SigningOptions(reason: "Deferred", name: "HSM signer", pades: true),
+            sign: rsaSign)
+        XCTAssertTrue(contains(signedA, "/ByteRange"), "Model A: signature ByteRange missing")
+        XCTAssertTrue(contains(signedA, "/ETSI.CAdES.detached"), "Model A: PAdES subfilter missing")
+
+        let reportsA = try Pdf.verifySignatures(signedA)
+        XCTAssertGreaterThanOrEqual(reportsA.count, 1, "Model A: expected one signature")
+        if let r = reportsA.first {
+            XCTAssertTrue(r.isValid, "Model A signature must verify (digest+CMS): \(r)")
+            XCTAssertTrue(r.digestValid, "Model A digest must match")
+            XCTAssertTrue(r.signatureValid, "Model A CMS signature must verify")
+            XCTAssertTrue(r.coversWholeDocument, "Model A: ByteRange should cover the document")
+        }
+
+        // listSignatures: one (signed) field after signing; none on the unsigned doc.
+        let listed = try Pdf.listSignatures(signedA)
+        XCTAssertEqual(listed.count, 1, "expected exactly one signature field: \(listed)")
+        if let f = listed.first {
+            XCTAssertTrue(f.signed, "field should be marked signed")
+            XCTAssertFalse(f.name.isEmpty, "field name should be set")
+        }
+        XCTAssertTrue(try Pdf.listSignatures(plain).isEmpty, "unsigned doc should list no fields")
+
+        // Model B: two-phase session exposes the prepared doc, the to-be-signed
+        // bytes and their 32-byte SHA-256 digest.
+        let session = try Pdf.beginSigning(plain, options: SigningOptions(reason: "Two-phase"))
+        XCTAssertFalse(session.document.isEmpty, "Model B: prepared document must be non-empty")
+        XCTAssertFalse(session.bytes.isEmpty, "Model B: to-be-signed bytes must be non-empty")
+        XCTAssertEqual(session.hash.count, 32, "Model B: SHA-256 hash must be 32 bytes")
+    }
+
+    /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).
+    private static func findOpenssl() -> String? {
+        var candidates = ["/opt/homebrew/bin/openssl", "/usr/local/bin/openssl", "/usr/bin/openssl"]
+        if let path = ProcessInfo.processInfo.environment["PATH"] {
+            for dir in path.split(separator: ":") {
+                candidates.append("\(dir)/openssl")
+            }
+        }
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    /// Produce a raw RSA PKCS#1 v1.5 signature over SHA-256 of `data` using
+    /// `openssl` and the DER PKCS#8 key at `keyDerPath` — the private key stays
+    /// entirely outside RustPdf.
+    private static func opensslSign(opensslPath: String, keyDerPath: String, data: [UInt8]) throws -> [UInt8] {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: opensslPath)
+        proc.arguments = ["dgst", "-sha256", "-sign", keyDerPath, "-keyform", "DER"]
+        let stdin = Pipe(), stdout = Pipe()
+        proc.standardInput = stdin
+        proc.standardOutput = stdout
+        try proc.run()
+        stdin.fileHandleForWriting.write(Data(data))
+        stdin.fileHandleForWriting.closeFile()
+        let out = stdout.fileHandleForReading.readDataToEndOfFile()
+        proc.waitUntilExit()
+        guard proc.terminationStatus == 0, !out.isEmpty else {
+            throw PdfError(status: .sign, message: "openssl signing failed (status \(proc.terminationStatus))")
+        }
+        return [UInt8](out)
     }
 
     /// A minimal valid 1x1 red RGB PNG (built once with the stdlib).

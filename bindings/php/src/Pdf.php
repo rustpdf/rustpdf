@@ -143,4 +143,224 @@ final class Pdf
         $decoded = json_decode($json, true);
         return \is_array($decoded) ? $decoded : [];
     }
+
+    // ---- Deferred / external (HSM / ICP-Brasil) signing — issue #41 P0 ------
+
+    /**
+     * **Model A — remote signer.** Sign `$pdf` without handing this library a
+     * private key: it builds the CMS signed attributes and calls `$signHash`
+     * (which receives the raw bytes to sign and must return the raw RSA PKCS#1
+     * v1.5 signature over their SHA-256), then assembles and embeds the CMS.
+     * `$certDer` is the signer certificate; `$chain` are intermediates (DER),
+     * supplied independently of the key. The key never reaches this library —
+     * `$signHash` typically forwards to a cloud HSM (Azure Key Vault, VIDaaS,
+     * BirdID, …).
+     *
+     * @param callable(string): string $signHash receives the to-be-signed bytes,
+     *                                            returns the raw RSA signature
+     * @param list<string>             $chain    intermediate certificates (DER)
+     *
+     * @throws PdfException on any native error (including a signer failure).
+     */
+    public static function signWith(
+        string $pdf,
+        string $certDer,
+        callable $signHash,
+        array $chain = [],
+        ?SigningOptions $options = null,
+    ): string {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf, $certDer, $signHash, $chain, $options) {
+            [$pb, $pl] = Ffi::bytes($pdf);
+            [$cb, $cl] = Ffi::bytes($certDer);
+            [$chp, $chl, $chk] = Ffi::bytesArray($chain);
+            [$params, $keep] = self::buildSigningOptions($options);
+            // PHP FFI accepts a PHP closure for a C function-pointer parameter.
+            $callback = static function ($ctx, $data, $dataLen, $sigBuf, $sigCap, $sigLen) use ($signHash): int {
+                try {
+                    $input = \FFI::string($data, $dataLen);
+                    $sig = $signHash($input);
+                    if (!\is_string($sig)) {
+                        return 1; // signer returned a non-string
+                    }
+                    if (\strlen($sig) > $sigCap) {
+                        return 2; // buffer too small
+                    }
+                    if ($sig !== '') {
+                        \FFI::memcpy($sigBuf, $sig, \strlen($sig));
+                    }
+                    $sigLen[0] = \strlen($sig);
+                    return 0;
+                } catch (\Throwable) {
+                    return 1; // signer threw
+                }
+            };
+            $st = $ffi->pdf_sign_with(
+                $pb,
+                $pl,
+                $cb,
+                $cl,
+                $chp,
+                $chl,
+                \count($chain),
+                \FFI::addr($params),
+                $callback,
+                null,
+                $o,
+                $n,
+            );
+            // keep buffers/options alive until the native call returns
+            unset($chk, $keep);
+            return $st;
+        });
+    }
+
+    /**
+     * **Model B — two-phase signing, phase 1.** Prepare `$pdf` for deferred
+     * signing: returns a {@see SigningSession} whose {@see SigningSession::getHash()}
+     * you send to a remote HSM. Build the DER CMS container, then call
+     * {@see SigningSession::complete()} (or {@see completeSignature()}). The key
+     * never reaches this library.
+     */
+    public static function beginSigning(string $pdf, ?SigningOptions $options = null): SigningSession
+    {
+        $ffi = Ffi::get();
+        [$pb, $pl] = Ffi::bytes($pdf);
+        [$params, $keep] = self::buildSigningOptions($options);
+        $docPtr = $ffi->new('uint8_t*');
+        $docLen = $ffi->new('uintptr_t');
+        $tbsPtr = $ffi->new('uint8_t*');
+        $tbsLen = $ffi->new('uintptr_t');
+        Ffi::check($ffi->pdf_sign_begin(
+            $pb,
+            $pl,
+            \FFI::addr($params),
+            \FFI::addr($docPtr),
+            \FFI::addr($docLen),
+            \FFI::addr($tbsPtr),
+            \FFI::addr($tbsLen),
+        ));
+        $document = self::takeOut($docPtr, $docLen);
+        $tbs = self::takeOut($tbsPtr, $tbsLen);
+        unset($keep);
+        return new SigningSession($document, $tbs);
+    }
+
+    /**
+     * **Model B — two-phase signing, phase 2.** Embed a complete DER CMS /
+     * PKCS#7 `$container` into a prepared `$document` (from {@see beginSigning()}),
+     * producing the final signed PDF.
+     */
+    public static function completeSignature(string $document, string $container): string
+    {
+        return Ffi::takeBytes(function ($ffi, $o, $n) use ($document, $container) {
+            [$db, $dl] = Ffi::bytes($document);
+            [$cb, $cl] = Ffi::bytes($container);
+            return $ffi->pdf_sign_complete($db, $dl, $cb, $cl, $o, $n);
+        });
+    }
+
+    /**
+     * List the signature fields in `$pdf` (detect existing signatures before
+     * signing — the iText `SignatureUtil.getSignatureNames` equivalent). An
+     * empty list means there are no signature fields.
+     *
+     * @return list<SignatureField>
+     */
+    public static function listSignatures(string $pdf): array
+    {
+        $text = Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_list_signatures($b, $l, $o, $n);
+        });
+        $out = [];
+        foreach (explode("\n", $text) as $line) {
+            if ($line === '') {
+                continue;
+            }
+            $tab = strpos($line, "\t");
+            if ($tab === false) {
+                continue;
+            }
+            $out[] = new SignatureField(substr($line, $tab + 1), substr($line, 0, $tab) === '1');
+        }
+        return $out;
+    }
+
+    /**
+     * Build a native `PdfSigningOptions` from `$options`. Returns
+     * `[params, keep]`: pass `\FFI::addr($params)` to the native call and keep
+     * `$keep` (the backing string/byte buffers) alive until it returns.
+     *
+     * @return array{0: \FFI\CData, 1: list<\FFI\CData>}
+     */
+    private static function buildSigningOptions(?SigningOptions $options): array
+    {
+        $ffi = Ffi::get();
+        $params = $ffi->new('PdfSigningOptions'); // zero-initialised: all pointers NULL
+        $keep = [];
+        if ($options === null) {
+            return [$params, $keep];
+        }
+        // Allocate an owned, NUL-terminated C string and return a `char*` to it.
+        $cstr = static function (?string $s) use ($ffi, &$keep): ?\FFI\CData {
+            if ($s === null) {
+                return null;
+            }
+            $len = \strlen($s) + 1;
+            $buf = $ffi->new("char[$len]");
+            if ($s !== '') {
+                \FFI::memcpy($buf, $s, \strlen($s));
+            }
+            $keep[] = $buf;
+            return $ffi->cast('char*', $buf);
+        };
+        if (($r = $cstr($options->reason)) !== null) {
+            $params->reason = $r;
+        }
+        if (($loc = $cstr($options->location)) !== null) {
+            $params->location = $loc;
+        }
+        if (($nm = $cstr($options->name)) !== null) {
+            $params->name = $nm;
+        }
+        $params->pades = $options->pades ? 1 : 0;
+        $params->certification = $options->certify->value;
+        $params->estimated_size = $options->containerSize > 0 ? $options->containerSize : 0;
+        if ($options->policy !== null) {
+            $pol = $options->policy;
+            if (($oid = $cstr($pol->oid)) !== null) {
+                $params->policy_oid = $oid;
+            }
+            if ($pol->hash !== '') {
+                [$hb, $hl] = Ffi::bytes($pol->hash);
+                if ($hb !== null) {
+                    $params->policy_hash = $ffi->cast('uint8_t*', $hb);
+                    $params->policy_hash_len = $hl;
+                    $keep[] = $hb;
+                }
+            }
+            if (($ha = $cstr($pol->hashAlgorithmOid)) !== null) {
+                $params->policy_hash_alg_oid = $ha;
+            }
+            if (($uri = $cstr($pol->uri)) !== null) {
+                $params->policy_uri = $uri;
+            }
+        }
+        return [$params, $keep];
+    }
+
+    /**
+     * Copy a native out-buffer (`uint8_t*` + length CData) into a PHP string and
+     * free it with `pdf_buffer_free`.
+     */
+    private static function takeOut(\FFI\CData $ptr, \FFI\CData $len): string
+    {
+        $n = (int) $len->cdata;
+        if ($n === 0 || \FFI::isNull($ptr)) {
+            return '';
+        }
+        $bytes = \FFI::string($ptr, $n);
+        Ffi::get()->pdf_buffer_free($ptr, $n);
+        return $bytes;
+    }
 }

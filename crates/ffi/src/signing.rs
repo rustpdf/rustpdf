@@ -1,8 +1,15 @@
-//! C ABI: digital signatures and PAdES LTV (`pdf::sign`/`timestamp`/`add_dss`).
+//! C ABI: digital signatures and PAdES LTV (`pdf::sign`/`timestamp`/`add_dss`),
+//! plus **deferred / HSM signing** (issue #41 P0): two-phase
+//! prepare/embed (`pdf_sign_begin`/`pdf_sign_complete`), an external-signer
+//! callback (`pdf_sign_with`), and signature-field listing
+//! (`pdf_list_signatures`).
 
-use std::ffi::{c_char, c_int, c_uchar};
+use std::ffi::{c_char, c_int, c_uchar, c_void};
 
-use pdf::{sign, timestamp, SignOptions, Signer};
+use pdf::{
+    begin_signing, complete_signing, list_signatures, sign, sign_with, timestamp, Certify,
+    SignError, SignOptions, SignaturePolicy, Signer,
+};
 
 use crate::{bytes, emit_buffer, guard, set_last_error, PdfStatus};
 
@@ -16,6 +23,70 @@ unsafe fn opt(p: *const c_char) -> Option<String> {
         .to_str()
         .ok()
         .map(str::to_string)
+}
+
+/// Options for deferred/external signing, carried across the C ABI. NULL string
+/// fields and a zero `policy_hash_len` mean "absent". `certification` is the
+/// DocMDP `/P` value (0 = none, 1/2/3); `estimated_size` of 0 uses the default.
+#[repr(C)]
+pub struct PdfSigningOptions {
+    pub reason: *const c_char,
+    pub location: *const c_char,
+    pub name: *const c_char,
+    /// Non-zero selects PAdES-B-B (`ETSI.CAdES.detached`).
+    pub pades: c_int,
+    /// DocMDP certification level: 0 = none, 1/2/3 = `/P` value.
+    pub certification: c_int,
+    /// Reserved `/Contents` bytes; 0 = library default (8192).
+    pub estimated_size: usize,
+    /// Signature-policy OID (PAdES-EPES / ICP-Brasil); NULL = no policy.
+    pub policy_oid: *const c_char,
+    /// Policy hash bytes (with `policy_hash_len`); ignored if `policy_oid` NULL.
+    pub policy_hash: *const u8,
+    pub policy_hash_len: usize,
+    /// Policy hash algorithm OID; NULL = SHA-256.
+    pub policy_hash_alg_oid: *const c_char,
+    /// SPURI qualifier; NULL = none.
+    pub policy_uri: *const c_char,
+}
+
+/// Build a [`SignOptions`] from C-ABI [`PdfSigningOptions`].
+///
+/// # Safety
+/// `params` must be NULL or point at a valid `PdfSigningOptions` whose string
+/// pointers are NULL or valid C strings and whose `policy_hash`/`policy_hash_len`
+/// describe a readable region.
+unsafe fn sign_options(params: *const PdfSigningOptions) -> SignOptions {
+    let Some(p) = (unsafe { params.as_ref() }) else {
+        return SignOptions::default();
+    };
+    let certification = match p.certification {
+        1 => Some(Certify::Locked),
+        2 => Some(Certify::Forms),
+        3 => Some(Certify::FormsAndAnnotations),
+        _ => None,
+    };
+    let policy = unsafe { opt(p.policy_oid) }.map(|oid| SignaturePolicy {
+        oid,
+        hash: if p.policy_hash.is_null() || p.policy_hash_len == 0 {
+            Vec::new()
+        } else {
+            unsafe { bytes(p.policy_hash, p.policy_hash_len) }.to_vec()
+        },
+        hash_algorithm_oid: unsafe { opt(p.policy_hash_alg_oid) },
+        uri: unsafe { opt(p.policy_uri) },
+    });
+    SignOptions {
+        reason: unsafe { opt(p.reason) },
+        location: unsafe { opt(p.location) },
+        name: unsafe { opt(p.name) },
+        date: None,
+        visible: None,
+        pades: p.pades != 0,
+        certification,
+        policy,
+        estimated_size: (p.estimated_size != 0).then_some(p.estimated_size),
+    }
 }
 
 /// Sign `pdf` with a PKCS#8 DER private key + DER certificate, producing a new
@@ -55,9 +126,8 @@ pub unsafe extern "C" fn pdf_sign(
             reason: unsafe { opt(reason) },
             location: unsafe { opt(location) },
             name: unsafe { opt(name) },
-            date: None,
-            visible: None,
             pades: pades != 0,
+            ..Default::default()
         };
         match sign(unsafe { bytes(pdf, pdf_len) }, &signer, &opts) {
             Ok(b) => unsafe { emit_buffer(b, out_ptr, out_len) },
@@ -147,6 +217,196 @@ pub unsafe extern "C" fn pdf_add_dss(
                 set_last_error(format!("add_dss failed: {e}"));
                 PdfStatus::Sign
             }
+        }
+    })
+}
+
+/// **Two-phase signing, phase 1.** Prepare `pdf` for deferred signing: returns
+/// the prepared PDF (`out_doc`/`out_doc_len`, with a zero-filled `/Contents`
+/// placeholder) and the exact bytes to be signed (`out_tbs`/`out_tbs_len`).
+/// Hash `out_tbs` (SHA-256), sign remotely / build the CMS container, then call
+/// [`pdf_sign_complete`]. The private key never reaches this library.
+///
+/// # Safety
+/// `pdf` readable for `pdf_len`; `params` NULL or a valid [`PdfSigningOptions`]; the
+/// four out pointers writable. Both emitted buffers are freed with
+/// `pdf_buffer_free`.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_sign_begin(
+    pdf: *const u8,
+    pdf_len: usize,
+    params: *const PdfSigningOptions,
+    out_doc: *mut *mut c_uchar,
+    out_doc_len: *mut usize,
+    out_tbs: *mut *mut c_uchar,
+    out_tbs_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let opts = unsafe { sign_options(params) };
+        match begin_signing(unsafe { bytes(pdf, pdf_len) }, &opts) {
+            Ok(prepared) => {
+                let tbs = prepared.signed_bytes().to_vec();
+                let status = unsafe { emit_buffer(tbs, out_tbs, out_tbs_len) };
+                if status != PdfStatus::Ok {
+                    return status;
+                }
+                unsafe { emit_buffer(prepared.document().to_vec(), out_doc, out_doc_len) }
+            }
+            Err(e) => {
+                set_last_error(format!("sign prepare failed: {e}"));
+                PdfStatus::Sign
+            }
+        }
+    })
+}
+
+/// **Two-phase signing, phase 2.** Embed a complete DER CMS / PKCS#7 `container`
+/// into the prepared `document` (from [`pdf_sign_begin`]), producing the final
+/// signed PDF in `out_ptr`/`out_len`.
+///
+/// # Safety
+/// `document`/`container` readable for their lengths; `out_ptr`/`out_len`
+/// writable.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_sign_complete(
+    document: *const u8,
+    document_len: usize,
+    container: *const u8,
+    container_len: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        match complete_signing(unsafe { bytes(document, document_len) }, unsafe {
+            bytes(container, container_len)
+        }) {
+            Ok(b) => unsafe { emit_buffer(b, out_ptr, out_len) },
+            Err(e) => {
+                set_last_error(format!("sign embed failed: {e}"));
+                PdfStatus::Sign
+            }
+        }
+    })
+}
+
+/// Callback invoked to produce the raw RSA PKCS#1 v1.5 signature (over SHA-256
+/// of `data`) from a remote HSM. Write the signature into `sig_buf` (capacity
+/// `sig_cap`), set `*sig_len`, and return 0 on success (non-zero = failure).
+pub type PdfSignHashFn = extern "C" fn(
+    ctx: *mut c_void,
+    data: *const u8,
+    data_len: usize,
+    sig_buf: *mut u8,
+    sig_cap: usize,
+    sig_len: *mut usize,
+) -> c_int;
+
+/// **Model A — external signer callback.** Sign `pdf` without handing this
+/// library a key: it builds the CMS signed attributes and calls `callback`
+/// (with `ctx`) for the raw RSA signature, then assembles and embeds the CMS.
+/// `cert_der` is the signer certificate; `chain_ptrs`/`chain_lens`/`chain_count`
+/// are intermediate certificates (DER), supplied independently of the key.
+///
+/// # Safety
+/// `pdf`/`cert_der` readable for their lengths; each `chain_ptrs[i]` readable
+/// for `chain_lens[i]`; `params` NULL or valid; `callback` a valid function
+/// pointer; `out_ptr`/`out_len` writable.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_sign_with(
+    pdf: *const u8,
+    pdf_len: usize,
+    cert_der: *const u8,
+    cert_len: usize,
+    chain_ptrs: *const *const u8,
+    chain_lens: *const usize,
+    chain_count: usize,
+    params: *const PdfSigningOptions,
+    callback: PdfSignHashFn,
+    ctx: *mut c_void,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let chain: Vec<Vec<u8>> =
+            if chain_count == 0 || chain_ptrs.is_null() || chain_lens.is_null() {
+                Vec::new()
+            } else {
+                let ptrs = unsafe { std::slice::from_raw_parts(chain_ptrs, chain_count) };
+                let lens = unsafe { std::slice::from_raw_parts(chain_lens, chain_count) };
+                (0..chain_count)
+                    .map(|i| unsafe { bytes(ptrs[i], lens[i]) }.to_vec())
+                    .collect()
+            };
+        let opts = unsafe { sign_options(params) };
+        // `ctx` is an opaque pointer owned by the caller; threading it through the
+        // closure is the documented contract.
+        let ctx_addr = ctx as usize;
+        let sign_raw = move |data: &[u8]| -> Result<Vec<u8>, SignError> {
+            let mut buf = vec![0u8; 2048];
+            let mut sig_len = 0usize;
+            let rc = callback(
+                ctx_addr as *mut c_void,
+                data.as_ptr(),
+                data.len(),
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut sig_len,
+            );
+            if rc != 0 {
+                return Err(SignError::Key(format!("external signer returned {rc}")));
+            }
+            if sig_len > buf.len() {
+                return Err(SignError::Key("external signature exceeds buffer".into()));
+            }
+            buf.truncate(sig_len);
+            Ok(buf)
+        };
+        match sign_with(
+            unsafe { bytes(pdf, pdf_len) },
+            unsafe { bytes(cert_der, cert_len) },
+            &chain,
+            &opts,
+            sign_raw,
+        ) {
+            Ok(b) => unsafe { emit_buffer(b, out_ptr, out_len) },
+            Err(e) => {
+                set_last_error(format!("external sign failed: {e}"));
+                PdfStatus::Sign
+            }
+        }
+    })
+}
+
+/// List the signature fields in `pdf` (detect existing signatures before
+/// signing). Emits a newline-separated text buffer in `out_ptr`/`out_len`; each
+/// line is `<0|1>\t<field-name>` where the first column is 1 when the field is
+/// already signed. An empty buffer means no signature fields.
+///
+/// # Safety
+/// `pdf` readable for `pdf_len`; `out_ptr`/`out_len` writable. The buffer is
+/// freed with `pdf_buffer_free`.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_list_signatures(
+    pdf: *const u8,
+    pdf_len: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| match list_signatures(unsafe { bytes(pdf, pdf_len) }) {
+        Ok(fields) => {
+            let mut text = String::new();
+            for f in &fields {
+                text.push_str(if f.signed { "1\t" } else { "0\t" });
+                text.push_str(&f.name);
+                text.push('\n');
+            }
+            unsafe { emit_buffer(text.into_bytes(), out_ptr, out_len) }
+        }
+        Err(e) => {
+            set_last_error(format!("signature field listing failed: {e}"));
+            PdfStatus::Sign
         }
     })
 }

@@ -349,4 +349,47 @@ internal static partial class Native
     [LibraryImport(Lib)]
     internal static partial int pdf_verify_signatures_json(
         byte[] data, nuint len, out IntPtr outPtr, out nuint outLen);
+
+    // ---- Deferred / external (HSM) signing — issue #41 P0 -------------------
+
+    /// <summary>Mirrors the C-ABI <c>PdfSigningOptions</c> (deferred-signing options).
+    /// All pointer fields are NULL when unused; a zero <c>EstimatedSize</c> or
+    /// <c>PolicyHashLen</c> means "absent".</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct SigningOptionsNative
+    {
+        public IntPtr Reason;
+        public IntPtr Location;
+        public IntPtr Name;
+        public int Pades;
+        public int Certification;
+        public nuint EstimatedSize;
+        public IntPtr PolicyOid;
+        public IntPtr PolicyHash;
+        public nuint PolicyHashLen;
+        public IntPtr PolicyHashAlgOid;
+        public IntPtr PolicyUri;
+    }
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_sign_begin(
+        byte[] pdf, nuint pdfLen, in SigningOptionsNative pms,
+        out IntPtr outDoc, out nuint outDocLen, out IntPtr outTbs, out nuint outTbsLen);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_sign_complete(
+        byte[] document, nuint documentLen, byte[] container, nuint containerLen,
+        out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib)]
+    internal static unsafe partial int pdf_sign_with(
+        byte[] pdf, nuint pdfLen, byte[] certDer, nuint certLen,
+        IntPtr[] chainPtrs, nuint[] chainLens, nuint chainCount,
+        in SigningOptionsNative pms,
+        delegate* unmanaged[Cdecl]<IntPtr, byte*, nuint, byte*, nuint, nuint*, int> callback,
+        IntPtr ctx, out IntPtr outPtr, out nuint outLen);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_list_signatures(
+        byte[] pdf, nuint pdfLen, out IntPtr outPtr, out nuint outLen);
 }

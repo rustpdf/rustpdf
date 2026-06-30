@@ -20,6 +20,7 @@ import ctypes
 import os
 import sys
 from ctypes import (
+    CFUNCTYPE,
     POINTER,
     byref,
     c_char_p,
@@ -29,6 +30,7 @@ from ctypes import (
     c_ubyte,
     c_void_p,
 )
+from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 
@@ -42,6 +44,11 @@ __all__ = [
     "AFRelationship",
     "Encryption",
     "FacturxProfile",
+    "Certify",
+    "SignaturePolicy",
+    "SigningOptions",
+    "SignatureField",
+    "SigningSession",
     "version",
     "library_path",
     "activate_license",
@@ -53,6 +60,10 @@ __all__ = [
     "sign",
     "timestamp",
     "add_dss",
+    "sign_with",
+    "begin_signing",
+    "complete_signature",
+    "list_signatures",
 ]
 
 
@@ -101,6 +112,86 @@ class FacturxProfile(IntEnum):
     BASIC = 2
     EN16931 = 3
     EXTENDED = 4
+
+
+# ---- deferred / external (HSM) signing — issue #41 P0 ----------------------
+
+
+class Certify(IntEnum):
+    """DocMDP certification level applied by the first (certifying) signature."""
+
+    NONE = 0  # not a certifying signature
+    LOCKED = 1  # /P 1 — no changes permitted after signing
+    FORMS = 2  # /P 2 — form-filling and signing permitted
+    FORMS_AND_ANNOTATIONS = 3  # /P 3 — form-filling, signing and annotations
+
+
+@dataclass
+class SignaturePolicy:
+    """A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB)."""
+
+    oid: str
+    """The policy OID (dotted-decimal), e.g. the ICP-Brasil AD-RB OID."""
+    hash: bytes
+    """The policy document hash (under :attr:`hash_algorithm_oid`)."""
+    hash_algorithm_oid: str | None = None
+    """Hash algorithm OID; ``None`` = SHA-256."""
+    uri: str | None = None
+    """Optional SPURI qualifier — where the policy can be retrieved."""
+
+
+@dataclass
+class SigningOptions:
+    """Options for deferred / external signing (issue #41 P0)."""
+
+    reason: str | None = None
+    location: str | None = None
+    name: str | None = None
+    pades: bool = False
+    """Produce a PAdES-B-B signature (``ETSI.CAdES.detached``)."""
+    certify: Certify = Certify.NONE
+    """Certify the document (DocMDP) — use only on the first signature."""
+    container_size: int = 0
+    """Reserved ``/Contents`` bytes; 0 = default (8192). Raise for large
+    cloud-HSM CMS containers."""
+    policy: SignaturePolicy | None = None
+    """Signature-policy identifier (PAdES-EPES); ``None`` = none."""
+
+
+@dataclass
+class SignatureField:
+    """A signature field discovered in a PDF (pre-signing inventory)."""
+
+    name: str
+    signed: bool
+
+
+class SigningSession:
+    """An in-progress two-phase (Model B) signature.
+
+    :attr:`document` holds the prepared PDF (with a zero-filled ``/Contents``
+    placeholder) and :attr:`bytes` / :attr:`to_be_signed` the exact bytes the
+    signature covers. Hand :attr:`hash` to a remote signer, build the DER CMS /
+    PKCS#7 container, then call :meth:`complete`. The key never reaches this
+    library.
+    """
+
+    def __init__(self, document: bytes, to_be_signed: bytes) -> None:
+        self.document = document
+        self.to_be_signed = to_be_signed
+        self.bytes = to_be_signed
+
+    @property
+    def hash(self) -> bytes:
+        """SHA-256 of :attr:`to_be_signed` — the value an HSM signs."""
+        import hashlib
+
+        return hashlib.sha256(self.to_be_signed).digest()
+
+    def complete(self, container: bytes) -> bytes:
+        """Phase 2: embed a finished DER CMS / PKCS#7 ``container``, returning
+        the final signed PDF."""
+        return complete_signature(self.document, container)
 
 
 class Bookmark:
@@ -345,6 +436,59 @@ _ed_redact = _bind(
 _ed_convert_pdfa = _bind("pdf_editable_convert_to_pdfa", c_int, [_ED, c_int])
 # Tier 2: signature validation (module-level)
 _verify_sigs = _bind("pdf_verify_signatures_json", c_int, [_U8, c_size_t, *_OUTBUF])
+
+
+# Deferred / external (HSM) signing — issue #41 P0.
+class _SigningOptionsNative(ctypes.Structure):
+    """Mirrors the C-ABI ``PdfSigningOptions`` — field order is load-bearing."""
+
+    _fields_ = [
+        ("reason", c_char_p),
+        ("location", c_char_p),
+        ("name", c_char_p),
+        ("pades", c_int),
+        ("certification", c_int),
+        ("estimated_size", c_size_t),
+        ("policy_oid", c_char_p),
+        ("policy_hash", _U8),
+        ("policy_hash_len", c_size_t),
+        ("policy_hash_alg_oid", c_char_p),
+        ("policy_uri", c_char_p),
+    ]
+
+
+# int (*)(void* ctx, const uint8_t* data, uintptr data_len,
+#         uint8_t* sig_buf, uintptr sig_cap, uintptr* sig_len)
+_SIGN_HASH_FN = CFUNCTYPE(
+    c_int, c_void_p, _U8, c_size_t, _U8, c_size_t, POINTER(c_size_t)
+)
+
+_sign_begin = _bind(
+    "pdf_sign_begin",
+    c_int,
+    [
+        _U8, c_size_t,
+        POINTER(_SigningOptionsNative),
+        POINTER(_U8), POINTER(c_size_t),
+        POINTER(_U8), POINTER(c_size_t),
+    ],
+)
+_sign_complete = _bind(
+    "pdf_sign_complete", c_int, [_U8, c_size_t, _U8, c_size_t, *_OUTBUF]
+)
+_sign_with = _bind(
+    "pdf_sign_with",
+    c_int,
+    [
+        _U8, c_size_t,
+        _U8, c_size_t,
+        POINTER(_U8), POINTER(c_size_t), c_size_t,
+        POINTER(_SigningOptionsNative),
+        _SIGN_HASH_FN, c_void_p,
+        *_OUTBUF,
+    ],
+)
+_list_signatures = _bind("pdf_list_signatures", c_int, [_U8, c_size_t, *_OUTBUF])
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -889,3 +1033,139 @@ def add_dss(pdf: bytes, certs=(), crls=()) -> bytes:
     cp, cl, cc, _kc = arrays(certs)
     rp, rl, rc, _kr = arrays(crls)
     return _take(lambda p, ln: _add_dss(pp, pn, cp, cl, cc, rp, rl, rc, p, ln))
+
+
+# ---- deferred / external (HSM) signing — issue #41 P0 ----------------------
+
+
+def _build_signing_options(options: "SigningOptions | None"):
+    """Marshal :class:`SigningOptions` into a ``_SigningOptionsNative`` plus a
+    keep-alive list that must outlive the native call."""
+    n = _SigningOptionsNative()
+    keep: list = []
+
+    def s(value) -> bytes | None:
+        b = _enc(value)
+        keep.append(b)
+        return b
+
+    if options is None:
+        return n, keep
+    n.reason = s(options.reason)
+    n.location = s(options.location)
+    n.name = s(options.name)
+    n.pades = 1 if options.pades else 0
+    n.certification = int(options.certify)
+    n.estimated_size = options.container_size if options.container_size and options.container_size > 0 else 0
+    pol = options.policy
+    if pol is not None:
+        n.policy_oid = s(pol.oid)
+        if pol.hash:
+            arr = (c_ubyte * len(pol.hash)).from_buffer_copy(bytes(pol.hash))
+            keep.append(arr)
+            n.policy_hash = ctypes.cast(arr, _U8)
+            n.policy_hash_len = len(pol.hash)
+        n.policy_hash_alg_oid = s(pol.hash_algorithm_oid)
+        n.policy_uri = s(pol.uri)
+    return n, keep
+
+
+def _copy_free(ptr, length) -> bytes:
+    """Copy a native out-buffer into a ``bytes`` and free it."""
+    try:
+        if not ptr or length.value == 0:
+            return b""
+        return bytes(ctypes.cast(ptr, POINTER(c_ubyte * length.value)).contents)
+    finally:
+        _buffer_free(ptr, length)
+
+
+def sign_with(pdf: bytes, cert_der: bytes, sign_hash, chain=(), options=None) -> bytes:
+    """**Model A — remote signer.** Sign ``pdf`` without handing this library a
+    key: it builds the CMS signed attributes and calls ``sign_hash`` for the raw
+    RSA signature, then assembles and embeds the CMS.
+
+    ``sign_hash`` is a callable ``(data: bytes) -> bytes`` producing the raw
+    RSA PKCS#1 v1.5 signature over SHA-256 of ``data`` (typically by calling a
+    remote HSM — Azure Key Vault, VIDaaS, BirdID). The private key never reaches
+    this library. ``cert_der`` is the signer certificate; ``chain`` are
+    intermediate certificates (DER), supplied independently of the key.
+    """
+    pp, pn, _k1 = _as_u8(bytes(pdf))
+    cp, cn, _k2 = _as_u8(bytes(cert_der))
+    chain = [bytes(x) for x in chain]
+    chain_keep = [(c_ubyte * len(x)).from_buffer_copy(x) for x in chain]
+    chain_ptrs = (
+        (_U8 * len(chain))(*[ctypes.cast(k, _U8) for k in chain_keep])
+        if chain else None
+    )
+    chain_lens = (c_size_t * len(chain))(*[len(x) for x in chain]) if chain else None
+    opts, _keep = _build_signing_options(options)
+
+    def _trampoline(_ctx, data, data_len, sig_buf, sig_cap, sig_len):
+        # Guard the C boundary: a Python exception must never unwind into Rust.
+        try:
+            buf = bytes(ctypes.cast(data, POINTER(c_ubyte * data_len)).contents)
+            sig = bytes(sign_hash(buf))
+            if len(sig) > sig_cap:
+                return 2  # buffer too small
+            ctypes.memmove(sig_buf, sig, len(sig))
+            sig_len[0] = len(sig)
+            return 0
+        except Exception:  # noqa: BLE001 — must not let it cross the FFI line
+            return 1  # signer threw
+
+    cb = _SIGN_HASH_FN(_trampoline)
+    return _take(
+        lambda p, ln: _sign_with(
+            pp, pn, cp, cn, chain_ptrs, chain_lens, len(chain),
+            byref(opts), cb, None, p, ln,
+        )
+    )
+
+
+def begin_signing(pdf: bytes, options=None) -> SigningSession:
+    """**Model B — two-phase signing, phase 1.** Prepare ``pdf`` for deferred
+    signing and return a :class:`SigningSession`. Hand its :attr:`~SigningSession.hash`
+    to a remote signer, build the CMS container, then call
+    :meth:`SigningSession.complete`. The key never reaches this library."""
+    pp, pn, _k = _as_u8(bytes(pdf))
+    opts, _keep = _build_signing_options(options)
+    doc_ptr, doc_len = _U8(), c_size_t(0)
+    tbs_ptr, tbs_len = _U8(), c_size_t(0)
+    _check(
+        _sign_begin(
+            pp, pn, byref(opts),
+            byref(doc_ptr), byref(doc_len),
+            byref(tbs_ptr), byref(tbs_len),
+        )
+    )
+    document = _copy_free(doc_ptr, doc_len)
+    tbs = _copy_free(tbs_ptr, tbs_len)
+    return SigningSession(document, tbs)
+
+
+def complete_signature(document: bytes, container: bytes) -> bytes:
+    """**Model B — two-phase signing, phase 2.** Embed a complete DER CMS /
+    PKCS#7 ``container`` into a prepared ``document`` (from :func:`begin_signing`),
+    producing the final signed PDF."""
+    dp, dn, _k1 = _as_u8(bytes(document))
+    cp, cn, _k2 = _as_u8(bytes(container))
+    return _take(lambda p, ln: _sign_complete(dp, dn, cp, cn, p, ln))
+
+
+def list_signatures(pdf: bytes) -> list[SignatureField]:
+    """List the signature fields in ``pdf`` (detect existing signatures before
+    signing — the iText ``SignatureUtil.getSignatureNames`` equivalent). An empty
+    list means there are no signature fields."""
+    pp, pn, _k = _as_u8(bytes(pdf))
+    text = _take(lambda p, ln: _list_signatures(pp, pn, p, ln)).decode("utf-8")
+    result: list[SignatureField] = []
+    for line in text.split("\n"):
+        if not line:
+            continue
+        tab = line.find("\t")
+        if tab < 0:
+            continue
+        result.append(SignatureField(name=line[tab + 1:], signed=line[:tab] == "1"))
+    return result

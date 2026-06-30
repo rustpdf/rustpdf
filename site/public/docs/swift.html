@@ -154,6 +154,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#deferred">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -610,6 +611,92 @@ let signed = try Pdf.sign(pdf: pdf, keyDER: key, certDER: cert,
     options: SignOptions(reason: "Approved", location: "New York",
                          name: "Jane Doe", pades: true))
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
+
+      <!-- DEFERRED / HSM -->
+      <h2 id="deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without the private key ever entering the library. The key stays in a hardware security module, cloud KMS, smartcard or PKI token; RustPdf builds the PDF signature structures and the CMS, and only the raw signature crosses back. This works with any PKI (for example eIDAS-qualified providers or AATL members). Two models are offered: a synchronous callback (Model A) and a two-phase split (Model B) for asynchronous or networked signers.</p>
+
+      <h3>Model A: external signer callback</h3>
+      <p><code>signWith</code> prepares the signature, then calls your closure with the bytes to sign and embeds the raw RSA PKCS#1 v1.5 signature it returns (computed over SHA-256 of those bytes). The <code>certificate</code> is the signer certificate (DER); <code>chain</code> are intermediate certificates (DER), supplied independently of the key.</p>
+      <div class="api"><code>Pdf.signWith(_ pdf: [UInt8], certificate: [UInt8], chain: [[UInt8]] = [], options: SigningOptions? = nil, sign: ([UInt8]) throws -&gt; [UInt8]) -&gt; [UInt8]</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let pdf  = try read("contract.pdf")
+let cert = try read("signer.der")        // signer certificate (DER)
+
+let signed = try Pdf.signWith(
+    pdf, certificate: cert, chain: [intermediateCert],
+    options: SigningOptions(reason: "Approved", pades: true)
+) { toSign in
+    // Send `toSign` to your HSM / cloud KMS / smartcard and return the
+    // raw RSA PKCS#1 v1.5 signature. The key never leaves the device.
+    try hsm.signRSA(sha256: toSign)
+}
+try Data(signed).write(to: URL(fileURLWithPath: "contract.signed.pdf"))</code></pre></div>
+      <div class="note"><b>The closure receives the bytes, not the digest.</b> RustPdf passes the data to be signed; your signer hashes it with SHA-256 and produces the RSA signature. If the closure throws, that error is surfaced to the caller in preference to the native status.</div>
+
+      <h3>Model B: two-phase signing</h3>
+      <p>For an asynchronous or remote signer, split signing across two calls. <code>beginSigning</code> returns a <code>SigningSession</code> holding the prepared <code>document</code> (with a zero-filled <code>/Contents</code> placeholder), the exact <code>bytes</code> the signature covers, and their SHA-256 <code>hash</code>. Hand the hash to your HSM, assemble a DER CMS / PKCS#7 container, then call <code>complete</code> (or <code>Pdf.completeSignature</code>).</p>
+      <div class="api"><code>Pdf.beginSigning(_ pdf: [UInt8], options: SigningOptions? = nil) -&gt; SigningSession</code></div>
+      <div class="api"><code>SigningSession.complete(_ container: [UInt8]) -&gt; [UInt8]</code></div>
+      <div class="api"><code>Pdf.completeSignature(_ document: [UInt8], container: [UInt8]) -&gt; [UInt8]</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let pdf = try read("contract.pdf")
+
+// Phase 1: prepare the document and get the bytes to sign.
+let session = try Pdf.beginSigning(pdf, options: SigningOptions(certify: .forms))
+let digest  = session.hash               // SHA-256 of session.bytes
+
+// Phase 2 (possibly minutes later, on another host): your signer returns a
+// finished CMS/PKCS#7 container built around `digest`.
+let container = try remoteSigner.buildCMS(forHash: digest)
+let signed    = try session.complete(container)
+
+// `session.document` survives serialization, so phase 2 can run elsewhere:
+//   let signed = try Pdf.completeSignature(session.document, container: container)</code></pre></div>
+
+      <h3>Inspect signature fields first</h3>
+      <p>Before signing, list the signature fields already present (signed or empty), so you can pick an empty field or confirm a document is unsigned.</p>
+      <div class="api"><code>Pdf.listSignatures(_ pdf: [UInt8]) -&gt; [SignatureField]</code></div>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>for field in try Pdf.listSignatures(pdf) {
+    print(field.name, field.signed ? "(signed)" : "(empty)")
+}</code></pre></div>
+
+      <h4>SigningOptions</h4>
+      <p>Shared by both models. Empty strings and <code>nil</code> are treated as absent.</p>
+      <table>
+        <tr><th>Property</th><th>Type</th><th>Meaning</th></tr>
+        <tr><td><code>reason</code></td><td><code>String?</code></td><td>The <code>/Reason</code> recorded in the signature dictionary.</td></tr>
+        <tr><td><code>location</code></td><td><code>String?</code></td><td>The <code>/Location</code> recorded in the signature dictionary.</td></tr>
+        <tr><td><code>name</code></td><td><code>String?</code></td><td>The signer <code>/Name</code> recorded in the signature dictionary.</td></tr>
+        <tr><td><code>pades</code></td><td><code>Bool</code></td><td>Produce a PAdES-B-B signature (<code>ETSI.CAdES.detached</code>).</td></tr>
+        <tr><td><code>certify</code></td><td><code>Certify</code></td><td>Certify the document (DocMDP). Use only on the first signature.</td></tr>
+        <tr><td><code>containerSize</code></td><td><code>Int</code></td><td>Reserved <code>/Contents</code> bytes; 0 uses the library default (8192). Raise it for large cloud-HSM CMS containers.</td></tr>
+        <tr><td><code>policy</code></td><td><code>SignaturePolicy?</code></td><td>Signature-policy identifier (PAdES-EPES); <code>nil</code> for none.</td></tr>
+      </table>
+
+      <h4>Certify</h4>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>.none</code></td><td>Not a certifying signature (an ordinary approval signature).</td></tr>
+        <tr><td><code>.locked</code></td><td><code>/P 1</code>: no changes permitted after signing.</td></tr>
+        <tr><td><code>.forms</code></td><td><code>/P 2</code>: form-filling and signing permitted.</td></tr>
+        <tr><td><code>.formsAndAnnotations</code></td><td><code>/P 3</code>: form-filling, signing and annotations permitted.</td></tr>
+      </table>
+
+      <h4>SignaturePolicy</h4>
+      <p>A PAdES-EPES policy identifier embedded as a signed attribute.</p>
+      <table>
+        <tr><th>Property</th><th>Type</th><th>Meaning</th></tr>
+        <tr><td><code>oid</code></td><td><code>String</code></td><td>The policy OID (dotted-decimal).</td></tr>
+        <tr><td><code>hash</code></td><td><code>[UInt8]</code></td><td>The policy document hash (under <code>hashAlgorithmOid</code>).</td></tr>
+        <tr><td><code>hashAlgorithmOid</code></td><td><code>String?</code></td><td>Hash algorithm OID; <code>nil</code> means SHA-256.</td></tr>
+        <tr><td><code>uri</code></td><td><code>String?</code></td><td>Optional SPURI qualifier: where the policy can be retrieved.</td></tr>
+      </table>
+
+      <h4>SignatureField</h4>
+      <table>
+        <tr><th>Property</th><th>Type</th><th>Meaning</th></tr>
+        <tr><td><code>name</code></td><td><code>String</code></td><td>The signature field name.</td></tr>
+        <tr><td><code>signed</code></td><td><code>Bool</code></td><td>Whether the field already holds a signature.</td></tr>
+      </table>
 
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>

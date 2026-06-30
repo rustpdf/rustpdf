@@ -166,6 +166,7 @@
 
       <h4>Signatures</h4>
       <a href="#sign">Sign (PKCS#7 / PAdES)</a>
+      <a href="#sign-deferred">Deferred / HSM signing</a>
       <a href="#ltv">Timestamp &amp; DSS (LTV)</a>
       <a href="#verify">Validate signatures</a>
 
@@ -704,6 +705,56 @@ if err != nil {
 _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
+      <!-- DEFERRED / HSM SIGNING -->
+      <h2 id="sign-deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <p>Sign without ever handing the library a private key. The key stays in an HSM, cloud KMS, smartcard or PKI token; you supply only the signer certificate and a way to produce the raw RSA PKCS#1 v1.5 signature over SHA-256. This works with any PKI (eIDAS, AATL and other trust frameworks). Two models are available: a one-call form with a sign-hash callback, and a two-phase form for asynchronous signers where you build the CMS container yourself.</p>
+      <p><b>Model A.</b> <code>SignWith</code> assembles the CMS signed attributes, calls <code>signHash</code> for the raw signature, then embeds the finished CMS. <code>certDER</code> is the signer certificate; <code>chain</code> are intermediate certificates (DER), supplied independently of the key; <code>options</code> may be <code>nil</code>.</p>
+      <div class="api"><code>rustpdf.SignWith(pdf, certDER []byte, signHash func([]byte) ([]byte, error), chain [][]byte, options *SigningOptions) ([]byte, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>pdf, _ := os.ReadFile("contract.pdf")
+certDER, _ := os.ReadFile("signer.der")       // X.509 certificate (DER), no key
+
+signed, err := rustpdf.SignWith(pdf, certDER,
+	func(tbs []byte) ([]byte, error) {
+		return hsm.SignRSA(tbs)               // remote HSM / KMS / smartcard
+	},
+	nil,                                      // chain: intermediate certs (DER)
+	&rustpdf.SigningOptions{Reason: "Approved", PAdES: true})
+if err != nil {
+	log.Fatal(err)
+}
+_ = os.WriteFile("contract.signed.pdf", signed, 0o644)</code></pre></div>
+
+      <p><b>Model B.</b> For an asynchronous signer, drive the two-phase flow. <code>BeginSigning</code> returns a <code>SigningSession</code> exposing the placeholder document, the exact covered bytes and their SHA-256 hash. Hand the hash to the remote signer, build the DER CMS / PKCS#7 container yourself, then complete the signature. The session methods are <code>Document() []byte</code>, <code>Bytes() []byte</code>, <code>Hash() [32]byte</code> and <code>Complete(container []byte) ([]byte, error)</code>.</p>
+      <div class="api"><code>rustpdf.BeginSigning(pdf []byte, options *SigningOptions) (*SigningSession, error)</code></div>
+      <div class="api"><code>rustpdf.CompleteSignature(document, container []byte) ([]byte, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>sess, _ := rustpdf.BeginSigning(pdf, &rustpdf.SigningOptions{PAdES: true})
+digest := sess.Hash()                         // [32]byte, SHA-256 of sess.Bytes()
+
+container := buildCMS(digest, certDER, sig)   // your DER CMS / PKCS#7
+final, err := sess.Complete(container)        // or rustpdf.CompleteSignature(sess.Document(), container)
+if err != nil {
+	log.Fatal(err)
+}
+_ = os.WriteFile("contract.signed.pdf", final, 0o644)</code></pre></div>
+
+      <p>List the signature fields already present before signing, to detect an existing signature or pick a target field. An empty slice means there are no signature fields.</p>
+      <div class="api"><code>rustpdf.ListSignatures(pdf []byte) ([]SignatureField, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>fields, _ := rustpdf.ListSignatures(pdf)
+for _, f := range fields {
+	fmt.Printf("%s signed:%v\n", f.Name, f.Signed) // SignatureField{Name, Signed}
+}</code></pre></div>
+
+      <p><code>SigningOptions</code> carries <code>Reason</code>, <code>Location</code>, <code>Name</code>, <code>PAdES</code> (produce a PAdES-B-B signature), <code>Certify</code> (a DocMDP certification level, use only on the first signature), <code>ContainerSize</code> (reserved <code>/Contents</code> bytes; <code>0</code> uses the default, raise it for large cloud CMS containers) and <code>Policy</code> (an optional PAdES-EPES signature-policy identifier).</p>
+      <h3>Certify</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>rustpdf.CertifyNone</code></td><td>Not a certifying signature (default)</td></tr>
+        <tr><td><code>rustpdf.CertifyLocked</code></td><td>No changes permitted after signing</td></tr>
+        <tr><td><code>rustpdf.CertifyForms</code></td><td>Form-filling and signing permitted</td></tr>
+        <tr><td><code>rustpdf.CertifyFormsAndAnnotations</code></td><td>Form-filling, signing and annotations permitted</td></tr>
+      </table>
+      <p><code>SignaturePolicy</code> (for <code>Policy</code>) carries the policy <code>OID</code> (dotted-decimal), the policy document <code>Hash</code>, an optional <code>HashAlgorithmOID</code> (SHA-256 when empty) and an optional <code>URI</code> where the policy can be retrieved.</p>
+
       <!-- LTV -->
       <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
       <p>Build long-term-validation signatures offline. <code>AddDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>Timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
@@ -862,6 +913,7 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
       <a href="#sign">Signatures</a>
+      <a href="#sign-deferred">Deferred / HSM signing</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#render">Render to image</a>

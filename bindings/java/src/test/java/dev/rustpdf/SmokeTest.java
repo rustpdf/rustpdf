@@ -4,6 +4,10 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Arrays;
 import java.util.List;
 
@@ -211,6 +215,55 @@ public final class SmokeTest {
         System.out.println("verify_signatures: " + reports.size() + " sig(s), first isValid="
                 + r.isValid() + " subFilter=" + r.subFilter()
                 + " coversWhole=" + r.coversWholeDocument());
+
+        // 13. Deferred / external (HSM) signing — issue #41 P0.
+        //     The private key stays in the JVM (java.security); the library only
+        //     receives the raw RSA-PKCS#1-v1.5-over-SHA-256 signature via a callback.
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        PrivateKey privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(key));
+
+        // listSignatures on an unsigned doc is empty.
+        assertThat(Pdf.listSignatures(plain).isEmpty(), "no signatures before signing");
+
+        // Model A: the library calls back for the signature over `data`.
+        SigningOptions opts = new SigningOptions();
+        opts.reason = "Assinado via HSM";
+        opts.pades = true;
+        boolean[] called = {false};
+        byte[] signedA = Pdf.signWith(plain, cert, data -> {
+            called[0] = true;
+            try {
+                Signature sg = Signature.getInstance("SHA256withRSA");
+                sg.initSign(privateKey);
+                sg.update(data);
+                return sg.sign();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, List.of(), opts);
+        assertThat(called[0], "signHash callback was invoked");
+        assertThat(latin1(signedA).contains("/ByteRange"), "Model A signature ByteRange");
+        List<SignatureReport> reportsA = Pdf.verifySignatures(signedA);
+        assertThat(!reportsA.isEmpty(), "Model A produced a signature");
+        assertThat(reportsA.get(0).isValid(), "Model A signature is valid: " + reportsA.get(0).isValid());
+        System.out.println("Model A (signWith) ok (" + signedA.length + " bytes); isValid="
+                + reportsA.get(0).isValid());
+
+        // listSignatures now reports exactly one (signed) field.
+        List<SignatureField> fields = Pdf.listSignatures(signedA);
+        assertThat(fields.size() == 1, "one signature field after signing: " + fields.size());
+        assertThat(fields.get(0).signed(), "field is signed: " + fields.get(0));
+        System.out.println("listSignatures: " + fields.size() + " field(s), first="
+                + fields.get(0).name() + " signed=" + fields.get(0).signed());
+
+        // Model B: two-phase (begin → hash → complete). Here we just prove phase 1
+        // yields a prepared document and a non-empty 32-byte digest.
+        SigningSession session = Pdf.beginSigning(plain, opts);
+        assertThat(session.document().length > 0, "begin produced a prepared document");
+        assertThat(session.bytes().length > 0, "begin produced bytes-to-sign");
+        assertThat(session.hash().length == 32, "SHA-256 hash is 32 bytes: " + session.hash().length);
+        System.out.println("Model B (beginSigning) ok: document=" + session.document().length
+                + " bytes, tbs=" + session.bytes().length + " bytes, hash=" + session.hash().length);
 
         System.out.println("OK: full Java binding surface exercised");
     }

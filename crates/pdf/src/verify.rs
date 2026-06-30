@@ -16,7 +16,7 @@
 //! "is the signature intact and does it cover the document".
 
 use cms::content_info::ContentInfo;
-use cms::signed_data::{SignedData, SignerInfo};
+use cms::signed_data::{SignedData, SignerIdentifier, SignerInfo};
 use const_oid::ObjectIdentifier;
 use der::{Decode, Encode};
 use rsa::pkcs1::DecodeRsaPublicKey;
@@ -113,6 +113,79 @@ pub fn verify_signatures(pdf: impl AsRef<[u8]>) -> Result<Vec<SignatureReport>, 
     Ok(reports)
 }
 
+/// One signature field discovered in a PDF (the pre-signing inventory).
+#[derive(Debug, Clone)]
+pub struct SignatureField {
+    /// The fully-qualified field name (`/T`, dotting parent names together).
+    pub name: String,
+    /// Whether the field already carries a signature value (`/V` present).
+    pub signed: bool,
+}
+
+/// List the signature fields in `pdf` (the iText `SignatureUtil.getSignatureNames`
+/// / `getBlankSignatureNames` equivalent) so callers can **detect existing
+/// signatures before signing**. Reads document structure only — not a licensed
+/// operation. An empty vector means there are no signature fields.
+pub fn list_signatures(pdf: impl AsRef<[u8]>) -> Result<Vec<SignatureField>, BuildError> {
+    let reader = PdfReader::parse(pdf.as_ref()).map_err(|e| BuildError::Parse(e.to_string()))?;
+    let mut out = Vec::new();
+    let Some(root) = reader.trailer().get("Root") else {
+        return Ok(out);
+    };
+    let Object::Dict(catalog) = reader.resolve(root) else {
+        return Ok(out);
+    };
+    let Some(af) = catalog.get("AcroForm") else {
+        return Ok(out);
+    };
+    let Object::Dict(acro) = reader.resolve(af) else {
+        return Ok(out);
+    };
+    if let Some(fields) = acro.get("Fields") {
+        if let Object::Array(fields) = reader.resolve(fields) {
+            for f in fields {
+                collect_sig_fields(&reader, f, "", &mut out);
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Walk a (possibly hierarchical) AcroForm field, collecting `/FT /Sig` leaves.
+fn collect_sig_fields(
+    reader: &PdfReader,
+    obj: &Object,
+    prefix: &str,
+    out: &mut Vec<SignatureField>,
+) {
+    let Object::Dict(d) = reader.resolve(obj) else {
+        return;
+    };
+    let partial = match d.get("T").map(|o| reader.resolve(o)) {
+        Some(Object::String(s)) => Some(String::from_utf8_lossy(s.as_bytes()).into_owned()),
+        _ => None,
+    };
+    let full = match &partial {
+        Some(n) if prefix.is_empty() => n.clone(),
+        Some(n) => format!("{prefix}.{n}"),
+        None => prefix.to_string(),
+    };
+    let is_sig = matches!(d.get("FT").map(|o| reader.resolve(o)), Some(Object::Name(n)) if n.as_str() == "Sig");
+    if is_sig {
+        out.push(SignatureField {
+            name: full.clone(),
+            signed: d.get("V").is_some(),
+        });
+    }
+    if let Some(kids) = d.get("Kids") {
+        if let Object::Array(kids) = reader.resolve(kids) {
+            for k in kids {
+                collect_sig_fields(reader, k, &full, out);
+            }
+        }
+    }
+}
+
 fn verify_one(
     pdf: &[u8],
     reader: &PdfReader,
@@ -148,7 +221,7 @@ fn verify_one(
     let Some(signer_info) = signed.signer_infos.0.iter().next() else {
         return report;
     };
-    let cert = signer_cert(&signed);
+    let cert = signer_cert(&signed, signer_info);
     report.signer = cert.as_ref().map(|c| c.tbs_certificate.subject.to_string());
 
     // The digest the signature commits to must equal the digest of the covered
@@ -196,14 +269,30 @@ fn parse_cms(contents: &[u8]) -> Option<SignedData> {
     SignedData::from_der(&ci.content.to_der().ok()?).ok()
 }
 
-/// The signer certificate from the SignedData certificate set (first one).
-fn signer_cert(signed: &SignedData) -> Option<Certificate> {
+/// The signer certificate from the SignedData certificate set. When a full
+/// chain is embedded (signer + CA certs) the set is a DER-ordered `SET OF`, so
+/// the signer's own certificate is **not** necessarily first — match it by the
+/// `SignerInfo`'s `IssuerAndSerialNumber`, falling back to the first cert.
+fn signer_cert(signed: &SignedData, si: &SignerInfo) -> Option<Certificate> {
     use cms::cert::CertificateChoices;
     let certs = signed.certificates.as_ref()?;
-    certs.0.iter().find_map(|c| match c {
-        CertificateChoices::Certificate(cert) => Some(cert.clone()),
-        _ => None,
-    })
+    let all: Vec<&Certificate> = certs
+        .0
+        .iter()
+        .filter_map(|c| match c {
+            CertificateChoices::Certificate(cert) => Some(cert),
+            _ => None,
+        })
+        .collect();
+    if let SignerIdentifier::IssuerAndSerialNumber(ias) = &si.sid {
+        if let Some(cert) = all.iter().find(|c| {
+            c.tbs_certificate.issuer == ias.issuer
+                && c.tbs_certificate.serial_number == ias.serial_number
+        }) {
+            return Some((*cert).clone());
+        }
+    }
+    all.first().map(|c| (*c).clone())
 }
 
 /// The `messageDigest` signed attribute value, if present.

@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../RustPdf/RustPdf.csproj" />
+    <!-- SignedCms (detached CMS) for the deferred-signing demo (issue #41). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
   </ItemGroup>
 
 </Project>
