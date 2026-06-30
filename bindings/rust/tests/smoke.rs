@@ -322,6 +322,75 @@ fn full_surface() {
         "PDF 2.0 header expected"
     );
 
+    // --- page geometry (measure_pages / measure_page, issue #45 P1) ---
+    let geos = rustpdf::measure_pages(&bytes).expect("measure_pages");
+    assert_eq!(geos.len(), 1, "one page in the authored doc");
+    let g0 = &geos[0];
+    assert!(
+        g0.width > 0.0 && g0.height > 0.0,
+        "page should have a non-empty size: {g0:?}"
+    );
+    assert_eq!(g0.rotation, 0, "unrotated page");
+    assert!(
+        (g0.media_box.width() - g0.width).abs() < 0.01,
+        "media box width should match page width: {g0:?}"
+    );
+    // measure_page targets a single index.
+    let single = rustpdf::measure_page(&bytes, 0).expect("measure_page");
+    assert_eq!(single, *g0);
+    assert!(
+        rustpdf::measure_page(&bytes, 99).is_err(),
+        "out-of-range page should error"
+    );
+
+    // Rotating a page swaps the rotated dimensions while size stays unrotated.
+    let mut rot = EditableDoc::load(&bytes).expect("load for rotate");
+    rot.rotate_page(0, 90).unwrap();
+    let rot_bytes = rot.to_bytes().expect("rotate to bytes");
+    let rg = rustpdf::measure_page(&rot_bytes, 0).expect("measure rotated page");
+    assert_eq!(rg.rotation, 90, "page should report 90° rotation");
+    assert!(
+        (rg.rotated_width - rg.height).abs() < 0.01 && (rg.rotated_height - rg.width).abs() < 0.01,
+        "rotated dimensions should be swapped: {rg:?}"
+    );
+
+    // --- inspect (issue #45 P1) ---
+    let overview = rustpdf::inspect(&bytes).expect("inspect");
+    assert_eq!(overview.page_count, 1, "one page reported");
+    assert!(!overview.encrypted, "plain doc is not encrypted");
+    assert!(!overview.requires_password, "plain doc needs no password");
+    assert!(!overview.version.is_empty(), "version string set");
+    let enc_overview = rustpdf::inspect(&encrypted).expect("inspect encrypted");
+    assert!(enc_overview.encrypted, "encrypted doc reports encrypted");
+
+    // --- fill_rect + place_text (issue #45 P1) ---
+    let mut paint = EditableDoc::load(&bytes).expect("load for paint");
+    assert!(
+        paint
+            .fill_rect(0, 72.0, 500.0, 200.0, 40.0, (0.9, 0.9, 0.2), 0.5)
+            .unwrap(),
+        "fill_rect should report the page existed"
+    );
+    assert!(
+        paint
+            .place_text(0, 80.0, 510.0, "PLACED_MARKER", 18.0, (0.0, 0.0, 0.0), 0.0)
+            .unwrap(),
+        "place_text should report the page existed"
+    );
+    // Out-of-range pages report not-found rather than erroring.
+    assert!(!paint
+        .fill_rect(99, 0.0, 0.0, 10.0, 10.0, (0.0, 0.0, 0.0), 1.0)
+        .unwrap());
+    assert!(!paint
+        .place_text(99, 0.0, 0.0, "x", 12.0, (0.0, 0.0, 0.0), 0.0)
+        .unwrap());
+    let painted = paint.to_bytes().expect("paint to bytes");
+    let painted_text = rustpdf::extract_text(&painted).expect("extract painted text");
+    assert!(
+        painted_text.contains("PLACED_MARKER"),
+        "placed text should be extractable, got: {painted_text:?}"
+    );
+
     // --- deferred signing: Model A callback wiring + visible appearance ---
     // Model A: the closure receives the to-be-signed bytes (the key never
     // crosses the FFI line). We return a placeholder container; we only assert

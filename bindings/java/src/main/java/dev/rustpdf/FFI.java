@@ -196,6 +196,14 @@ final class FFI {
                                               double width, double height, double opacity,
                                               double rotationDeg);
 
+        // ---- Page content drawing — issue #45 P1 (EditableDoc) --------------
+        int pdf_editable_fill_rect(Pointer ed, int index, double x, double y,
+                                   double width, double height, double r, double g, double b,
+                                   double opacity, IntByReference outFound);
+        int pdf_editable_place_text(Pointer ed, int index, double x, double y, String text,
+                                    double size, double r, double g, double b,
+                                    double rotationDeg, IntByReference outFound);
+
         // ---- Normalization — issue #41 P1 (EditableDoc) ---------------------
         int pdf_editable_set_version(Pointer ed, int version);
         int pdf_editable_strip_pdfa(Pointer ed);
@@ -225,6 +233,12 @@ final class FFI {
         // ---- Positional text search — issue #41 P1 --------------------------
         int pdf_find_text_json(byte[] data, long len, String query, int caseSensitive,
                                PointerByReference outPtr, LongByReference outLen);
+
+        // ---- Page geometry + inspection (JSON) — issue #45 P1 ---------------
+        int pdf_measure_pages_json(byte[] data, long len,
+                                   PointerByReference outPtr, LongByReference outLen);
+        int pdf_inspect_json(byte[] data, long len,
+                             PointerByReference outPtr, LongByReference outLen);
 
         // ---- Network TSA (AD-RT) — issue #41 P1 -----------------------------
         int pdf_timestamp_begin(byte[] pdf, long pdfLen,

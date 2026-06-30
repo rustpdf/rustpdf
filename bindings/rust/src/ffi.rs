@@ -306,6 +306,34 @@ ffi_api! {
     fn pdf_extract_images_to_dir(*const u8, usize, *const c_char, *mut usize) -> c_int;
     fn pdf_render_page_to_png(*const u8, usize, usize, f64, *mut *mut u8, *mut usize) -> c_int;
     fn pdf_page_count(*const u8, usize, *mut usize) -> c_int;
+    fn pdf_measure_pages_json(*const u8, usize, *mut *mut u8, *mut usize) -> c_int;
+    fn pdf_inspect_json(*const u8, usize, *mut *mut u8, *mut usize) -> c_int;
+    fn pdf_editable_fill_rect(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_place_text(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        *mut c_int,
+    ) -> c_int;
 
     // --- forms fill / flatten / watermark / redact / PDF-A convert (Tier 1 / 2) ---
     fn pdf_editable_set_checkbox(*mut RawEditable, *const c_char, c_int, *mut c_int) -> c_int;

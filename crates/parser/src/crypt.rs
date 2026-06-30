@@ -19,11 +19,23 @@ const PAD: [u8; 32] = [
 
 /// Which cipher the standard handler uses for strings and streams.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Cipher {
+pub(crate) enum Cipher {
     Rc4,
     AesV2,
     AesV3,
     Identity,
+}
+
+impl Cipher {
+    /// A short human-readable label for the cipher (used by inspection).
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Cipher::Rc4 => "RC4",
+            Cipher::AesV2 => "AES-128",
+            Cipher::AesV3 => "AES-256",
+            Cipher::Identity => "Identity",
+        }
+    }
 }
 
 /// A configured decryptor for one document.
@@ -148,7 +160,7 @@ impl Decryptor {
     }
 }
 
-fn detect_cipher(encrypt: &Dict, v: i64) -> Cipher {
+pub(crate) fn detect_cipher(encrypt: &Dict, v: i64) -> Cipher {
     if v >= 4 {
         // Look at the crypt filter named by /StmF (default StdCF).
         if let Some(Object::Dict(cf)) = encrypt.get("CF") {

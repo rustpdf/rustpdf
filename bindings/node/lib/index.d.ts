@@ -57,6 +57,42 @@ export interface TextHit {
   height: number;
 }
 
+/** A rectangle in PDF user space (points, origin lower-left). */
+export interface PdfRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  /** Absolute width (|x1 - x0|). */
+  width: number;
+  /** Absolute height (|y1 - y0|). */
+  height: number;
+}
+
+/** Read-only geometry of one page (from {@link measurePage}/{@link measurePages}).
+ * Sizes are in PDF points; `width`/`height` ignore rotation while
+ * `rotatedWidth`/`rotatedHeight` account for `/Rotate` (swapped for 90/270). */
+export interface PageGeometry {
+  page: number;
+  width: number;
+  height: number;
+  rotation: number;
+  rotatedWidth: number;
+  rotatedHeight: number;
+  mediaBox: PdfRect;
+  cropBox: PdfRect;
+}
+
+/** A non-mutating summary of a PDF (from {@link inspect}). */
+export interface PdfOverview {
+  version: string;
+  pdfaLevel: string | null;
+  encrypted: boolean;
+  encryption: string;
+  requiresPassword: boolean;
+  pageCount: number;
+}
+
 export interface SignatureInfo {
   field_name: string | null;
   sub_filter: string;
@@ -172,6 +208,21 @@ export class EditableDoc {
   normalize(version?: number): this;
   redact(pageIndex: number, rects: Rect[]): boolean;
   convertToPdfa(level?: number): this;
+  /**
+   * Fill a rectangle on page `pageIndex` (0-based) with `color` (RGB, each 0..1)
+   * at `opacity`. Coordinates are in the page VISIBLE space (origin lower-left,
+   * y up); content lands where viewed regardless of `/Rotate`. Returns `false`
+   * if the page does not exist.
+   */
+  fillRect(pageIndex: number, x: number, y: number, width: number, height: number, color?: [number, number, number], opacity?: number): boolean;
+  /**
+   * Draw a line of Helvetica `text` with baseline at `(x, y)` on page
+   * `pageIndex` (0-based), `size` points, `color` (RGB, each 0..1). `rotationDeg`
+   * rotates the text counter-clockwise about its anchor `(x, y)`. Coordinates are
+   * in the page VISIBLE space (origin lower-left, y up); content lands where
+   * viewed regardless of `/Rotate`. Returns `false` if the page does not exist.
+   */
+  placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number): boolean;
   optimize(): this;
   compact(on?: boolean): this;
   encrypt(opts?: EncryptOptions): this;
@@ -277,6 +328,12 @@ export function pageCount(pdf: Bytes): number;
 export function verifySignatures(pdf: Bytes): SignatureInfo[];
 /** Find every occurrence of `query` in `pdf` (case-insensitive by default). */
 export function findText(pdf: Bytes, query: string, caseSensitive?: boolean): TextHit[];
+/** Read the geometry (size, rotation, MediaBox, CropBox) of every page. */
+export function measurePages(pdf: Bytes): PageGeometry[];
+/** Geometry of a single page (0-based). Throws `RangeError` if out of range. */
+export function measurePage(pdf: Bytes, index: number): PageGeometry;
+/** Inspect a PDF without mutating it: version, PDF/A level, encryption, page count. */
+export function inspect(pdf: Bytes): PdfOverview;
 export function sign(pdf: Bytes, keyDer: Bytes, certDer: Bytes, opts?: SignOptions): Buffer;
 export function timestamp(pdf: Bytes, tsaKeyDer: Bytes, tsaCertDer: Bytes, date?: string | null): Buffer;
 export function addDss(pdf: Bytes, certs?: Bytes[], crls?: Bytes[]): Buffer;

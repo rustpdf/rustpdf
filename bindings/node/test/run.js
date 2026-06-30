@@ -377,4 +377,65 @@ let plain;
   console.log(`rich verify fields ok — issuer=${s.issuer}, algorithm=${s.algorithm}, certs=${s.cert_count}`);
 }
 
+// 18. Page geometry inspection: measurePages / measurePage (issue #45 P1).
+{
+  const d = new rp.Document();
+  d.addPage({ width: 200, height: 400 }); // portrait
+  d.addPage({ width: 400, height: 200 }); // landscape
+  const doc = d.toBytes();
+  d.close();
+
+  const pages = rp.measurePages(doc);
+  assert.strictEqual(pages.length, 2, 'measurePages count');
+  assert.ok(Math.abs(pages[0].width - 200) < 0.01 && Math.abs(pages[0].height - 400) < 0.01, 'page 0 size');
+  assert.strictEqual(pages[0].rotation, 0, 'page 0 unrotated');
+  assert.ok(Math.abs(pages[0].mediaBox.width - 200) < 0.01, 'mediaBox is a PdfRect with width');
+  assert.ok(Math.abs(pages[0].cropBox.height - 400) < 0.01, 'cropBox is a PdfRect with height');
+
+  // Rotate page 0 by 90° → rotatedWidth/Height swap relative to width/height.
+  const ed = rp.EditableDoc.load(doc);
+  ed.rotatePage(0, 90);
+  const rotated = ed.toBytes();
+  ed.close();
+
+  const g = rp.measurePage(rotated, 0);
+  assert.strictEqual(g.rotation, 90, 'rotation recorded');
+  assert.ok(Math.abs(g.rotatedWidth - g.height) < 0.01, 'rotatedWidth == unrotated height');
+  assert.ok(Math.abs(g.rotatedHeight - g.width) < 0.01, 'rotatedHeight == unrotated width');
+
+  // Out-of-range index throws RangeError.
+  assert.throws(() => rp.measurePage(rotated, 5), RangeError, 'measurePage out of range');
+  console.log(`measurePages ok — ${pages.length} pages, rotated 90° swaps ${g.rotatedWidth.toFixed(0)}x${g.rotatedHeight.toFixed(0)}`);
+}
+
+// 19. Non-mutating overview: inspect (issue #45 P1).
+{
+  const ov = rp.inspect(pdfa);
+  assert.ok(typeof ov.version === 'string' && ov.version.length > 0, 'overview version');
+  assert.ok(ov.pdfaLevel !== null, `overview pdfaLevel for a PDF/A doc: ${ov.pdfaLevel}`);
+  assert.strictEqual(ov.encrypted, false, 'pdfa not encrypted');
+  assert.strictEqual(ov.requiresPassword, false, 'pdfa needs no password');
+  assert.ok(ov.pageCount >= 1, `overview pageCount: ${ov.pageCount}`);
+
+  const plain = (() => { const d = new rp.Document(); d.addPage(); const b = d.toBytes(); d.close(); return b; })();
+  const ovPlain = rp.inspect(plain);
+  assert.strictEqual(ovPlain.pdfaLevel, null, 'plain doc has null pdfaLevel');
+  assert.strictEqual(ovPlain.pageCount, 1, 'plain doc page count');
+  console.log(`inspect ok — version=${ov.version}, pdfaLevel=${ov.pdfaLevel}, pages=${ov.pageCount}`);
+}
+
+// 20. Stamping: fillRect + placeText, then verify placed text extracts (issue #45 P1).
+{
+  const ed = rp.EditableDoc.load(pdfa);
+  assert.strictEqual(ed.fillRect(0, 60, 60, 200, 40, [1, 1, 1], 1.0), true, 'fillRect page 0');
+  assert.strictEqual(ed.placeText(0, 70, 72, 'STAMPED-XYZ', 18, [0, 0, 0], 0.0), true, 'placeText page 0');
+  // missing page returns false.
+  assert.strictEqual(ed.fillRect(99, 0, 0, 10, 10), false, 'fillRect missing page');
+  assert.strictEqual(ed.placeText(99, 0, 0, 'nope'), false, 'placeText missing page');
+  const out = ed.toBytes();
+  ed.close();
+  assert.ok(rp.extractText(out).includes('STAMPED-XYZ'), 'placed text extracts');
+  console.log(`fillRect + placeText ok (${out.length} bytes)`);
+}
+
 console.log('OK: full Node binding surface exercised');

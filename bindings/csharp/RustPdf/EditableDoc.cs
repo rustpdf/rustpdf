@@ -171,6 +171,37 @@ public sealed class EditableDoc : IDisposable
         return this;
     }
 
+    /// <summary>Paint a filled rectangle at <paramref name="x"/>,<paramref name="y"/>
+    /// (size <paramref name="width"/>×<paramref name="height"/>) on page
+    /// <paramref name="pageIndex"/>, in RGB <paramref name="color"/> (default opaque
+    /// white) at <paramref name="opacity"/>. Coordinates are in the page's visible
+    /// space (origin lower-left, y up). Returns whether the page existed. The
+    /// common use is masking a placeholder with an opaque white box.</summary>
+    public bool FillRect(int pageIndex, double x, double y, double width, double height,
+        (double R, double G, double B)? color = null, double opacity = 1.0)
+    {
+        var (r, g, b) = color ?? (1.0, 1.0, 1.0);
+        Pdf.Check(Native.pdf_editable_fill_rect(
+            H, pageIndex, x, y, width, height, r, g, b, opacity, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Draw a line of positioned text with baseline at
+    /// <paramref name="x"/>,<paramref name="y"/> on page <paramref name="pageIndex"/>,
+    /// using standard Helvetica at <paramref name="size"/> points in RGB
+    /// <paramref name="color"/>. <paramref name="rotationDeg"/> rotates the text
+    /// counter-clockwise about its anchor (match the page rotation to follow a
+    /// rotated page). Coordinates are in the page's visible space. Returns whether
+    /// the page existed.</summary>
+    public bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0,
+        (double R, double G, double B)? color = null, double rotationDeg = 0.0)
+    {
+        var (r, g, b) = color ?? (0.0, 0.0, 0.0);
+        Pdf.Check(Native.pdf_editable_place_text(
+            H, pageIndex, x, y, text, size, r, g, b, rotationDeg, out int found));
+        return found != 0;
+    }
+
     /// <summary>Set the output PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7, 3 = 2.0).
     /// Clears any catalog <c>/Version</c> override.</summary>
     public EditableDoc SetVersion(int version)

@@ -158,6 +158,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -173,6 +174,8 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -589,6 +592,20 @@ try (EditableDoc sec = EditableDoc.loadFile(Path.of("secured.pdf"), "user-or-own
     ed.save("stamped.pdf");
 }</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
+      <div class="api"><code>boolean fillRect(int pageIndex, double x, double y, double width, double height, double r, double g, double b, double opacity)</code></div>
+      <div class="api"><code>boolean placeText(int pageIndex, double x, double y, String text, double size, double r, double g, double b, double rotationDeg)</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("invoice.pdf"));
+PageGeometry g = Pdf.measurePage(data, 0);              // read the page geometry first
+try (EditableDoc ed = EditableDoc.load(data)) {
+    ed.fillRect(0, 400, g.height() - 60, 120, 18, 1, 1, 1, 1);     // mask: opaque white
+    ed.placeText(0, 404, g.height() - 56, "PAID", 12, 0, 0.5, 0, 0);
+    ed.save("stamped.pdf");
+}</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -841,6 +858,28 @@ for (TextHit hit : Pdf.findText(data, "Total"))
 // case-sensitive
 List&lt;TextHit&gt; exact = Pdf.findText(data, "INV-2026-001", true);</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read each page's size, rotation and boxes without modifying the file. <code>width()</code>/<code>height()</code> ignore <code>/Rotate</code>; <code>rotatedWidth()</code>/<code>rotatedHeight()</code> are the dimensions a viewer actually shows. Sizes are in PDF points (72 per inch).</p>
+      <div class="api"><code>List&lt;PageGeometry&gt; Pdf.measurePages(byte[] pdf)</code></div>
+      <div class="api"><code>PageGeometry Pdf.measurePage(byte[] pdf, int pageIndex)</code></div>
+      <p>Each <code>PageGeometry</code> record exposes <code>page()</code> (0-based), <code>width()</code>, <code>height()</code>, <code>rotation()</code> (0/90/180/270), <code>rotatedWidth()</code>, <code>rotatedHeight()</code>, and the <code>mediaBox()</code>/<code>cropBox()</code> as a <code>PdfRect</code> (<code>x0()</code>, <code>y0()</code>, <code>x1()</code>, <code>y1()</code> with <code>width()</code>/<code>height()</code> helpers).</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
+PageGeometry g = Pdf.measurePage(data, 0);
+System.out.printf("page %d: %.1f x %.1f pt, rotate %d%n", g.page(), g.width(), g.height(), g.rotation());
+System.out.printf("visible: %.1f x %.1f pt%n", g.rotatedWidth(), g.rotatedHeight());</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF, its version, PDF/A level (if any) and encryption posture, without decrypting or rewriting it. Handy for triage before deciding how to process a file.</p>
+      <div class="api"><code>PdfOverview Pdf.inspect(byte[] pdf)</code></div>
+      <p><code>PdfOverview</code> carries <code>version()</code> (e.g. <code>"1.7"</code>), <code>pdfaLevel()</code> (e.g. <code>"2b"</code>, or <code>null</code> if not PDF/A), <code>encrypted()</code>, <code>encryption()</code> (<code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code> or <code>"AES-256"</code>), <code>requiresPassword()</code>, and <code>pageCount()</code>.</p>
+      <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
+PdfOverview o = Pdf.inspect(data);
+System.out.printf("PDF %s, %d page(s)%n", o.version(), o.pageCount());
+System.out.printf("PDF/A: %s, encryption: %s%n", o.pdfaLevel() == null ? "no" : o.pdfaLevel(), o.encryption());
+if (o.requiresPassword()) System.out.println("needs a password to open");</code></pre></div>
+
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>pageCount</code> is free.</p>
       <div class="api"><code>Pdf.renderPageToPng(byte[] pdf, int pageIndex, double dpi) → byte[]</code> <span class="badge lic">licensed</span></div>
@@ -946,6 +985,7 @@ try (Document doc = new Document()) {
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -954,6 +994,8 @@ try (Document doc = new Document()) {
       <a href="#deferred">Deferred / HSM signing</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

@@ -353,6 +353,203 @@ pub fn find_text(data: &[u8], query: &str, case_sensitive: bool) -> Result<Vec<T
     Ok(out)
 }
 
+/// A rectangle in PDF user space (points), `[x0, y0, x1, y1]` with the origin
+/// at the lower-left. Used for the media/crop boxes of [`PageGeometry`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PdfRect {
+    /// Lower-left x.
+    pub x0: f64,
+    /// Lower-left y.
+    pub y0: f64,
+    /// Upper-right x.
+    pub x1: f64,
+    /// Upper-right y.
+    pub y1: f64,
+}
+
+impl PdfRect {
+    /// Box width (`x1 - x0`).
+    pub fn width(&self) -> f64 {
+        self.x1 - self.x0
+    }
+
+    /// Box height (`y1 - y0`).
+    pub fn height(&self) -> f64 {
+        self.y1 - self.y0
+    }
+}
+
+/// Per-page geometry as returned by [`measure_pages`] / [`measure_page`].
+/// `width`/`height` are the unrotated page size; `rotated_width`/`rotated_height`
+/// account for the `/Rotate` value (swapped for 90°/270°).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PageGeometry {
+    /// 0-based page index.
+    pub page: usize,
+    /// Unrotated page width (points).
+    pub width: f64,
+    /// Unrotated page height (points).
+    pub height: f64,
+    /// The page's `/Rotate` value in degrees (0/90/180/270).
+    pub rotation: i32,
+    /// Visible width once `/Rotate` is applied (swapped for 90°/270°).
+    pub rotated_width: f64,
+    /// Visible height once `/Rotate` is applied (swapped for 90°/270°).
+    pub rotated_height: f64,
+    /// The page `/MediaBox`.
+    pub media_box: PdfRect,
+    /// The page `/CropBox` (falls back to the media box when absent).
+    pub crop_box: PdfRect,
+}
+
+/// A non-mutating overview of a document, as returned by [`inspect`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct PdfOverview {
+    /// The PDF version string (e.g. `"1.7"`, `"2.0"`).
+    pub version: String,
+    /// The PDF/A conformance level if any (e.g. `"2b"`, `"3a"`), else `None`.
+    pub pdfa_level: Option<String>,
+    /// Whether the document is encrypted.
+    pub encrypted: bool,
+    /// The encryption scheme description (empty if unencrypted).
+    pub encryption: String,
+    /// Whether a password is required to open the document.
+    pub requires_password: bool,
+    /// Number of pages.
+    pub page_count: usize,
+}
+
+fn parse_rect(value: Option<&json::Json>) -> PdfRect {
+    let n = |arr: &[json::Json], i: usize| arr.get(i).and_then(json::Json::as_f64).unwrap_or(0.0);
+    match value.and_then(json::Json::as_array) {
+        Some(arr) => PdfRect {
+            x0: n(arr, 0),
+            y0: n(arr, 1),
+            x1: n(arr, 2),
+            y1: n(arr, 3),
+        },
+        None => PdfRect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 0.0,
+            y1: 0.0,
+        },
+    }
+}
+
+fn page_geometry_from_json(item: &json::Json) -> PageGeometry {
+    let num = |key: &str| item.get(key).and_then(json::Json::as_f64).unwrap_or(0.0);
+    PageGeometry {
+        page: item
+            .get("page")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(0)
+            .max(0) as usize,
+        width: num("width"),
+        height: num("height"),
+        rotation: item
+            .get("rotation")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(0) as i32,
+        rotated_width: num("rotatedWidth"),
+        rotated_height: num("rotatedHeight"),
+        media_box: parse_rect(item.get("mediaBox")),
+        crop_box: parse_rect(item.get("cropBox")),
+    }
+}
+
+/// Read per-page geometry (size, rotation, media/crop boxes) from `data`.
+/// Returns one [`PageGeometry`] per page; an empty vector means no pages.
+pub fn measure_pages(pdf: &[u8]) -> Result<Vec<PageGeometry>> {
+    let a = ffi::api()?;
+    let mut ptr: *mut u8 = ptr::null_mut();
+    let mut len: usize = 0;
+    check(a, unsafe {
+        (a.pdf_measure_pages_json)(pdf.as_ptr(), pdf.len(), &mut ptr, &mut len)
+    })?;
+    let bytes = take_buffer(a, ptr, len);
+    let text = String::from_utf8_lossy(&bytes);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let value = json::parse(trimmed).ok_or_else(|| {
+        PdfError::new(
+            PdfStatus::Parse,
+            format!("could not parse measure_pages JSON: {trimmed}"),
+        )
+    })?;
+    let array = value
+        .as_array()
+        .ok_or_else(|| PdfError::new(PdfStatus::Parse, "measure_pages JSON was not an array"))?;
+    Ok(array.iter().map(page_geometry_from_json).collect())
+}
+
+/// Read the geometry of a single page (0-based `index`) from `data`.
+pub fn measure_page(pdf: &[u8], index: usize) -> Result<PageGeometry> {
+    let pages = measure_pages(pdf)?;
+    pages.into_iter().find(|p| p.page == index).ok_or_else(|| {
+        PdfError::new(
+            PdfStatus::InvalidArgument,
+            format!("page index {index} out of range"),
+        )
+    })
+}
+
+/// Inspect `data` without mutating it, returning a [`PdfOverview`] (version,
+/// PDF/A level, encryption status, page count). Never fails on a
+/// password-locked file.
+pub fn inspect(pdf: &[u8]) -> Result<PdfOverview> {
+    let a = ffi::api()?;
+    let mut ptr: *mut u8 = ptr::null_mut();
+    let mut len: usize = 0;
+    check(a, unsafe {
+        (a.pdf_inspect_json)(pdf.as_ptr(), pdf.len(), &mut ptr, &mut len)
+    })?;
+    let bytes = take_buffer(a, ptr, len);
+    let text = String::from_utf8_lossy(&bytes);
+    let trimmed = text.trim();
+    let value = json::parse(trimmed).ok_or_else(|| {
+        PdfError::new(
+            PdfStatus::Parse,
+            format!("could not parse inspect JSON: {trimmed}"),
+        )
+    })?;
+    let pdfa_level = value.get("pdfaLevel").and_then(|v| {
+        if v.is_null() {
+            None
+        } else {
+            v.as_str().map(str::to_owned)
+        }
+    });
+    Ok(PdfOverview {
+        version: value
+            .get("version")
+            .and_then(json::Json::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        pdfa_level,
+        encrypted: value
+            .get("encrypted")
+            .and_then(json::Json::as_bool)
+            .unwrap_or(false),
+        encryption: value
+            .get("encryption")
+            .and_then(json::Json::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        requires_password: value
+            .get("requiresPassword")
+            .and_then(json::Json::as_bool)
+            .unwrap_or(false),
+        page_count: value
+            .get("pageCount")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(0)
+            .max(0) as usize,
+    })
+}
+
 /// Sign `pdf` with a PKCS#8 DER private key + DER certificate, returning a new
 /// PDF (incremental update). `pades` selects PAdES-B-B.
 #[allow(clippy::too_many_arguments)]

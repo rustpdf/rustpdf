@@ -904,6 +904,95 @@ impl EditableDoc {
         }
     }
 
+    // ---- positioned drawing primitives (issue #45 P1 #2) -----------------
+
+    /// Paint a **filled rectangle** at `(x, y)` with size `width`×`height` on
+    /// page `index`, in the given `color` (RGB, each `0..=1`) and `opacity`
+    /// (`0..=1`, where `1.0` is fully opaque). The common use is masking a
+    /// placeholder by painting an opaque white box: `color = (1.0, 1.0, 1.0)`,
+    /// `opacity = 1.0`.
+    ///
+    /// Coordinates are in the page's **visible** space — origin at the displayed
+    /// lower-left, y up — so the box lands where a viewer sees it regardless of
+    /// the page's `/Rotate`. Returns `false` if `index` is out of range.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill_rect(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: (f64, f64, f64),
+        opacity: f64,
+    ) -> bool {
+        let Some(&page) = self.page_order.get(index) else {
+            return false;
+        };
+        let geom = self.page_geometry(page);
+        let (r, g, b) = (
+            color.0.clamp(0.0, 1.0),
+            color.1.clamp(0.0, 1.0),
+            color.2.clamp(0.0, 1.0),
+        );
+        let opacity = opacity.clamp(0.0, 1.0);
+        let gs = self.alloc_extgstate(opacity);
+        let gs_name = format!("GSd{gs}");
+        let content = format!(
+            "q\n{upright}/{gs_name} gs\n{r:.3} {g:.3} {b:.3} rg\n\
+             {x:.2} {y:.2} {width:.2} {height:.2} re\nf\nQ\n",
+            upright = geom.upright_cm(),
+        );
+        self.append_content(page, content.into_bytes());
+        self.add_page_resource(page, "ExtGState", &gs_name, gs);
+        true
+    }
+
+    /// Draw a line of **positioned text** with its baseline starting at
+    /// `(x, y)` on page `index`, using the standard Helvetica font at `size`
+    /// points and the given `color` (RGB, each `0..=1`). `rotation_deg` rotates
+    /// the text counter-clockwise about its anchor `(x, y)` — pass `0.0` for
+    /// horizontal text, or match the page rotation to follow a rotated page.
+    ///
+    /// `text` should be WinAnsi (Latin-1), like other standard-font stamps.
+    /// Coordinates are in the page's **visible** space (origin at the displayed
+    /// lower-left, y up). Returns `false` if `index` is out of range.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+    ) -> bool {
+        let Some(&page) = self.page_order.get(index) else {
+            return false;
+        };
+        let helv = self.helvetica();
+        let geom = self.page_geometry(page);
+        let (r, g, b) = (
+            color.0.clamp(0.0, 1.0),
+            color.1.clamp(0.0, 1.0),
+            color.2.clamp(0.0, 1.0),
+        );
+        let theta = rotation_deg.to_radians();
+        let (ca, sa) = (theta.cos(), theta.sin());
+        // Tm rotates about the anchor: [cos sin -sin cos x y].
+        let content = format!(
+            "q\n{upright}BT\n/HelvD {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n\
+             {ca:.5} {sa:.5} {nsa:.5} {ca:.5} {x:.2} {y:.2} Tm\n({txt}) Tj\nET\nQ\n",
+            upright = geom.upright_cm(),
+            nsa = -sa,
+            txt = escape_pdf_literal(text),
+        );
+        self.append_content(page, content.into_bytes());
+        self.add_page_resource(page, "Font", "HelvD", helv);
+        true
+    }
+
     // ---- normalization (issue #41 P1 #8) ---------------------------------
 
     /// Set the output PDF **version**, written as the header on the next

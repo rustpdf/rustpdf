@@ -157,6 +157,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -171,6 +172,8 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -553,6 +556,22 @@ ed.watermark_image_file("stamp.png", 120, 120, opacity: 0.20, rotation_deg: 30)
 ed.save("stamped.pdf")
 ed.close</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Place a filled rectangle or a line of text at exact coordinates on a page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). Both return whether the page existed.</p>
+      <div class="api"><code>fill_rect(page_index, x, y, width, height, color = [1.0, 1.0, 1.0], opacity = 1.0) → Boolean</code></div>
+      <div class="api"><code>place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0) → Boolean</code></div>
+      <p><code>color</code> is RGB (each component 0..1). <code>place_text</code> draws the baseline at (<code>x</code>, <code>y</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor (match the page rotation to follow a rotated page). The common use is masking a placeholder with an opaque white rectangle, then stamping the real value over it.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("form.pdf")
+geom = RustPdf.measure_page(File.binread("form.pdf"), 0)
+puts "page is #{geom.width}×#{geom.height} pt"
+
+# white-out a placeholder, then write the real value on top
+ed.fill_rect(0, 100, 100, 200, 40)                       # opaque white mask
+ed.place_text(0, 110, 112, "APPROVED", 14, [0, 0, 1])    # blue 14 pt text
+ed.save("filled.pdf")
+ed.close</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -761,6 +780,31 @@ RustPdf.find_text(data, "Total").each do |hit|
        "(#{hit.x}, #{hit.y}) #{hit.width}×#{hit.height} pt"
 end</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read the size, rotation, MediaBox and CropBox of every page without mutating the document. Sizes are in PDF points (72 per inch). <code>width</code>/<code>height</code> ignore the page's <code>/Rotate</code>, while <code>rotated_width</code>/<code>rotated_height</code> account for it (swapped for 90°/270° pages).</p>
+      <div class="api"><code>RustPdf.measure_pages(pdf) → Array&lt;PageGeometry&gt;</code></div>
+      <div class="api"><code>RustPdf.measure_page(pdf, index) → PageGeometry</code></div>
+      <p>Each <code>PageGeometry</code> is a <code>Struct</code> with <code>page</code>, <code>width</code>, <code>height</code>, <code>rotation</code>, <code>rotated_width</code>, <code>rotated_height</code>, <code>media_box</code> and <code>crop_box</code>. The boxes are <code>PdfRect</code> values (<code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code>, plus <code>width</code> and <code>height</code>). <code>measure_page</code> raises <code>IndexError</code> when <code>index</code> is out of range.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>data = File.binread("report.pdf")
+RustPdf.measure_pages(data).each do |g|
+  puts "page #{g.page}: #{g.width}×#{g.height} pt, /Rotate #{g.rotation}, " \
+       "as displayed #{g.rotated_width}×#{g.rotated_height} pt"
+end
+
+first = RustPdf.measure_page(data, 0)
+puts "MediaBox #{first.media_box.width}×#{first.media_box.height} pt"</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF (version, PDF/A level, encryption posture, page count) without opening or decrypting it. The encryption fields are reported even for password-protected files, so you can branch before supplying a password.</p>
+      <div class="api"><code>RustPdf.inspect_pdf(pdf) → PdfOverview</code></div>
+      <p>Returns a <code>PdfOverview</code> <code>Struct</code> with <code>version</code> (e.g. <code>"1.7"</code>), <code>pdfa_level</code> (<code>nil</code> when not PDF/A), <code>encrypted</code> (Boolean), <code>encryption</code> (<code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code> or <code>"AES-256"</code>), <code>requires_password</code> (Boolean) and <code>page_count</code>. It is named <code>inspect_pdf</code> to avoid shadowing <code>Object#inspect</code>.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>info = RustPdf.inspect_pdf(File.binread("report.pdf"))
+puts "PDF #{info.version}, #{info.page_count} page(s)"
+puts "PDF/A: #{info.pdfa_level || 'no'}"
+puts "encryption: #{info.encryption} (needs password: #{info.requires_password})"</code></pre></div>
+
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
       <div class="api"><code>RustPdf.render_page_to_png(pdf, page = 0, dpi = 150.0) → String</code> <span class="badge lic">licensed</span></div>
@@ -874,6 +918,7 @@ end</code></pre></div>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -881,6 +926,8 @@ end</code></pre></div>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

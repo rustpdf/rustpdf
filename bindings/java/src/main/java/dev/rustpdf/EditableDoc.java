@@ -208,6 +208,39 @@ public final class EditableDoc implements AutoCloseable {
     }
 
     /**
+     * Paint a filled rectangle at {@code (x, y)} sized {@code width}×{@code height}
+     * on page {@code pageIndex} (0-based), in RGB ({@code r}/{@code g}/{@code b},
+     * each 0..=1) at {@code opacity} (0..=1). Coordinates are in the page's visible
+     * space (origin lower-left, y up), regardless of any page {@code /Rotate}.
+     * Returns whether the page existed. The common use is masking a placeholder
+     * with an opaque white box.
+     */
+    public boolean fillRect(int pageIndex, double x, double y, double width, double height,
+                            double r, double g, double b, double opacity) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_fill_rect(
+                h(), pageIndex, x, y, width, height, r, g, b, opacity, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Draw a line of positioned text with baseline at {@code (x, y)} on page
+     * {@code pageIndex} (0-based), using standard Helvetica at {@code size} points
+     * in RGB ({@code r}/{@code g}/{@code b}, each 0..=1). {@code rotationDeg}
+     * rotates the text counter-clockwise about its anchor {@code (x, y)} (match the
+     * page rotation to follow a rotated page). Coordinates are in the page's visible
+     * space (origin lower-left, y up), regardless of any page {@code /Rotate}.
+     * Returns whether the page existed.
+     */
+    public boolean placeText(int pageIndex, double x, double y, String text, double size,
+                             double r, double g, double b, double rotationDeg) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_place_text(
+                h(), pageIndex, x, y, text, size, r, g, b, rotationDeg, found));
+        return found.getValue() != 0;
+    }
+
+    /**
      * Set the output PDF version (downgrade/normalize): {@code version} is
      * {@code 0}=1.4, {@code 1}=1.5, {@code 2}=1.7, {@code 3}=2.0 (the same mapping
      * as {@link Document#setVersion(int)}).

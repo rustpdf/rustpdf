@@ -157,6 +157,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -173,6 +174,8 @@
       <h4>Other</h4>
       <a href="#search">Positional text search</a>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -560,6 +563,19 @@ ed.WatermarkText("CONFIDENTIAL", color: (0.7, 0.1, 0.1),
 ed.WatermarkImageFile("stamp.png", 200, 120, opacity: 0.30, rotationDeg: 30);
 ed.Save("stamped.pdf");</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
+      <div class="api"><code>bool FillRect(int pageIndex, double x, double y, double width, double height, (double R, double G, double B)? color = null, double opacity = 1.0)</code></div>
+      <div class="api"><code>bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0, (double R, double G, double B)? color = null, double rotationDeg = 0.0)</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("invoice.pdf");
+PageGeometry g = Pdf.MeasurePage(data, 0);          // read the page geometry first
+using var ed = EditableDoc.Load(data);
+ed.FillRect(0, 400, g.Height - 60, 120, 18);        // mask: default opaque white
+ed.PlaceText(0, 404, g.Height - 56, "PAID", size: 12, color: (0.0, 0.5, 0.0));
+ed.Save("stamped.pdf");</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -811,6 +827,28 @@ Console.WriteLine(Pdf.ExtractText(data));
 int n = Pdf.ExtractImagesToDir(data, "out_images/");   // returns how many were written
 Console.WriteLine($"wrote {n} image(s)");</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read each page's size, rotation and boxes without modifying the file. <code>Width</code>/<code>Height</code> ignore <code>/Rotate</code>; <code>RotatedWidth</code>/<code>RotatedHeight</code> are the dimensions a viewer actually shows. Sizes are in PDF points (72 per inch).</p>
+      <div class="api"><code>IReadOnlyList&lt;PageGeometry&gt; Pdf.MeasurePages(byte[] pdf)</code></div>
+      <div class="api"><code>PageGeometry Pdf.MeasurePage(byte[] pdf, int pageIndex)</code></div>
+      <p>Each <code>PageGeometry</code> has <code>Page</code> (0-based), <code>Width</code>, <code>Height</code>, <code>Rotation</code> (0/90/180/270), <code>RotatedWidth</code>, <code>RotatedHeight</code>, and the <code>MediaBox</code>/<code>CropBox</code> as a <code>PdfRect</code> (<code>X0</code>, <code>Y0</code>, <code>X1</code>, <code>Y1</code> with <code>Width</code>/<code>Height</code> helpers).</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("report.pdf");
+PageGeometry g = Pdf.MeasurePage(data, 0);
+Console.WriteLine($"page {g.Page}: {g.Width:0.#}×{g.Height:0.#} pt, rotate {g.Rotation}");
+Console.WriteLine($"visible: {g.RotatedWidth:0.#}×{g.RotatedHeight:0.#} pt");</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF, its version, PDF/A level (if any) and encryption posture, without decrypting or rewriting it. Handy for triage before deciding how to process a file.</p>
+      <div class="api"><code>PdfOverview Pdf.Inspect(byte[] pdf)</code></div>
+      <p><code>PdfOverview</code> carries <code>Version</code> (e.g. <code>"1.7"</code>), <code>PdfaLevel</code> (e.g. <code>"2b"</code>, or <code>null</code> if not PDF/A), <code>Encrypted</code>, <code>Encryption</code> (<code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code> or <code>"AES-256"</code>), <code>RequiresPassword</code>, and <code>PageCount</code>.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("report.pdf");
+PdfOverview o = Pdf.Inspect(data);
+Console.WriteLine($"PDF {o.Version}, {o.PageCount} page(s)");
+Console.WriteLine($"PDF/A: {o.PdfaLevel ?? "no"}, encryption: {o.Encryption}");
+if (o.RequiresPassword) Console.WriteLine("needs a password to open");</code></pre></div>
+
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
       <div class="api"><code>byte[] Pdf.RenderPageToPng(byte[] pdf, int pageIndex = 0, double dpi = 150.0)</code> <span class="badge lic">licensed</span></div>
@@ -920,6 +958,7 @@ catch (PdfException e)
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -928,6 +967,8 @@ catch (PdfException e)
       <a href="#verify">Validate</a>
       <a href="#search">Text search</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

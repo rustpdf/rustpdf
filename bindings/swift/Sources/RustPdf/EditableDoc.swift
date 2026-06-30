@@ -257,6 +257,44 @@ public final class EditableDoc {
         return found != 0
     }
 
+    // MARK: - Positioned drawing primitives
+
+    /// Paint a filled rectangle at `(x, y)` sized `width`×`height` on page
+    /// `pageIndex` (0-based), in RGB `color` (each 0..=1, default opaque white)
+    /// at `opacity` (0..=1). Coordinates are in the page's **visible** space
+    /// (origin lower-left, y up), regardless of the page's `/Rotate`. Returns
+    /// whether the page existed. The common use is masking a placeholder with an
+    /// opaque white box.
+    @discardableResult
+    public func fillRect(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double,
+                         color: (Double, Double, Double) = (1, 1, 1), opacity: Double = 1.0) -> Bool {
+        var found: Int32 = 0
+        try? check(Native.shared.pdf_editable_fill_rect(
+            handle, Int32(pageIndex), x, y, width, height,
+            color.0, color.1, color.2, opacity, &found))
+        return found != 0
+    }
+
+    /// Draw a line of positioned text with baseline at `(x, y)` on page
+    /// `pageIndex` (0-based), standard Helvetica at `size` points in RGB `color`
+    /// (each 0..=1, default black). `rotationDeg` rotates the text
+    /// counter-clockwise about its anchor `(x, y)` (match the page rotation to
+    /// follow a rotated page). Coordinates are in the page's **visible** space
+    /// (origin lower-left, y up), regardless of the page's `/Rotate`. Returns
+    /// whether the page existed.
+    @discardableResult
+    public func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String,
+                          size: Double = 12, color: (Double, Double, Double) = (0, 0, 0),
+                          rotationDeg: Double = 0.0) -> Bool {
+        var found: Int32 = 0
+        text.withCString { t in
+            try? check(Native.shared.pdf_editable_place_text(
+                handle, Int32(pageIndex), x, y, t, size,
+                color.0, color.1, color.2, rotationDeg, &found))
+        }
+        return found != 0
+    }
+
     /// Convert the loaded document to PDF/A at `level` (B-levels only: A-1b,
     /// A-2b, A-3b). Requires a license.
     @discardableResult

@@ -157,6 +157,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -173,6 +174,8 @@
       <h4>Other</h4>
       <a href="#extract">Text extraction</a>
       <a href="#search">Text search</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -560,6 +563,22 @@ with EditableDoc.load_file("form.pdf") as ed:
     ed.watermark_image_file("stamp.png", 200, 80, opacity=0.4, rotation_deg=30)
     ed.save("stamped.pdf")</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Paint a filled rectangle or a line of text at exact coordinates on an existing page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). The classic use is masking a placeholder with an opaque white box, then writing the real value over it.</p>
+      <div class="api"><code>fill_rect(page_index, x, y, width, height, color=(1,1,1), opacity=1.0) → bool</code></div>
+      <div class="api"><code>place_text(page_index, x, y, text, size=12.0, color=(0,0,0), rotation_deg=0.0) → bool</code></div>
+      <p><code>color</code> is an RGB tuple (default opaque white for <code>fill_rect</code>, black for <code>place_text</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor. Each returns whether the page existed.</p>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>import rustpdf
+from rustpdf import EditableDoc
+
+with EditableDoc.load_file("invoice.pdf") as ed:
+    g = rustpdf.measure_page(ed.to_bytes(), 0)   # page geometry, points
+    # mask a placeholder with an opaque white box, then write the value over it
+    ed.fill_rect(0, 400, g.height - 80, 120, 16, color=(1, 1, 1), opacity=1.0)
+    ed.place_text(0, 400, g.height - 76, "R$ 1.234,56", size=12.0)
+    ed.save("invoice-filled.pdf")</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -773,6 +792,31 @@ print(rustpdf.extract_text(data))
 n = rustpdf.extract_images_to_dir(data, "out_images/")   # returns how many were written
 print(f"wrote {n} image(s)")</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read per-page geometry (size, <code>/Rotate</code>, media and crop boxes) without rebuilding the document. Sizes are in PDF points (72 per inch). <code>width</code>/<code>height</code> ignore rotation; <code>rotated_width</code>/<code>rotated_height</code> account for it (swapped for 90/270 pages), so they match what a viewer sees.</p>
+      <div class="api"><code>rustpdf.measure_pages(pdf: bytes) → list[PageGeometry]</code></div>
+      <div class="api"><code>rustpdf.measure_page(pdf: bytes, index: int) → PageGeometry</code></div>
+      <p>Each <code>PageGeometry</code> carries <code>page</code>, <code>width</code>, <code>height</code>, <code>rotation</code>, <code>rotated_width</code>, <code>rotated_height</code>, and the <code>media_box</code> / <code>crop_box</code> as <code>PdfRect</code> (fields <code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code> plus <code>width()</code> / <code>height()</code> properties).</p>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("report.pdf", "rb").read()
+for g in rustpdf.measure_pages(data):
+    print(f"page {g.page}: {g.width:.0f}×{g.height:.0f} pt, "
+          f"rotate {g.rotation}, visible {g.rotated_width:.0f}×{g.rotated_height:.0f}")
+
+g0 = rustpdf.measure_page(data, 0)
+print(f"crop box {g0.crop_box.width():.0f}×{g0.crop_box.height():.0f} pt")</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF: its version, PDF/A level (if any), encryption posture and page count, all without opening or decrypting the file. It works even on password-protected documents (the encryption fields are still reported).</p>
+      <div class="api"><code>rustpdf.inspect(pdf: bytes) → PdfOverview</code></div>
+      <p><code>PdfOverview</code> carries <code>version</code> (e.g. <code>"1.7"</code>), <code>pdfa_level</code> (<code>None</code> when not PDF/A), <code>encrypted</code>, <code>encryption</code> (one of <code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code>, <code>"AES-256"</code>), <code>requires_password</code>, and <code>page_count</code>.</p>
+      <div class="code has-label"><span class="lbl">python</span><pre><code>data = open("report.pdf", "rb").read()
+o = rustpdf.inspect(data)
+print(f"PDF {o.version}, {o.page_count} page(s)")
+print(f"PDF/A: {o.pdfa_level or 'no'}")
+print(f"encryption: {o.encryption}, needs password: {o.requires_password}")</code></pre></div>
+
       <!-- SEARCH -->
       <h2 id="search">Positional text search <span class="badge free">free</span></h2>
       <p>Find every occurrence of a query string and get its position on the page, useful for highlighting, redaction targeting or click regions. Returns a list of <code>TextHit</code>, each with the matched <code>page</code> (0-based), the matched <code>text</code>, and a bounding box <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code> in PDF points with the origin at the lower-left. An empty list means no match. See the <a href="/search-pdf">searching PDF text</a> guide for background.</p>
@@ -887,6 +931,7 @@ except PdfError as e:
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -895,6 +940,8 @@ except PdfError as e:
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
       <a href="#search">Text search</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

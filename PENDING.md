@@ -352,6 +352,35 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
     requer as raízes ICP-Brasil/AATL no validador); **cliente OCSP/CRL de rede
     automático** (o `add_dss` aceita DER fornecido pelo integrador); P2 (layout
     multi-coluna) aberto.
+  - ✅ **Issue #45 P1 — concluído (2026-06-30).** Em core + C ABI + **todos os 10
+    bindings** (smoke tests verdes). Nomes escolhidos para serem amigáveis ao dev
+    e **não imitar o iText** (esquema descritivo):
+    - **#1 Geometria de página (read-only)** → `pdf::measure_pages(bytes)` /
+      `measure_page(bytes, i)` devolvem `PageGeometry { page, width, height,
+      rotation, rotated_width, rotated_height, media_box, crop_box: PdfRect }`
+      (pontos; `rotated_*` troca dims em 90/270; herda MediaBox/CropBox/Rotate do
+      page-tree e intersecta crop∩media). Novo `crates/pdf/src/geometry.rs`. FFI
+      `pdf_measure_pages_json` (JSON). **Livre.**
+    - **#2 Retângulo preenchido + texto posicionado/rotacionado** →
+      `EditableDoc::fill_rect(page, x, y, w, h, (r,g,b), opacity)` e
+      `place_text(page, x, y, text, size, (r,g,b), rotation_deg)` carimbam sobre
+      páginas existentes (coords no espaço **visível**, honrando `/Rotate`; nomes
+      de recurso únicos por gstate). FFI `pdf_editable_fill_rect`/
+      `pdf_editable_place_text` (out_found). **Livre.**
+    - **#3 Inspeção não-mutante** → `pdf::inspect(bytes)` devolve `PdfOverview {
+      version, pdfa_level, encrypted, encryption, requires_password, page_count }`.
+      Novo `parser::probe_encryption`/`header_version` (lê `/Encrypt` sem
+      decifrar o corpo, então funciona em arquivos protegidos por senha) +
+      `crates/pdf/src/inspect.rs` (nível PDF/A do XMP `pdfaid`). FFI
+      `pdf_inspect_json`. **Livre.** Cross-validado contra fixtures do qpdf
+      (RC4 40/128, AES-128, AES-256/R6).
+    - **P2:** **macOS x64 (osx-x64)** adicionado ao release C# (cross-compile no
+      runner arm64, smoke pulada nesse RID); **overload async de assinatura
+      remota** `Pdf.SignWithAsync(Func<byte[],Task<byte[]>>)` no C#; **layout
+      de alto nível já existe** (`pdf::Report`/`Table`, `flow.rs`) — confirmado.
+    - Bindings: nomes idiomáticos por linguagem (snake_case Python/Ruby/Rust,
+      PascalCase Go/C#/Java/Delphi/Swift, camelCase Node/PHP). Ruby usa
+      `inspect_pdf` (não clobberar `Object#inspect`).
 - ✅ **7.4 PDF/A — níveis 1b/2b/2a/3b/3a.** `Document::pdfa()` (=A-2b),
   `pdfa_a()` (=A-2a) e `pdfa_with(PdfaLevel)` cobrem **A-1b** (header PDF 1.4,
   `/CIDSet` no descritor lido do programa de subset, sem object streams),

@@ -10,11 +10,13 @@
 mod crypt;
 mod error;
 mod filters;
+mod inspect;
 mod lexer;
 mod object;
 mod reader;
 mod xref;
 
 pub use error::{PdfError, Result};
+pub use inspect::{header_version, probe_encryption, EncryptionProbe};
 pub use lexer::{Lexer, Token};
 pub use reader::PdfReader;

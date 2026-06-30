@@ -91,6 +91,68 @@ public struct TextHit: Sendable, Decodable {
     public let height: Double
 }
 
+/// A rectangle in PDF user space (points, origin lower-left).
+public struct PdfRect: Sendable, Equatable {
+    /// The left edge.
+    public let x0: Double
+    /// The bottom edge.
+    public let y0: Double
+    /// The right edge.
+    public let x1: Double
+    /// The top edge.
+    public let y1: Double
+
+    public init(x0: Double, y0: Double, x1: Double, y1: Double) {
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+    }
+
+    /// The rectangle width (non-negative).
+    public var width: Double { abs(x1 - x0) }
+    /// The rectangle height (non-negative).
+    public var height: Double { abs(y1 - y0) }
+}
+
+/// Read-only geometry of one page (from ``Pdf/measurePage(_:_:)`` /
+/// ``Pdf/measurePages(_:)``). Sizes are in PDF points; ``width``/``height``
+/// ignore rotation while ``rotatedWidth``/``rotatedHeight`` account for it.
+public struct PageGeometry: Sendable {
+    /// The 0-based page index.
+    public let page: Int
+    /// The unrotated page width (points).
+    public let width: Double
+    /// The unrotated page height (points).
+    public let height: Double
+    /// The page `/Rotate` value (0, 90, 180 or 270 degrees).
+    public let rotation: Int
+    /// The width accounting for rotation (swapped for 90/270).
+    public let rotatedWidth: Double
+    /// The height accounting for rotation (swapped for 90/270).
+    public let rotatedHeight: Double
+    /// The page `/MediaBox`.
+    public let mediaBox: PdfRect
+    /// The page `/CropBox`.
+    public let cropBox: PdfRect
+}
+
+/// A non-mutating summary of a PDF (from ``Pdf/inspect(_:)``).
+public struct PdfOverview: Sendable {
+    /// The PDF version string (e.g. `1.7`, `2.0`).
+    public let version: String
+    /// The PDF/A conformance level (e.g. `2B`), or `nil` if not PDF/A.
+    public let pdfaLevel: String?
+    /// Whether the document is encrypted.
+    public let encrypted: Bool
+    /// The encryption scheme (e.g. `None`, `RC4`, `AESV2`, `AESV3`).
+    public let encryption: String
+    /// Whether opening the document requires a password.
+    public let requiresPassword: Bool
+    /// The number of pages.
+    public let pageCount: Int
+}
+
 /// A signature-policy identifier (PAdES-EPES / ICP-Brasil AD-RB).
 public struct SignaturePolicy: Sendable {
     /// The policy OID (dotted-decimal), e.g. the ICP-Brasil AD-RB OID.
@@ -249,6 +311,66 @@ public enum Pdf {
         }
         if bytes.isEmpty { return [] }
         return try JSONDecoder().decode([TextHit].self, from: Data(bytes))
+    }
+
+    /// Read the geometry (size, rotation, MediaBox, CropBox) of every page in
+    /// `pdf`, in page order, without mutating it. An empty array means there are
+    /// no pages.
+    public static func measurePages(_ pdf: [UInt8]) throws -> [PageGeometry] {
+        let bytes = try withBytes(pdf) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_measure_pages_json(ptr, len, out, outLen)
+            }
+        }
+        if bytes.isEmpty { return [] }
+        guard let root = try JSONSerialization.jsonObject(with: Data(bytes)) as? [[String: Any]] else {
+            return []
+        }
+        func num(_ d: [String: Any], _ k: String) -> Double { (d[k] as? NSNumber)?.doubleValue ?? 0 }
+        func int(_ d: [String: Any], _ k: String) -> Int { (d[k] as? NSNumber)?.intValue ?? 0 }
+        func rect(_ d: [String: Any], _ k: String) -> PdfRect {
+            guard let a = d[k] as? [Any], a.count == 4 else { return PdfRect(x0: 0, y0: 0, x1: 0, y1: 0) }
+            let v = a.map { ($0 as? NSNumber)?.doubleValue ?? 0 }
+            return PdfRect(x0: v[0], y0: v[1], x1: v[2], y1: v[3])
+        }
+        return root.map { el in
+            PageGeometry(
+                page: int(el, "page"), width: num(el, "width"), height: num(el, "height"),
+                rotation: int(el, "rotation"), rotatedWidth: num(el, "rotatedWidth"),
+                rotatedHeight: num(el, "rotatedHeight"),
+                mediaBox: rect(el, "mediaBox"), cropBox: rect(el, "cropBox"))
+        }
+    }
+
+    /// Read the geometry of a single page (0-based) of `pdf`.
+    ///
+    /// - Throws: ``PdfError`` with status ``PdfStatus/invalidArgument`` if
+    ///   `index` is out of range.
+    public static func measurePage(_ pdf: [UInt8], _ index: Int) throws -> PageGeometry {
+        let pages = try measurePages(pdf)
+        guard index >= 0 && index < pages.count else {
+            throw PdfError(status: .invalidArgument, message: "page index \(index) out of range (0..<\(pages.count))")
+        }
+        return pages[index]
+    }
+
+    /// Inspect `pdf` without mutating it: PDF version, PDF/A level (if any),
+    /// encryption posture and page count. Works even on password-protected files
+    /// (the encryption fields are still reported).
+    public static func inspect(_ pdf: [UInt8]) throws -> PdfOverview {
+        let bytes = try withBytes(pdf) { ptr, len in
+            try takeBytes { out, outLen in
+                Native.shared.pdf_inspect_json(ptr, len, out, outLen)
+            }
+        }
+        let root = (try? JSONSerialization.jsonObject(with: Data(bytes))) as? [String: Any] ?? [:]
+        func str(_ k: String) -> String { root[k] as? String ?? "" }
+        func bool(_ k: String) -> Bool { (root[k] as? NSNumber)?.boolValue ?? (root[k] as? Bool ?? false) }
+        func int(_ k: String) -> Int { (root[k] as? NSNumber)?.intValue ?? 0 }
+        return PdfOverview(
+            version: str("version"), pdfaLevel: root["pdfaLevel"] as? String,
+            encrypted: bool("encrypted"), encryption: str("encryption"),
+            requiresPassword: bool("requiresPassword"), pageCount: int("pageCount"))
     }
 
     /// Extract every raster image from `pdf` into directory `dir` (JPEG verbatim

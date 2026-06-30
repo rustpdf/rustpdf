@@ -146,6 +146,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -161,6 +162,8 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -552,6 +555,19 @@ try ed.watermarkImageFile(path: "stamp.png", width: 180, height: 180,
                           opacity: 0.30, rotationDeg: 30)
 try ed.save(to: "stamped.pdf")</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
+      <div class="api"><code>func fillRect(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, color: (Double, Double, Double) = (1, 1, 1), opacity: Double = 1.0) -&gt; Bool</code></div>
+      <div class="api"><code>func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), rotationDeg: Double = 0.0) -&gt; Bool</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "invoice.pdf")))
+let g = try Pdf.measurePage(data, 0)              // read the page geometry first
+let ed = try EditableDoc(data)
+_ = ed.fillRect(0, 400, g.height - 60, 120, 18)   // mask: default opaque white
+_ = ed.placeText(0, 404, g.height - 56, "PAID", size: 12, color: (0, 0.5, 0))
+try ed.save(to: "stamped.pdf")</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -806,6 +822,28 @@ for hit in try Pdf.findText(data, query: "Total") {
 }</code></pre></div>
       <p>Coordinates match the <a href="#coords">authoring coordinate system</a>, so a hit's box can be reused directly to draw a highlight or place a <a href="#links">link</a>.</p>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read each page's size, rotation and boxes without modifying the file. <code>width</code>/<code>height</code> ignore <code>/Rotate</code>; <code>rotatedWidth</code>/<code>rotatedHeight</code> are the dimensions a viewer actually shows. Sizes are in PDF points (72 per inch).</p>
+      <div class="api"><code>static func measurePages(_ pdf: [UInt8]) throws -&gt; [PageGeometry]</code></div>
+      <div class="api"><code>static func measurePage(_ pdf: [UInt8], _ pageIndex: Int) throws -&gt; PageGeometry</code></div>
+      <p>Each <code>PageGeometry</code> has <code>page</code> (0-based), <code>width</code>, <code>height</code>, <code>rotation</code> (0/90/180/270), <code>rotatedWidth</code>, <code>rotatedHeight</code>, and the <code>mediaBox</code>/<code>cropBox</code> as a <code>PdfRect</code> (<code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code> with <code>width</code>/<code>height</code> helpers).</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "report.pdf")))
+let g = try Pdf.measurePage(data, 0)
+print("page \(g.page): \(g.width)×\(g.height) pt, rotate \(g.rotation)")
+print("visible: \(g.rotatedWidth)×\(g.rotatedHeight) pt")</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF, its version, PDF/A level (if any) and encryption posture, without decrypting or rewriting it. Handy for triage before deciding how to process a file.</p>
+      <div class="api"><code>static func inspect(_ pdf: [UInt8]) throws -&gt; PdfOverview</code></div>
+      <p><code>PdfOverview</code> carries <code>version</code> (e.g. <code>"1.7"</code>), <code>pdfaLevel</code> (e.g. <code>"2b"</code>, or <code>nil</code> if not PDF/A), <code>encrypted</code>, <code>encryption</code> (<code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code> or <code>"AES-256"</code>), <code>requiresPassword</code>, and <code>pageCount</code>.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "report.pdf")))
+let o = try Pdf.inspect(data)
+print("PDF \(o.version), \(o.pageCount) page(s)")
+print("PDF/A: \(o.pdfaLevel ?? "no"), encryption: \(o.encryption)")
+if o.requiresPassword { print("needs a password to open") }</code></pre></div>
+
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
       <div class="api"><code>Pdf.renderPageToPng(_ pdf: [UInt8], page: Int = 0, dpi: Double = 150.0) throws → [UInt8]</code> <span class="badge lic">licensed</span></div>
@@ -917,6 +955,7 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -924,6 +963,8 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
       <a href="#sign">Signatures</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

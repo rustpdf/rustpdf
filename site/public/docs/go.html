@@ -158,6 +158,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -173,6 +174,8 @@
 
       <h4>Other</h4>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Positional text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
@@ -616,6 +619,21 @@ _ = ed.WatermarkText("CONFIDENTIAL", 64, 0.5, 0.5, 0.5, 0.25, 45, false)
 _ = ed.WatermarkImageFile("stamp.png", 64, 64, 0.3, 30)
 _ = ed.Save("stamped.pdf")</code></pre></div>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Place a filled rectangle or a line of text at exact coordinates on one page — handy for masking a value and stamping a new one over it. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. <code>FillRect</code> takes RGB (each <code>0.0..1.0</code>) and opacity (<code>0.0..1.0</code>); pass opacity <code>1</code> for an opaque white-out box. <code>PlaceText</code> draws in standard Helvetica (so keep text to WinAnsi / Latin-1), and <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. Both return whether the target page existed.</p>
+      <div class="api"><code>FillRect(pageIndex int, x, y, width, height, r, g, b, opacity float64) bool</code></div>
+      <div class="api"><code>PlaceText(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64) bool</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("invoice.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+g, _ := rustpdf.MeasurePage(data, 0)
+fmt.Printf("page is %.0fx%.0f pt\n", g.Width, g.Height)
+// mask the old total with an opaque white box, then stamp the new value
+ed.FillRect(0, 430, 690, 110, 18, 1, 1, 1, 1)
+ed.PlaceText(0, 435, 693, "PAID IN FULL", 12, 0, 0.5, 0, 0)
+_ = ed.Save("stamped.pdf")</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions. Returns whether the target page existed.</p>
@@ -849,6 +867,35 @@ fmt.Println(text)
 n, _ := rustpdf.ExtractImagesToDir(data, "out_images/")   // returns how many were written
 fmt.Printf("wrote %d image(s)\n", n)</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read the size and rotation of every page without mutating the file. Sizes are in PDF points (72 per inch). <code>Width</code> and <code>Height</code> ignore the page's <code>/Rotate</code>, while <code>RotatedWidth</code> and <code>RotatedHeight</code> account for it (swapped for 90/270-degree pages). Each <code>PageGeometry</code> also carries the <code>MediaBox</code> and <code>CropBox</code> as a <code>PdfRect{X0, Y0, X1, Y1}</code> (with <code>Width()</code> and <code>Height()</code> helpers). <code>MeasurePage</code> returns an <code>*Error</code> when the index is out of range.</p>
+      <div class="api"><code>rustpdf.MeasurePages(pdf []byte) ([]PageGeometry, error)</code></div>
+      <div class="api"><code>rustpdf.MeasurePage(pdf []byte, index int) (PageGeometry, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
+pages, _ := rustpdf.MeasurePages(data)
+for _, p := range pages {
+	fmt.Printf("page %d: %.0fx%.0f pt, rotation %d (visible %.0fx%.0f)\n",
+		p.Page, p.Width, p.Height, p.Rotation, p.RotatedWidth, p.RotatedHeight)
+}
+
+g, err := rustpdf.MeasurePage(data, 0)
+if err != nil {
+	log.Fatal(err)   // *Error when the index is out of range
+}
+fmt.Printf("crop box %.0fx%.0f\n", g.CropBox.Width(), g.CropBox.Height())</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF, its version, PDF/A level, encryption posture and page count, without opening or decrypting it. <code>PdfaLevel</code> is empty when the document is not PDF/A. <code>Encryption</code> is one of <code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code> or <code>"AES-256"</code>, and <code>RequiresPassword</code> reports whether a user password is needed to open it. <code>Inspect</code> never fails on a password-locked file.</p>
+      <div class="api"><code>rustpdf.Inspect(pdf []byte) (PdfOverview, error)</code></div>
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("report.pdf")
+ov, _ := rustpdf.Inspect(data)
+fmt.Printf("PDF %s, %d page(s)\n", ov.Version, ov.PageCount)
+fmt.Printf("PDF/A level: %q\n", ov.PdfaLevel)        // "" when not PDF/A
+fmt.Printf("encrypted: %v (%s)\n", ov.Encrypted, ov.Encryption)
+fmt.Printf("needs password: %v\n", ov.RequiresPassword)</code></pre></div>
+
       <!-- SEARCH -->
       <h2 id="search">Positional text search <span class="badge free">free</span></h2>
       <p>Find every occurrence of a query string and get its bounding box, useful for highlighting or redaction targeting. With <code>caseSensitive</code> false the match is case-insensitive. Each <code>TextHit</code> carries <code>Page</code>, <code>Text</code> and the box <code>X</code>, <code>Y</code>, <code>Width</code>, <code>Height</code> in PDF points (origin lower-left). An empty slice means no match. See the concept page <a href="/search-pdf">Search inside a PDF</a> for background.</p>
@@ -972,6 +1019,7 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -980,6 +1028,8 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#sign-deferred">Deferred / HSM signing</a>
       <a href="#verify">Validate</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#search">Text search</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>

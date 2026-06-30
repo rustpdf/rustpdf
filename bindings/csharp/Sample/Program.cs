@@ -304,6 +304,59 @@ Assert(System.Text.Encoding.Latin1.GetString(versioned).Contains("%PDF-2.0"),
     "set_version wrote the 2.0 header");
 Console.WriteLine("normalize + set_version + strip_pdfa ok");
 
+// 17. Page geometry (issue #45 P1 #1): read-only per-page measurements.
+var geom = Pdf.MeasurePages(pdfa);
+Assert(geom.Count == 1, "measure_pages count");
+Assert(geom[0].Width > 0 && geom[0].Height > 0, "page has a size");
+Assert(geom[0].MediaBox.Width > 0, "media box width");
+byte[] rotatedPdf;
+using (var ed = EditableDoc.Load(pdfa))
+{
+    ed.RotatePage(0, 90);
+    rotatedPdf = ed.ToBytes();
+}
+var g0 = Pdf.MeasurePage(rotatedPdf, 0);
+Assert(g0.Rotation == 90, "rotation read back");
+Assert(Math.Abs(g0.RotatedWidth - g0.Height) < 0.1, "90° swaps width/height");
+Console.WriteLine(
+    $"measure ok: {geom[0].Width:F1}x{geom[0].Height:F1} pts, rot {geom[0].Rotation}; " +
+    $"rotated page reports {g0.RotatedWidth:F1}x{g0.RotatedHeight:F1}");
+
+// 18. Inspection (issue #45 P1 #3): version / PDF/A level / encryption posture.
+var info = Pdf.Inspect(pdfa);
+Assert(info.PageCount == 1, "inspect page count");
+Assert(!info.Encrypted && info.Encryption == "None", "plain doc not encrypted");
+Assert(info.PdfaLevel is not null, $"PDF/A level detected ({info.PdfaLevel})");
+var encInfo = Pdf.Inspect(enc);
+Assert(encInfo.Encrypted, "encrypted doc detected");
+Console.WriteLine(
+    $"inspect ok: version={info.Version}, pdfa={info.PdfaLevel}, " +
+    $"encrypted-sample cipher={encInfo.Encryption}, requiresPassword={encInfo.RequiresPassword}");
+
+// 19. Positioned drawing primitives (issue #45 P1 #2): fill rect + place text.
+byte[] drawn;
+using (var ed = EditableDoc.Load(pdfa))
+{
+    Assert(ed.FillRect(0, 100, 100, 200, 40), "fill_rect page existed");
+    Assert(ed.PlaceText(0, 110, 112, "STAMPED", size: 14, color: (0, 0, 1), rotationDeg: 0),
+        "place_text page existed");
+    Assert(!ed.FillRect(99, 0, 0, 1, 1), "fill_rect missing page");
+    drawn = ed.ToBytes();
+}
+Assert(Pdf.ExtractText(drawn).Contains("STAMPED"), "placed text is extractable");
+Console.WriteLine("fill_rect + place_text ok");
+
+// 20. Async remote-sign overload (issue #45 P2). Reuses the same HSM-style
+// signer, wrapped in a Task to exercise the async path.
+{
+    var asyncSigned = Pdf.SignWithAsync(
+        plain, cert,
+        data => Task.FromResult(hsm.SignHash(data)),
+        options: new SigningOptions { Pades = true, Reason = "Async HSM" }).GetAwaiter().GetResult();
+    Assert(Pdf.VerifySignatures(asyncSigned)[0].IsValid, "async external signature verifies");
+    Console.WriteLine($"async SignWith ok ({asyncSigned.Length} bytes)");
+}
+
 Console.WriteLine("OK: full C# binding surface exercised");
 
 // Build a detached CMS/PKCS#7 container over `data` using .NET's SignedCms —

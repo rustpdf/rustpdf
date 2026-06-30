@@ -50,11 +50,17 @@ __all__ = [
     "SignatureField",
     "SigningSession",
     "TextHit",
+    "PdfRect",
+    "PageGeometry",
+    "PdfOverview",
     "version",
     "library_path",
     "activate_license",
     "extract_text",
     "find_text",
+    "measure_pages",
+    "measure_page",
+    "inspect",
     "extract_images_to_dir",
     "render_page_to_png",
     "page_count",
@@ -192,6 +198,56 @@ class TextHit:
     y: float
     width: float
     height: float
+
+
+@dataclass
+class PdfRect:
+    """A rectangle in PDF user space (points, origin lower-left)."""
+
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+
+    @property
+    def width(self) -> float:
+        """Width of the rectangle (non-negative)."""
+        return abs(self.x1 - self.x0)
+
+    @property
+    def height(self) -> float:
+        """Height of the rectangle (non-negative)."""
+        return abs(self.y1 - self.y0)
+
+
+@dataclass
+class PageGeometry:
+    """Read-only geometry of one page (from :func:`measure_page` /
+    :func:`measure_pages`). Sizes are in PDF points; :attr:`width`/:attr:`height`
+    ignore rotation while :attr:`rotated_width`/:attr:`rotated_height` account
+    for it (swapped for 90/270 pages)."""
+
+    page: int
+    width: float
+    height: float
+    rotation: int
+    rotated_width: float
+    rotated_height: float
+    media_box: PdfRect
+    crop_box: PdfRect
+
+
+@dataclass
+class PdfOverview:
+    """A non-mutating summary of a PDF (from :func:`inspect`). Works even on
+    password-protected files (the encryption fields are still reported)."""
+
+    version: str
+    pdfa_level: str | None
+    encrypted: bool
+    encryption: str
+    requires_password: bool
+    page_count: int
 
 
 class SigningSession:
@@ -473,6 +529,22 @@ _verify_sigs = _bind("pdf_verify_signatures_json", c_int, [_U8, c_size_t, *_OUTB
 # Positional text search (issue #41 P1)
 _find_text = _bind(
     "pdf_find_text_json", c_int, [_U8, c_size_t, c_char_p, c_int, *_OUTBUF]
+)
+# Page geometry + document inspection (issue #45 P1)
+_measure_pages = _bind("pdf_measure_pages_json", c_int, [_U8, c_size_t, *_OUTBUF])
+_inspect = _bind("pdf_inspect_json", c_int, [_U8, c_size_t, *_OUTBUF])
+# Stamp filled rect + positioned text (issue #45 P1, EditableDoc)
+_ed_fill_rect = _bind(
+    "pdf_editable_fill_rect",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_double, c_double,
+     c_double, c_double, c_double, c_double, POINTER(c_int)],
+)
+_ed_place_text = _bind(
+    "pdf_editable_place_text",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_double, POINTER(c_int)],
 )
 # Network TSA (AD-RT) — issue #41 P1
 _timestamp_begin = _bind(
@@ -967,6 +1039,37 @@ class EditableDoc:
                                    opacity, rotation_deg))
         return self
 
+    # stamping (issue #45 P1)
+    def fill_rect(self, page_index: int, x: float, y: float, width: float,
+                  height: float, color: tuple[float, float, float] = (1.0, 1.0, 1.0),
+                  opacity: float = 1.0) -> bool:
+        """Paint a filled rectangle at ``(x, y)`` sized ``width``×``height`` on
+        page ``page_index`` (0-based), in RGB ``color`` (default opaque white) at
+        ``opacity``. Coordinates are in the page's VISIBLE space (origin
+        lower-left, y up) — the box lands where a viewer sees it regardless of
+        ``/Rotate``. The common use is masking a placeholder with an opaque white
+        box. Returns whether the page existed."""
+        r, g, b = color
+        found = c_int(0)
+        _check(_ed_fill_rect(self._ptr(), page_index, x, y, width, height,
+                             r, g, b, opacity, byref(found)))
+        return bool(found.value)
+
+    def place_text(self, page_index: int, x: float, y: float, text: str,
+                   size: float = 12.0, color: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                   rotation_deg: float = 0.0) -> bool:
+        """Draw a line of positioned text with baseline at ``(x, y)`` on page
+        ``page_index`` (0-based), standard Helvetica at ``size`` points in RGB
+        ``color``. ``rotation_deg`` rotates the text counter-clockwise about its
+        anchor. Coordinates are in the page's VISIBLE space (origin lower-left, y
+        up) — the text lands where a viewer sees it regardless of ``/Rotate``.
+        Returns whether the page existed."""
+        r, g, b = color
+        found = c_int(0)
+        _check(_ed_place_text(self._ptr(), page_index, x, y, _enc(text), size,
+                              r, g, b, rotation_deg, byref(found)))
+        return bool(found.value)
+
     # normalization (issue #41 P1)
     def set_version(self, version: int) -> "EditableDoc":
         """Set the output PDF version: 0=1.4, 1=1.5, 2=1.7, 3=2.0."""
@@ -1052,6 +1155,67 @@ def find_text(data: bytes, query: str, case_sensitive: bool = False) -> list[Tex
         )
         for h in hits
     ]
+
+
+def measure_pages(pdf: bytes) -> list[PageGeometry]:
+    """Read per-page geometry from ``pdf`` (size, ``/Rotate``, media/crop boxes).
+    Returns one :class:`PageGeometry` per page; coordinates are in PDF points.
+    :attr:`PageGeometry.width`/:attr:`~PageGeometry.height` are unrotated;
+    :attr:`~PageGeometry.rotated_width`/:attr:`~PageGeometry.rotated_height` are
+    swapped for 90/270 pages."""
+    import json
+
+    ptr, n, _keep = _as_u8(bytes(pdf))
+    js = _take(lambda p, ln: _measure_pages(ptr, n, p, ln)).decode("utf-8")
+    pages = json.loads(js) if js else []
+
+    def rect(d: dict, key: str) -> PdfRect:
+        v = d.get(key)
+        if isinstance(v, list) and len(v) == 4:
+            return PdfRect(x0=v[0], y0=v[1], x1=v[2], y1=v[3])
+        return PdfRect(0.0, 0.0, 0.0, 0.0)
+
+    return [
+        PageGeometry(
+            page=g["page"],
+            width=g["width"],
+            height=g["height"],
+            rotation=g["rotation"],
+            rotated_width=g["rotatedWidth"],
+            rotated_height=g["rotatedHeight"],
+            media_box=rect(g, "mediaBox"),
+            crop_box=rect(g, "cropBox"),
+        )
+        for g in pages
+    ]
+
+
+def measure_page(pdf: bytes, index: int) -> PageGeometry:
+    """Geometry of a single page (0-based ``index``). Raises :class:`IndexError`
+    if ``index`` is out of range."""
+    pages = measure_pages(pdf)
+    if index < 0 or index >= len(pages):
+        raise IndexError(f"page index {index} out of range (0..{len(pages)})")
+    return pages[index]
+
+
+def inspect(pdf: bytes) -> PdfOverview:
+    """Inspect ``pdf`` without mutating it: PDF version, PDF/A level (if any),
+    encryption posture and page count. Works even on password-protected files
+    (the encryption fields are still reported)."""
+    import json
+
+    ptr, n, _keep = _as_u8(bytes(pdf))
+    js = _take(lambda p, ln: _inspect(ptr, n, p, ln)).decode("utf-8")
+    o = json.loads(js) if js else {}
+    return PdfOverview(
+        version=o.get("version", ""),
+        pdfa_level=o.get("pdfaLevel"),
+        encrypted=bool(o.get("encrypted", False)),
+        encryption=o.get("encryption", ""),
+        requires_password=bool(o.get("requiresPassword", False)),
+        page_count=int(o.get("pageCount", 0)),
+    )
 
 
 def extract_images_to_dir(data: bytes, out_dir: str) -> int:

@@ -123,6 +123,12 @@ module RustPdf
       "pdf_timestamp_begin"          => [[VP, SZ, VP, VP, VP, VP], I],
       "pdf_timestamp_request"        => [[VP, SZ, VP, SZ, I, VP, VP], I],
       "pdf_timestamp_token_from_response" => [[VP, SZ, VP, VP], I],
+
+      # Issue #45 P1: page geometry, document inspection, positioned drawing.
+      "pdf_measure_pages_json"       => [[VP, SZ, VP, VP], I],
+      "pdf_inspect_json"             => [[VP, SZ, VP, VP], I],
+      "pdf_editable_fill_rect"       => [[VP, I, D, D, D, D, D, D, D, D, VP], I],
+      "pdf_editable_place_text"      => [[VP, I, D, D, VP, D, D, D, D, D, VP], I],
     }.freeze
 
     def lib

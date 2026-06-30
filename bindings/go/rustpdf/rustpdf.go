@@ -311,6 +311,134 @@ func FindText(pdf []byte, query string, caseSensitive bool) ([]TextHit, error) {
 	return hits, nil
 }
 
+// PdfRect is a rectangle in PDF user space (points, origin lower-left).
+type PdfRect struct {
+	X0 float64
+	Y0 float64
+	X1 float64
+	Y1 float64
+}
+
+// Width returns the rectangle's width (non-negative).
+func (r PdfRect) Width() float64 { return abs(r.X1 - r.X0) }
+
+// Height returns the rectangle's height (non-negative).
+func (r PdfRect) Height() float64 { return abs(r.Y1 - r.Y0) }
+
+func abs(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// rawRect is the JSON wire form [x0,y0,x1,y1].
+type rawRect [4]float64
+
+func (r rawRect) toRect() PdfRect { return PdfRect{X0: r[0], Y0: r[1], X1: r[2], Y1: r[3]} }
+
+// PageGeometry is the read-only geometry of one page. Sizes are in PDF points;
+// Width/Height ignore page rotation while RotatedWidth/RotatedHeight account for
+// it (swapped for 90/270-degree pages).
+type PageGeometry struct {
+	Page          int     `json:"page"`
+	Width         float64 `json:"width"`
+	Height        float64 `json:"height"`
+	Rotation      int     `json:"rotation"`
+	RotatedWidth  float64 `json:"rotatedWidth"`
+	RotatedHeight float64 `json:"rotatedHeight"`
+	MediaBox      PdfRect `json:"-"`
+	CropBox       PdfRect `json:"-"`
+}
+
+// pageGeometryJSON is the wire form (boxes arrive as [x0,y0,x1,y1] arrays).
+type pageGeometryJSON struct {
+	Page          int     `json:"page"`
+	Width         float64 `json:"width"`
+	Height        float64 `json:"height"`
+	Rotation      int     `json:"rotation"`
+	RotatedWidth  float64 `json:"rotatedWidth"`
+	RotatedHeight float64 `json:"rotatedHeight"`
+	MediaBox      rawRect `json:"mediaBox"`
+	CropBox       rawRect `json:"cropBox"`
+}
+
+// MeasurePages returns the geometry of every page in pdf.
+func MeasurePages(pdf []byte) ([]PageGeometry, error) {
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_measure_pages_json(uptr(pdf), C.uintptr_t(len(pdf)), out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 {
+		return []PageGeometry{}, nil
+	}
+	var raw []pageGeometryJSON
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, err
+	}
+	pages := make([]PageGeometry, len(raw))
+	for i, p := range raw {
+		pages[i] = PageGeometry{
+			Page:          p.Page,
+			Width:         p.Width,
+			Height:        p.Height,
+			Rotation:      p.Rotation,
+			RotatedWidth:  p.RotatedWidth,
+			RotatedHeight: p.RotatedHeight,
+			MediaBox:      p.MediaBox.toRect(),
+			CropBox:       p.CropBox.toRect(),
+		}
+	}
+	return pages, nil
+}
+
+// MeasurePage returns the geometry of page index (0-based) in pdf. It returns an
+// error if index is out of range.
+func MeasurePage(pdf []byte, index int) (PageGeometry, error) {
+	pages, err := MeasurePages(pdf)
+	if err != nil {
+		return PageGeometry{}, err
+	}
+	if index < 0 || index >= len(pages) {
+		return PageGeometry{}, &Error{Status: 5, Message: "page index out of range"}
+	}
+	return pages[index], nil
+}
+
+// PdfOverview is a non-mutating summary of a PDF (from Inspect). PdfaLevel is ""
+// when the document is not PDF/A.
+type PdfOverview struct {
+	Version          string `json:"version"`
+	PdfaLevel        string `json:"pdfaLevel"`
+	Encrypted        bool   `json:"encrypted"`
+	Encryption       string `json:"encryption"`
+	RequiresPassword bool   `json:"requiresPassword"`
+	PageCount        int    `json:"pageCount"`
+}
+
+// Inspect reads pdf without mutating it and reports its PDF version, PDF/A level
+// (empty when not PDF/A), encryption state and page count. It never fails on a
+// password-locked file.
+func Inspect(pdf []byte) (PdfOverview, error) {
+	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
+		st := C.pdf_inspect_json(uptr(pdf), C.uintptr_t(len(pdf)), out, n)
+		runtime.KeepAlive(pdf)
+		return st
+	})
+	if err != nil {
+		return PdfOverview{}, err
+	}
+	var ov PdfOverview
+	if err := json.Unmarshal(b, &ov); err != nil {
+		return PdfOverview{}, err
+	}
+	return ov, nil
+}
+
 // SignOptions configures Sign. Empty strings are treated as absent.
 type SignOptions struct {
 	Reason   string

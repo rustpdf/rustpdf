@@ -82,6 +82,10 @@ typealias HSetCheckFn   = (OpaquePointer?, UnsafePointer<CChar>?, Int32, UnsafeM
 typealias HWmTextFn     = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double, Double, Double, Int32) -> Int32
 typealias HWmImageFn    = (OpaquePointer?, UnsafePointer<CChar>?, Double, Double, Double, Double) -> Int32
 typealias HRedactFn     = (OpaquePointer?, UInt, UnsafePointer<Double>?, UInt, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HFillRectFn   = (OpaquePointer?, Int32, Double, Double, Double, Double,
+                           Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HPlaceTextFn  = (OpaquePointer?, Int32, Double, Double, UnsafePointer<CChar>?, Double,
+                           Double, Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
 typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
                              UnsafeMutablePointer<UInt>?) -> Int32
 typealias SignFn        = (UnsafePointer<UInt8>?, UInt, UnsafePointer<UInt8>?, UInt,
@@ -199,6 +203,8 @@ final class Native {
     let pdf_editable_watermark_text: HWmTextFn = CRustPdf.pdf_editable_watermark_text
     let pdf_editable_watermark_image_file: HWmImageFn = CRustPdf.pdf_editable_watermark_image_file
     let pdf_editable_redact: HRedactFn = CRustPdf.pdf_editable_redact
+    let pdf_editable_fill_rect: HFillRectFn = CRustPdf.pdf_editable_fill_rect
+    let pdf_editable_place_text: HPlaceTextFn = CRustPdf.pdf_editable_place_text
     let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
     let pdf_editable_set_version: H1IFn = CRustPdf.pdf_editable_set_version
     let pdf_editable_strip_pdfa: HFn = CRustPdf.pdf_editable_strip_pdfa
@@ -214,6 +220,8 @@ final class Native {
     let pdf_add_dss: AddDssFn = CRustPdf.pdf_add_dss
     let pdf_verify_signatures_json: ExtractTextFn = CRustPdf.pdf_verify_signatures_json
     let pdf_find_text_json: FindTextFn = CRustPdf.pdf_find_text_json
+    let pdf_measure_pages_json: ExtractTextFn = CRustPdf.pdf_measure_pages_json
+    let pdf_inspect_json: ExtractTextFn = CRustPdf.pdf_inspect_json
 
     // ---- deferred / external (HSM) signing — issue #41 ----------------------
     let pdf_sign_begin: SignBeginFn = CRustPdf.pdf_sign_begin

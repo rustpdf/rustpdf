@@ -123,6 +123,28 @@ public sealed record SignatureInfo(
 public sealed record TextHit(
     int Page, string Text, double X, double Y, double Width, double Height);
 
+/// <summary>A rectangle in PDF user space (points, origin lower-left).</summary>
+public sealed record PdfRect(double X0, double Y0, double X1, double Y1)
+{
+    /// <summary>Width of the rectangle (non-negative).</summary>
+    public double Width => Math.Abs(X1 - X0);
+    /// <summary>Height of the rectangle (non-negative).</summary>
+    public double Height => Math.Abs(Y1 - Y0);
+}
+
+/// <summary>Read-only geometry of one page (from <see cref="Pdf.MeasurePage"/> /
+/// <see cref="Pdf.MeasurePages"/>). Sizes are in PDF points;
+/// <see cref="Width"/>/<see cref="Height"/> ignore rotation while
+/// <see cref="RotatedWidth"/>/<see cref="RotatedHeight"/> account for it.</summary>
+public sealed record PageGeometry(
+    int Page, double Width, double Height, int Rotation,
+    double RotatedWidth, double RotatedHeight, PdfRect MediaBox, PdfRect CropBox);
+
+/// <summary>A non-mutating summary of a PDF (from <see cref="Pdf.Inspect"/>).</summary>
+public sealed record PdfOverview(
+    string Version, string? PdfaLevel, bool Encrypted, string Encryption,
+    bool RequiresPassword, int PageCount);
+
 /// <summary>A signature field discovered in a PDF (pre-signing inventory).</summary>
 public sealed record SignatureField(string Name, bool Signed);
 
@@ -279,6 +301,70 @@ public static class Pdf
                 GetNum("x"), GetNum("y"), GetNum("width"), GetNum("height")));
         }
         return result;
+    }
+
+    /// <summary>Read the geometry (size, rotation, MediaBox, CropBox) of every
+    /// page in <paramref name="pdf"/>, in page order, without mutating it.</summary>
+    public static IReadOnlyList<PageGeometry> MeasurePages(byte[] pdf)
+    {
+        var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_measure_pages_json(pdf, (nuint)pdf.Length, out p, out n));
+        var json = Encoding.UTF8.GetString(bytes);
+        var result = new List<PageGeometry>();
+        if (string.IsNullOrEmpty(json))
+            return result;
+        using var doc = JsonDocument.Parse(json);
+        foreach (var el in doc.RootElement.EnumerateArray())
+        {
+            double Num(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0.0;
+            int Int(string k) =>
+                el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+            PdfRect Rect(string k)
+            {
+                if (el.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Array && v.GetArrayLength() == 4)
+                    return new PdfRect(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble(), v[3].GetDouble());
+                return new PdfRect(0, 0, 0, 0);
+            }
+            result.Add(new PageGeometry(
+                Int("page"), Num("width"), Num("height"), Int("rotation"),
+                Num("rotatedWidth"), Num("rotatedHeight"), Rect("mediaBox"), Rect("cropBox")));
+        }
+        return result;
+    }
+
+    /// <summary>Read the geometry of a single page (0-based) of
+    /// <paramref name="pdf"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">if <paramref name="pageIndex"/> is invalid.</exception>
+    public static PageGeometry MeasurePage(byte[] pdf, int pageIndex)
+    {
+        var pages = MeasurePages(pdf);
+        if (pageIndex < 0 || pageIndex >= pages.Count)
+            throw new ArgumentOutOfRangeException(nameof(pageIndex));
+        return pages[pageIndex];
+    }
+
+    /// <summary>Inspect <paramref name="pdf"/> without mutating it: PDF version,
+    /// PDF/A level (if any), encryption posture and page count. Works even on
+    /// password-protected files (the encryption fields are still reported).</summary>
+    public static PdfOverview Inspect(byte[] pdf)
+    {
+        var bytes = TakeBuffer((out IntPtr p, out nuint n) =>
+            Native.pdf_inspect_json(pdf, (nuint)pdf.Length, out p, out n));
+        var json = Encoding.UTF8.GetString(bytes);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        string Str(string k) =>
+            root.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        bool Bool(string k) =>
+            root.TryGetProperty(k, out var v) && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False) && v.GetBoolean();
+        int Int(string k) =>
+            root.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+        string? pdfa = root.TryGetProperty("pdfaLevel", out var pv) && pv.ValueKind == JsonValueKind.String
+            ? pv.GetString() : null;
+        return new PdfOverview(
+            Str("version"), pdfa, Bool("encrypted"), Str("encryption"),
+            Bool("requiresPassword"), Int("pageCount"));
     }
 
     /// <summary>Extract every raster image from <paramref name="pdf"/> into
@@ -488,6 +574,19 @@ public static class Pdf
         byte[] pdf, byte[] certDer, IRemoteSigner signer,
         IEnumerable<byte[]>? chain = null, SigningOptions? options = null)
         => SignWith(pdf, certDer, signer.SignHash, chain, options);
+
+    /// <summary><b>Model A — async remote signer (issue #45 P2).</b> Convenience
+    /// overload of <see cref="SignWith(byte[],byte[],RemoteSign,IEnumerable{byte[]},SigningOptions)"/>
+    /// for an asynchronous HSM/HTTP signer. The whole signing runs on a thread-pool
+    /// thread so the caller is not blocked; <paramref name="signHashAsync"/> is
+    /// awaited for each raw RSA signature. For full back-pressure control prefer the
+    /// two-phase <see cref="BeginSigning"/> / <see cref="SigningSession.Complete"/>
+    /// flow.</summary>
+    public static Task<byte[]> SignWithAsync(
+        byte[] pdf, byte[] certDer, Func<byte[], Task<byte[]>> signHashAsync,
+        IEnumerable<byte[]>? chain = null, SigningOptions? options = null)
+        => Task.Run(() =>
+            SignWith(pdf, certDer, data => signHashAsync(data).GetAwaiter().GetResult(), chain, options));
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
     private static unsafe int SignTrampoline(

@@ -292,4 +292,48 @@ req = RustPdf.timestamp_request(imprint, cert_req: true)
 check(!req.empty?, "timestamp_request produced a DER request")
 puts "network TSA phase 1 ok (doc #{ts_doc.bytesize} B, req #{req.bytesize} B)"
 
+# 20. Page geometry (issue #45 P1 #1): read-only per-page measurements.
+geom = RustPdf.measure_pages(pdfa)
+check(geom.size == 1, "measure_pages count: #{geom.size}")
+check(geom.first.is_a?(RustPdf::PageGeometry), "measure_pages returns PageGeometry")
+check(geom.first.width > 0 && geom.first.height > 0, "page has a size: #{geom.first.inspect}")
+check(geom.first.media_box.is_a?(RustPdf::PdfRect), "media_box is a PdfRect")
+check(geom.first.media_box.width > 0, "media box width: #{geom.first.media_box.inspect}")
+rot_ed = RustPdf::EditableDoc.load(pdfa)
+rot_ed.rotate_page(0, 90)
+rotated_pdf = rot_ed.to_bytes
+g0 = RustPdf.measure_page(rotated_pdf, 0)
+check(g0.rotation == 90, "rotation read back: #{g0.rotation}")
+check((g0.rotated_width - g0.height).abs < 0.1, "90 deg swaps width/height: #{g0.inspect}")
+oob = false
+begin
+  RustPdf.measure_page(pdfa, 99)
+rescue IndexError
+  oob = true
+end
+check(oob, "measure_page raises IndexError out of range")
+puts "measure ok: #{geom.first.width.round(1)}x#{geom.first.height.round(1)} pts, " \
+     "rot #{geom.first.rotation}; rotated reports #{g0.rotated_width.round(1)}x#{g0.rotated_height.round(1)}"
+
+# 21. Inspection (issue #45 P1 #3): version / PDF/A level / encryption posture.
+info = RustPdf.inspect_pdf(pdfa)
+check(info.is_a?(RustPdf::PdfOverview), "inspect_pdf returns PdfOverview")
+check(info.page_count == 1, "inspect page count: #{info.page_count}")
+check(!info.encrypted && info.encryption == "None", "plain doc not encrypted: #{info.inspect}")
+check(!info.pdfa_level.nil?, "PDF/A level detected: #{info.pdfa_level.inspect}")
+enc_info = RustPdf.inspect_pdf(enc)
+check(enc_info.encrypted, "encrypted doc detected: #{enc_info.inspect}")
+puts "inspect ok: version=#{info.version}, pdfa=#{info.pdfa_level}, " \
+     "enc-cipher=#{enc_info.encryption}, requires_password=#{enc_info.requires_password}"
+
+# 22. Positioned drawing primitives (issue #45 P1 #2): fill rect + place text.
+draw_ed = RustPdf::EditableDoc.load(pdfa)
+check(draw_ed.fill_rect(0, 100, 100, 200, 40), "fill_rect page existed")
+check(draw_ed.place_text(0, 110, 112, "STAMPED", 14, [0, 0, 1], 0), "place_text page existed")
+check(!draw_ed.fill_rect(99, 0, 0, 1, 1), "fill_rect missing page")
+check(!draw_ed.place_text(99, 0, 0, "x"), "place_text missing page")
+drawn = draw_ed.to_bytes
+check(RustPdf.extract_text(drawn).include?("STAMPED"), "placed text is extractable")
+puts "fill_rect + place_text ok (#{drawn.bytesize} bytes)"
+
 puts "OK: full Ruby binding surface exercised"

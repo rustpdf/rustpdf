@@ -158,6 +158,7 @@
       <a href="#ed-meta">Metadata &amp; overlay</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -174,6 +175,8 @@
       <h4>Other</h4>
       <a href="#search">Positional text search</a>
       <a href="#extract">Text &amp; image extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
       <a href="#errors">Errors</a>
@@ -600,6 +603,21 @@ ed.save("stamped.pdf");
 ed.close();</code></pre></div>
       <p>Defaults: <code>size: 64</code>, <code>color: [0.5, 0.5, 0.5]</code>, <code>opacity: 0.30</code>, <code>rotationDeg: 45</code> (text) / <code>0</code> (image), <code>opaqueBackground: false</code>.</p>
 
+      <!-- ED DRAW -->
+      <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
+      <p>Place a filled rectangle or a line of text at exact coordinates on a page, for stamping a value into a form, masking a region, or adding a small note. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1).</p>
+      <div class="api"><code>fillRect(pageIndex, x, y, width, height, color = [1, 1, 1], opacity = 1.0) → boolean</code></div>
+      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0) → boolean</code></div>
+      <p>Both return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. A common pattern: read the page geometry, white-out a region with an opaque rectangle, then place your value over it.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("form.pdf");
+const { width, height } = rustpdf.measurePage(fs.readFileSync("form.pdf"), 0);
+
+// mask a region with an opaque white box, then stamp a value over it
+ed.fillRect(0, 60, height - 100, 200, 24, [1, 1, 1], 1.0);
+ed.placeText(0, 64, height - 94, "APPROVED", 18, [0, 0, 0], 0.0);
+ed.save("stamped.pdf");
+ed.close();</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -840,6 +858,36 @@ console.log(rustpdf.extractText(data));
 const n = rustpdf.extractImagesToDir(data, "out_images/");   // returns how many were written
 console.log(`wrote ${n} image(s)`);</code></pre></div>
 
+      <!-- GEOMETRY -->
+      <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
+      <p>Read the size and box geometry of every page without authoring or editing the document. <code>measurePages</code> returns one <code>PageGeometry</code> per page; <code>measurePage</code> returns a single page (0-based) and throws <code>RangeError</code> when the index is out of range. Sizes are in PDF points (72 per inch).</p>
+      <div class="api"><code>rustpdf.measurePages(pdf: Buffer) → PageGeometry[]</code></div>
+      <div class="api"><code>rustpdf.measurePage(pdf: Buffer, index: number) → PageGeometry</code></div>
+      <p>Each <code>PageGeometry</code> has <code>page</code> (0-based), <code>width</code>, <code>height</code>, <code>rotation</code>, <code>rotatedWidth</code>, <code>rotatedHeight</code>, and the <code>mediaBox</code> and <code>cropBox</code> rectangles. <code>width</code>/<code>height</code> ignore <code>/Rotate</code>; <code>rotatedWidth</code>/<code>rotatedHeight</code> account for it (swapped for 90/270). Each box is a <code>PdfRect</code> with <code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code> plus convenience <code>width</code> and <code>height</code>.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+
+const data = fs.readFileSync("report.pdf");
+for (const g of rustpdf.measurePages(data)) {
+  console.log(`p${g.page}: ${g.width}x${g.height} pt, rotate ${g.rotation}° → ${g.rotatedWidth}x${g.rotatedHeight}`);
+}
+
+const first = rustpdf.measurePage(data, 0);
+console.log(`media box: ${first.mediaBox.width}x${first.mediaBox.height}`);</code></pre></div>
+
+      <!-- INSPECT -->
+      <h2 id="inspect">Document inspection <span class="badge free">free</span></h2>
+      <p>Get a non-mutating overview of a PDF (its version, PDF/A level and encryption posture) without opening, decrypting or rewriting it. Useful as a pre-flight check before deciding how to process a file. <code>inspect</code> never fails on a password-locked document.</p>
+      <div class="api"><code>rustpdf.inspect(pdf: Buffer) → PdfOverview</code></div>
+      <p>A <code>PdfOverview</code> has <code>version</code> (e.g. <code>"1.7"</code>), <code>pdfaLevel</code> (a string like <code>"2b"</code>, or <code>null</code> when the file is not PDF/A), <code>encrypted</code>, <code>encryption</code> (one of <code>"None"</code>, <code>"RC4"</code>, <code>"AES-128"</code>, <code>"AES-256"</code>), <code>requiresPassword</code>, and <code>pageCount</code>.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
+
+const ov = rustpdf.inspect(fs.readFileSync("report.pdf"));
+console.log(`PDF ${ov.version}, ${ov.pageCount} page(s)`);
+console.log(`PDF/A: ${ov.pdfaLevel ?? "no"}`);
+if (ov.encrypted) {
+  console.log(`encryption: ${ov.encryption}, needs password: ${ov.requiresPassword}`);
+}</code></pre></div>
+
       <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
       <div class="api"><code>renderPageToPng(pdf, page = 0, dpi = 150.0) → Buffer</code> <span class="badge lic">licensed</span></div>
@@ -951,6 +999,7 @@ try {
       <a href="#ed-pages">Pages</a>
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
+      <a href="#ed-draw">Positioned drawing</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>
@@ -960,6 +1009,8 @@ try {
       <a href="#verify">Validate signatures</a>
       <a href="#search">Positional text search</a>
       <a href="#extract">Extraction</a>
+      <a href="#geometry">Page geometry</a>
+      <a href="#inspect">Document inspection</a>
       <a href="#render">Render to image</a>
       <a href="#enums">Enums</a>
     </nav>

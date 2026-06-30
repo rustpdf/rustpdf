@@ -176,6 +176,52 @@ def exercise_full_surface() -> None:
         plain_pdfa = ed.to_bytes()
     assert b"pdfaid" not in plain_pdfa, "normalize must strip the PDF/A identifier"
 
+    # 8c. Page geometry (issue #45 P1): measure pages, rotation swaps dimensions.
+    geos = rustpdf.measure_pages(pdfa)
+    assert len(geos) == 1, f"expected 1 page geometry, got {len(geos)}"
+    g0 = geos[0]
+    assert isinstance(g0, rustpdf.PageGeometry)
+    assert g0.page == 0 and g0.rotation == 0
+    assert g0.width > 0 and g0.height > 0, f"bad size: {g0}"
+    assert g0.rotated_width == g0.width and g0.rotated_height == g0.height
+    assert isinstance(g0.media_box, rustpdf.PdfRect)
+    assert g0.media_box.width > 0 and g0.media_box.height > 0
+    # measure_page mirrors the single entry; out-of-range raises IndexError.
+    assert rustpdf.measure_page(pdfa, 0) == g0
+    try:
+        rustpdf.measure_page(pdfa, 5)
+        raise AssertionError("measure_page must raise IndexError out of range")
+    except IndexError:
+        pass
+    # Rotate 90° and confirm rotated_* swaps while width/height stay unrotated.
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        ed.rotate_page(0, 90)
+        rotated = ed.to_bytes()
+    rg = rustpdf.measure_page(rotated, 0)
+    assert rg.rotation == 90, f"rotation not recorded: {rg}"
+    assert abs(rg.rotated_width - g0.height) < 1e-6, f"rotated width swap failed: {rg}"
+    assert abs(rg.rotated_height - g0.width) < 1e-6, f"rotated height swap failed: {rg}"
+
+    # 8d. Document inspection (issue #45 P1): version/encryption/pdfa/page count.
+    ov = rustpdf.inspect(pdfa)
+    assert isinstance(ov, rustpdf.PdfOverview)
+    assert ov.page_count == 1, f"bad page count: {ov}"
+    assert not ov.encrypted and not ov.requires_password, f"plain doc misreported: {ov}"
+    assert ov.version, "inspect returned an empty version"
+    assert ov.pdfa_level, f"PDF/A doc must report a pdfa_level: {ov}"
+    enc_ov = rustpdf.inspect(enc)  # the AES-256 doc from step 6
+    assert enc_ov.encrypted, f"encrypted doc misreported: {enc_ov}"
+    assert "AES" in enc_ov.encryption.upper(), f"unexpected encryption: {enc_ov}"
+
+    # 8e. Stamping (issue #45 P1): mask with a white box, then place text; the
+    # placed text comes back out via extract_text.
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        assert ed.fill_rect(0, 100, 100, 200, 50, color=(1.0, 1.0, 1.0)) is True
+        assert ed.place_text(0, 110, 115, "STAMPED-45", size=18) is True
+        assert ed.fill_rect(9, 0, 0, 10, 10) is False, "missing page must return False"
+        stamped = ed.to_bytes()
+    assert "STAMPED-45" in rustpdf.extract_text(stamped), "placed text not extractable"
+
     # 9. Deferred / external (HSM) signing — issue #41 P0. The private key never
     # reaches the library: it asks our remote signer for the raw RSA signature.
     fixtures = (

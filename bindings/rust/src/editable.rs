@@ -313,6 +313,82 @@ impl EditableDoc {
         Ok(found != 0)
     }
 
+    /// Paint a filled rectangle at `(x, y)` sized `width`×`height` on page
+    /// `page_index` (0-based), in RGB `color` (each `0..=1`) at `opacity`
+    /// (`0..=1`). Coordinates are in the page's **visible** space (origin
+    /// lower-left, y up), regardless of the page `/Rotate`. Returns whether the
+    /// page existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill_rect(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: (f64, f64, f64),
+        opacity: f64,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let (r, g, b) = color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_fill_rect)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                width,
+                height,
+                r,
+                g,
+                b,
+                opacity,
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Draw a line of positioned text with its baseline at `(x, y)` on page
+    /// `page_index` (0-based), in standard Helvetica at `size` points and RGB
+    /// `color` (each `0..=1`). `rotation_deg` rotates the text
+    /// counter-clockwise about the `(x, y)` anchor. Coordinates are in the
+    /// page's **visible** space (origin lower-left, y up), regardless of the
+    /// page `/Rotate`. Returns whether the page existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (r, g, b) = color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_place_text)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                text.as_ptr(),
+                size,
+                r,
+                g,
+                b,
+                rotation_deg,
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
     /// Convert the document to PDF/A on save. Only B-levels (A1b/A2b/A3b) are
     /// valid for conversion.
     pub fn convert_to_pdfa(&mut self, level: PdfaLevel) -> Result<&mut Self> {

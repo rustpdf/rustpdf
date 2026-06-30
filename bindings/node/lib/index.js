@@ -233,11 +233,19 @@ const f = {
   edRedact: lib.func('int pdf_editable_redact(void *ed, size_t index, const double *rects, size_t count, _Out_ int *found)'),
   edConvertPdfa: lib.func('int pdf_editable_convert_to_pdfa(void *ed, int level)'),
 
+  // Stamping (issue #45 P1): fill a rectangle / place a line of text on a page.
+  edFillRect: lib.func('int pdf_editable_fill_rect(void *ed, int index, double x, double y, double width, double height, double r, double g, double b, double opacity, _Out_ int *found)'),
+  edPlaceText: lib.func('int pdf_editable_place_text(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, _Out_ int *found)'),
+
   // Tier 2: signature verification (module-level)
   verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
 
   // Positional text search (issue #41 P1) — JSON array of bounding boxes.
   findText: lib.func('int pdf_find_text_json(const uint8_t *data, size_t len, const char *query, int case_sensitive, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+
+  // Inspection (issue #45 P1): per-page geometry + non-mutating overview, both JSON.
+  measurePages: lib.func('int pdf_measure_pages_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
+  inspect: lib.func('int pdf_inspect_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
 
   extractText: lib.func('int pdf_extract_text(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
   extractImagesToDir: lib.func('int pdf_extract_images_to_dir(const uint8_t *data, size_t len, const char *dir, _Out_ size_t *out_count)'),
@@ -345,6 +353,48 @@ function findText(pdf, query, caseSensitive = false) {
   const b = asBuf(pdf);
   const js = takeBytes((o, n) => f.findText(b, b.length, query, caseSensitive ? 1 : 0, o, n)).toString('utf8');
   return js ? JSON.parse(js) : [];
+}
+
+// Build a PdfRect ({ x0, y0, x1, y1, width, height }) from a JSON [x0,y0,x1,y1].
+function toRect(a) {
+  const [x0, y0, x1, y1] = Array.isArray(a) ? a : [0, 0, 0, 0];
+  return { x0, y0, x1, y1, width: Math.abs(x1 - x0), height: Math.abs(y1 - y0) };
+}
+
+// Read per-page geometry: an array of PageGeometry objects. Sizes are in PDF
+// points; `width`/`height` are unrotated, `rotatedWidth`/`rotatedHeight` account
+// for `/Rotate` (swapped for 90/270). `mediaBox`/`cropBox` are PdfRect objects.
+function measurePages(pdf) {
+  const b = asBuf(pdf);
+  const js = takeBytes((o, n) => f.measurePages(b, b.length, o, n)).toString('utf8');
+  const arr = js ? JSON.parse(js) : [];
+  return arr.map((p) => ({
+    page: p.page,
+    width: p.width,
+    height: p.height,
+    rotation: p.rotation,
+    rotatedWidth: p.rotatedWidth,
+    rotatedHeight: p.rotatedHeight,
+    mediaBox: toRect(p.mediaBox),
+    cropBox: toRect(p.cropBox),
+  }));
+}
+
+// Geometry of a single page (0-based). Throws RangeError if out of range.
+function measurePage(pdf, index) {
+  const pages = measurePages(pdf);
+  if (index < 0 || index >= pages.length) {
+    throw new RangeError(`page index ${index} out of range (0..${pages.length})`);
+  }
+  return pages[index];
+}
+
+// Non-mutating overview: { version, pdfaLevel, encrypted, encryption,
+// requiresPassword, pageCount }. Never fails on a password-locked file.
+function inspect(pdf) {
+  const b = asBuf(pdf);
+  const js = takeBytes((o, n) => f.inspect(b, b.length, o, n)).toString('utf8');
+  return JSON.parse(js);
 }
 
 function sign(pdf, keyDer, certDer, opts = {}) {
@@ -744,6 +794,23 @@ class EditableDoc {
   }
   convertToPdfa(level = PdfaLevel.A2b) { check(f.edConvertPdfa(this._ptr, level)); return this; }
 
+  // stamping (issue #45 P1). Coordinates are in the page VISIBLE space (origin
+  // lower-left, y up); content lands where viewed regardless of /Rotate.
+  // Returns false if the page index does not exist.
+  fillRect(pageIndex, x, y, width, height, color = [1, 1, 1], opacity = 1.0) {
+    const [r, g, b] = color;
+    const found = [0];
+    check(f.edFillRect(this._ptr, pageIndex, x, y, width, height, r, g, b, opacity, found));
+    return found[0] !== 0;
+  }
+  // `rotationDeg` rotates the text counter-clockwise about its anchor (x, y).
+  placeText(pageIndex, x, y, text, size = 12.0, color = [0, 0, 0], rotationDeg = 0.0) {
+    const [r, g, b] = color;
+    const found = [0];
+    check(f.edPlaceText(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, found));
+    return found[0] !== 0;
+  }
+
   optimize() { check(f.edOptimize(this._ptr)); return this; }
   compact(on = true) { check(f.edCompact(this._ptr, on ? 1 : 0)); return this; }
   encrypt({ method = Encryption.Aes256, user = '', owner = '', readOnly = false } = {}) {
@@ -780,6 +847,9 @@ module.exports = {
   pageCount,
   verifySignatures,
   findText,
+  measurePages,
+  measurePage,
+  inspect,
   sign,
   timestamp,
   addDss,

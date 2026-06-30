@@ -15,9 +15,12 @@ use RustPdf\EditableDoc;
 use RustPdf\Encryption;
 use RustPdf\FacturxProfile;
 use RustPdf\Certify;
+use RustPdf\PageGeometry;
 use RustPdf\Pdf;
 use RustPdf\PdfaLevel;
 use RustPdf\PdfException;
+use RustPdf\PdfOverview;
+use RustPdf\PdfRect;
 use RustPdf\SignatureField;
 use RustPdf\SigningOptions;
 use RustPdf\SigningSession;
@@ -334,5 +337,60 @@ check(strlen($tsDoc) > 0 && strlen($tsTbs) > 0, 'beginTimestamp returned documen
 $tsReq = Pdf::timestampRequest(hash('sha256', $tsTbs, true));
 check(strlen($tsReq) > 0, 'timestampRequest built a DER request');
 echo 'network-TSA helpers ok (req ' . strlen($tsReq) . " bytes)\n";
+
+// 22. Issue #45 P1: measure pages (geometry + rotation swap).
+$geoms = Pdf::measurePages($pdfa);
+check(count($geoms) === 1, 'measurePages returned one page');
+check($geoms[0] instanceof PageGeometry, 'measurePages returns PageGeometry');
+check($geoms[0]->page === 0, 'geometry page index 0');
+check($geoms[0]->width > 0 && $geoms[0]->height > 0, 'geometry has a size');
+check($geoms[0]->rotation === 0, 'unrotated page has rotation 0');
+check($geoms[0]->mediaBox instanceof PdfRect, 'geometry mediaBox is a PdfRect');
+check(abs($geoms[0]->mediaBox->width() - $geoms[0]->width) < 0.01, 'mediaBox width matches');
+check(abs($geoms[0]->rotatedWidth - $geoms[0]->width) < 0.01, 'unrotated rotatedWidth == width');
+$single = Pdf::measurePage($pdfa, 0);
+check($single->page === 0, 'measurePage(0) ok');
+$rangeThrew = false;
+try {
+    Pdf::measurePage($pdfa, 5);
+} catch (PdfException) {
+    $rangeThrew = true;
+}
+check($rangeThrew, 'measurePage out of range throws');
+
+// Rotate a page 90° and confirm rotatedWidth/Height swap.
+$rotEd = EditableDoc::load($pdfa);
+$rotEd->rotatePage(0, 90);
+$rotated = $rotEd->toBytes();
+$rg = Pdf::measurePage($rotated, 0);
+check($rg->rotation === 90, 'rotated page reports rotation 90');
+check(abs($rg->rotatedWidth - $geoms[0]->height) < 0.01, 'rotatedWidth == original height after 90°');
+check(abs($rg->rotatedHeight - $geoms[0]->width) < 0.01, 'rotatedHeight == original width after 90°');
+echo 'measurePages ok (' . round($geoms[0]->width, 1) . 'x' . round($geoms[0]->height, 1)
+    . ', rotation swap verified)' . "\n";
+
+// 23. Issue #45 P1: inspect a document without mutating it.
+$ov = Pdf::inspect($pdfa);
+check($ov instanceof PdfOverview, 'inspect returns PdfOverview');
+check($ov->version !== '', 'inspect reports a version: ' . $ov->version);
+check($ov->pageCount === 1, 'inspect page count');
+check($ov->pdfaLevel !== null, 'inspect detected PDF/A level: ' . var_export($ov->pdfaLevel, true));
+check($ov->encrypted === false, 'pdfa is not encrypted');
+$ovEnc = Pdf::inspect($enc);
+check($ovEnc->encrypted === true, 'inspect detects encryption');
+check($ovEnc->encryption !== '' && $ovEnc->encryption !== 'none', 'inspect reports encryption label: ' . $ovEnc->encryption);
+echo 'inspect ok (version=' . $ov->version . ', pdfaLevel=' . var_export($ov->pdfaLevel, true)
+    . ', encrypted=' . var_export($ovEnc->encrypted, true) . ")\n";
+
+// 24. Issue #45 P1: fillRect + placeText, then read the text back.
+$drawEd = EditableDoc::load($pdfa);
+check($drawEd->fillRect(0, 100.0, 100.0, 200.0, 50.0, [0.9, 0.9, 0.2], 1.0), 'fillRect page 0 existed');
+check(!$drawEd->fillRect(99, 0.0, 0.0, 10.0, 10.0), 'fillRect missing page returns false');
+check($drawEd->placeText(0, 110.0, 115.0, 'PLACEDHERE', 18.0, [0.0, 0.0, 0.0], 0.0), 'placeText page 0 existed');
+check(!$drawEd->placeText(99, 0.0, 0.0, 'x'), 'placeText missing page returns false');
+$drawn = $drawEd->toBytes();
+check(strlen($drawn) > 0, 'drawn bytes produced');
+check(str_contains(Pdf::extractText($drawn), 'PLACEDHERE'), 'placed text is extractable');
+echo "fillRect + placeText ok (placed text round-tripped)\n";
 
 echo "OK: full PHP binding surface exercised\n";

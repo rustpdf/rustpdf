@@ -134,6 +134,33 @@ type
   { Axis-aligned rectangle [x0,y0,x1,y1] for AcroForm widgets and redaction. }
   TPdfRect = record
     X0, Y0, X1, Y1: Double;
+    { Non-negative extent of the rectangle. }
+    function Width: Double;
+    function Height: Double;
+  end;
+
+  { Read-only geometry of one page (Pdf.MeasurePage / MeasurePages). Width/Height
+    are the unrotated size in PDF points; RotatedWidth/RotatedHeight account for
+    /Rotate (swapped for 90/270 pages). MediaBox/CropBox are in PDF points. }
+  TPageGeometry = record
+    Page: Integer;
+    Width, Height: Double;
+    Rotation: Integer;
+    RotatedWidth, RotatedHeight: Double;
+    MediaBox, CropBox: TPdfRect;
+  end;
+
+  { A non-mutating summary of a PDF (Pdf.Inspect). PdfaLevel is '' when the file
+    makes no PDF/A conformance claim; Encryption is '' (or 'None') for a plain
+    file. RequiresPassword is True when the file is encrypted and the supplied
+    (here, empty) password does not open it. }
+  TPdfOverview = record
+    Version: string;
+    PdfaLevel: string;
+    Encrypted: Boolean;
+    Encryption: string;
+    RequiresPassword: Boolean;
+    PageCount: Integer;
   end;
 
   { One positional text match from Pdf.FindText. Page is 0-based; X/Y are the
@@ -302,6 +329,18 @@ type
                                 Opacity: Double = 0.30;
                                 RotationDeg: Double = 0.0): TPdfEditable;
     function Redact(PageIndex: NativeUInt; const Rects: array of TPdfRect): Boolean;
+    { Paint a filled rectangle (RGB, each 0..1) at Opacity (0..1) on page
+      PageIndex (0-based). Coordinates are in the page's VISIBLE space (origin
+      lower-left, y up), regardless of /Rotate. Returns False if the page does
+      not exist. Issue #45 P1. }
+    function FillRect(PageIndex: Integer; X, Y, Width, Height, R, G, B, Opacity: Double): Boolean;
+    { Draw a line of standard-Helvetica text with its baseline at (X, Y) on page
+      PageIndex (0-based), RGB (each 0..1). Coordinates are in the page's VISIBLE
+      space (origin lower-left, y up), regardless of /Rotate; RotationDeg rotates
+      the text counter-clockwise about the (X, Y) anchor. Returns False if the
+      page does not exist. Issue #45 P1. }
+    function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String;
+                       Size, R, G, B, RotationDeg: Double): Boolean;
     function ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable;
     { Set the PDF version header (0=1.4, 1=1.5, 2=1.7, 3=2.0). }
     function SetVersion(V: Integer): TPdfEditable;
@@ -348,6 +387,15 @@ type
       a case-insensitive search. }
     class function FindText(const PdfBytes: TBytes; const Query: string;
                             CaseSensitive: Boolean = False): TTextHits; static;
+
+    { Per-page geometry (size, /Rotate, MediaBox, CropBox) of every page, in
+      page order, without mutating the file. Issue #45 P1. }
+    class function MeasurePages(const Pdf: TBytes): TArray<TPageGeometry>; static;
+    { Geometry of a single page (0-based). Raises ERustPdf if Index is invalid. }
+    class function MeasurePage(const Pdf: TBytes; Index: Integer): TPageGeometry; static;
+    { Non-mutating summary: PDF version, PDF/A level, encryption posture and page
+      count. Works even on a password-locked file. Issue #45 P1. }
+    class function Inspect(const Pdf: TBytes): TPdfOverview; static;
     class function Sign(const PdfBytes, KeyDer, CertDer: TBytes;
                         const Reason: string = ''; const Location: string = '';
                         const Name: string = ''; Pades: Boolean = False): TBytes; static;
@@ -553,6 +601,10 @@ type
   Tpdf_add_dss              = function(pdf: PByte; pdf_len: NativeUInt; cert_ptrs: Pointer; cert_lens: Pointer; cert_count: NativeUInt; crl_ptrs: Pointer; crl_lens: Pointer; crl_count: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_verify_signatures_json = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
   Tpdf_find_text_json       = function(data: PByte; len: NativeUInt; query: PAnsiChar; case_sensitive: Integer; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_measure_pages_json   = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_inspect_json         = function(data: PByte; len: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_editable_fill_rect   = function(ed: Pointer; index: Integer; x, y, width, height, r, g, b, opacity: Double; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_place_text  = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; out out_found: Integer): Integer; cdecl;
 
 { ---- deferred / external signing (issue #41) ---- }
 
@@ -699,6 +751,10 @@ var
   Fpdf_add_dss: Tpdf_add_dss;
   Fpdf_verify_signatures_json: Tpdf_verify_signatures_json;
   Fpdf_find_text_json: Tpdf_find_text_json;
+  Fpdf_measure_pages_json: Tpdf_measure_pages_json;
+  Fpdf_inspect_json: Tpdf_inspect_json;
+  Fpdf_editable_fill_rect: Tpdf_editable_fill_rect;
+  Fpdf_editable_place_text: Tpdf_editable_place_text;
   Fpdf_sign_begin: Tpdf_sign_begin;
   Fpdf_sign_complete: Tpdf_sign_complete;
   Fpdf_sign_with: Tpdf_sign_with;
@@ -894,6 +950,10 @@ begin
   Fpdf_add_dss := Tpdf_add_dss(Bind('pdf_add_dss'));
   Fpdf_verify_signatures_json := Tpdf_verify_signatures_json(Bind('pdf_verify_signatures_json'));
   Fpdf_find_text_json := Tpdf_find_text_json(Bind('pdf_find_text_json'));
+  Fpdf_measure_pages_json := Tpdf_measure_pages_json(Bind('pdf_measure_pages_json'));
+  Fpdf_inspect_json := Tpdf_inspect_json(Bind('pdf_inspect_json'));
+  Fpdf_editable_fill_rect := Tpdf_editable_fill_rect(Bind('pdf_editable_fill_rect'));
+  Fpdf_editable_place_text := Tpdf_editable_place_text(Bind('pdf_editable_place_text'));
   Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
   Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
   Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
@@ -1211,6 +1271,16 @@ begin
 end;
 
 { ===================== PdfRect ========================================= }
+
+function TPdfRect.Width: Double;
+begin
+  Result := Abs(X1 - X0);
+end;
+
+function TPdfRect.Height: Double;
+begin
+  Result := Abs(Y1 - Y0);
+end;
 
 function PdfRect(X0, Y0, X1, Y1: Double): TPdfRect;
 begin
@@ -1937,6 +2007,28 @@ begin
   Result := found <> 0;
 end;
 
+function TPdfEditable.FillRect(PageIndex: Integer; X, Y, Width, Height,
+  R, G, B, Opacity: Double): Boolean;
+var
+  found: Integer;
+begin
+  found := 0;
+  Check(Fpdf_editable_fill_rect(H, PageIndex, X, Y, Width, Height, R, G, B,
+        Opacity, found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.PlaceText(PageIndex: Integer; X, Y: Double;
+  const Text: UTF8String; Size, R, G, B, RotationDeg: Double): Boolean;
+var
+  found: Integer;
+begin
+  found := 0;
+  Check(Fpdf_editable_place_text(H, PageIndex, X, Y, PAnsiChar(Text), Size,
+        R, G, B, RotationDeg, found));
+  Result := found <> 0;
+end;
+
 function TPdfEditable.ConvertToPdfa(Level: TPdfaLevel): TPdfEditable;
 begin
   Check(Fpdf_editable_convert_to_pdfa(H, Ord(Level)));
@@ -2235,6 +2327,223 @@ begin
   end;
 end;
 
+{ ===================== minimal JSON (measure + inspect) =============== }
+
+{ Parse a 4-element JSON number array [x0,y0,x1,y1] into a TPdfRect; tolerant of
+  whitespace and extra/missing elements (missing -> 0). Reuses the find_text
+  number/whitespace scanners above. }
+function JsonParseRectArray(const J: UTF8String; var P: Integer): TPdfRect;
+var
+  Vals: array[0..3] of Double;
+  N: Integer;
+begin
+  Vals[0] := 0.0; Vals[1] := 0.0; Vals[2] := 0.0; Vals[3] := 0.0;
+  JsonSkipWs(J, P);
+  if (P <= Length(J)) and (J[P] = '[') then
+    Inc(P);
+  N := 0;
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = ']' then
+    begin
+      Inc(P);
+      Break;
+    end;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if N <= 3 then
+      Vals[N] := JsonParseNumber(J, P)
+    else
+      JsonParseNumber(J, P);  { discard surplus }
+    Inc(N);
+  end;
+  Result.X0 := Vals[0]; Result.Y0 := Vals[1];
+  Result.X1 := Vals[2]; Result.Y1 := Vals[3];
+end;
+
+function JsonParseGeometry(const J: UTF8String; var P: Integer): TPageGeometry;
+var
+  Key: string;
+begin
+  Result.Page := 0;
+  Result.Width := 0.0; Result.Height := 0.0;
+  Result.Rotation := 0;
+  Result.RotatedWidth := 0.0; Result.RotatedHeight := 0.0;
+  Result.MediaBox := PdfRect(0, 0, 0, 0);
+  Result.CropBox := PdfRect(0, 0, 0, 0);
+  JsonSkipWs(J, P);
+  if (P <= Length(J)) and (J[P] = '{') then
+    Inc(P);
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '}' then
+    begin
+      Inc(P);
+      Break;
+    end;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if J[P] <> '"' then
+      Break;  { malformed }
+    Key := JsonParseString(J, P);
+    JsonSkipWs(J, P);
+    if (P <= Length(J)) and (J[P] = ':') then
+      Inc(P);
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '[' then
+    begin
+      if Key = 'mediaBox' then
+        Result.MediaBox := JsonParseRectArray(J, P)
+      else if Key = 'cropBox' then
+        Result.CropBox := JsonParseRectArray(J, P)
+      else
+        JsonParseRectArray(J, P);  { discard unknown array }
+    end
+    else if J[P] = '"' then
+      JsonParseString(J, P)  { discard unexpected string }
+    else if J[P] = 'n' then
+      Inc(P, 4)  { null }
+    else if J[P] = 't' then
+      Inc(P, 4)  { true }
+    else if J[P] = 'f' then
+      Inc(P, 5)  { false }
+    else
+    begin
+      if Key = 'page' then
+        Result.Page := Round(JsonParseNumber(J, P))
+      else if Key = 'rotation' then
+        Result.Rotation := Round(JsonParseNumber(J, P))
+      else if Key = 'width' then
+        Result.Width := JsonParseNumber(J, P)
+      else if Key = 'height' then
+        Result.Height := JsonParseNumber(J, P)
+      else if Key = 'rotatedWidth' then
+        Result.RotatedWidth := JsonParseNumber(J, P)
+      else if Key = 'rotatedHeight' then
+        Result.RotatedHeight := JsonParseNumber(J, P)
+      else
+        JsonParseNumber(J, P);  { discard unknown number }
+    end;
+  end;
+end;
+
+function ParseGeometries(const J: UTF8String): TArray<TPageGeometry>;
+var
+  P, N: Integer;
+begin
+  SetLength(Result, 0);
+  N := 0;
+  P := 1;
+  JsonSkipWs(J, P);
+  if (P > Length(J)) or (J[P] <> '[') then
+    Exit;
+  Inc(P);
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = ']' then
+      Break;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if J[P] <> '{' then
+      Break;
+    SetLength(Result, N + 1);
+    Result[N] := JsonParseGeometry(J, P);
+    Inc(N);
+  end;
+end;
+
+{ Parse the flat inspect object. Recognises version/pdfaLevel/encryption
+  (strings, pdfaLevel may be null -> ''), encrypted/requiresPassword (booleans)
+  and pageCount (number). }
+function ParseOverview(const J: UTF8String): TPdfOverview;
+var
+  P: Integer;
+  Key: string;
+begin
+  Result.Version := '';
+  Result.PdfaLevel := '';
+  Result.Encrypted := False;
+  Result.Encryption := '';
+  Result.RequiresPassword := False;
+  Result.PageCount := 0;
+  P := 1;
+  JsonSkipWs(J, P);
+  if (P <= Length(J)) and (J[P] = '{') then
+    Inc(P);
+  while P <= Length(J) do
+  begin
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '}' then
+      Break;
+    if J[P] = ',' then
+    begin
+      Inc(P);
+      Continue;
+    end;
+    if J[P] <> '"' then
+      Break;  { malformed }
+    Key := JsonParseString(J, P);
+    JsonSkipWs(J, P);
+    if (P <= Length(J)) and (J[P] = ':') then
+      Inc(P);
+    JsonSkipWs(J, P);
+    if P > Length(J) then
+      Break;
+    if J[P] = '"' then
+    begin
+      if Key = 'version' then
+        Result.Version := JsonParseString(J, P)
+      else if Key = 'pdfaLevel' then
+        Result.PdfaLevel := JsonParseString(J, P)
+      else if Key = 'encryption' then
+        Result.Encryption := JsonParseString(J, P)
+      else
+        JsonParseString(J, P);  { discard unknown string }
+    end
+    else if J[P] = 't' then
+    begin
+      if Key = 'encrypted' then
+        Result.Encrypted := True
+      else if Key = 'requiresPassword' then
+        Result.RequiresPassword := True;
+      Inc(P, 4);  { true }
+    end
+    else if J[P] = 'f' then
+      Inc(P, 5)  { false — fields already default to False }
+    else if J[P] = 'n' then
+      Inc(P, 4)  { null — pdfaLevel stays '' }
+    else
+    begin
+      if Key = 'pageCount' then
+        Result.PageCount := Round(JsonParseNumber(J, P))
+      else
+        JsonParseNumber(J, P);  { discard unknown number }
+    end;
+  end;
+end;
+
 { ===================== Pdf (package functions) ========================= }
 
 class function Pdf.Version: string;
@@ -2326,6 +2635,49 @@ begin
   if Length(Raw) > 0 then
     Move(Raw[0], Json[1], Length(Raw));
   Result := ParseTextHits(Json);
+end;
+
+class function Pdf.MeasurePages(const Pdf: TBytes): TArray<TPageGeometry>;
+var
+  P: PByte;
+  Len: NativeUInt;
+  Json: UTF8String;
+  Raw: TBytes;
+begin
+  EnsureLoaded;
+  Check(Fpdf_measure_pages_json(BytePtr(Pdf), Length(Pdf), P, Len));
+  Raw := TakeBuffer(P, Len);
+  SetLength(Json, Length(Raw));
+  if Length(Raw) > 0 then
+    Move(Raw[0], Json[1], Length(Raw));
+  Result := ParseGeometries(Json);
+end;
+
+class function Pdf.MeasurePage(const Pdf: TBytes; Index: Integer): TPageGeometry;
+var
+  Pages: TArray<TPageGeometry>;
+begin
+  Pages := MeasurePages(Pdf);
+  if (Index < 0) or (Index >= Length(Pages)) then
+    raise ERustPdf.Create(Format('page index %d out of range (0..%d)',
+      [Index, Length(Pages) - 1]), psInvalidArgument);
+  Result := Pages[Index];
+end;
+
+class function Pdf.Inspect(const Pdf: TBytes): TPdfOverview;
+var
+  P: PByte;
+  Len: NativeUInt;
+  Json: UTF8String;
+  Raw: TBytes;
+begin
+  EnsureLoaded;
+  Check(Fpdf_inspect_json(BytePtr(Pdf), Length(Pdf), P, Len));
+  Raw := TakeBuffer(P, Len);
+  SetLength(Json, Length(Raw));
+  if Length(Raw) > 0 then
+    Move(Raw[0], Json[1], Length(Raw));
+  Result := ParseOverview(Json);
 end;
 
 class function Pdf.Sign(const PdfBytes, KeyDer, CertDer: TBytes;

@@ -783,6 +783,49 @@ PdfStatus pdf_editable_watermark_image_file(PdfEditable *ed,
                                             double rotation_deg);
 
 /**
+ * Paint a filled rectangle at `(x, y)` sized `width`×`height` on page `index`
+ * (0-based), in RGB `color` (`r`/`g`/`b`, each 0..=1) at `opacity` (0..=1).
+ * Coordinates are in the page's visible space (origin lower-left, y up).
+ * `out_found` receives `1` if the page existed, else `0`.
+ *
+ * # Safety
+ * `ed` valid; `out_found` writable or NULL.
+ */
+PdfStatus pdf_editable_fill_rect(PdfEditable *ed,
+                                 int index,
+                                 double x,
+                                 double y,
+                                 double width,
+                                 double height,
+                                 double r,
+                                 double g,
+                                 double b,
+                                 double opacity,
+                                 int *out_found);
+
+/**
+ * Draw a line of positioned text with baseline at `(x, y)` on page `index`
+ * (0-based), standard Helvetica at `size` points, RGB `color` (each 0..=1).
+ * `rotation_deg` rotates the text counter-clockwise about `(x, y)`.
+ * Coordinates are in the page's visible space (origin lower-left, y up).
+ * `out_found` receives `1` if the page existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+PdfStatus pdf_editable_place_text(PdfEditable *ed,
+                                  int index,
+                                  double x,
+                                  double y,
+                                  const char *text,
+                                  double size,
+                                  double r,
+                                  double g,
+                                  double b,
+                                  double rotation_deg,
+                                  int *out_found);
+
+/**
  * Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
  * `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
  *
@@ -918,6 +961,37 @@ PdfStatus pdf_find_text_json(const uint8_t *data,
                              int case_sensitive,
                              unsigned char **out_ptr,
                              uintptr_t *out_len);
+
+/**
+ * Read per-page geometry from `data`/`len` and write a JSON array into
+ * `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]). Each element is
+ * `{"page":int,"width":num,"height":num,"rotation":int,"rotatedWidth":num,
+ * "rotatedHeight":num,"mediaBox":[x0,y0,x1,y1],"cropBox":[x0,y0,x1,y1]}` with
+ * coordinates in PDF points. Sizes are unrotated; `rotatedWidth`/`Height` are
+ * swapped for 90/270 pages.
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable.
+ */
+PdfStatus pdf_measure_pages_json(const uint8_t *data,
+                                 uintptr_t len,
+                                 unsigned char **out_ptr,
+                                 uintptr_t *out_len);
+
+/**
+ * Inspect `data`/`len` without mutating it and write a JSON object into
+ * `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]):
+ * `{"version":str,"pdfaLevel":str|null,"encrypted":bool,"encryption":str,
+ * "requiresPassword":bool,"pageCount":int}`. Never fails on a password-locked
+ * file.
+ *
+ * # Safety
+ * `data`/`len` readable; `out_ptr`/`out_len` writable.
+ */
+PdfStatus pdf_inspect_json(const uint8_t *data,
+                           uintptr_t len,
+                           unsigned char **out_ptr,
+                           uintptr_t *out_len);
 
 /**
  * Extract every raster image from `data`/`len` and write each one as a file

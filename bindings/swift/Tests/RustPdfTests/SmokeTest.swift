@@ -338,6 +338,54 @@ final class SmokeTest: XCTestCase {
         let imprint = Array(SHA256.hash(data: Data(tsBytes)))
         let tsReq = try Pdf.timestampRequest(imprint: imprint)
         XCTAssertFalse(tsReq.isEmpty, "RFC 3161 request must be non-empty")
+
+        // 18. Page geometry (issue #45 P1 #1): read-only per-page measurements,
+        // including the width/height swap after a 90° rotation.
+        let geom = try Pdf.measurePages(pdfa)
+        XCTAssertEqual(geom.count, 1, "measure_pages count")
+        XCTAssertTrue(geom[0].width > 0 && geom[0].height > 0, "page has a size")
+        XCTAssertTrue(geom[0].mediaBox.width > 0, "media box width")
+        var rotatedPdf: [UInt8] = []
+        do {
+            let ed = try EditableDoc(loading: pdfa)
+            try ed.rotatePage(0, degrees: 90)
+            rotatedPdf = try ed.toBytes()
+        }
+        let g0 = try Pdf.measurePage(rotatedPdf, 0)
+        XCTAssertEqual(g0.rotation, 90, "rotation read back")
+        XCTAssertEqual(g0.rotatedWidth, g0.height, accuracy: 0.1, "90° swaps width/height")
+        XCTAssertEqual(g0.rotatedHeight, g0.width, accuracy: 0.1, "90° swaps height/width")
+        XCTAssertThrowsError(try Pdf.measurePage(pdfa, 99), "out-of-range page must throw")
+
+        // 19. Inspection (issue #45 P1 #3): version / PDF/A level / encryption.
+        let info = try Pdf.inspect(pdfa)
+        XCTAssertEqual(info.pageCount, 1, "inspect page count")
+        XCTAssertFalse(info.encrypted, "plain doc not encrypted")
+        XCTAssertEqual(info.encryption, "None", "plain doc cipher None")
+        XCTAssertNotNil(info.pdfaLevel, "PDF/A level should be detected")
+        var encSample: [UInt8] = []
+        do {
+            let ed = try EditableDoc(loading: plain)
+            try ed.encrypt(method: .aes256, user: "", owner: "owner", readOnly: false)
+            encSample = try ed.toBytes()
+        }
+        let encInfo = try Pdf.inspect(encSample)
+        XCTAssertTrue(encInfo.encrypted, "encrypted doc detected")
+
+        // 20. Positioned drawing primitives (issue #45 P1 #2): fill rect + text.
+        var drawn: [UInt8] = []
+        do {
+            let ed = try EditableDoc(loading: pdfa)
+            XCTAssertTrue(ed.fillRect(0, 100, 100, 200, 40), "fill_rect page existed")
+            XCTAssertTrue(ed.placeText(0, 110, 112, "STAMPED", size: 14, color: (0, 0, 1)),
+                          "place_text page existed")
+            XCTAssertFalse(ed.fillRect(99, 0, 0, 1, 1), "fill_rect missing page")
+            drawn = try ed.toBytes()
+        }
+        // NOTE: String.contains("") is true-trapping in Swift — assert the real
+        // substring, never an empty one.
+        XCTAssertTrue(try Pdf.extractText(drawn).contains("STAMPED"),
+                      "placed text should be extractable")
     }
 
     /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).

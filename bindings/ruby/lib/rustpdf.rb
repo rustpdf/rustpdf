@@ -157,6 +157,31 @@ module RustPdf
   # origin lower-left; +x+/+y+ is the lower-left corner of the box.
   TextHit = Struct.new(:page, :text, :x, :y, :width, :height)
 
+  # A rectangle in PDF user space (points, origin lower-left). Used for a page's
+  # MediaBox/CropBox. #width / #height are the (non-negative) extents.
+  PdfRect = Struct.new(:x0, :y0, :x1, :y1) do
+    def width
+      (x1 - x0).abs
+    end
+
+    def height
+      (y1 - y0).abs
+    end
+  end
+
+  # Read-only geometry of one page (from #measure_page / #measure_pages). Sizes
+  # are in PDF points; +width+/+height+ ignore rotation while +rotated_width+/
+  # +rotated_height+ account for it (swapped for 90/270 pages). +media_box+ and
+  # +crop_box+ are PdfRect values.
+  PageGeometry = Struct.new(:page, :width, :height, :rotation,
+                            :rotated_width, :rotated_height, :media_box, :crop_box)
+
+  # A non-mutating summary of a PDF (from #inspect_pdf). +pdfa_level+ is nil when
+  # the document is not PDF/A; +encryption+ is the cipher name ("None" when the
+  # document is not encrypted).
+  PdfOverview = Struct.new(:version, :pdfa_level, :encrypted, :encryption,
+                           :requires_password, :page_count)
+
   # An in-progress two-phase signature: #document holds the placeholder PDF and
   # #bytes the exact bytes the signature covers. Hand #hash to a remote signer,
   # build the CMS container, then call #complete.
@@ -238,6 +263,46 @@ module RustPdf
     JSON.parse(js).map do |h|
       TextHit.new(h["page"], h["text"], h["x"], h["y"], h["width"], h["height"])
     end
+  end
+
+  # Read the geometry (size, rotation, MediaBox, CropBox) of every page in +pdf+,
+  # in page order, without mutating it. Returns an Array of PageGeometry. Sizes
+  # are in PDF points; +rotated_width+/+rotated_height+ swap for 90/270 pages.
+  def measure_pages(pdf)
+    js = take_bytes { |pp, pn| Native.call("pdf_measure_pages_json", pdf, pdf.bytesize, pp, pn) }
+         .force_encoding(Encoding::UTF_8)
+    return [] if js.empty?
+
+    rect = lambda do |arr|
+      a = Array(arr)
+      a.size == 4 ? PdfRect.new(a[0], a[1], a[2], a[3]) : PdfRect.new(0, 0, 0, 0)
+    end
+    JSON.parse(js).map do |g|
+      PageGeometry.new(g["page"], g["width"], g["height"], g["rotation"],
+                       g["rotatedWidth"], g["rotatedHeight"],
+                       rect.call(g["mediaBox"]), rect.call(g["cropBox"]))
+    end
+  end
+
+  # Read the geometry of a single 0-based page of +pdf+. Raises IndexError if
+  # +index+ is out of range.
+  def measure_page(pdf, index)
+    pages = measure_pages(pdf)
+    raise IndexError, "page index #{index} out of range (#{pages.size} pages)" if index.negative? || index >= pages.size
+
+    pages[index]
+  end
+
+  # Inspect +pdf+ without mutating it: PDF version, PDF/A level (if any),
+  # encryption posture and page count. Works even on password-protected files
+  # (the encryption fields are still reported). Returns a PdfOverview. Named
+  # +inspect_pdf+ to avoid shadowing Object#inspect.
+  def inspect_pdf(pdf)
+    js = take_bytes { |pp, pn| Native.call("pdf_inspect_json", pdf, pdf.bytesize, pp, pn) }
+         .force_encoding(Encoding::UTF_8)
+    o = JSON.parse(js)
+    PdfOverview.new(o["version"], o["pdfaLevel"], o["encrypted"] ? true : false,
+                    o["encryption"], o["requiresPassword"] ? true : false, o["pageCount"])
   end
 
   # Validate every signature in +pdf+. Returns one Hash per signature with keys

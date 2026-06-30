@@ -229,6 +229,12 @@ var
   Hits: TTextHits;
   NormEd, VerEd: TPdfEditable;
   NormBytes, VerBytes: TBytes;
+  { issue #45 P1 — measure / inspect / fill_rect / place_text }
+  Geos: TArray<TPageGeometry>;
+  Geo: TPageGeometry;
+  RotEd, PlaceEd: TPdfEditable;
+  RotBytes, PlaceBytes: TBytes;
+  Ovw: TPdfOverview;
 {$IFDEF UNIX}
   Signer: TOpenSslSigner;
   KeyPemPath: string;
@@ -614,6 +620,67 @@ begin
   Assert(StartsWith(VerBytes, TEncoding.ASCII.GetBytes('%PDF-2.0')),
     'set_version writes a 2.0 header');
   Writeln('set_version ok');
+
+  { 12. Page geometry (issue #45 P1). Pdfa is a single-page document. }
+  Geos := Pdf.MeasurePages(Pdfa);
+  Assert(Length(Geos) = 1, 'measure_pages returns one page');
+  Geo := Pdf.MeasurePage(Pdfa, 0);
+  Assert(Geo.Page = 0, 'page index is 0');
+  Assert((Geo.Width > 0) and (Geo.Height > 0), 'page has a positive size');
+  Assert(Geo.Rotation = 0, 'unrotated page reports rotation 0');
+  Assert((Geo.RotatedWidth = Geo.Width) and (Geo.RotatedHeight = Geo.Height),
+    'rotated size equals raw size at rotation 0');
+  Assert((Geo.MediaBox.Width > 0) and (Geo.MediaBox.Height > 0), 'MediaBox has extent');
+  Writeln(Format('measure ok (page 0 is %.1fx%.1f, mediaBox %.1fx%.1f)',
+    [Geo.Width, Geo.Height, Geo.MediaBox.Width, Geo.MediaBox.Height]));
+
+  { Rotate the page 90 degrees, then confirm rotatedWidth/Height swap. }
+  RotEd := TPdfEditable.Load(Pdfa);
+  try
+    RotEd.RotatePage(0, 90);
+    RotBytes := RotEd.ToBytes;
+  finally
+    RotEd.Free;
+  end;
+  Geo := Pdf.MeasurePage(RotBytes, 0);
+  Assert(Geo.Rotation = 90, 'rotated page reports rotation 90');
+  Assert(Geo.RotatedWidth = Geo.Height, 'rotatedWidth = unrotated height at 90');
+  Assert(Geo.RotatedHeight = Geo.Width, 'rotatedHeight = unrotated width at 90');
+  Writeln(Format('rotation swap ok (raw %.1fx%.1f -> rotated %.1fx%.1f)',
+    [Geo.Width, Geo.Height, Geo.RotatedWidth, Geo.RotatedHeight]));
+
+  { 13. Inspect (issue #45 P1): the PDF/A-2a doc and the encrypted doc. }
+  Ovw := Pdf.Inspect(Pdfa);
+  Assert(Ovw.PageCount = 1, 'inspect page count');
+  Assert(not Ovw.Encrypted, 'PDF/A doc is not encrypted');
+  Assert(Ovw.PdfaLevel <> '', 'inspect reports a PDF/A level');
+  Assert(Ovw.Version <> '', 'inspect reports a version');
+  Writeln(Format('inspect ok (version=%s, pdfa=%s, pages=%d)',
+    [Ovw.Version, Ovw.PdfaLevel, Ovw.PageCount]));
+  Ovw := Pdf.Inspect(EncBytes);
+  Assert(Ovw.Encrypted, 'inspect detects the encrypted doc');
+  Assert(Ovw.Encryption <> '', 'inspect reports an encryption method');
+  Writeln(Format('inspect (encrypted) ok (encryption=%s)', [Ovw.Encryption]));
+
+  { 14. FillRect + PlaceText (issue #45 P1). PlainBytes is a single-page doc;
+    place visible text and confirm it round-trips through extraction. }
+  PlaceEd := TPdfEditable.Load(PlainBytes);
+  try
+    Assert(PlaceEd.FillRect(0, 60, 480, 200, 40, 0.95, 0.95, 0.6, 1.0),
+      'fill_rect on page 0 succeeds');
+    Assert(PlaceEd.PlaceText(0, 72, 492, 'PLACED-HERE', 18, 0.0, 0.0, 0.0, 0.0),
+      'place_text on page 0 succeeds');
+    Assert(not PlaceEd.FillRect(99, 0, 0, 10, 10, 0, 0, 0, 1.0),
+      'fill_rect on a missing page -> false');
+    Assert(not PlaceEd.PlaceText(99, 0, 0, 'X', 12, 0, 0, 0, 0.0),
+      'place_text on a missing page -> false');
+    PlaceBytes := PlaceEd.ToBytes;
+  finally
+    PlaceEd.Free;
+  end;
+  Assert(TextContains(Pdf.ExtractText(PlaceBytes), 'PLACED-HERE'),
+    'placed text is extractable');
+  Writeln(Format('fill_rect + place_text ok (%d bytes)', [Length(PlaceBytes)]));
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

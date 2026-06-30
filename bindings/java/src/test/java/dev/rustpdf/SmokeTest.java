@@ -306,6 +306,59 @@ public final class SmokeTest {
         System.out.println("beginTimestamp ok: doc=" + tsSession.document().length
                 + " bytes, request=" + tsReq.length + " bytes");
 
+        // 19. Issue #45 P1: page geometry (measurePages / measurePage + rotation swap).
+        List<PageGeometry> geom = Pdf.measurePages(pdfa);
+        assertThat(geom.size() == 1, "measurePages returned one page");
+        PageGeometry g0 = Pdf.measurePage(pdfa, 0);
+        assertThat(g0.width() > 0 && g0.height() > 0, "page has size: " + g0);
+        assertThat(g0.rotation() == 0, "unrotated page rotation 0");
+        assertThat(g0.rotatedWidth() == g0.width() && g0.rotatedHeight() == g0.height(),
+                "no rotation: rotated size equals size");
+        assertThat(g0.mediaBox().width() > 0, "mediaBox width: " + g0.mediaBox());
+        boolean oob = false;
+        try {
+            Pdf.measurePage(pdfa, 5);
+        } catch (IndexOutOfBoundsException e) {
+            oob = true;
+        }
+        assertThat(oob, "measurePage out-of-range throws IndexOutOfBoundsException");
+        byte[] rotated;
+        try (EditableDoc ed = EditableDoc.load(pdfa)) {
+            ed.rotatePage(0, 90);
+            rotated = ed.toBytes();
+        }
+        PageGeometry gr = Pdf.measurePage(rotated, 0);
+        assertThat(gr.rotation() == 90, "rotated page reports 90: " + gr.rotation());
+        assertThat(Math.abs(gr.rotatedWidth() - g0.height()) < 1e-6
+                        && Math.abs(gr.rotatedHeight() - g0.width()) < 1e-6,
+                "90deg swaps rotated width/height: " + gr);
+        System.out.println("measurePages ok: " + g0.width() + "x" + g0.height()
+                + ", rotated " + gr.rotatedWidth() + "x" + gr.rotatedHeight());
+
+        // 20. Issue #45 P1: non-mutating inspection.
+        PdfOverview ov = Pdf.inspect(pdfa);
+        assertThat(ov.pageCount() == 1, "inspect page count: " + ov.pageCount());
+        assertThat(!ov.encrypted(), "pdfa is not encrypted");
+        assertThat(ov.pdfaLevel() != null, "pdfa level reported: " + ov.pdfaLevel());
+        PdfOverview ovEnc = Pdf.inspect(enc);
+        assertThat(ovEnc.encrypted(), "encrypted doc reported as encrypted");
+        System.out.println("inspect ok: version=" + ov.version() + " pdfaLevel=" + ov.pdfaLevel()
+                + " encrypted=" + ov.encrypted() + " enc.encryption=" + ovEnc.encryption());
+
+        // 21. Issue #45 P1: fillRect + placeText, then extractText sees the placed text.
+        byte[] drawn;
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            assertThat(ed.fillRect(0, 100, 100, 200, 50, 1.0, 1.0, 1.0, 1.0), "fillRect page 0");
+            assertThat(ed.placeText(0, 110, 120, "PlacedHere", 14.0, 0.0, 0.0, 0.0, 0.0),
+                    "placeText page 0");
+            assertThat(!ed.fillRect(9, 0, 0, 10, 10, 0, 0, 0, 1.0), "fillRect missing page false");
+            assertThat(!ed.placeText(9, 0, 0, "x", 12.0, 0, 0, 0, 0.0), "placeText missing page false");
+            drawn = ed.toBytes();
+        }
+        assertThat(drawn.length > 0, "drawn bytes");
+        assertThat(Pdf.extractText(drawn).contains("PlacedHere"), "placed text extracted");
+        System.out.println("fillRect + placeText ok (" + drawn.length + " bytes)");
+
         System.out.println("OK: full Java binding surface exercised");
     }
 

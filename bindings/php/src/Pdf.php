@@ -70,6 +70,79 @@ final class Pdf
     }
 
     /**
+     * Measure every page of `$pdf`, returning its geometry (size, `/Rotate`,
+     * media/crop boxes — all in PDF points, origin lower-left).
+     *
+     * @return list<PageGeometry>
+     */
+    public static function measurePages(string $pdf): array
+    {
+        $json = Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_measure_pages_json($b, $l, $o, $n);
+        });
+        if ($json === '') {
+            return [];
+        }
+        $decoded = json_decode($json, true);
+        if (!\is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded as $g) {
+            $out[] = new PageGeometry(
+                (int) ($g['page'] ?? 0),
+                (float) ($g['width'] ?? 0.0),
+                (float) ($g['height'] ?? 0.0),
+                (int) ($g['rotation'] ?? 0),
+                (float) ($g['rotatedWidth'] ?? 0.0),
+                (float) ($g['rotatedHeight'] ?? 0.0),
+                PdfRect::fromArray(\is_array($g['mediaBox'] ?? null) ? $g['mediaBox'] : []),
+                PdfRect::fromArray(\is_array($g['cropBox'] ?? null) ? $g['cropBox'] : []),
+            );
+        }
+        return $out;
+    }
+
+    /**
+     * Measure a single page (0-based `$index`) of `$pdf`.
+     *
+     * @throws PdfException if `$index` is out of range.
+     */
+    public static function measurePage(string $pdf, int $index): PageGeometry
+    {
+        $pages = self::measurePages($pdf);
+        if ($index < 0 || $index >= \count($pages)) {
+            throw new PdfException("page index $index out of range (" . \count($pages) . ' pages)');
+        }
+        return $pages[$index];
+    }
+
+    /**
+     * Inspect `$pdf` without mutating it: version, PDF/A level, encryption and
+     * page count. Never fails on a password-locked file.
+     */
+    public static function inspect(string $pdf): PdfOverview
+    {
+        $json = Ffi::takeBytes(function ($ffi, $o, $n) use ($pdf) {
+            [$b, $l] = Ffi::bytes($pdf);
+            return $ffi->pdf_inspect_json($b, $l, $o, $n);
+        });
+        $d = $json === '' ? [] : json_decode($json, true);
+        if (!\is_array($d)) {
+            $d = [];
+        }
+        return new PdfOverview(
+            (string) ($d['version'] ?? ''),
+            isset($d['pdfaLevel']) && $d['pdfaLevel'] !== null ? (string) $d['pdfaLevel'] : null,
+            (bool) ($d['encrypted'] ?? false),
+            (string) ($d['encryption'] ?? ''),
+            (bool) ($d['requiresPassword'] ?? false),
+            (int) ($d['pageCount'] ?? 0),
+        );
+    }
+
+    /**
      * Extract every raster image from `$pdf` into directory `$dir` (JPEGs are
      * written verbatim as .jpg, everything else as .png; files are named
      * page{N}_{name}.{ext}). Returns the number of images written.

@@ -264,6 +264,76 @@ final class EditableDoc
         return $found->cdata !== 0;
     }
 
+    /**
+     * Paint a filled rectangle on page `$pageIndex` (0-based). Coordinates are
+     * in the page's VISIBLE space (origin lower-left, y up), regardless of any
+     * `/Rotate`. `$color` is RGB in 0..1; `$opacity` in 0..1.
+     *
+     * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
+     * @return bool whether the page existed
+     */
+    public function fillRect(
+        int $pageIndex,
+        float $x,
+        float $y,
+        float $width,
+        float $height,
+        array $color = [1.0, 1.0, 1.0],
+        float $opacity = 1.0,
+    ): bool {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_fill_rect(
+            $this->h(),
+            $pageIndex,
+            $x,
+            $y,
+            $width,
+            $height,
+            $color[0],
+            $color[1],
+            $color[2],
+            $opacity,
+            \FFI::addr($found),
+        ));
+        return $found->cdata !== 0;
+    }
+
+    /**
+     * Draw a line of positioned text with its baseline at `($x, $y)` on page
+     * `$pageIndex` (0-based), in standard Helvetica. Coordinates are in the
+     * page's VISIBLE space (origin lower-left, y up), regardless of any
+     * `/Rotate`. `$rotationDeg` rotates the text counter-clockwise about the
+     * anchor `($x, $y)`. `$color` is RGB in 0..1.
+     *
+     * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
+     * @return bool whether the page existed
+     */
+    public function placeText(
+        int $pageIndex,
+        float $x,
+        float $y,
+        string $text,
+        float $size = 12.0,
+        array $color = [0.0, 0.0, 0.0],
+        float $rotationDeg = 0.0,
+    ): bool {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_place_text(
+            $this->h(),
+            $pageIndex,
+            $x,
+            $y,
+            $text,
+            $size,
+            $color[0],
+            $color[1],
+            $color[2],
+            $rotationDeg,
+            \FFI::addr($found),
+        ));
+        return $found->cdata !== 0;
+    }
+
     /** Convert the document to PDF/A (only B-levels A1b/A2b/A3b; requires a license). */
     public function convertToPdfa(PdfaLevel $level = PdfaLevel::A2b): self
     {

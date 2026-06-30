@@ -212,6 +212,35 @@ func (e *EditableDoc) WatermarkText(text string, size, r, g, b, opacity, rotatio
 		C.double(opacity), C.double(rotationDeg), ob))
 }
 
+// FillRect paints a filled rectangle at (x, y) sized width×height on page
+// pageIndex (0-based), in RGB color (r/g/b, each 0..=1) at opacity (0..=1), and
+// returns whether the page existed. Coordinates are in the page's visible space
+// (origin lower-left, y up) — the rectangle lands where a viewer sees it
+// regardless of the page's /Rotate.
+func (e *EditableDoc) FillRect(pageIndex int, x, y, width, height, r, g, b, opacity float64) bool {
+	var found C.int
+	C.pdf_editable_fill_rect(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), C.double(width), C.double(height),
+		C.double(r), C.double(g), C.double(b), C.double(opacity), &found)
+	return found != 0
+}
+
+// PlaceText draws a line of text with its baseline at (x, y) on page pageIndex
+// (0-based), in standard Helvetica at size points and RGB color (each 0..=1),
+// and returns whether the page existed. rotationDeg rotates the text
+// counter-clockwise about its anchor (x, y). Coordinates are in the page's
+// visible space (origin lower-left, y up) — the text lands where a viewer sees
+// it regardless of the page's /Rotate.
+func (e *EditableDoc) PlaceText(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64) bool {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var found C.int
+	C.pdf_editable_place_text(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), c, C.double(size),
+		C.double(r), C.double(g), C.double(b), C.double(rotationDeg), &found)
+	return found != 0
+}
+
 // WatermarkImageFile stamps an image (JPEG/PNG file at path) centered on every
 // page at width×height points, rotated rotationDeg degrees, at opacity.
 func (e *EditableDoc) WatermarkImageFile(path string, width, height, opacity, rotationDeg float64) error {

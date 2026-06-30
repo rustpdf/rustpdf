@@ -519,6 +519,91 @@ pub unsafe extern "C" fn pdf_editable_watermark_image_file(
     })
 }
 
+/// Paint a filled rectangle at `(x, y)` sized `width`×`height` on page `index`
+/// (0-based), in RGB `color` (`r`/`g`/`b`, each 0..=1) at `opacity` (0..=1).
+/// Coordinates are in the page's visible space (origin lower-left, y up).
+/// `out_found` receives `1` if the page existed, else `0`.
+///
+/// # Safety
+/// `ed` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_fill_rect(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    opacity: f64,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_fill_rect", |d| {
+        let found = d.fill_rect(
+            index.max(0) as usize,
+            x,
+            y,
+            width,
+            height,
+            (r, g, b),
+            opacity,
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Draw a line of positioned text with baseline at `(x, y)` on page `index`
+/// (0-based), standard Helvetica at `size` points, RGB `color` (each 0..=1).
+/// `rotation_deg` rotates the text counter-clockwise about `(x, y)`.
+/// Coordinates are in the page's visible space (origin lower-left, y up).
+/// `out_found` receives `1` if the page existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_text(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    rotation_deg: f64,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_text", |d| {
+        let text = match unsafe { cstr(text, "place_text:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.place_text(
+            index.max(0) as usize,
+            x,
+            y,
+            &text,
+            size,
+            (r, g, b),
+            rotation_deg,
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
 /// Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
 /// `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
 ///
@@ -859,6 +944,91 @@ fn hits_to_json(hits: &[pdf::TextHit]) -> String {
     }
     s.push(']');
     s
+}
+
+/// Read per-page geometry from `data`/`len` and write a JSON array into
+/// `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]). Each element is
+/// `{"page":int,"width":num,"height":num,"rotation":int,"rotatedWidth":num,
+/// "rotatedHeight":num,"mediaBox":[x0,y0,x1,y1],"cropBox":[x0,y0,x1,y1]}` with
+/// coordinates in PDF points. Sizes are unrotated; `rotatedWidth`/`Height` are
+/// swapped for 90/270 pages.
+///
+/// # Safety
+/// `data`/`len` readable; `out_ptr`/`out_len` writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_measure_pages_json(
+    data: *const u8,
+    len: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| match pdf::measure_pages(unsafe { bytes(data, len) }) {
+        Ok(pages) => unsafe {
+            emit_buffer(geometry_to_json(&pages).into_bytes(), out_ptr, out_len)
+        },
+        Err(e) => {
+            set_last_error(format!("measure_pages failed: {e}"));
+            PdfStatus::Parse
+        }
+    })
+}
+
+fn geometry_to_json(pages: &[pdf::PageGeometry]) -> String {
+    let rect = |r: &pdf::PdfRect| format!("[{},{},{},{}]", r.x0, r.y0, r.x1, r.y1);
+    let mut s = String::from("[");
+    for (i, p) in pages.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str(&format!(
+            "{{\"page\":{page},\"width\":{w},\"height\":{h},\"rotation\":{rot},\
+             \"rotatedWidth\":{rw},\"rotatedHeight\":{rh},\"mediaBox\":{mb},\"cropBox\":{cb}}}",
+            page = p.page,
+            w = p.width,
+            h = p.height,
+            rot = p.rotation,
+            rw = p.rotated_width,
+            rh = p.rotated_height,
+            mb = rect(&p.media_box),
+            cb = rect(&p.crop_box),
+        ));
+    }
+    s.push(']');
+    s
+}
+
+/// Inspect `data`/`len` without mutating it and write a JSON object into
+/// `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]):
+/// `{"version":str,"pdfaLevel":str|null,"encrypted":bool,"encryption":str,
+/// "requiresPassword":bool,"pageCount":int}`. Never fails on a password-locked
+/// file.
+///
+/// # Safety
+/// `data`/`len` readable; `out_ptr`/`out_len` writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_inspect_json(
+    data: *const u8,
+    len: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let o = pdf::inspect(unsafe { bytes(data, len) });
+        let pdfa = match &o.pdfa_level {
+            Some(l) => format!("\"{}\"", crate::verify::json_escape(l)),
+            None => "null".to_string(),
+        };
+        let json = format!(
+            "{{\"version\":\"{v}\",\"pdfaLevel\":{pdfa},\"encrypted\":{enc},\
+             \"encryption\":\"{cipher}\",\"requiresPassword\":{rp},\"pageCount\":{pc}}}",
+            v = crate::verify::json_escape(&o.version),
+            enc = o.encrypted,
+            cipher = crate::verify::json_escape(&o.encryption),
+            rp = o.requires_password,
+            pc = o.page_count,
+        );
+        unsafe { emit_buffer(json.into_bytes(), out_ptr, out_len) }
+    })
 }
 
 /// Extract every raster image from `data`/`len` and write each one as a file

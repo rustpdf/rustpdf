@@ -475,6 +475,130 @@ func TestFullSurface(t *testing.T) {
 			t.Fatal("PDF/A identifier should be gone after Normalize")
 		}
 	}
+
+	// 18. Issue #45 P1: page geometry measurement (rotation swaps the dims).
+	{
+		pages, err := MeasurePages(pdfa)
+		if err != nil {
+			t.Fatalf("measure pages: %v", err)
+		}
+		if len(pages) != 1 {
+			t.Fatalf("expected 1 page, got %d", len(pages))
+		}
+		p0, err := MeasurePage(pdfa, 0)
+		if err != nil {
+			t.Fatalf("measure page 0: %v", err)
+		}
+		if p0.Width <= 0 || p0.Height <= 0 {
+			t.Fatalf("page 0 has no size: %+v", p0)
+		}
+		if p0.Rotation != 0 || p0.RotatedWidth != p0.Width || p0.RotatedHeight != p0.Height {
+			t.Fatalf("unrotated page mismatch: %+v", p0)
+		}
+		if p0.MediaBox.Width() != p0.Width || p0.MediaBox.Height() != p0.Height {
+			t.Fatalf("mediaBox %+v disagrees with page size %vx%v", p0.MediaBox, p0.Width, p0.Height)
+		}
+		if _, err := MeasurePage(pdfa, 5); err == nil {
+			t.Fatal("out-of-range page index must error")
+		}
+
+		// Rotate the page 90 degrees and confirm the rotated dims swap.
+		ed, err := Load(pdfa)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+		if err := ed.RotatePage(0, 90); err != nil {
+			t.Fatal(err)
+		}
+		rot, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		rp, err := MeasurePage(rot, 0)
+		if err != nil {
+			t.Fatalf("measure rotated: %v", err)
+		}
+		if rp.Rotation != 90 {
+			t.Fatalf("expected rotation 90, got %d", rp.Rotation)
+		}
+		if rp.RotatedWidth != p0.Height || rp.RotatedHeight != p0.Width {
+			t.Fatalf("90-degree rotation should swap dims: got %vx%v want %vx%v",
+				rp.RotatedWidth, rp.RotatedHeight, p0.Height, p0.Width)
+		}
+	}
+
+	// 19. Issue #45 P1: document inspection.
+	{
+		ov, err := Inspect(pdfa)
+		if err != nil {
+			t.Fatalf("inspect: %v", err)
+		}
+		if ov.Version == "" {
+			t.Fatal("inspect: empty version")
+		}
+		if ov.PageCount != 1 {
+			t.Fatalf("inspect: pageCount=%d", ov.PageCount)
+		}
+		if ov.PdfaLevel == "" {
+			t.Fatalf("inspect: expected a PDF/A level, got %+v", ov)
+		}
+		// An encrypted doc reports as such.
+		encOv, err := func() (PdfOverview, error) {
+			ed, err := Load(plain)
+			if err != nil {
+				return PdfOverview{}, err
+			}
+			defer ed.Close()
+			if err := ed.Encrypt(AES256, "", "owner", false); err != nil {
+				return PdfOverview{}, err
+			}
+			enc, err := ed.ToBytes()
+			if err != nil {
+				return PdfOverview{}, err
+			}
+			return Inspect(enc)
+		}()
+		if err != nil {
+			t.Fatalf("inspect encrypted: %v", err)
+		}
+		if !encOv.Encrypted {
+			t.Fatalf("encrypted doc not reported encrypted: %+v", encOv)
+		}
+	}
+
+	// 20. Issue #45 P1: fill_rect + place_text land visible content.
+	{
+		ed, err := Load(plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+		if ok := ed.FillRect(0, 72, 500, 200, 60, 0.9, 0.9, 0.2, 0.5); !ok {
+			t.Fatal("fill_rect: page should exist")
+		}
+		if ok := ed.PlaceText(0, 80, 520, "STAMPED", 24, 0, 0, 0, 0); !ok {
+			t.Fatal("place_text: page should exist")
+		}
+		// Out-of-range page returns false (no panic, no content).
+		if ok := ed.FillRect(9, 0, 0, 10, 10, 0, 0, 0, 1); ok {
+			t.Fatal("fill_rect on missing page should return false")
+		}
+		if ok := ed.PlaceText(9, 0, 0, "x", 12, 0, 0, 0, 0); ok {
+			t.Fatal("place_text on missing page should return false")
+		}
+		out, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		txt, err := ExtractText(out)
+		if err != nil {
+			t.Fatalf("extract placed text: %v", err)
+		}
+		if !strings.Contains(txt, "STAMPED") {
+			t.Fatalf("placed text missing from extraction: %q", txt)
+		}
+	}
 }
 
 // makePNG encodes a tiny solid-color PNG in memory.

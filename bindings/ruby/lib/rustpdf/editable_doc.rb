@@ -146,6 +146,39 @@ module RustPdf
       self
     end
 
+    # ---- positioned drawing primitives (issue #45 P1) -----------------------
+
+    # Paint a filled rectangle at (+x+, +y+) sized +width+ x +height+ on page
+    # +page_index+ (0-based), in RGB +color+ (each 0..1, default opaque white) at
+    # +opacity+ (0..1). Coordinates are in the page's VISIBLE space (origin
+    # lower-left, y up), regardless of the page's /Rotate. The common use is
+    # masking a placeholder with an opaque white box. Returns whether the page
+    # existed.
+    def fill_rect(page_index, x, y, width, height, color = [1.0, 1.0, 1.0], opacity = 1.0)
+      r, g, b = color
+      found = RustPdf.out_int do |buf|
+        Native.call("pdf_editable_fill_rect", ptr, page_index, x.to_f, y.to_f,
+                    width.to_f, height.to_f, r.to_f, g.to_f, b.to_f, opacity.to_f, buf)
+      end
+      found != 0
+    end
+
+    # Draw a line of positioned +text+ with baseline at (+x+, +y+) on page
+    # +page_index+ (0-based), using standard Helvetica at +size+ points in RGB
+    # +color+ (each 0..1, default black). +rotation_deg+ rotates the text
+    # counter-clockwise about its anchor (match the page rotation to follow a
+    # rotated page). Coordinates are in the page's VISIBLE space (origin
+    # lower-left, y up), regardless of the page's /Rotate. Returns whether the
+    # page existed.
+    def place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0)
+      r, g, b = color
+      found = RustPdf.out_int do |buf|
+        Native.call("pdf_editable_place_text", ptr, page_index, x.to_f, y.to_f, text,
+                    size.to_f, r.to_f, g.to_f, b.to_f, rotation_deg.to_f, buf)
+      end
+      found != 0
+    end
+
     # ---- redaction + PDF/A conversion (Tier 2) ------------------------------
 
     # Black out rectangles on a page. rects = [[x0,y0,x1,y1], ...].

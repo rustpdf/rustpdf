@@ -218,6 +218,81 @@ public final class Pdf {
         return out;
     }
 
+    /**
+     * Read the geometry (size, rotation, MediaBox, CropBox) of every page in
+     * {@code pdf}, in page order, without mutating it.
+     */
+    public static List<PageGeometry> measurePages(byte[] pdf) {
+        byte[] bytes = takeBuffer((p, n) -> FFI.C.pdf_measure_pages_json(pdf, pdf.length, p, n));
+        String json = new String(bytes, StandardCharsets.UTF_8).trim();
+        List<PageGeometry> out = new ArrayList<>();
+        if (json.isEmpty()) {
+            return out;
+        }
+        Object parsed = new Json(json).parse();
+        if (!(parsed instanceof List<?> arr)) {
+            return out;
+        }
+        for (Object item : arr) {
+            if (!(item instanceof Map<?, ?> obj)) {
+                continue;
+            }
+            out.add(new PageGeometry(
+                    (int) lng(obj.get("page")),
+                    dbl(obj.get("width")),
+                    dbl(obj.get("height")),
+                    (int) lng(obj.get("rotation")),
+                    dbl(obj.get("rotatedWidth")),
+                    dbl(obj.get("rotatedHeight")),
+                    rect(obj.get("mediaBox")),
+                    rect(obj.get("cropBox"))));
+        }
+        return out;
+    }
+
+    /**
+     * Read the geometry of a single page (0-based) of {@code pdf}.
+     *
+     * @throws IndexOutOfBoundsException if {@code pageIndex} is out of range.
+     */
+    public static PageGeometry measurePage(byte[] pdf, int pageIndex) {
+        List<PageGeometry> pages = measurePages(pdf);
+        if (pageIndex < 0 || pageIndex >= pages.size()) {
+            throw new IndexOutOfBoundsException(
+                    "page index " + pageIndex + " out of range [0, " + pages.size() + ")");
+        }
+        return pages.get(pageIndex);
+    }
+
+    /**
+     * Inspect {@code pdf} without mutating it: PDF version, PDF/A level (if any),
+     * encryption posture and page count. Works even on password-protected files
+     * (the encryption fields are still reported).
+     */
+    public static PdfOverview inspect(byte[] pdf) {
+        byte[] bytes = takeBuffer((p, n) -> FFI.C.pdf_inspect_json(pdf, pdf.length, p, n));
+        String json = new String(bytes, StandardCharsets.UTF_8).trim();
+        if (json.isEmpty() || !(new Json(json).parse() instanceof Map<?, ?> obj)) {
+            return new PdfOverview("", null, false, "none", false, 0);
+        }
+        return new PdfOverview(
+                str(obj.get("version")),
+                nullable(obj.get("pdfaLevel")),
+                bool(obj.get("encrypted")),
+                str(obj.get("encryption")),
+                bool(obj.get("requiresPassword")),
+                (int) lng(obj.get("pageCount")));
+    }
+
+    /** Parse a 4-element JSON number array into a {@link PdfRect} (absent → all zeros). */
+    private static PdfRect rect(Object o) {
+        if (o instanceof List<?> arr && arr.size() == 4) {
+            return new PdfRect(
+                    dbl(arr.get(0)), dbl(arr.get(1)), dbl(arr.get(2)), dbl(arr.get(3)));
+        }
+        return new PdfRect(0, 0, 0, 0);
+    }
+
     private static String str(Object o) {
         return o == null ? "" : o.toString();
     }

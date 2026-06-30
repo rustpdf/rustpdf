@@ -103,6 +103,14 @@ jobs:
             runner: macos-14
             target: aarch64-apple-darwin
             lib: libpdf_ffi.dylib
+          # macOS x64 (Intel) for developer machines — issue #45 P2.
+          # Cross-compiled on the arm64 macos-14 runner (the Intel macos-13
+          # runners are being retired), so its smoke is skipped (`cross: true`).
+          - rid: osx-x64
+            runner: macos-14
+            target: x86_64-apple-darwin
+            lib: libpdf_ffi.dylib
+            cross: true
           - rid: win-x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
@@ -129,6 +137,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - name: smoke (free surface)
+        if: ${{ !matrix.cross }}
         run: |
           export RUSTPDF_LIB="$PWD/target/${{ matrix.target }}/release/${{ matrix.lib }}"
           dotnet run --project bindings/csharp/Smoke -c Release
