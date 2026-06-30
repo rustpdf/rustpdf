@@ -4,11 +4,12 @@
 //! callback (`pdf_sign_with`), and signature-field listing
 //! (`pdf_list_signatures`).
 
-use std::ffi::{c_char, c_int, c_uchar, c_void};
+use std::ffi::{c_char, c_double, c_int, c_uchar, c_void};
 
 use pdf::{
-    begin_signing, complete_signing, list_signatures, sign, sign_with, timestamp, Certify,
-    SignError, SignOptions, SignaturePolicy, Signer,
+    begin_signing, begin_timestamp, complete_signing, list_signatures, sign, sign_with, timestamp,
+    timestamp_request, timestamp_token_from_response, Certify, SignError, SignOptions,
+    SignaturePolicy, Signer, VisibleSignature,
 };
 
 use crate::{bytes, emit_buffer, guard, set_last_error, PdfStatus};
@@ -48,6 +49,18 @@ pub struct PdfSigningOptions {
     pub policy_hash_alg_oid: *const c_char,
     /// SPURI qualifier; NULL = none.
     pub policy_uri: *const c_char,
+    /// Non-zero draws a **visible** signature using the fields below.
+    pub visible: c_int,
+    /// 0-based page index for the visible appearance.
+    pub vis_page: usize,
+    /// Appearance rectangle `[x0, y0, x1, y1]` in page points.
+    pub vis_rect: [c_double; 4],
+    /// Text lines for the appearance, separated by `\n`; NULL = none.
+    pub vis_text: *const c_char,
+    /// PNG/JPEG bytes of a handwritten-signature image (with `vis_image_len`);
+    /// NULL/0 = no image.
+    pub vis_image: *const u8,
+    pub vis_image_len: usize,
 }
 
 /// Build a [`SignOptions`] from C-ABI [`PdfSigningOptions`].
@@ -76,12 +89,30 @@ unsafe fn sign_options(params: *const PdfSigningOptions) -> SignOptions {
         hash_algorithm_oid: unsafe { opt(p.policy_hash_alg_oid) },
         uri: unsafe { opt(p.policy_uri) },
     });
+    let visible = if p.visible != 0 {
+        let lines = unsafe { opt(p.vis_text) }
+            .map(|t| t.lines().map(str::to_string).collect())
+            .unwrap_or_default();
+        let image = if p.vis_image.is_null() || p.vis_image_len == 0 {
+            None
+        } else {
+            Some(unsafe { bytes(p.vis_image, p.vis_image_len) }.to_vec())
+        };
+        Some(VisibleSignature {
+            page: p.vis_page,
+            rect: p.vis_rect,
+            lines,
+            image,
+        })
+    } else {
+        None
+    };
     SignOptions {
         reason: unsafe { opt(p.reason) },
         location: unsafe { opt(p.location) },
         name: unsafe { opt(p.name) },
         date: None,
-        visible: None,
+        visible,
         pades: p.pades != 0,
         certification,
         policy,
@@ -288,6 +319,95 @@ pub unsafe extern "C" fn pdf_sign_complete(
             }
         }
     })
+}
+
+/// **Network timestamp (AD-RT), phase 1.** Prepare `pdf` for a `/DocTimeStamp`
+/// from a network RFC 3161 TSA: returns the prepared PDF (`out_doc`) and the
+/// bytes to timestamp (`out_tbs`). SHA-256 `out_tbs`, build a request with
+/// [`pdf_timestamp_request`], POST it to the TSA, extract the token with
+/// [`pdf_timestamp_token_from_response`], then embed it via [`pdf_sign_complete`].
+///
+/// # Safety
+/// `pdf` readable for `pdf_len`; the four out pointers writable (buffers freed
+/// with `pdf_buffer_free`).
+#[no_mangle]
+pub unsafe extern "C" fn pdf_timestamp_begin(
+    pdf: *const u8,
+    pdf_len: usize,
+    out_doc: *mut *mut c_uchar,
+    out_doc_len: *mut usize,
+    out_tbs: *mut *mut c_uchar,
+    out_tbs_len: *mut usize,
+) -> PdfStatus {
+    guard(|| match begin_timestamp(unsafe { bytes(pdf, pdf_len) }) {
+        Ok(prepared) => {
+            let tbs = prepared.signed_bytes().to_vec();
+            let status = unsafe { emit_buffer(tbs, out_tbs, out_tbs_len) };
+            if status != PdfStatus::Ok {
+                return status;
+            }
+            unsafe { emit_buffer(prepared.document().to_vec(), out_doc, out_doc_len) }
+        }
+        Err(e) => {
+            set_last_error(format!("timestamp prepare failed: {e}"));
+            PdfStatus::Sign
+        }
+    })
+}
+
+/// Build an RFC 3161 `TimeStampReq` (DER) for `imprint` (the SHA-256 of the
+/// bytes to timestamp). `nonce`/`nonce_len` is optional (NULL/0 = none);
+/// `cert_req` non-zero asks the TSA to embed its certificate. Result in
+/// `out_ptr`/`out_len` (freed with `pdf_buffer_free`).
+///
+/// # Safety
+/// `imprint` readable for `imprint_len`; `nonce` NULL or readable for
+/// `nonce_len`; out pointers writable.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_timestamp_request(
+    imprint: *const u8,
+    imprint_len: usize,
+    nonce: *const u8,
+    nonce_len: usize,
+    cert_req: c_int,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let imprint = unsafe { bytes(imprint, imprint_len) };
+        let nonce_vec = if nonce.is_null() || nonce_len == 0 {
+            None
+        } else {
+            Some(unsafe { bytes(nonce, nonce_len) }.to_vec())
+        };
+        let req = timestamp_request(imprint, nonce_vec.as_deref(), cert_req != 0);
+        unsafe { emit_buffer(req, out_ptr, out_len) }
+    })
+}
+
+/// Extract the `TimeStampToken` (a CMS `ContentInfo`) from a TSA's RFC 3161
+/// `TimeStampResp` in `response`/`response_len`. The token bytes (for
+/// [`pdf_sign_complete`]) are returned in `out_ptr`/`out_len`.
+///
+/// # Safety
+/// `response` readable for `response_len`; out pointers writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_timestamp_token_from_response(
+    response: *const u8,
+    response_len: usize,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(
+        || match timestamp_token_from_response(unsafe { bytes(response, response_len) }) {
+            Ok(token) => unsafe { emit_buffer(token, out_ptr, out_len) },
+            Err(e) => {
+                set_last_error(format!("timestamp response parse failed: {e}"));
+                PdfStatus::Sign
+            }
+        },
+    )
 }
 
 /// Callback invoked to produce the raw RSA PKCS#1 v1.5 signature (over SHA-256

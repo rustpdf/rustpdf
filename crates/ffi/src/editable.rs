@@ -463,6 +463,7 @@ pub unsafe extern "C" fn pdf_editable_watermark_text(
     b: f64,
     opacity: f64,
     rotation_deg: f64,
+    opaque_background: c_int,
 ) -> PdfStatus {
     with_editable(ed, "pdf_editable_watermark_text", |d| {
         let text = match unsafe { cstr(text, "watermark_text:text") } {
@@ -476,6 +477,7 @@ pub unsafe extern "C" fn pdf_editable_watermark_text(
                 color: (r, g, b),
                 opacity,
                 rotation_deg,
+                opaque_background: opaque_background != 0,
             },
         );
         clear_last_error();
@@ -484,17 +486,20 @@ pub unsafe extern "C" fn pdf_editable_watermark_text(
 }
 
 /// Stamp an image (from a JPEG/PNG file `path`) centered on every page at
-/// `width`×`height` points, at `opacity`.
+/// `width`×`height` points, rotated `rotation_deg` degrees, at `opacity`.
+/// Respects page `/Rotate` and `/CropBox`.
 ///
 /// # Safety
 /// `ed`, `path` valid.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn pdf_editable_watermark_image_file(
     ed: *mut PdfEditable,
     path: *const c_char,
     width: f64,
     height: f64,
     opacity: f64,
+    rotation_deg: f64,
 ) -> PdfStatus {
     with_editable(ed, "pdf_editable_watermark_image_file", |d| {
         let path = match unsafe { cstr(path, "watermark_image_file:path") } {
@@ -508,7 +513,52 @@ pub unsafe extern "C" fn pdf_editable_watermark_image_file(
                 return PdfStatus::Image;
             }
         };
-        d.watermark_image(&img, width, height, opacity);
+        d.watermark_image(&img, width, height, opacity, rotation_deg);
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Set the output PDF version (downgrade/normalize): `version` is `0`=1.4,
+/// `1`=1.5, `2`=1.7, `3`=2.0. Clears any catalog `/Version` override.
+///
+/// # Safety
+/// `ed` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_set_version(
+    ed: *mut PdfEditable,
+    version: c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_set_version", |d| {
+        d.set_version(crate::build::version(version));
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Strip PDF/A conformance (catalog `/OutputIntents`, XMP `/Metadata` `pdfaid`,
+/// `/Version`) so the file is a plain PDF.
+///
+/// # Safety
+/// `ed` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_strip_pdfa(ed: *mut PdfEditable) -> PdfStatus {
+    with_editable(ed, "pdf_editable_strip_pdfa", |d| {
+        d.strip_pdfa();
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Normalize to a plain PDF at `version` (strip PDF/A + set version). `version`
+/// codes as in [`pdf_editable_set_version`].
+///
+/// # Safety
+/// `ed` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_normalize(ed: *mut PdfEditable, version: c_int) -> PdfStatus {
+    with_editable(ed, "pdf_editable_normalize", |d| {
+        d.normalize(crate::build::version(version));
         clear_last_error();
         PdfStatus::Ok
     })
@@ -752,6 +802,63 @@ pub unsafe extern "C" fn pdf_extract_text(
             PdfStatus::Parse
         }
     })
+}
+
+/// Find every occurrence of `query` in `data`/`len` and write a JSON array of
+/// bounding boxes into `out_ptr`/`out_len` (freed with [`pdf_buffer_free`]).
+/// Each element is `{"page":int,"text":str,"x":num,"y":num,"width":num,
+/// "height":num}` with coordinates in PDF user space (points, origin
+/// lower-left). `case_sensitive` is `0` for case-insensitive matching, non-zero
+/// for exact. An empty array `[]` means no match.
+///
+/// # Safety
+/// `data`/`len` readable; `query` a valid NUL-terminated UTF-8 string;
+/// `out_ptr`/`out_len` writable.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_find_text_json(
+    data: *const u8,
+    len: usize,
+    query: *const c_char,
+    case_sensitive: c_int,
+    out_ptr: *mut *mut c_uchar,
+    out_len: *mut usize,
+) -> PdfStatus {
+    guard(|| {
+        let query = match unsafe { cstr(query, "pdf_find_text_json") } {
+            Ok(q) => q,
+            Err(s) => return s,
+        };
+        let opts = pdf::FindOptions {
+            case_sensitive: case_sensitive != 0,
+        };
+        match pdf::find_text(unsafe { bytes(data, len) }, query, opts) {
+            Ok(hits) => unsafe { emit_buffer(hits_to_json(&hits).into_bytes(), out_ptr, out_len) },
+            Err(e) => {
+                set_last_error(format!("find_text failed: {e}"));
+                PdfStatus::Parse
+            }
+        }
+    })
+}
+
+fn hits_to_json(hits: &[pdf::TextHit]) -> String {
+    let mut s = String::from("[");
+    for (i, h) in hits.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str(&format!(
+            "{{\"page\":{p},\"text\":\"{t}\",\"x\":{x},\"y\":{y},\"width\":{w},\"height\":{h}}}",
+            p = h.page,
+            t = crate::verify::json_escape(&h.text),
+            x = h.x,
+            y = h.y,
+            w = h.width,
+            h = h.height,
+        ));
+    }
+    s.push(']');
+    s
 }
 
 /// Extract every raster image from `data`/`len` and write each one as a file

@@ -24,6 +24,7 @@ use rsa::pkcs1v15::{Signature as RsaSignature, VerifyingKey};
 use rsa::RsaPublicKey;
 use sha2::{Digest, Sha256};
 use signature::Verifier;
+use x509_cert::time::Time;
 use x509_cert::Certificate;
 
 use cos::Object;
@@ -34,6 +35,11 @@ use license::Feature;
 
 /// id-messageDigest (PKCS#9): `1.2.840.113549.1.9.4`.
 const ID_MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
+/// id-signingTime (PKCS#9): `1.2.840.113549.1.9.5`.
+const ID_SIGNING_TIME: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.5");
+/// id-aa-timeStampToken (RFC 3161, unsigned attr): `1.2.840.113549.1.9.16.2.14`.
+const ID_AA_TIMESTAMP: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.14");
 /// rsaEncryption: `1.2.840.113549.1.1.1`.
 const RSA_ENCRYPTION: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.1.1");
 
@@ -46,6 +52,26 @@ pub struct SignatureReport {
     pub sub_filter: String,
     /// The signer certificate subject (RFC 4514 DN), if available.
     pub signer: Option<String>,
+    /// The signer certificate issuer (RFC 4514 DN), if available.
+    pub issuer: Option<String>,
+    /// The signer certificate serial number, uppercase hex, if available.
+    pub serial_number: Option<String>,
+    /// Certificate validity start, ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`).
+    pub valid_from: Option<String>,
+    /// Certificate validity end, ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`).
+    pub valid_to: Option<String>,
+    /// The signature algorithm, a friendly name (e.g. `SHA256withRSA`) or, when
+    /// unrecognized, the dotted signature-algorithm OID.
+    pub algorithm: Option<String>,
+    /// The `signingTime` signed attribute, ISO-8601 UTC, if the signer included
+    /// one (claimed signing time — not a trusted timestamp).
+    pub signing_time: Option<String>,
+    /// Number of certificates embedded in the CMS (signer + any chain certs).
+    pub cert_count: usize,
+    /// A trusted timestamp is present — either this is a `/DocTimeStamp`
+    /// (`ETSI.RFC3161`) or the signer carries an embedded timestamp token
+    /// (PAdES-B-T). Does not assert the timestamp authority is trusted.
+    pub has_timestamp: bool,
     /// The signature covers the entire file — no bytes were appended after it.
     /// A later incremental update (or tampering past the signed range) makes this
     /// `false`.
@@ -210,6 +236,14 @@ fn verify_one(
         field_name,
         sub_filter,
         signer: None,
+        issuer: None,
+        serial_number: None,
+        valid_from: None,
+        valid_to: None,
+        algorithm: None,
+        signing_time: None,
+        cert_count: 0,
+        has_timestamp: is_timestamp,
         covers_whole_document,
         digest_valid: false,
         signature_valid: false,
@@ -218,11 +252,27 @@ fn verify_one(
     let Some(signed) = parse_cms(contents) else {
         return report;
     };
+    report.cert_count = signed.certificates.as_ref().map(|c| c.0.len()).unwrap_or(0);
     let Some(signer_info) = signed.signer_infos.0.iter().next() else {
         return report;
     };
     let cert = signer_cert(&signed, signer_info);
-    report.signer = cert.as_ref().map(|c| c.tbs_certificate.subject.to_string());
+    if let Some(c) = cert.as_ref() {
+        let tbs = &c.tbs_certificate;
+        report.signer = Some(tbs.subject.to_string());
+        report.issuer = Some(tbs.issuer.to_string());
+        report.serial_number = Some(hex_upper(tbs.serial_number.as_bytes()));
+        report.valid_from = Some(fmt_time(&tbs.validity.not_before));
+        report.valid_to = Some(fmt_time(&tbs.validity.not_after));
+    }
+    report.algorithm = Some(alg_name(
+        &signer_info.digest_alg.oid,
+        &signer_info.signature_algorithm.oid,
+    ));
+    report.signing_time = signing_time_attr(signer_info);
+    if !report.has_timestamp {
+        report.has_timestamp = has_embedded_timestamp(signer_info);
+    }
 
     // The digest the signature commits to must equal the digest of the covered
     // bytes. For an ordinary CMS signature that lives in the `messageDigest`
@@ -307,6 +357,82 @@ fn message_digest_attr(si: &SignerInfo) -> Option<Vec<u8>> {
         }
     }
     None
+}
+
+/// The `signingTime` signed attribute value (claimed signing time), ISO-8601.
+fn signing_time_attr(si: &SignerInfo) -> Option<String> {
+    let attrs = si.signed_attrs.as_ref()?;
+    for attr in attrs.iter() {
+        if attr.oid == ID_SIGNING_TIME {
+            let any = attr.values.iter().next()?;
+            let t = Time::from_der(&any.to_der().ok()?).ok()?;
+            return Some(fmt_time(&t));
+        }
+    }
+    None
+}
+
+/// True if the signer carries an embedded RFC 3161 timestamp token as an
+/// unsigned attribute (PAdES-B-T / CAdES-T).
+fn has_embedded_timestamp(si: &SignerInfo) -> bool {
+    si.unsigned_attrs
+        .as_ref()
+        .map(|attrs| attrs.iter().any(|a| a.oid == ID_AA_TIMESTAMP))
+        .unwrap_or(false)
+}
+
+/// Format an X.509 `Time` as ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`).
+fn fmt_time(t: &Time) -> String {
+    let dt = t.to_date_time();
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        dt.year(),
+        dt.month(),
+        dt.day(),
+        dt.hour(),
+        dt.minutes(),
+        dt.seconds()
+    )
+}
+
+/// Uppercase hex of a byte slice (for certificate serial numbers).
+fn hex_upper(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push_str(&format!("{b:02X}"));
+    }
+    s
+}
+
+/// A friendly signature-algorithm name from the digest + signature OIDs, e.g.
+/// `SHA256withRSA`. Falls back to the dotted signature OID when unrecognized.
+fn alg_name(digest_oid: &ObjectIdentifier, sig_oid: &ObjectIdentifier) -> String {
+    let digest = match digest_oid.to_string().as_str() {
+        "1.3.14.3.2.26" => Some("SHA1"),
+        "2.16.840.1.101.3.4.2.1" => Some("SHA256"),
+        "2.16.840.1.101.3.4.2.2" => Some("SHA384"),
+        "2.16.840.1.101.3.4.2.3" => Some("SHA512"),
+        _ => None,
+    };
+    let sig = sig_oid.to_string();
+    // Some signers put the combined OID in signatureAlgorithm; recognize those.
+    let combined = match sig.as_str() {
+        "1.2.840.113549.1.1.1" => Some("RSA"),
+        "1.2.840.113549.1.1.11" => return "SHA256withRSA".into(),
+        "1.2.840.113549.1.1.12" => return "SHA384withRSA".into(),
+        "1.2.840.113549.1.1.13" => return "SHA512withRSA".into(),
+        "1.2.840.113549.1.1.10" => Some("RSASSA-PSS"),
+        "1.2.840.10045.4.3.2" => return "SHA256withECDSA".into(),
+        "1.2.840.10045.4.3.3" => return "SHA384withECDSA".into(),
+        "1.2.840.10045.4.3.4" => return "SHA512withECDSA".into(),
+        _ => None,
+    };
+    match (digest, combined) {
+        (Some(d), Some(s)) => format!("{d}with{s}"),
+        (_, Some(s)) => s.to_string(),
+        (Some(d), None) => format!("{d}with{sig}"),
+        (None, None) => sig,
+    }
 }
 
 /// The `messageImprint.hashedMessage` from an RFC 3161 timestamp token's

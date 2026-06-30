@@ -67,6 +67,13 @@ impl Dict {
         self.get(key).is_some()
     }
 
+    /// Remove `key`, returning its value if it was present. Preserves the
+    /// insertion order of the remaining entries.
+    pub fn remove(&mut self, key: &str) -> Option<Object> {
+        let pos = self.entries.iter().position(|(k, _)| k.as_str() == key)?;
+        Some(self.entries.remove(pos).1)
+    }
+
     /// Number of entries.
     pub fn len(&self) -> usize {
         self.entries.len()

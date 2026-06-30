@@ -51,17 +51,29 @@ fn reports_to_json(reports: &[pdf::SignatureReport]) -> String {
             .as_deref()
             .map(|n| format!("\"{}\"", json_escape(n)))
             .unwrap_or_else(|| "null".into());
-        let signer = r
-            .signer
-            .as_deref()
-            .map(|n| format!("\"{}\"", json_escape(n)))
-            .unwrap_or_else(|| "null".into());
+        let opt = |v: &Option<String>| {
+            v.as_deref()
+                .map(|n| format!("\"{}\"", json_escape(n)))
+                .unwrap_or_else(|| "null".into())
+        };
         s.push_str(&format!(
             "{{\"field_name\":{field},\"sub_filter\":\"{sf}\",\"signer\":{signer},\
+             \"issuer\":{issuer},\"serial_number\":{serial},\
+             \"valid_from\":{vf},\"valid_to\":{vt},\"algorithm\":{alg},\
+             \"signing_time\":{st},\"cert_count\":{cc},\"has_timestamp\":{hts},\
              \"covers_whole_document\":{cwd},\"digest_valid\":{dv},\
              \"signature_valid\":{sv},\"is_valid\":{iv},\
              \"byte_range\":[{b0},{b1},{b2},{b3}]}}",
             sf = json_escape(&r.sub_filter),
+            signer = opt(&r.signer),
+            issuer = opt(&r.issuer),
+            serial = opt(&r.serial_number),
+            vf = opt(&r.valid_from),
+            vt = opt(&r.valid_to),
+            alg = opt(&r.algorithm),
+            st = opt(&r.signing_time),
+            cc = r.cert_count,
+            hts = r.has_timestamp,
             cwd = r.covers_whole_document,
             dv = r.digest_valid,
             sv = r.signature_valid,
@@ -76,7 +88,7 @@ fn reports_to_json(reports: &[pdf::SignatureReport]) -> String {
     s
 }
 
-fn json_escape(s: &str) -> String {
+pub(crate) fn json_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {

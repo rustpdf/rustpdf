@@ -162,6 +162,7 @@ fn visible_signature_has_appearance() {
             page: 0,
             rect: [360.0, 690.0, 540.0, 750.0],
             lines: vec!["Assinado por: Ada".into(), "Data: 2026".into()],
+            ..Default::default()
         }),
         ..Default::default()
     };

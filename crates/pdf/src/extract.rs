@@ -313,7 +313,7 @@ fn page_content(reader: &PdfReader, page: &Dict) -> Vec<u8> {
 }
 
 /// Parse a `ToUnicode` CMap into a code → string map.
-fn parse_cmap(data: &[u8]) -> BTreeMap<u32, String> {
+pub(crate) fn parse_cmap(data: &[u8]) -> BTreeMap<u32, String> {
     let mut map = BTreeMap::new();
     let mut lex = Lexer::new(data);
     while let Some(tok) = lex.next_token() {

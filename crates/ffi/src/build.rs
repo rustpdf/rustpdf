@@ -31,7 +31,7 @@ fn pdfa_level(v: c_int) -> PdfaLevel {
     }
 }
 
-fn version(v: c_int) -> Version {
+pub(crate) fn version(v: c_int) -> Version {
     match v {
         0 => Version::V1_4,
         1 => Version::V1_5,
