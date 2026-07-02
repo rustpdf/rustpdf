@@ -94,6 +94,30 @@ if [ -n "$stale" ]; then
   exit 1
 fi
 
+# Every hand-listed manifest must now actually contain NEW. A file that had
+# drifted out of lockstep (e.g. Installer.php stuck a release behind) would make
+# its `sub` a silent no-op — the stale-OLD scan above can't catch that because
+# the drifted value is neither OLD nor NEW. Assert NEW is present in each.
+NEW_RE="$(printf '%s' "$NEW" | sed 's/\./\\./g')"
+missing=""
+for f in \
+  Cargo.toml \
+  bindings/python/pyproject.toml \
+  bindings/rust/Cargo.toml \
+  bindings/java/pom.xml \
+  bindings/php/src/Installer.php \
+  bindings/delphi/boss.json \
+  bindings/node/package.json \
+  bindings/csharp/RustPdf/RustPdf.csproj \
+  bindings/ruby/rustpdf.gemspec; do
+  grep -q "$NEW_RE" "$f" || missing="$missing $f"
+done
+if [ -n "$missing" ]; then
+  echo "error: these manifests were NOT updated to $NEW (drifted out of lockstep?):" >&2
+  for f in $missing; do echo "  $f" >&2; done
+  exit 1
+fi
+
 echo "Done. All manifests are at $NEW."
 echo
 echo "Next steps (release — see docs/RELEASING.md):"
