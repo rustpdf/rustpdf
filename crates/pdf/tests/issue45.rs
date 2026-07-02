@@ -191,3 +191,46 @@ fn inspect_reports_catalog_version_override() {
     let o = inspect(&bytes);
     assert_eq!(o.version, "2.0");
 }
+
+/// Regression: stamping text/images onto a page whose `/Resources` is an
+/// **indirect reference** (not an inline dict) must MERGE into the existing
+/// resources, not replace them with a dict holding only the stamp's font.
+/// A real ForSign-signed file lost all original text because `add_page_resource`
+/// only matched an inline `/Resources` dict, dropping the page's `/TT*` fonts so
+/// its untouched content stream rendered blank.
+#[test]
+fn place_text_preserves_indirect_page_resources() {
+    let original = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/indirect_resources.pdf"
+    ));
+    // Sanity: the original page draws this text.
+    let before = extract_text(original).unwrap();
+    assert!(
+        before.contains("SIGN_ID_1"),
+        "fixture should contain original text"
+    );
+
+    let mut ed = EditableDoc::load(original).unwrap();
+    ed.place_text(
+        0,
+        236.0,
+        10.0,
+        "Assinado eletronicamente",
+        8.0,
+        (0.0, 0.0, 0.0),
+        0.0,
+    );
+    let out = ed.to_bytes().unwrap();
+
+    // Original text survives, and the stamp is added.
+    let after = extract_text(&out).unwrap();
+    assert!(
+        after.contains("SIGN_ID_1") && after.contains("Assinante 1"),
+        "original page text must survive stamping, got: {after:?}"
+    );
+    assert!(
+        after.contains("Assinado eletronicamente"),
+        "stamp must be present"
+    );
+}

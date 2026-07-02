@@ -2276,16 +2276,21 @@ impl EditableDoc {
     /// Add `name -> object` under `Resources/<category>` on `page`, deep-merging
     /// so existing fonts/xobjects/gstates are preserved.
     fn add_page_resource(&mut self, page: u32, category: &str, name: &str, target: u32) {
+        // `/Resources` (and each category dict) may be an inline dict OR an
+        // indirect reference — resolve both, otherwise the existing
+        // fonts/xobjects/colorspaces of a page whose `/Resources` is an
+        // indirect object are silently dropped and its original content (which
+        // still references them) renders blank.
         let mut res = as_dict(self.objects.get(&page))
-            .and_then(|d| match d.get("Resources") {
-                Some(Object::Dict(r)) => Some(r.clone()),
-                _ => None,
-            })
+            .and_then(|d| d.get("Resources"))
+            .and_then(|o| self.deref_dict(o))
+            .cloned()
             .unwrap_or_default();
-        let mut cat = match res.get(category) {
-            Some(Object::Dict(c)) => c.clone(),
-            _ => Dict::new(),
-        };
+        let mut cat = res
+            .get(category)
+            .and_then(|o| self.deref_dict(o))
+            .cloned()
+            .unwrap_or_default();
         cat.set(name, Reference::new(target));
         res.set(category, Object::Dict(cat));
         self.update_dict(page, |d| {
