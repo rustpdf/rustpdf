@@ -1304,7 +1304,15 @@ impl Document {
         push("Author", &self.info.author);
         push("Subject", &self.info.subject);
         push("Keywords", &self.info.keywords);
-        push("Creator", &self.info.creator);
+        // Default the creating application to "rustpdf <version>" unless the
+        // caller set one.
+        e.push((
+            "Creator",
+            self.info
+                .creator
+                .clone()
+                .unwrap_or_else(|| concat!("rustpdf ", env!("CARGO_PKG_VERSION")).to_string()),
+        ));
         e.push((
             "Producer",
             concat!("rust-pdf ", env!("CARGO_PKG_VERSION")).to_string(),
