@@ -1,7 +1,7 @@
 {
   "name": "rustpdf",
   "description": "Generate, edit, sign and process PDFs in Delphi / Free Pascal: PDF/A, PAdES signatures, AES-256, forms, stamping, redaction. Docs: https://rustpdf.dev/docs/delphi",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "homepage": "https://rustpdf.dev",
   "mainsrc": ".",
   "projects": [],

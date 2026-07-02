@@ -17,12 +17,12 @@ native library for every supported platform, so there is nothing else to install
 <dependency>
   <groupId>dev.rustpdf</groupId>
   <artifactId>rustpdf</artifactId>
-  <version>0.4.6</version>
+  <version>0.4.8</version>
 </dependency>
 ```
 
 ```gradle
-implementation("dev.rustpdf:rustpdf:0.4.6")
+implementation("dev.rustpdf:rustpdf:0.4.8")
 ```
 
 A single artifact runs on every supported platform: each prebuilt
