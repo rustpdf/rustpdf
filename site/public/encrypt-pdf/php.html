@@ -209,8 +209,8 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Sensitive PDFs — bank statements, payslips, medical records — should never sit unprotected on disk or ride along as an email attachment. PHP's older PDF libraries offer no real encryption, and bolting on a qpdf shell-out means another binary to install, sandbox and audit.</p>
-            <p class="muted">rust-pdf applies AES-256 (the V5/R6 security handler) at output, deriving the key, salts and IVs from the operating-system CSPRNG so every file is unique. From a Laravel controller you load the document, call encrypt() with an owner or user password and an optional read-only permission mode, then save — qpdf validates both password paths, and AES-128 and legacy RC4 remain available.</p>
+            <p class="muted">Sensitive PDFs (bank statements, payslips, medical records) should never sit unprotected on disk or ride along as an email attachment. PHP's older PDF libraries offer no real encryption, and bolting on a qpdf shell-out means another binary to install, sandbox and audit.</p>
+            <p class="muted">rust-pdf applies AES-256 (the V5/R6 security handler) at output, deriving the key, salts and IVs from the operating-system CSPRNG so every file is unique. From a Laravel controller you load the document, call encrypt() with an owner or user password and an optional read-only permission mode, then save. qpdf validates both password paths, and AES-128 and legacy RC4 remain available.</p>
             <p class="muted">Installation is composer require rust-pdf/rustpdf plus PHP's ext-ffi enabled in php.ini; the encryption itself runs in-process, so there is no SaaS round-trip and no temporary plaintext file written to disk. A missing or expired license surfaces as a PdfException you can catch in middleware and turn into a clean 4xx.</p>
           </div>
           <ul class="check-list">

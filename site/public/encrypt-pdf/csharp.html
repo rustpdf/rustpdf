@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Encryption &middot; C# and .NET</p>
         <h1>Encrypt a <span class="grad">PDF</span> in C#</h1>
-        <p class="lede sp-lede">Password-protect a PDF from C# with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
+        <p class="lede sp-lede">Password-protect a PDF from C# with AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -210,7 +210,7 @@
         <div class="sp-why">
           <div>
             <p class="muted">Run <code>dotnet add package RustPdf</code> and the NuGet package carries the native core next to your managed assemblies. A <code>NativeLibrary.SetDllImportResolver</code> hook locates it under <code>runtimes/&lt;rid&gt;/native</code>, the build output, or a <code>RUSTPDF_LIB</code> override, so an ASP.NET Core app loads it with no MSBuild wiring or native toolchain on the developer machine.</p>
-            <p class="muted">Encryption touches the payloads you least want leaking — statements, medical records, signed contracts — so it belongs in a request pipeline that disposes deterministically. <code>EditableDoc.LoadFile</code> wraps an <code>IDisposable</code> native handle; a <code>using</code> block frees the document the instant the response is written, even when the endpoint throws. AES-256 (V5/R6) draws its key, salts and IVs from the OS CSPRNG, with AES-128 and legacy RC4 also available.</p>
+            <p class="muted">Encryption touches the payloads you least want leaking (statements, medical records, signed contracts), so it belongs in a request pipeline that disposes deterministically. <code>EditableDoc.LoadFile</code> wraps an <code>IDisposable</code> native handle; a <code>using</code> block frees the document the instant the response is written, even when the endpoint throws. AES-256 (V5/R6) draws its key, salts and IVs from the OS CSPRNG, with AES-128 and legacy RC4 also available.</p>
             <p class="muted">The same call deploys unchanged to a <code>mcr.microsoft.com/dotnet/aspnet:8.0</code> container, a <code>dotnet publish --self-contained</code> bundle, or a Worker Service. P/Invoke is source-generated with <code>[LibraryImport]</code>, so it is trim- and NativeAOT-friendly as long as the matching <code>runtimes/&lt;rid&gt;/native</code> payload travels with the publish output; a missing Encryption license surfaces as a catchable <code>PdfException</code>.</p>
           </div>
           <ul class="check-list">

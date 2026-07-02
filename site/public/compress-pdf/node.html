@@ -210,7 +210,7 @@
         <div class="sp-why">
           <div>
             <p class="muted">Shrinking a PDF in Node typically means spawning Ghostscript or qpdf, which adds a heavyweight binary to the image and a child process to every request.</p>
-            <p class="muted">Optimization is lossless structural cleanup: nothing in the rendered page changes, the file just carries less weight. Combine optimize (dedupe and compress) with compact (object and xref streams) for the smallest valid output, ideal before archiving, emailing or serving documents at scale.</p>
+            <p class="muted">Optimization is lossless structural cleanup: nothing in the rendered page changes, the file carries less weight. Combine optimize (dedupe and compress) with compact (object and xref streams) for the smallest valid output, ideal before archiving, emailing or serving documents at scale.</p>
             <p class="muted">Run optimize().compact(true) before you store or email a document to cut payload size where serverless response and attachment limits bite. The pure-FFI Koffi binding has no node-gyp and no headless-Chrome footprint, so it stays a small native dependency in a Lambda layer or container image, and optimization is lossless so output still passes qpdf.</p>
           </div>
           <ul class="check-list">
@@ -253,7 +253,7 @@ ed.close();</code></pre>
           <p>Yes. Optimize and compact are part of the free tier in Node.js. No license is needed.</p>
         </details>
         <details><summary>Does the binding add much weight to a serverless bundle?</summary>
-          <p>No. The Koffi binding is pure FFI with no node-gyp and no headless-Chrome dependency, so it stays a small prebuilt native library you drop into a Lambda layer or container image — handy when you are optimizing PDFs to fit upload and response size limits.</p>
+          <p>No. The Koffi binding is pure FFI with no node-gyp and no headless-Chrome dependency, so it stays a small prebuilt native library you drop into a Lambda layer or container image, handy when you are optimizing PDFs to fit upload and response size limits.</p>
         </details>
       </div>
     </section>

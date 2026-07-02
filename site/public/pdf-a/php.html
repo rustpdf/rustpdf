@@ -210,7 +210,7 @@
         <div class="sp-why">
           <div>
             <p class="muted">PDF/A is mandated for e-invoicing, court filings and public-sector archives precisely because it forbids anything that could render differently in ten years: external fonts, unmanaged colour, encryption. Most PHP PDF stacks cannot produce a conformant file at all.</p>
-            <p class="muted">rust-pdf embeds and subsets every font, attaches the sRGB ICC profile and an output intent, writes XMP metadata kept in sync with the document info, and enforces the rest of the rule set. It covers A-1b through A-3a and the PDF 2.0-based A-4 family, and veraPDF — the open-source reference validator — confirms conformance.</p>
+            <p class="muted">rust-pdf embeds and subsets every font, attaches the sRGB ICC profile and an output intent, writes XMP metadata kept in sync with the document info, and enforces the rest of the rule set. It covers A-1b through A-3a and the PDF 2.0-based A-4 family, and veraPDF, the open-source reference validator, confirms conformance.</p>
             <p class="muted">A Symfony console command or scheduled task is the obvious place to batch archival exports; everything runs in-process, so you retire the wkhtmltopdf or TCPDF pipeline and its install footprint. composer require and ext-ffi are the only prerequisites, and the absence of a license raises a catchable PdfException.</p>
           </div>
           <ul class="check-list">

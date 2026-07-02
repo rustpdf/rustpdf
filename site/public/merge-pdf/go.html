@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Manipulation &middot; Go</p>
         <h1>Merge <span class="grad">PDF</span> files in Go</h1>
-        <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.</p>
+        <p class="lede sp-lede">Combine, split, reorder and rotate PDF pages from Go. rust-pdf parses each document into an editable model, renumbers and remaps every object on merge, and rebuilds a clean page tree on output.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -209,7 +209,7 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Back-office Go services constantly stitch PDFs together — invoices into one statement, signed pages back into a contract, a cover sheet onto a report — yet Go has no built-in way to even read an existing file, let alone reorder or rotate its pages.</p>
+            <p class="muted">Back-office Go services constantly stitch PDFs together: invoices into one statement, signed pages back into a contract, a cover sheet onto a report. Yet Go has no built-in way to even read an existing file, let alone reorder or rotate its pages.</p>
             <p class="muted">rust-pdf flattens each document into a single page order, so merge, split, reorder, rotate and delete become plain list operations; objects from a second file are renumbered, references are deep-remapped, and the real page tree is rebuilt on save. The parser reads classic and cross-reference streams, object streams and encrypted input, so it works on files it never wrote.</p>
             <p class="muted">A chi or net/http endpoint can accept two uploads and return the merged result in a handful of lines. Because output is deterministic, you can pin the merged bytes in a table-driven golden-file test and catch a regression the instant the hash changes, with no rendering step to flake.</p>
           </div>

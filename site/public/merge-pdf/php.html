@@ -209,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Combining a cover letter with a contract, splitting a scanned batch into per-customer files, dropping a blank page or rotating a sideways scan — these page operations are bread-and-butter back-office work, yet awkward to do well in PHP without reaching for a command-line tool.</p>
+            <p class="muted">Combining a cover letter with a contract, splitting a scanned batch into per-customer files, dropping a blank page or rotating a sideways scan. These page operations are bread-and-butter back-office work, yet awkward to do well in PHP without reaching for a command-line tool.</p>
             <p class="muted">rust-pdf parses each document into a flat, editable page list, so merge, extractPages, reorderPages, rotatePage and delete are simple list operations. On merge it renumbers every object from the other file and deep-remaps its references, then rebuilds a clean page tree at save, so the output passes qpdf and mutool.</p>
-            <p class="muted">Loaded through Composer autoload and bridged by ext-ffi, the whole thing runs inside the PHP-FPM request or a worker — no pdftk or qpdf executable to provision, and no temp-file shuffling. Because the parser reads classic and cross-reference streams, object streams and encrypted input, it copes with real uploads, not just files it wrote itself.</p>
+            <p class="muted">Loaded through Composer autoload and bridged by ext-ffi, the whole thing runs inside the PHP-FPM request or a worker. No pdftk or qpdf executable to provision, and no temp-file shuffling. Because the parser reads classic and cross-reference streams, object streams and encrypted input, it copes with real uploads, not just files it wrote itself.</p>
           </div>
           <ul class="check-list">
             <li>Merge whole documents, extract page subsets, reorder with a permutation, rotate or delete pages.</li>
@@ -258,7 +258,7 @@ $subset-&gt;save('subset.pdf');</code></pre>
           <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in PHP. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
         </details>
         <details><summary>Can I merge uploaded PDFs inside a Laravel request without pdftk?</summary>
-          <p>Yes. <code>EditableDoc::loadFile</code> reads an uploaded file straight from storage, merge, extractPages and reorderPages run in-process, and save returns the bytes. There is no pdftk or qpdf binary to install on the server, and no temp-file shell-out from your controller — it all stays inside the PHP process.</p>
+          <p>Yes. <code>EditableDoc::loadFile</code> reads an uploaded file straight from storage, merge, extractPages and reorderPages run in-process, and save returns the bytes. There is no pdftk or qpdf binary to install on the server, and no temp-file shell-out from your controller. It all stays inside the PHP process.</p>
         </details>
       </div>
     </section>

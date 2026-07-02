@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Digital signatures &middot; Python</p>
         <h1>Digitally sign a <span class="grad">PDF</span> in Python</h1>
-        <p class="lede sp-lede">pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task — an incremental update preserves the original bytes; B-LT and B-LTA add LTV. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
+        <p class="lede sp-lede">pip install rustpdf and add a PKCS#7 or PAdES signature to a PDF from a Django view or Celery task. An incremental update preserves the original bytes; B-LT and B-LTA add LTV. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -209,9 +209,9 @@
         <h2 class="center">Why Python needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Signing needs a private key and an X.509 certificate, and rust-pdf takes them as raw DER — a PKCS#8 key plus the cert. If your key lives in a <code>.pfx</code>/PKCS#12 container or a PEM bundle (the usual output of a CA or <code>openssl</code>), convert it once with the <code>cryptography</code> package and hand the DER bytes straight to <code>rustpdf.sign</code>; no key material ever leaves the Python process or touches disk.</p>
+            <p class="muted">Signing needs a private key and an X.509 certificate, and rust-pdf takes them as raw DER, a PKCS#8 key plus the cert. If your key lives in a <code>.pfx</code>/PKCS#12 container or a PEM bundle (the usual output of a CA or <code>openssl</code>), convert it once with the <code>cryptography</code> package and hand the DER bytes straight to <code>rustpdf.sign</code>; no key material ever leaves the Python process or touches disk.</p>
             <p class="muted">Each call appends a non-destructive incremental update: the original PDF stays byte-for-byte intact and only the signature dictionary, its <code>/ByteRange</code> and the detached CMS are added at the end. So you can sign a freshly rendered invoice inside a Django view, stream the bytes back in the <code>HttpResponse</code>, and re-sign the same file later without invalidating the first signature.</p>
-            <p class="muted">For long-term validation, follow the signature with <code>add_dss</code> (certificates and CRLs, PAdES B-LT) and <code>timestamp</code> (an RFC 3161 token, PAdES B-LTA) — both offline and incremental. pdfsig and OpenSSL confirm the ByteRange digest and that <code>/Contents</code> decodes as CMS SignedData.</p>
+            <p class="muted">For long-term validation, follow the signature with <code>add_dss</code> (certificates and CRLs, PAdES B-LT) and <code>timestamp</code> (an RFC 3161 token, PAdES B-LTA), both offline and incremental. pdfsig and OpenSSL confirm the ByteRange digest and that <code>/Contents</code> decodes as CMS SignedData.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>

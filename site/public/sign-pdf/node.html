@@ -209,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Signing a PDF in Node normally pulls in a native toolkit with a build step, or pipes bytes through an external signer — fragile in CI and hard to run inside a request handler.</p>
+            <p class="muted">Signing a PDF in Node normally pulls in a native toolkit with a build step, or pipes bytes through an external signer, which is fragile in CI and hard to run inside a request handler.</p>
             <p class="muted">A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.</p>
-            <p class="muted">From a Fastify or NestJS handler, read the PKCS#8 key and X.509 certificate with fs.readFileSync as Buffers — convert a PEM or PKCS#12 bundle to DER once with openssl — then call rustpdf.sign and write or return the signed Buffer. Signing is CPU-bound, so wrap it in an async job for busy endpoints; the pure-FFI Koffi binding adds no node-gyp step.</p>
+            <p class="muted">From a Fastify or NestJS handler, read the PKCS#8 key and X.509 certificate with fs.readFileSync as Buffers, convert a PEM or PKCS#12 bundle to DER once with openssl, then call rustpdf.sign and write or return the signed Buffer. Signing is CPU-bound, so wrap it in an async job for busy endpoints; the pure-FFI Koffi binding adds no node-gyp step.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>

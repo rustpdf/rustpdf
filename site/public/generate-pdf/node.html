@@ -209,9 +209,9 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Building a PDF in Node has long meant rendering HTML in headless Chrome — a slow, memory-hungry dependency that drifts visually and never produces archival-grade output.</p>
+            <p class="muted">Building a PDF in Node has long meant rendering HTML in headless Chrome, a slow, memory-hungry dependency that drifts visually and never produces archival-grade output.</p>
             <p class="muted">Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.</p>
-            <p class="muted">Wire new Document() into an Express or NestJS endpoint to build invoices and reports on the fly, returning the document from the route. The package ships TypeScript types in index.d.ts so every drawing call autocompletes, and the pure-FFI Koffi binding installs from npm with no node-gyp — replacing a Puppeteer step with one small native dependency.</p>
+            <p class="muted">Wire new Document() into an Express or NestJS endpoint to build invoices and reports on the fly, returning the document from the route. The package ships TypeScript types in index.d.ts so every drawing call autocompletes, and the pure-FFI Koffi binding installs from npm with no node-gyp, replacing a Puppeteer step with one small native dependency.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -255,7 +255,7 @@ doc.close();</code></pre>
           <p>Yes. Fonts are embedded and subset with HarfBuzz-quality shaping and kerning, using Type0 fonts with ToUnicode, so non-Latin scripts render and extract correctly.</p>
         </details>
         <details><summary>Why a Rust core for Node.js?</summary>
-          <p>One memory-safe, high-performance Rust core is exposed to Node.js through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
+          <p>A thin idiomatic binding exposes one memory-safe, high-performance Rust core to Node.js. You get the same engine, the same features and deterministic output, without a heavy runtime.</p>
         </details>
         <details><summary>Can rust-pdf replace Puppeteer for generating PDFs in Node?</summary>
           <p>For programmatic documents, yes. Instead of rendering HTML in headless Chrome you draw pages, text and tables directly, which is faster, deterministic and far lighter in memory. The Koffi binding installs from npm with no node-gyp, so there is no browser to bundle or keep patched.</p>

@@ -206,7 +206,7 @@
         <h1>What is <span class="grad">HSM signing</span>,<br />and why does the key stay put?</h1>
         <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-30</p>
         <p class="lede hs-lede">
-          A signing key is as powerful as your handwritten signature, so the safest
+          A signing key carries the weight of your handwritten signature, so the safest
           place for it is locked inside hardware that never lets it out. HSM signing
           lets you sign a PDF while the private key stays in your hardware module,
           smartcard or cloud key service. The document comes to the key, not the other
@@ -258,8 +258,8 @@
         <p class="center muted">
           The moment a private key is loaded into application memory or read from disk,
           it can be stolen: by a crash dump, a memory-scraping process, a backup that
-          leaks, or a dependency you did not audit. And for many keys this is simply not
-          allowed. Smartcards, USB tokens and qualified-signature devices make the key
+          leaks, or a dependency you did not audit. And for many keys this is not
+          allowed at all. Smartcards, USB tokens and qualified-signature devices make the key
           non-exportable, so a library that demands the raw key cannot use them at all.
         </p>
         <p class="center muted">
@@ -307,7 +307,7 @@
       <div class="wrap">
         <h2 class="center">The advantages</h2>
         <p class="center muted narrow">
-          Keeping the key in hardware is not just safer, it unlocks deployments a
+          Keeping the key in hardware is safer, and it unlocks deployments a
           key-in-memory library cannot reach.
         </p>
         <div class="hs-adv">

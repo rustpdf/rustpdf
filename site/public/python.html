@@ -304,7 +304,7 @@ def invoice():
       <div class="wrap narrow">
         <h2 class="center">Python PDF library FAQ</h2>
         <details><summary>Does it release the GIL for parallel rendering?</summary>
-          <p>Yes. The native core releases the GIL on every call, so threads, a Gunicorn/Uvicorn worker pool, or a Celery/RQ queue can render many documents at once and actually use every core. Each <code>Document</code> or <code>EditableDoc</code> owns its own handle, so give each task its own object.</p>
+          <p>Yes. The native core releases the GIL on every call, so threads, a Gunicorn/Uvicorn worker pool, or a Celery/RQ queue can render many documents at once and use every core. Each <code>Document</code> or <code>EditableDoc</code> owns its own handle, so give each task its own object.</p>
         </details>
         <details><summary>Will it work in Docker, AWS Lambda and serverless?</summary>
           <p>Yes. <code>pip install rustpdf</code> pulls a prebuilt wheel with the native core bundled per platform, so there is nothing to compile in your image and no system PDF tools to install. It runs fully offline, which keeps cold starts small and documents inside your own environment.</p>

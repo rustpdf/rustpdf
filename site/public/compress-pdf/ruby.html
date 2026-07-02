@@ -210,7 +210,7 @@
         <div class="sp-why">
           <div>
             <p class="muted">Prawn has no notion of an existing file, so trimming a bloated PDF in Ruby has traditionally meant a Ghostscript or qpdf subprocess on the box. rust-pdf rewrites the file structure directly from the gem.</p>
-            <p class="muted">Optimization here is lossless structural cleanup: the rendered page never changes, the file just carries less weight. Pair <code>optimize</code> (drop unused objects, Flate-compress streams, dedupe byte-identical ones) with <code>compact</code> (object and cross-reference streams) for the smallest valid output.</p>
+            <p class="muted">Optimization here is lossless structural cleanup: the rendered page never changes, the file carries less weight. Pair <code>optimize</code> (drop unused objects, Flate-compress streams, dedupe byte-identical ones) with <code>compact</code> (object and cross-reference streams) for the smallest valid output.</p>
             <p class="muted">Run it from an ActiveJob or Sidekiq worker before you email or archive at scale: <code>load_file</code>, chain <code>optimize.compact(true)</code>, then <code>save</code>, rescuing <code>RustPdf::Error</code> on a corrupt input. It all runs in-process over Fiddle, with no Ghostscript binary to ship.</p>
           </div>
           <ul class="check-list">

@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Encryption &middot; Node.js and TypeScript</p>
         <h1>Encrypt a <span class="grad">PDF</span> in Node.js</h1>
-        <p class="lede sp-lede">Password-protect a PDF from Node.js with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
+        <p class="lede sp-lede">Password-protect a PDF from Node.js with AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -209,7 +209,7 @@
         <h2 class="center">Why Node.js and TypeScript needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Handling confidential PDFs in Node usually means shelling out to qpdf or another CLI, then babysitting temp files and passwords on disk — awkward inside a request handler and easy to leak.</p>
+            <p class="muted">Handling confidential PDFs in Node usually means shelling out to qpdf or another CLI, then babysitting temp files and passwords on disk, awkward inside a request handler and easy to leak.</p>
             <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
             <p class="muted">Drop the load–encrypt–save sequence into an Express or NestJS route to protect a document per request. The Koffi binding is pure FFI with no node-gyp build, so it installs cleanly from npm, and a request made without an Encryption license throws a PdfError you handle in a try/catch like any other failure.</p>
           </div>

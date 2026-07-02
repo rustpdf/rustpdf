@@ -249,7 +249,7 @@
           <h2>"Serious" PDF support is scarce and uneven</h2>
           <p class="muted">
             Almost every language can emit a simple PDF. Almost none have a
-            modern, complete library for what regulated businesses actually need:
+            modern, complete library for what regulated businesses need:
             legal archival (PDF/A), juridically-valid signatures (PAdES),
             AES-256 for LGPD/GDPR, and accessibility (PDF/UA).
           </p>
@@ -368,9 +368,8 @@
       <div class="wrap">
         <h2 class="center">One engine. Eight languages. Identical behavior.</h2>
         <p class="center muted narrow">
-          The same engine powers every binding, so you get identical results in any
-          language. Every feature behaves the same everywhere, with no per-language
-          quirks to debug in production.
+          Every binding calls the same Rust core, so a feature behaves the same in
+          Python as in Go, with no per-language quirks to debug in production.
         </p>
         <div class="lang-grid">
           <a class="lang reveal" href="/docs/"><span>Rust</span><small>native core</small></a>
@@ -509,7 +508,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
     <!-- VERIFY IT YOURSELF -->
     <section id="verify" class="band">
       <div class="wrap narrow center">
-        <h2>Don't take our word for it. Run the validators.</h2>
+        <h2>Run the validators yourself.</h2>
         <p class="muted">
           Generate a document, then check it with the same independent validator we
           gate every release on. No account, no upload: it all runs on your
@@ -675,7 +674,7 @@ verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules<
           <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
         </details>
         <details><summary>How is this validated?</summary>
-          <p>Output is checked by the independent reference validator veraPDF (PDF/A 1b–3a and A-4 + PDF/UA-1). It isn't "conformance marketing".</p>
+          <p>veraPDF, the independent reference validator, checks every release (PDF/A 1b–3a and A-4 + PDF/UA-1). You can run the same checks yourself.</p>
         </details>
         <details><summary>What happens when the license expires?</summary>
           <p>The corporate features stop producing output and return a clear license error; basic generation keeps working. Renew to receive a fresh token.</p>

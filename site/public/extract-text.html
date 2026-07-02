@@ -328,7 +328,7 @@
           recognition software.
         </p>
         <p class="muted">
-          A PDF with a text layer is the typed letter: the characters are really
+          A PDF with a text layer is the typed letter: the characters are
           there, encoded in the file. A scanned PDF is the photograph: the page
           is pixels and there are no characters to read, only shapes that look
           like characters. <b>rust-pdf extracts text from the first kind.</b>
@@ -380,7 +380,7 @@
           <div class="tx-step reveal">
             <div class="num">3</div>
             <h3>Infer spaces and line breaks</h3>
-            <p>Spaces are inferred from large negative <code>TJ</code> kerning adjustments that represent a gap wider than a normal inter-glyph space. Line breaks are inferred from <code>Tm</code> matrix changes and <code>T*</code> operators that advance the cursor vertically to a new line.</p>
+            <p>The extractor infers spaces from large negative <code>TJ</code> kerning adjustments that represent a gap wider than a normal inter-glyph space, and line breaks from <code>Tm</code> matrix changes and <code>T*</code> operators that advance the cursor vertically to a new line.</p>
           </div>
         </div>
         <p class="center muted narrow" style="margin-top:26px">
@@ -538,7 +538,7 @@ console.log(text);</code></pre>
           <p>No. OCR (optical character recognition) analyses a raster image to guess what letters are shown. PDF text extraction reads the actual text that the PDF author encoded in the file. It is exact, instant, and language-agnostic. rust-pdf does not perform OCR and does not attempt to interpret images.</p>
         </details>
         <details><summary>What about scanned PDFs?</summary>
-          <p>A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read -- the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide.</p>
+          <p>A scanned PDF is a photograph of a page wrapped in a PDF container. If no text layer was added (for example by a scanner's built-in OCR), there is nothing for a text extractor to read: the content is pixels, not characters. rust-pdf will return an empty or near-empty string for such files. To get text out of a scan you would need a separate OCR step, which rust-pdf does not provide.</p>
         </details>
         <details><summary>Can I use it for search or LLM/RAG pipelines?</summary>
           <p>Yes. Extracting text with rust-pdf and feeding the result into a full-text search index or an LLM context window is one of the primary use cases. The extraction is fast enough to process large document collections in bulk. The output is clean Unicode suitable for tokenisation, chunking, and embedding without further normalisation.</p>

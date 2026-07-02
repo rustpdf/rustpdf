@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Encryption &middot; Go</p>
         <h1>Encrypt a <span class="grad">PDF</span> in Go</h1>
-        <p class="lede sp-lede">Password-protect a PDF from Go with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
+        <p class="lede sp-lede">Password-protect a PDF from Go with AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -209,7 +209,7 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Sensitive PDFs — statements, payslips, contracts — usually pass through a Go API before a user ever sees them, yet the standard library has no PDF encryption at all. The archived gofpdf can't help and commercial wrappers are heavy, so teams either shell out to qpdf or skip protection entirely.</p>
+            <p class="muted">Sensitive PDFs (statements, payslips, contracts) usually pass through a Go API before a user ever sees them, yet the standard library has no PDF encryption at all. The archived gofpdf can't help and commercial wrappers are heavy, so teams either shell out to qpdf or skip protection entirely.</p>
             <p class="muted">rust-pdf implements AES-256 (V5/R6) directly, deriving the file key, salts and IVs from the operating system CSPRNG so every output file is unique, with AES-128 and legacy RC4 still on hand for older readers. qpdf validates the result for both the user and the owner password.</p>
             <p class="muted">Inside a net/http or Gin handler you load the document, call Encrypt, and write the secured bytes straight to the ResponseWriter with Content-Type application/pdf. Every call returns an explicit error rather than panicking, so a missing Encryption license surfaces as a clean 500 instead of crashing the request.</p>
           </div>

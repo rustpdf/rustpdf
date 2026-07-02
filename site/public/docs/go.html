@@ -188,7 +188,7 @@
     <main id="main" class="docs-main">
       <h1>Go</h1>
       <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
-      <p class="docs-lead">The <code>rustpdf-go</code> module wraps the rust-pdf C core with idiomatic Go types over <b>cgo</b>. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library is statically linked from a prebuilt archive bundled per platform, so <code>go get</code> + <code>go build</code> just works — no separate native install.</p>
+      <p class="docs-lead">The <code>rustpdf-go</code> module wraps the rust-pdf C core with idiomatic Go types over <b>cgo</b>. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The native library is statically linked from a prebuilt archive bundled per platform, so <code>go get</code> + <code>go build</code> works, with no separate native install.</p>
 
       <div class="note"><b>Two types do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so <code>defer d.Close()</code> to free it promptly. Methods return an <code>error</code> (not the receiver), so they don't chain.</div>
 
@@ -203,7 +203,7 @@ fmt.Println(rustpdf.Version())   // native library version</code></pre></div>
 
       <!-- QUICKSTART -->
       <h2 id="quickstart">Quick start</h2>
-      <p>A one-page document with a filled rectangle, saved to disk. Errors are elided with <code>_</code> for brevity — see <a href="#errors">Error handling</a> for the real pattern:</p>
+      <p>A one-page document with a filled rectangle, saved to disk. Errors are elided with <code>_</code> for brevity. See <a href="#errors">Error handling</a> for the real pattern:</p>
       <div class="code has-label"><span class="lbl">go</span><pre><code>package main
 
 import rustpdf "github.com/rustpdf/rustpdf-go"
@@ -231,7 +231,7 @@ data, _ := doc.ToBytes()           // []byte instead of a file</code></pre></div
 
       <!-- CGO -->
       <h2 id="cgo">cgo &amp; deployment</h2>
-      <p>The binding links the native library <b>statically</b>, so a built binary carries it — there is no shared library to ship alongside.</p>
+      <p>The binding links the native library <b>statically</b>, so a built binary carries it. There is no shared library to ship alongside.</p>
       <ul>
         <li><b>Build host needs a C toolchain.</b> cgo is on by default (<code>CGO_ENABLED=1</code>); install a C compiler (Xcode CLT on macOS, <code>build-essential</code> on Linux, MinGW-w64 on Windows).</li>
         <li><b>Cross-compilation</b> needs a cross C toolchain for the target (set <code>CC</code>), because cgo invokes the platform C compiler. Pure <code>GOOS</code>/<code>GOARCH</code> cross-builds without a cross-<code>CC</code> won't link.</li>
@@ -265,7 +265,7 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
       <h2 id="threading">Goroutines &amp; concurrency</h2>
       <p>Every native call is <b>synchronous</b> and the core is <b>Send but not Sync</b>: a single handle must never be touched by two goroutines at once.</p>
       <ul>
-        <li><b>Documents are independent.</b> Each <code>Document</code>/<code>EditableDoc</code> shares no state, so building several in parallel goroutines is fine — one handle per goroutine.</li>
+        <li><b>Documents are independent.</b> Each <code>Document</code>/<code>EditableDoc</code> shares no state, so building several in parallel goroutines is fine, with one handle per goroutine.</li>
         <li><b>Don't share a live handle</b> across goroutines; give each its own (or guard it with a mutex).</li>
         <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure in one goroutine never clobbers another's, and the message surfaces on the calling side.</li>
         <li><b>License is process-global.</b> <code>ActivateLicense</code> (or the env var) applies everywhere; activate once at startup.</li>
@@ -301,7 +301,7 @@ wg.Wait()</code></pre></div>
         <tr><td><code>Save(path string) error</code></td><td>Render and write to a file.</td></tr>
         <tr><td><code>Close()</code></td><td>Free the native handle.</td></tr>
       </table>
-      <div class="note"><b>Validity.</b> A document must have at least one page — serializing an empty document returns an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
+      <div class="note"><b>Validity.</b> A document must have at least one page; serializing an empty document returns an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
 
       <!-- GRAPHICS -->
       <h2 id="graphics">Pages &amp; vector graphics</h2>
@@ -343,8 +343,8 @@ _ = doc.AddPage()
 _ = doc.ShowText(regular, 28, 72, 760, "Invoice #1024", 0)
 _ = doc.ShowText(regular, 12, 72, 720, "日本語 · Ελληνικά · العربية", 0)
 _ = doc.Save("text.pdf")</code></pre></div>
-      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped — they render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
-      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>\x00</code>) byte — it truncates the string at the cgo boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
+      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped; they render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
+      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>\x00</code>) byte. It truncates the string at the cgo boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
 
       <!-- PARAGRAPHS -->
       <h2 id="paragraphs">Paragraphs</h2>
@@ -563,7 +563,7 @@ _ = a.Save("merged.pdf")
 sub, _ := a.ExtractPages([]int{0, 2})   // pages 1 and 3
 defer sub.Close()
 _ = sub.Save("subset.pdf")</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument (wrong length, a repeated index, or out-of-range) is rejected and leaves the page order unchanged. The call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -622,8 +622,8 @@ _ = ed.Save("stamped.pdf")</code></pre></div>
 
       <!-- ED DRAW -->
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
-      <p>Place a filled rectangle or a line of text at exact coordinates on one page — handy for masking a value and stamping a new one over it. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. <code>FillRect</code> takes RGB (each <code>0.0..1.0</code>) and opacity (<code>0.0..1.0</code>); pass opacity <code>1</code> for an opaque white-out box. <code>PlaceText</code> draws in standard Helvetica (so keep text to WinAnsi / Latin-1), and <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. All three return whether the target page existed.</p>
-      <p><code>PlaceTextAligned</code> is <code>PlaceText</code> with a horizontal <code>Align</code> (<code>AlignLeft</code>/<code>AlignRight</code>/<code>AlignCenter</code>): the start point is shifted along the baseline by the text width so the line is anchored left, right or centered on <code>(x, y)</code>. <code>MaskedText</code> is the one-call mask-and-replace: it fills an opaque box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code>, then writes <code>text</code> in <code>textColor</code> horizontally aligned per <code>align</code> and vertically centered in the box — colors are <code>[3]float64</code> RGB triples (each <code>0.0..1.0</code>). Both also draw in standard Helvetica.</p>
+      <p>Place a filled rectangle or a line of text at exact coordinates on one page, handy for masking a value and stamping a new one over it. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. <code>FillRect</code> takes RGB (each <code>0.0..1.0</code>) and opacity (<code>0.0..1.0</code>); pass opacity <code>1</code> for an opaque white-out box. <code>PlaceText</code> draws in standard Helvetica (so keep text to WinAnsi / Latin-1), and <code>rotationDeg</code> rotates the text counter-clockwise about its anchor <code>(x, y)</code>. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. All three return whether the target page existed.</p>
+      <p><code>PlaceTextAligned</code> is <code>PlaceText</code> with a horizontal <code>Align</code> (<code>AlignLeft</code>/<code>AlignRight</code>/<code>AlignCenter</code>): the start point is shifted along the baseline by the text width so the line is anchored left, right or centered on <code>(x, y)</code>. <code>MaskedText</code> is the one-call mask-and-replace: it fills an opaque box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code>, then writes <code>text</code> in <code>textColor</code> horizontally aligned per <code>align</code> and vertically centered in the box. Colors are <code>[3]float64</code> RGB triples (each <code>0.0..1.0</code>). Both also draw in standard Helvetica.</p>
       <div class="api"><code>FillRect(pageIndex int, x, y, width, height, r, g, b, opacity float64) bool</code></div>
       <div class="api"><code>PlaceText(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64) bool</code></div>
       <div class="api"><code>PlaceTextAligned(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64, align Align) bool</code></div>

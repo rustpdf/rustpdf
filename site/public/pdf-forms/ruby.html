@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Prawn can draw a form that looks right but is not interactive, so Ruby teams have leaned on a pdftk binary or a Java library to make fields fillable. rust-pdf authors a real AcroForm and the appearance streams to go with it.</p>
             <p class="muted">Every field is emitted with a generated appearance stream, so checkboxes, text inputs and choices render correctly in every viewer without the NeedAppearances workaround. Dotted names give you a hierarchy for grouped data, and an existing form can be filled and flattened into static content.</p>
-            <p class="muted">Author or fill the form from a Rails controller or a Sidekiq worker, chaining <code>text_field</code>, <code>checkbox</code>, <code>dropdown</code> and <code>radio_group</code> on a page, then <code>save</code>; it binds through Fiddle, so there is no pdftk subprocess and a bad load is just a <code>RustPdf::Error</code> to rescue.</p>
+            <p class="muted">Author or fill the form from a Rails controller or a Sidekiq worker, chaining <code>text_field</code>, <code>checkbox</code>, <code>dropdown</code> and <code>radio_group</code> on a page, then <code>save</code>; it binds through Fiddle, so there is no pdftk subprocess and a bad load is a <code>RustPdf::Error</code> to rescue.</p>
           </div>
           <ul class="check-list">
             <li>Text fields, checkboxes, radio groups and dropdowns with generated appearance streams.</li>

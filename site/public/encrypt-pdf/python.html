@@ -187,7 +187,7 @@
       <div class="wrap">
         <p class="eyebrow">Encryption &middot; Python</p>
         <h1>Encrypt a <span class="grad">PDF</span> in Python</h1>
-        <p class="lede sp-lede">pip install rustpdf and AES-256-encrypt a PDF from a FastAPI route or Celery task — V5/R6 keys from the OS CSPRNG, user and owner passwords, no qpdf binary. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
+        <p class="lede sp-lede">pip install rustpdf and AES-256-encrypt a PDF from a FastAPI route or Celery task, with V5/R6 keys from the OS CSPRNG, user and owner passwords, no qpdf binary. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.</p>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Last updated: 2026-06-29</p>
         <div class="sp-scene" aria-hidden="true">
           <div class="sp-paper">
@@ -209,9 +209,9 @@
         <h2 class="center">Why Python needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Most Python stacks shell out to an external <code>qpdf</code> binary to add AES-256, which means an extra <code>apt-get</code> layer in every <code>python:3.12-slim</code> image. rust-pdf ships the cipher inside the wheel, so a slim or distroless container encrypts with zero system packages — the one caveat is Alpine, where you install the musl wheel rather than the manylinux glibc build.</p>
+            <p class="muted">Most Python stacks shell out to an external <code>qpdf</code> binary to add AES-256, which means an extra <code>apt-get</code> layer in every <code>python:3.12-slim</code> image. rust-pdf ships the cipher inside the wheel, so a slim or distroless container encrypts with zero system packages. The one caveat is Alpine, where you install the musl wheel rather than the manylinux glibc build.</p>
             <p class="muted">Encryption runs entirely in-process: <code>EditableDoc.load_file</code> and <code>ed.encrypt(...)</code> execute on the calling thread, so you can wrap them in a FastAPI dependency, a Celery task or a Django management command without spawning a subprocess. A missing or expired Encryption license surfaces as a <code>PdfError</code> you can catch and turn into a 402 response or a retry.</p>
-            <p class="muted">AES-256 uses the V5/R6 security handler with keys, salts and IVs drawn from the operating-system CSPRNG, so every statement, payslip or contract you protect is byte-unique and recoverable only with the password. Set a user password to gate opening, an owner password to lock printing and copying, or both — qpdf validates each combination.</p>
+            <p class="muted">AES-256 uses the V5/R6 security handler with keys, salts and IVs drawn from the operating-system CSPRNG, so every statement, payslip or contract you protect is byte-unique and recoverable only with the password. Set a user password to gate opening, an owner password to lock printing and copying, or both, and qpdf validates each combination.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>

@@ -209,7 +209,7 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Onboarding flows, applications and consent screens built in Go frequently end in a filled PDF, but AcroForm fields that render in one viewer and vanish in another — the dreaded NeedAppearances flag — are a classic source of support tickets that Go's ecosystem gives you no clean way to avoid.</p>
+            <p class="muted">Onboarding flows, applications and consent screens built in Go frequently end in a filled PDF, but AcroForm fields that render in one viewer and vanish in another, the dreaded NeedAppearances flag, are a classic source of support tickets that Go's ecosystem gives you no clean way to avoid.</p>
             <p class="muted">rust-pdf bakes an appearance stream into every text field, checkbox, radio group and dropdown, so they display correctly everywhere without the NeedAppearances hack. Dotted names give you a hierarchy for grouped data, and an existing form can be filled by name and flattened into non-editable static content.</p>
             <p class="muted">This fits an HTTP form flow naturally: bind a POST body in an Echo or net/http handler, set each field by its dotted name, and flatten before returning the PDF so the submitted values are locked in. Errors come back as values, so a typo in a field name is handled cleanly rather than crashing the request.</p>
           </div>
@@ -269,7 +269,7 @@ _ = doc.Save("form.pdf")</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Bring interactive forms to your Go app</h2>
-        <p class="muted">One Rust core, the same form rendering in every language. Creating, filling and flattening AcroForms is free in Go — no license required.</p>
+        <p class="muted">One Rust core, the same form rendering in every language. Creating, filling and flattening AcroForms is free in Go. No license required.</p>
         <div class="cta-row">
           <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
           <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>

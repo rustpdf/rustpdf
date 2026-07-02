@@ -209,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Search, full-text indexing, data extraction and compliance review all start from one question: what does this PDF actually say? Getting clean text back out is deceptively hard, because the codes in a content stream are font-specific, not Unicode.</p>
+            <p class="muted">Search, full-text indexing, data extraction and compliance review all start from one question: what does this PDF say? Getting clean text back out is deceptively hard, because the codes in a content stream are font-specific, not Unicode.</p>
             <p class="muted">rust-pdf walks the content stream, maps each shown code back to Unicode through the font's ToUnicode CMap (including two-byte Type0 fonts), and infers spaces from large negative adjustments and line breaks from text positioning. Japanese, Greek and Arabic come back as the text a human reads.</p>
-            <p class="muted">A queued Laravel job can call Pdf::extractText and stream the result straight into Elasticsearch or a database, all in-process — no pdftotext binary and no Python microservice to keep alive. composer require installs the binding, ext-ffi connects it to the core, and image-only scans are the one case that still needs OCR first.</p>
+            <p class="muted">A queued Laravel job can call Pdf::extractText and stream the result straight into Elasticsearch or a database, all in-process. No pdftotext binary and no Python microservice to keep alive. composer require installs the binding, ext-ffi connects it to the core, and image-only scans are the one case that still needs OCR first.</p>
           </div>
           <ul class="check-list">
             <li>Maps glyph codes to Unicode via each font's ToUnicode map, including two-byte Type0 and CJK.</li>
@@ -238,7 +238,7 @@ $n = Pdf::extractImagesToDir($data, 'out_images/');   // returns how many were w
 echo "wrote $n image(s)\n";</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdftotext</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Extraction is part of the free PHP tier — no license token required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Extraction is part of the free PHP tier, no license token required.</p>
         <p class="center muted narrow" style="margin-top:22px">The complete extraction API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
@@ -256,7 +256,7 @@ echo "wrote $n image(s)\n";</code></pre>
           <p>Yes. Text and image extraction are part of the free tier in PHP. No license token is required.</p>
         </details>
         <details><summary>Can I index PDF text in a Laravel queue without a Python service?</summary>
-          <p>Yes. <code>Pdf::extractText</code> returns a UTF-8 string in-process, so a queued job can feed Elasticsearch or a database full-text index directly. There is no pdftotext binary or Python microservice to deploy and keep alive — though scanned, image-only PDFs still need OCR upstream before any text exists to read.</p>
+          <p>Yes. <code>Pdf::extractText</code> returns a UTF-8 string in-process, so a queued job can feed Elasticsearch or a database full-text index directly. There is no pdftotext binary or Python microservice to deploy and keep alive, though scanned, image-only PDFs still need OCR upstream before any text exists to read.</p>
         </details>
       </div>
     </section>

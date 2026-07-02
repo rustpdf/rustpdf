@@ -209,7 +209,7 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Archival mandates — e-invoicing, court filings, healthcare and finance records — increasingly demand PDF/A, a profile most Go libraries never implemented. The hard part is getting the ICC profile, output intent, XMP metadata and font embedding all correct at once; one missing piece and veraPDF rejects the file.</p>
+            <p class="muted">Archival mandates (e-invoicing, court filings, healthcare and finance records) increasingly demand PDF/A, a profile most Go libraries never implemented. The hard part is getting the ICC profile, output intent, XMP metadata and font embedding all correct at once; one missing piece and veraPDF rejects the file.</p>
             <p class="muted">rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and the PDF 2.0-based A-4 family, embedding and subsetting every font, sealing in the sRGB profile, and keeping the XMP in sync with the document info for you — so a long-lived document renders identically decades from now.</p>
             <p class="muted">Because the binding is cgo, an archival service built on a Mac usually ships to a Linux container: set CGO_ENABLED=1 with a Linux toolchain, build in a multi-stage Dockerfile, and copy libpdf_ffi.so beside the binary. Then gate every release on a veraPDF check in CI, where deterministic output keeps the result stable.</p>
           </div>

@@ -209,9 +209,9 @@
         <h2 class="center">Why Go needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">PDFs that a Go service archives, emails or serves at scale are often bloated with uncompressed streams and duplicated objects. Go ships no tool to slim them, and the usual fix — re-rendering through an external converter — quietly degrades the page and costs a process spawn per file.</p>
+            <p class="muted">PDFs that a Go service archives, emails or serves at scale are often bloated with uncompressed streams and duplicated objects. Go ships no tool to slim them, and the usual fix, re-rendering through an external converter, quietly degrades the page and costs a process spawn per file.</p>
             <p class="muted">rust-pdf optimizes losslessly: it drops unreferenced objects, Flate-compresses raw streams and dedupes byte-identical objects, then optionally packs everything into an object stream with a cross-reference stream. The rendered page is untouched and the smaller output still passes qpdf and mutool.</p>
-            <p class="muted">Deployment stays simple even though the engine is native: ship libpdf_ffi beside the binary — resolved by the macOS install-name or a Linux -rpath — or bake both into a multi-stage scratch image. With no daemon to manage, the optimize step runs in-process inside your existing HTTP service.</p>
+            <p class="muted">Deployment stays simple even though the engine is native: ship libpdf_ffi beside the binary, resolved by the macOS install-name or a Linux -rpath, or bake both into a multi-stage scratch image. With no daemon to manage, the optimize step runs in-process inside your existing HTTP service.</p>
           </div>
           <ul class="check-list">
             <li>Drop unreferenced objects, Flate-compress streams and dedupe identical objects.</li>

@@ -209,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Large PDFs are expensive to store, slow to email and painful to serve at scale. Much of that weight is structural — uncompressed streams, duplicated objects, a bloated cross-reference table — not the actual content on the page.</p>
+            <p class="muted">Large PDFs are expensive to store, slow to email and painful to serve at scale. Much of that weight is structural: uncompressed streams, duplicated objects, a bloated cross-reference table, rather than the actual content on the page.</p>
             <p class="muted">rust-pdf removes that overhead losslessly: it drops unreferenced objects, Flate-compresses uncompressed streams, dedupes byte-identical objects, and can pack everything into object streams behind a cross-reference stream. The rendered page is untouched, so the smaller file still passes qpdf and mutool.</p>
-            <p class="muted">Run as part of a queue worker, optimize() and compact() shrink generated invoices or user uploads before they hit storage — no Ghostscript or qpdf process to spawn from PHP. The binding arrives via composer require, ext-ffi links the native core, and the output is safe to re-serve byte for byte.</p>
+            <p class="muted">Run as part of a queue worker, optimize() and compact() shrink generated invoices or user uploads before they hit storage. No Ghostscript or qpdf process to spawn from PHP. The binding arrives via composer require, ext-ffi links the native core, and the output is safe to re-serve byte for byte.</p>
           </div>
           <ul class="check-list">
             <li>Drop unreferenced objects, Flate-compress streams and dedupe identical objects.</li>

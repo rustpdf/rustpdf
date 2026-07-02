@@ -177,7 +177,7 @@
       <h1>Delphi / Free Pascal</h1>
       <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
 
-      <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle — free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
+      <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle. Free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
       <div class="note"><b>Free each handle exactly once.</b> Like any Object Pascal object, a handle must not be freed twice or used after <code>.Free</code>. Using a freed handle raises <code>ERustPdf</code>, but calling <code>.Free</code> a <i>second</i> time is undefined behavior that can crash the process (the object memory is already gone). Stick to the <code>try…finally Doc.Free end</code> idiom and do not also free it elsewhere; if a variable may be freed on more than one path, use <code>FreeAndNil(Doc)</code> so a duplicate free becomes a harmless no-op.</div>
 
       <!-- DOWNLOAD -->
@@ -195,7 +195,7 @@
 
       <!-- INSTALL -->
       <h2 id="install">Installation</h2>
-      <p>The binding is a single source unit, <code>RustPdf.pas</code> — no native build step, no headers to install. It loads the shared library (<code>libpdf_ffi</code>) built from the Rust core at run time, so there is no fixed link name. Add the binding directory to your unit search path:</p>
+      <p>The binding is a single source unit, <code>RustPdf.pas</code>, with no native build step and no headers to install. It loads the shared library (<code>libpdf_ffi</code>) built from the Rust core at run time, so there is no fixed link name. Add the binding directory to your unit search path:</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>uses RustPdf;   // add bindings/delphi to the unit search path (-Fu / Project Options)</code></pre></div>
       <p>Build the native library and (optionally) point <code>RUSTPDF_LIB</code> at it:</p>
       <div class="code has-label"><span class="lbl">shell</span><pre><code>cargo build -p pdf-ffi                       # → target/debug/libpdf_ffi.{dylib,so,dll}
@@ -270,10 +270,10 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
       <h2 id="threading">Threading &amp; concurrency</h2>
       <p>The core is <b>Send but not Sync</b>: you can build many documents in parallel, but a single handle must never be touched by two threads at once.</p>
       <ul>
-        <li><b>Generate in parallel.</b> Give each thread its own <code>TPdfDocument</code>/<code>TPdfEditable</code> — independent documents share no state and run truly concurrently.</li>
+        <li><b>Generate in parallel.</b> Give each thread its own <code>TPdfDocument</code>/<code>TPdfEditable</code>. Independent documents share no state and run concurrently.</li>
         <li><b>Move between threads.</b> A handle may be created on one thread and used on another.</li>
-        <li><b>Never share a live handle.</b> Two threads calling into the same <code>TPdfDocument</code> at the same time is unsupported; protect it with a <code>TCriticalSection</code> if you really must.</li>
-        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's — <code>ERustPdf</code> is always raised on the calling thread.</li>
+        <li><b>Never share a live handle.</b> Two threads calling into the same <code>TPdfDocument</code> at the same time is unsupported; protect it with a <code>TCriticalSection</code> if you must.</li>
+        <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's. <code>ERustPdf</code> is always raised on the calling thread.</li>
         <li><b>License is process-global.</b> <code>Pdf.ActivateLicense</code> (or the env var) applies to every thread; activate once at startup.</li>
       </ul>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>type
@@ -309,7 +309,7 @@ end;</code></pre></div>
         <tr><td><code>ToBytes</code></td><td>Render the document to <code>TBytes</code>.</td></tr>
         <tr><td><code>SaveToFile(Path)</code></td><td>Render and write to a file.</td></tr>
       </table>
-      <div class="note"><b>Validity.</b> A document must have at least one page — serializing an empty document raises an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
+      <div class="note"><b>Validity.</b> A document must have at least one page. Serializing an empty document raises an error. Color components (RGB/Gray/CMYK) are clamped to the valid 0–1 range.</div>
 
       <!-- GRAPHICS -->
       <h2 id="graphics">Pages &amp; vector graphics</h2>
@@ -343,8 +343,8 @@ Doc.AddPage;
 Doc.ShowText(Regular, 28, 72, 760, 'Invoice #1024');
 Doc.ShowText(Regular, 12, 72, 720, '日本語 · Ελληνικά · العربية');
 Doc.SaveToFile('text.pdf');</code></pre></div>
-      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped — they render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
-      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>#0</code>) character — it truncates the string at the FFI boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
+      <div class="note"><b>Font coverage.</b> Characters outside the embedded font's coverage are silently dropped. They render as the missing-glyph box and won't extract or copy. The bundled Roboto fallback covers Latin, Greek and Cyrillic but not CJK, Arabic, Hebrew or emoji. Embed a font that covers every script you write.</div>
+      <div class="note"><b>No NUL bytes in strings.</b> Text passed across the API must not contain a NUL (<code>#0</code>) character. It truncates the string at the FFI boundary, silently dropping everything after the NUL. This applies to shown text, metadata and field names.</div>
 
       <!-- PARAGRAPHS -->
       <h2 id="paragraphs">Paragraphs</h2>
@@ -439,7 +439,7 @@ Doc.SaveToFile('einvoice.pdf');   // PDF/A-3 + Factur-X; needs a PDF/A license</
         <tr><td><code>TextField(Name, Page, Rect, Value = '', Size = 0)</code></td><td>Text input (<code>Size = 0</code> → auto font size).</td></tr>
         <tr><td><code>Checkbox(Name, Page, Rect, Checked)</code></td><td>Checkbox (<code>Checked: Boolean</code>).</td></tr>
         <tr><td><code>Dropdown(Name, Page, Rect, Options, Selected = -1, Size = 0)</code></td><td>Combo box from an array of strings.</td></tr>
-        <tr><td><code>RadioGroup(Name, Page, Buttons, Selected = -1)</code></td><td><code>Buttons: TRadioButtons</code> — each has a <code>Rect</code> and <code>ExportValue</code>.</td></tr>
+        <tr><td><code>RadioGroup(Name, Page, Buttons, Selected = -1)</code></td><td><code>Buttons: TRadioButtons</code>; each has a <code>Rect</code> and <code>ExportValue</code>.</td></tr>
       </table>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Buttons: TRadioButtons;
 …
@@ -539,7 +539,7 @@ try
 finally
   A.Free; B.Free;
 end;</code></pre></div>
-      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument — wrong length, a repeated index, or out-of-range — is rejected and leaves the page order unchanged — the call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
+      <div class="note"><b>Page indices are 0-based.</b> An out-of-range index to rotate/delete is silently ignored, and extract skips out-of-range indices. <code>ReorderPages</code> requires a true permutation of every page index (each used exactly once); an invalid argument (wrong length, a repeated index, or out-of-range) is rejected and leaves the page order unchanged. The call is a silent no-op that raises no error, so an invalid reorder cannot be detected from a return value.</div>
 
       <!-- ED META -->
       <h2 id="ed-meta">Metadata, overlay &amp; form fill</h2>
@@ -885,7 +885,7 @@ end;</code></pre></div>
       <!-- VERIFY -->
       <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
-      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned — it is not available on the free tier.</p>
+      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned. It is not available on the free tier.</p>
       <div class="api"><code>Pdf.VerifySignaturesJson(PdfBytes: TBytes): UTF8String</code></div>
       <p>Each array entry is an object with <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report now also carries the signer-certificate detail: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code> and <code>signer</code> may be empty, and any of the certificate fields may be <code>null</code>, when absent.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Json: UTF8String;

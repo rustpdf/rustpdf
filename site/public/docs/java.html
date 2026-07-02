@@ -611,7 +611,7 @@ try (EditableDoc ed = EditableDoc.load(data)) {
     ed.save("stamped.pdf");
 }</code></pre></div>
 
-      <p>For the common mask-then-stamp pattern, <code>maskedText</code> does it in one call: it fills an opaque background box <code>[x, y, x+width, y+height]</code>, then writes the text horizontally aligned per <code>align</code> and vertically centred within the box — no need to hand-compute the baseline. Text defaults to black on a white box; pass <code>{r, g, b}</code> arrays (each 0..1) to override.</p>
+      <p>For the common mask-then-stamp pattern, <code>maskedText</code> does it in one call: it fills an opaque background box <code>[x, y, x+width, y+height]</code>, then writes the text horizontally aligned per <code>align</code> and vertically centred within the box, with no need to hand-compute the baseline. Text defaults to black on a white box; pass <code>{r, g, b}</code> arrays (each 0..1) to override.</p>
       <div class="api"><code>boolean maskedText(int pageIndex, double x, double y, double width, double height, String text, double size, double[] textColor, double[] bgColor, Align align)</code></div>
       <div class="api"><code>boolean maskedText(int pageIndex, double x, double y, double width, double height, String text, double size)</code></div>
       <div class="code has-label"><span class="lbl">java</span><pre><code>try (EditableDoc ed = EditableDoc.load(data)) {
@@ -685,7 +685,7 @@ try (EditableDoc ed = EditableDoc.loadFile(Path.of("template.pdf"))) {
                  90.0, ImageAnchor.BOUNDING_BOX);
     ed.save("filled.pdf");
 }</code></pre></div>
-      <div class="note"><b>Backward compatible.</b> The shorter overloads (no <code>fontId</code>, no anchor) behave exactly as before: built-in Helvetica, <code>VerticalAnchor.BASELINE</code>, <code>VerticalAlign.MIDDLE</code>, the historical padding, <code>ImageAnchor.CORNER</code> and <code>StampSpace.VISIBLE</code> — existing code keeps compiling and rendering unchanged.</div>
+      <div class="note"><b>Backward compatible.</b> The shorter overloads (no <code>fontId</code>, no anchor) behave exactly as before: built-in Helvetica, <code>VerticalAnchor.BASELINE</code>, <code>VerticalAlign.MIDDLE</code>, the historical padding, <code>ImageAnchor.CORNER</code> and <code>StampSpace.VISIBLE</code>. Existing code keeps compiling and rendering unchanged.</div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -922,7 +922,7 @@ for (SignatureReport sig : Pdf.verifySignatures(data)) {
       <div class="api"><code>Pdf.extractText(byte[] data) → String</code> <span class="badge free">free</span></div>
       <div class="api"><code>Pdf.extractPageText(byte[] data, int pageIndex) → String</code> <span class="badge free">free</span></div>
       <div class="api"><code>Pdf.extractImagesToDir(byte[] data, String outDir) → long</code> <span class="badge free">free</span></div>
-      <p><code>extractPageText</code> pulls the text of a single page (0-based) without building an intermediate one-page document — the fast path when you only need one page. It throws <code>PdfException</code> if the page is out of range.</p>
+      <p><code>extractPageText</code> pulls the text of a single page (0-based) without building an intermediate one-page document, the fast path when you only need one page. It throws <code>PdfException</code> if the page is out of range.</p>
       <div class="code has-label"><span class="lbl">java</span><pre><code>byte[] data = Files.readAllBytes(Path.of("report.pdf"));
 System.out.println(Pdf.extractText(data));
 System.out.println(Pdf.extractPageText(data, 0));       // just the first page
@@ -944,7 +944,7 @@ List&lt;TextHit&gt; exact = Pdf.findText(data, "INV-2026-001", true);</code></pr
 
       <!-- GEOMETRY -->
       <h2 id="geometry">Page geometry <span class="badge free">free</span></h2>
-      <p>Read each page's size, rotation and boxes without modifying the file. <code>width()</code>/<code>height()</code> ignore <code>/Rotate</code>; <code>rotatedWidth()</code>/<code>rotatedHeight()</code> are the dimensions a viewer actually shows. Sizes are in PDF points (72 per inch).</p>
+      <p>Read each page's size, rotation and boxes without modifying the file. <code>width()</code>/<code>height()</code> ignore <code>/Rotate</code>; <code>rotatedWidth()</code>/<code>rotatedHeight()</code> are the dimensions a viewer shows. Sizes are in PDF points (72 per inch).</p>
       <div class="api"><code>List&lt;PageGeometry&gt; Pdf.measurePages(byte[] pdf)</code></div>
       <div class="api"><code>PageGeometry Pdf.measurePage(byte[] pdf, int pageIndex)</code></div>
       <p>Each <code>PageGeometry</code> record exposes <code>page()</code> (0-based), <code>width()</code>, <code>height()</code>, <code>rotation()</code> (0/90/180/270), <code>rotatedWidth()</code>, <code>rotatedHeight()</code>, and the <code>mediaBox()</code>/<code>cropBox()</code> as a <code>PdfRect</code> (<code>x0()</code>, <code>y0()</code>, <code>x1()</code>, <code>y1()</code> with <code>width()</code>/<code>height()</code> helpers).</p>

@@ -277,7 +277,7 @@
         <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-06-29</p>
         <p class="lede concept-lede">
           PDF's standard security handler supports two passwords: a <b>user
-          password</b> that genuinely encrypts the content so only the right
+          password</b> that encrypts the content so only the right
           recipient can open it, and an <b>owner password</b> that controls
           permissions such as printing and editing. This guide explains the
           difference, covers AES-256 versus AES-128 versus the legacy RC4 cipher,
@@ -335,7 +335,7 @@
           only the <b>user password</b> triggers real encryption of the content.
           Setting an owner password without a user password leaves the safe unlocked
           for anyone; it just places an advisory sign on the door about what is
-          allowed inside. For genuine confidentiality, combine a strong user password
+          allowed inside. For real confidentiality, combine a strong user password
           with AES-256.
         </p>
       </div>
@@ -435,7 +435,7 @@
         <h2 class="center">A note on permissions vs real protection</h2>
         <p class="center muted">
           Permission flags are a courtesy signal to cooperative software, not a
-          security boundary. Here is what they actually do and what they do not.
+          security boundary.
         </p>
         <div class="en-callout">
           <h3>

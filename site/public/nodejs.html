@@ -306,7 +306,7 @@ app.get("/invoice.pdf", (_req, res) =&gt; {
           <p>Yes. It ships an <code>index.d.ts</code> for full TypeScript types and exports work from both <code>require</code> (CommonJS) and <code>import</code> (ESM). The same <code>Document</code> / <code>EditableDoc</code> shape is used either way.</p>
         </details>
         <details><summary>Is it a good fit for serverless and containers?</summary>
-          <p>Yes. The native core is small and runs fully offline, so cold starts stay low and no document leaves your function. Compared with a headless-Chrome approach, memory per invocation drops dramatically, which matters on Lambda and Cloud Run.</p>
+          <p>Yes. The native core is small and runs fully offline, so cold starts stay low and no document leaves your function. Compared with a headless-Chrome approach, memory per invocation drops sharply, which matters on Lambda and Cloud Run.</p>
         </details>
       </div>
     </section>

@@ -209,9 +209,9 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">Most server-side PDF in PHP is built by gluing TCPDF or FPDF to a templating layer, or by shelling out to wkhtmltopdf — each with its own gaps in Unicode shaping, font embedding and reproducibility.</p>
+            <p class="muted">Most server-side PDF in PHP is built by gluing TCPDF or FPDF to a templating layer, or by shelling out to wkhtmltopdf, each with its own gaps in Unicode shaping, font embedding and reproducibility.</p>
             <p class="muted">rust-pdf gives PHP a single memory-safe core for authoring: vector graphics, JPEG and PNG images, embedded and subset fonts with HarfBuzz-quality shaping and kerning, wrapping and justified paragraphs, tables, links and bookmarks. Identical input yields identical bytes, which makes the output auditable and testable.</p>
-            <p class="muted">Generation is the free tier: composer require rust-pdf/rustpdf, enable ffi in php.ini, and call the API from a controller, a Symfony command or an Artisan job. There is no separate rendering service to deploy and scale — the only real constraint is shared hosting that forbids the FFI extension.</p>
+            <p class="muted">Generation is the free tier: composer require rust-pdf/rustpdf, enable ffi in php.ini, and call the API from a controller, a Symfony command or an Artisan job. There is no separate rendering service to deploy and scale. The only constraint is shared hosting that forbids the FFI extension.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -242,7 +242,7 @@ $doc-&gt;addPage()
     -&gt;save('out.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Authoring is part of the free PHP tier — no license token required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Authoring is part of the free PHP tier. No license token required.</p>
         <p class="center muted narrow" style="margin-top:22px">The complete authoring API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>

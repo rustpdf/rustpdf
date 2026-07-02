@@ -209,7 +209,7 @@
         <h2 class="center">Why PHP needs this</h2>
         <div class="sp-why">
           <div>
-            <p class="muted">A scanned signature image proves nothing. A cryptographic signature binds a named certificate to the exact bytes of the document and reveals whether a single byte changed afterwards — the difference between decoration and legal evidence.</p>
+            <p class="muted">A scanned signature image proves nothing. A cryptographic signature binds a named certificate to the exact bytes of the document and reveals whether a single byte changed afterwards. That is the difference between decoration and legal evidence.</p>
             <p class="muted">rust-pdf signs through a non-destructive incremental update, building the detached CMS by hand to control the ByteRange. It supports PKCS#7 and PAdES B-B, plus B-LT and B-LTA for long-term validation, and accepts your own PKCS#8 key and X.509 certificate as DER, so the signing material never leaves your own infrastructure.</p>
             <p class="muted">Because the call is pure CPU work, the natural pattern is a queued Laravel job or Symfony Messenger handler that signs after upload and never blocks the web request. There is no openssl or Java signing service to orchestrate: composer require pulls in the binding, ext-ffi bridges to the core, and pdfsig confirms the result on the shell.</p>
           </div>
