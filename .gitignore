@@ -35,3 +35,4 @@ bindings/java/src/main/resources/win32-*/
 # brand rasters generated from SVG sources (square logo + OG image) — keep tracked
 !site/public/logo.png
 !site/public/og.png
+local-nuget/

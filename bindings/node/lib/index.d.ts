@@ -25,6 +25,38 @@ export const PdfVersion: { readonly V1_4: 0; readonly V1_5: 1; readonly V1_7: 2;
 export const Certify: {
   readonly None: 0; readonly Locked: 1; readonly Forms: 2; readonly FormsAndAnnotations: 3;
 };
+/**
+ * What `y` means for {@link EditableDoc.placeText}/{@link EditableDoc.placeParagraph}.
+ * `Baseline` — y is the (first) baseline; `Top` — text hangs from y (baseline
+ * lands `ascent × size` below it, legacy fixed-position layout); `Bottom` — the
+ * descender line rests on y. `LineTop`/`LineBottom` anchor via the **legacy layout engines
+ * line box** (OS/2 win metrics — or typo × 1.2 — plus the legacy engine's default
+ * half-leading of 0.21 em), matching legacy layout engines line placement exactly.
+ */
+export const VerticalAnchor: {
+  readonly Baseline: 0; readonly Top: 1; readonly Bottom: 2; readonly LineTop: 3; readonly LineBottom: 4;
+};
+/**
+ * Vertical alignment of the line inside a {@link EditableDoc.maskedText} box:
+ * `Middle` (default) centers the cap-height block; `Top` hangs the line from
+ * the top edge (baseline at `y + height − ascent × size`); `Bottom` rests the
+ * descender line on the bottom edge.
+ */
+export const VerticalAlign: { readonly Top: 0; readonly Middle: 1; readonly Bottom: 2 };
+/**
+ * Coordinate space of the positioned stamping primitives — see
+ * {@link EditableDoc.setStampSpace}. `Visible` (default): coordinates in the
+ * page's displayed space, compensating `/Rotate`. `Media`: raw PDF user space
+ * (legacy layout semantics) — no composition with `/Rotate` or the crop offset.
+ */
+export const StampSpace: { readonly Visible: 0; readonly Media: 1 };
+/**
+ * How a rotated image is anchored at `(x, y)` ({@link EditableDoc.drawImage}).
+ * `Corner` (default): the image's own lower-left corner — the image sweeps
+ * around it when rotated. `BoundingBox`: the rotated image's bounding box
+ * lands with its lower-left at `(x, y)` (bounding-box layout semantics).
+ */
+export const ImageAnchor: { readonly Corner: 0; readonly BoundingBox: 1 };
 
 export type Rect = [number, number, number, number];
 export type Bytes = Buffer | Uint8Array;
@@ -140,6 +172,41 @@ export interface EncryptOptions {
   readOnly?: boolean;
 }
 
+/** Options for {@link EditableDoc.placeParagraph}/{@link EditableDoc.placeParagraphMeasured}. */
+export interface PlaceParagraphOptions {
+  /** Font size in points (default 12). */
+  size?: number;
+  /** Text color as RGB, each 0..1 (default black). */
+  color?: [number, number, number];
+  /** Line layout inside `[x, x+width]` (`Align.Justify` stretches the word
+   * gaps of every line but the last of each paragraph). Default `Align.Left`. */
+  align?: number;
+  /** Font id from {@link EditableDoc.addFontFile}/{@link EditableDoc.addFont};
+   * -1 (default) = built-in Helvetica. */
+  fontId?: number;
+  /** Block height ceiling in points: lines whose descender would cross it are
+   * cut (a height ceiling). 0/omitted = unlimited. */
+  maxHeight?: number;
+  /** Scales the default `1.2 × size` baseline-to-baseline leading (default 1.0). */
+  lineHeight?: number;
+  /** What `y` means for the block (a {@link VerticalAnchor} value; default
+   * `Top`). `Bottom`/`LineBottom` bottom-pin the block: it grows upward from
+   * `y` by its real content height, and `maxHeight` cuts overflowing lines
+   * from the top (the last lines stay pinned). */
+  anchor?: number;
+  /** Rotate the laid-out block counter-clockwise about the anchor `(x, y)`. */
+  rotationDeg?: number;
+}
+
+/** Result of {@link EditableDoc.placeParagraphMeasured}. */
+export interface ParagraphMetrics {
+  /** Number of lines actually drawn (0 when the page/font was invalid or nothing fit). */
+  lines: number;
+  /** Consumed block height in points (top of the first drawn line's box to
+   * the bottom of the last one's; 0 when nothing fit). */
+  height: number;
+}
+
 export class Document {
   constructor();
   close(): void;
@@ -216,34 +283,88 @@ export class EditableDoc {
    */
   fillRect(pageIndex: number, x: number, y: number, width: number, height: number, color?: [number, number, number], opacity?: number): boolean;
   /**
-   * Draw a line of Helvetica `text` with baseline at `(x, y)` on page
-   * `pageIndex` (0-based), `size` points, `color` (RGB, each 0..1). `rotationDeg`
-   * rotates the text counter-clockwise about its anchor `(x, y)`. Coordinates are
-   * in the page VISIBLE space (origin lower-left, y up); content lands where
-   * viewed regardless of `/Rotate`. `align` shifts the start point along the
-   * baseline so the text is left/right/center aligned about `(x, y)` (Justify
-   * behaves like Left). Returns `false` if the page does not exist.
+   * Register a TrueType/OpenType font (from a file path) for text stamping;
+   * returns a `fontId` usable with `placeText`/`maskedText`/`placeParagraph`.
+   * The font is embedded as a subset — stamped text renders with the real
+   * font's glyphs and metrics, exactly like `Document.addFontFile` + `showText`.
    */
-  placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number, align?: number): boolean;
+  addFontFile(path: string): number;
+  /** Register a stamping font from raw TrueType/OpenType bytes (see {@link addFontFile}). */
+  addFont(data: Bytes): number;
+  /**
+   * Choose the coordinate space of the positioned stamping primitives
+   * (`fillRect`/`placeText`/`maskedText`/`placeParagraph`/`drawImage`) for
+   * subsequent calls. `StampSpace.Visible` (default) keeps the historical
+   * behavior — coordinates in the page's displayed space, compensating
+   * `/Rotate`. `StampSpace.Media` interprets coordinates and `rotationDeg` in
+   * the raw PDF user space (legacy fixed-position layout/rotation
+   * semantics), never composing with the page's `/Rotate` — use it to
+   * reproduce legacy-engine placement on rotated/scanned pages. Watermarks and
+   * redaction are unaffected.
+   */
+  setStampSpace(space: number): this;
+  /**
+   * Draw a line of `text` anchored at `(x, y)` on page `pageIndex` (0-based),
+   * `size` points, `color` (RGB, each 0..1). `rotationDeg` rotates the text
+   * counter-clockwise about its anchor `(x, y)`. Coordinates are in the page
+   * VISIBLE space (origin lower-left, y up); content lands where viewed
+   * regardless of `/Rotate`. `align` shifts the start point along the baseline
+   * so the text is left/right/center aligned about `(x, y)` (Justify behaves
+   * like Left). `fontId` (from {@link addFontFile}/{@link addFont}) stamps with
+   * an embedded font; -1 (default) = built-in Helvetica. `anchor` (a
+   * {@link VerticalAnchor} value) says what `y` means: `Baseline` (default),
+   * `Top` (baseline lands `ascent × size` below `y`, legacy layout engines
+   * `fixed-position layout`), `Bottom` (descender line rests on `y`), or
+   * `LineTop`/`LineBottom` (the layout line box). Returns `false` if the page
+   * (or font) does not exist.
+   */
+  placeText(pageIndex: number, x: number, y: number, text: string, size?: number, color?: [number, number, number], rotationDeg?: number, align?: number, fontId?: number, anchor?: number): boolean;
   /**
    * Draw `text` over an opaque background box `[x, y, x+width, y+height]`: fills
-   * the box in `bgColor` (default white), then writes the text (standard
-   * Helvetica, `size` points, `textColor`, default black) horizontally aligned
-   * per `align` and vertically centered within the box — the "mask a placeholder
-   * and stamp the real value over it" convenience. Coordinates are in the page
-   * VISIBLE space (origin lower-left, y up). Returns `false` if the page does
-   * not exist.
+   * the box in `bgColor` (default white), then writes the text (`size` points,
+   * `textColor`, default black) horizontally aligned per `align` and vertically
+   * per `valign` (a {@link VerticalAlign} value: `Middle` (default) = the
+   * historical cap-height centering, `Top` hangs the line from the top edge,
+   * `Bottom` rests the descender line on the bottom edge) — the "mask a
+   * placeholder and stamp the real value over it" convenience. `fontId` (from
+   * {@link addFontFile}/{@link addFont}) uses an embedded font; -1 (default) =
+   * built-in Helvetica. `padding` is the horizontal edge inset (points) for
+   * Left/Right alignment: text starts at `x + padding` (or ends at
+   * `x + width − padding`); `null`/omitted keeps the historical
+   * `min(0.15 × size, width / 4)`, `0` starts flush with the box edge.
+   * Coordinates are in the page VISIBLE space (origin lower-left, y up).
+   * Returns `false` if the page does not exist.
    */
-  maskedText(pageIndex: number, x: number, y: number, width: number, height: number, text: string, size?: number, textColor?: [number, number, number], bgColor?: [number, number, number], align?: number): boolean;
+  maskedText(pageIndex: number, x: number, y: number, width: number, height: number, text: string, size?: number, textColor?: [number, number, number], bgColor?: [number, number, number], align?: number, fontId?: number, valign?: number, padding?: number | null): boolean;
+  /**
+   * Stamp a paragraph with **automatic word wrapping** on page `pageIndex`
+   * (0-based): `text` is broken into lines that fit `width` points (`'\n'`
+   * forces a break) and drawn downward from `(x, y)` (with the default
+   * `anchor: Top`, the first baseline lands `ascent × size` below `y` — legacy layout engines
+   * `fixed-position layout` semantics). See {@link PlaceParagraphOptions} for
+   * size/color/align/fontId/maxHeight/lineHeight/anchor/rotationDeg. Returns
+   * `false` if the page (or font) does not exist or the box is invalid.
+   */
+  placeParagraph(pageIndex: number, x: number, y: number, width: number, text: string, opts?: PlaceParagraphOptions): boolean;
+  /**
+   * Like {@link placeParagraph} but returns the number of lines drawn and the
+   * consumed block height in points — stack blocks without re-measuring, or
+   * detect `maxHeight` truncation.
+   */
+  placeParagraphMeasured(pageIndex: number, x: number, y: number, width: number, text: string, opts?: PlaceParagraphOptions): ParagraphMetrics;
   /**
    * Stamp an image (`image` is PNG or JPEG bytes — the core dispatches on the
-   * signature) onto page `pageIndex` (0-based). The image's lower-left corner
-   * lands at `(x, y)` and is scaled to `width` x `height` points; `rotationDeg`
-   * rotates it counter-clockwise about that corner. Coordinates are in the page
-   * VISIBLE space (origin lower-left, y up); content lands where viewed
-   * regardless of `/Rotate`. Returns `false` if the page does not exist.
+   * signature) onto page `pageIndex` (0-based), scaled to `width` x `height`
+   * points; `rotationDeg` rotates it counter-clockwise about the anchor
+   * `(x, y)`. `anchor` (an {@link ImageAnchor} value): `Corner` (default) —
+   * `(x, y)` is the image's own lower-left corner, which the image sweeps
+   * around when rotated; `BoundingBox` — the rotated image's bounding box
+   * lands with its lower-left at `(x, y)` (bounding-box layout semantics). Coordinates
+   * are in the page VISIBLE space (origin lower-left, y up); content lands
+   * where viewed regardless of `/Rotate`. Returns `false` if the page does not
+   * exist.
    */
-  drawImage(pageIndex: number, image: Bytes, x: number, y: number, width: number, height: number, rotationDeg?: number): boolean;
+  drawImage(pageIndex: number, image: Bytes, x: number, y: number, width: number, height: number, rotationDeg?: number, anchor?: number): boolean;
   optimize(): this;
   compact(on?: boolean): this;
   encrypt(opts?: EncryptOptions): this;

@@ -43,7 +43,7 @@ pub fn decode_image(
     // JPEG (DCTDecode) is left encoded by the parser; decode pixels here.
     if matches!(terminal, "DCTDecode" | "DCT") {
         let jpeg = reader.stream_data(stream).ok()?;
-        return decode_jpeg(&jpeg, w, h, smask(reader, d));
+        return decode_jpeg(&jpeg, w, h, smask(reader, d), &decode_arr);
     }
     // Codecs we cannot cleanly rasterize.
     if matches!(
@@ -89,7 +89,7 @@ pub fn decode_inline(
     // Apply non-DCT decode filters (Flate) to the raw inline payload.
     let decoded = match terminal {
         "DCTDecode" | "DCT" => {
-            return decode_jpeg(data, w, h, None);
+            return decode_jpeg(data, w, h, None, &None);
         }
         "FlateDecode" | "Fl" => images::flate_decode(data)?,
         "" => data.to_vec(),
@@ -251,10 +251,65 @@ fn build_image_mask(
     Some(pixmap)
 }
 
-fn decode_jpeg(data: &[u8], w: u32, h: u32, alpha: Option<AlphaMap>) -> Option<Pixmap> {
+/// Whether the JPEG carries an Adobe APP14 marker (`FF EE` + "Adobe") — the
+/// signal that CMYK samples are stored inverted (and possibly YCCK-encoded).
+fn has_adobe_app14(data: &[u8]) -> bool {
+    let mut i = 2;
+    while i + 3 < data.len() {
+        if data[i] != 0xFF {
+            return false;
+        }
+        while i < data.len() && data[i] == 0xFF {
+            i += 1;
+        }
+        if i >= data.len() {
+            return false;
+        }
+        let marker = data[i];
+        i += 1;
+        if matches!(marker, 0xD0..=0xD9 | 0x01) {
+            continue;
+        }
+        if marker == 0xDA {
+            return false; // start of scan — no more app markers
+        }
+        if i + 1 >= data.len() {
+            return false;
+        }
+        let len = u16::from_be_bytes([data[i], data[i + 1]]) as usize;
+        if marker == 0xEE && data.get(i + 2..i + 7) == Some(b"Adobe") {
+            return true;
+        }
+        if len < 2 || i + len > data.len() {
+            return false;
+        }
+        i += len;
+    }
+    false
+}
+
+fn decode_jpeg(
+    data: &[u8],
+    w: u32,
+    h: u32,
+    alpha: Option<AlphaMap>,
+    decode_arr: &Option<Vec<f32>>,
+) -> Option<Pixmap> {
     let mut dec = jpeg_decoder::Decoder::new(std::io::Cursor::new(data));
     let pixels = dec.decode().ok()?;
     let info = dec.info()?;
+    // CMYK handling (FINDING-007): `jpeg-decoder` already resolves the Adobe
+    // APP14 transform (YCCK → CMYK, un-inverting Adobe storage), so its CMYK32
+    // output is TRUE CMYK. A PDF `/Decode [1 0 …]` array, however, was written
+    // against the *stored* (inverted) samples — exactly to fix the Adobe
+    // inversion the decoder has already fixed. So: when the file is Adobe and
+    // the decode array inverts, they cancel (use the decoder output as-is);
+    // an inverting decode on a NON-Adobe CMYK JPEG is a real inversion.
+    let decode_inverts = decode_arr
+        .as_ref()
+        .map(|d| d.first().copied().unwrap_or(0.0) > 0.5)
+        .unwrap_or(false);
+    let cmyk_invert = decode_inverts && !has_adobe_app14(data);
     let (jw, jh) = (info.width as u32, info.height as u32);
     let (jw, jh) = if jw == 0 || jh == 0 { (w, h) } else { (jw, jh) };
     let mut pixmap = Pixmap::new(jw, jh)?;
@@ -283,11 +338,18 @@ fn decode_jpeg(data: &[u8], w: u32, h: u32, alpha: Option<AlphaMap>) -> Option<P
                 *pixels.get(off + 2)? as f32 / 255.0,
             ],
             CMYK32 => {
-                // Adobe JPEGs store inverted CMYK; invert back before convert.
-                let c = 1.0 - *pixels.get(off)? as f32 / 255.0;
-                let m = 1.0 - *pixels.get(off + 1)? as f32 / 255.0;
-                let y = 1.0 - *pixels.get(off + 2)? as f32 / 255.0;
-                let k = 1.0 - *pixels.get(off + 3)? as f32 / 255.0;
+                let inv = |v: u8| {
+                    let f = v as f32 / 255.0;
+                    if cmyk_invert {
+                        1.0 - f
+                    } else {
+                        f
+                    }
+                };
+                let c = inv(*pixels.get(off)?);
+                let m = inv(*pixels.get(off + 1)?);
+                let y = inv(*pixels.get(off + 2)?);
+                let k = inv(*pixels.get(off + 3)?);
                 [
                     (1.0 - c) * (1.0 - k),
                     (1.0 - m) * (1.0 - k),

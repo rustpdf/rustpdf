@@ -10,15 +10,37 @@ use crate::lexer::{Lexer, Token};
 /// whose length is itself an indirect object).
 pub type LengthResolver<'a> = dyn Fn(u32, u16) -> Option<i64> + 'a;
 
+/// Maximum nesting depth for arrays/dictionaries. PDF has no legitimate need
+/// for deep nesting (Acrobat/qpdf cap around 100–256); a bound here converts an
+/// attacker-controlled `[[[[…` / `<< /a << /a …` from an uncatchable native
+/// stack overflow into a recoverable [`PdfError::Syntax`].
+const MAX_PARSE_DEPTH: u32 = 200;
+
 /// Parse a single object value at the lexer's current position.
 pub fn parse_value(lex: &mut Lexer, resolve_len: &LengthResolver) -> Result<Object> {
     let token = lex
         .next_token()
         .ok_or_else(|| PdfError::Syntax("unexpected end of input".into()))?;
-    parse_from(token, lex, resolve_len)
+    parse_from(token, lex, resolve_len, 0)
 }
 
-fn parse_from(token: Token, lex: &mut Lexer, resolve_len: &LengthResolver) -> Result<Object> {
+/// Like [`parse_value`] but continues an in-progress descent at `depth`.
+fn parse_value_depth(lex: &mut Lexer, resolve_len: &LengthResolver, depth: u32) -> Result<Object> {
+    let token = lex
+        .next_token()
+        .ok_or_else(|| PdfError::Syntax("unexpected end of input".into()))?;
+    parse_from(token, lex, resolve_len, depth)
+}
+
+fn parse_from(
+    token: Token,
+    lex: &mut Lexer,
+    resolve_len: &LengthResolver,
+    depth: u32,
+) -> Result<Object> {
+    if depth > MAX_PARSE_DEPTH {
+        return Err(PdfError::Syntax("object nesting too deep".into()));
+    }
     match token {
         Token::Integer(n) => Ok(parse_int_or_reference(n, lex)),
         Token::Real(r) => Ok(Object::Real(r)),
@@ -26,8 +48,8 @@ fn parse_from(token: Token, lex: &mut Lexer, resolve_len: &LengthResolver) -> Re
         Token::Name(bytes) => Ok(Object::Name(cos::Name::new(
             String::from_utf8_lossy(&bytes).into_owned(),
         ))),
-        Token::ArrayOpen => parse_array(lex, resolve_len),
-        Token::DictOpen => parse_dict_or_stream(lex, resolve_len),
+        Token::ArrayOpen => parse_array(lex, resolve_len, depth + 1),
+        Token::DictOpen => parse_dict_or_stream(lex, resolve_len, depth + 1),
         Token::Keyword(kw) => match kw.as_slice() {
             b"true" => Ok(Object::Bool(true)),
             b"false" => Ok(Object::Bool(false)),
@@ -59,7 +81,10 @@ fn parse_int_or_reference(n: i64, lex: &mut Lexer) -> Object {
     Object::Integer(n)
 }
 
-fn parse_array(lex: &mut Lexer, resolve_len: &LengthResolver) -> Result<Object> {
+fn parse_array(lex: &mut Lexer, resolve_len: &LengthResolver, depth: u32) -> Result<Object> {
+    if depth > MAX_PARSE_DEPTH {
+        return Err(PdfError::Syntax("object nesting too deep".into()));
+    }
     let mut items = Vec::new();
     loop {
         let token = lex
@@ -68,12 +93,19 @@ fn parse_array(lex: &mut Lexer, resolve_len: &LengthResolver) -> Result<Object> 
         if token == Token::ArrayClose {
             break;
         }
-        items.push(parse_from(token, lex, resolve_len)?);
+        items.push(parse_from(token, lex, resolve_len, depth)?);
     }
     Ok(Object::Array(items))
 }
 
-fn parse_dict_or_stream(lex: &mut Lexer, resolve_len: &LengthResolver) -> Result<Object> {
+fn parse_dict_or_stream(
+    lex: &mut Lexer,
+    resolve_len: &LengthResolver,
+    depth: u32,
+) -> Result<Object> {
+    if depth > MAX_PARSE_DEPTH {
+        return Err(PdfError::Syntax("object nesting too deep".into()));
+    }
     let mut dict = Dict::new();
     loop {
         let token = lex
@@ -82,7 +114,7 @@ fn parse_dict_or_stream(lex: &mut Lexer, resolve_len: &LengthResolver) -> Result
         match token {
             Token::DictClose => break,
             Token::Name(key) => {
-                let value = parse_value(lex, resolve_len)?;
+                let value = parse_value_depth(lex, resolve_len, depth)?;
                 dict.set(
                     cos::Name::new(String::from_utf8_lossy(&key).into_owned()),
                     value,
@@ -241,5 +273,37 @@ mod tests {
             Object::Stream(s) => assert_eq!(s.data, b"ABC"),
             _ => panic!("expected stream"),
         }
+    }
+
+    #[test]
+    fn deeply_nested_array_errors_instead_of_overflowing_stack() {
+        // A pathological run of openers with no closers used to recurse once
+        // per `[`, blowing the native stack (uncatchable). It must now fail
+        // gracefully with a syntax error.
+        let bomb = vec![b'['; 100_000];
+        let mut lex = Lexer::new(&bomb);
+        let r = parse_value(&mut lex, &no_resolve);
+        assert!(r.is_err(), "expected depth-limit syntax error, got {r:?}");
+    }
+
+    #[test]
+    fn deeply_nested_dict_errors_instead_of_overflowing_stack() {
+        let mut bomb = Vec::new();
+        for _ in 0..100_000 {
+            bomb.extend_from_slice(b"<< /a ");
+        }
+        let mut lex = Lexer::new(&bomb);
+        let r = parse_value(&mut lex, &no_resolve);
+        assert!(r.is_err(), "expected depth-limit syntax error, got {r:?}");
+    }
+
+    #[test]
+    fn legitimately_nested_structure_still_parses() {
+        // 50 levels is well within the cap and must round-trip.
+        let mut s = vec![b'['; 50];
+        s.push(b'1');
+        s.extend(std::iter::repeat_n(b']', 50));
+        let mut lex = Lexer::new(&s);
+        assert!(parse_value(&mut lex, &no_resolve).is_ok());
     }
 }

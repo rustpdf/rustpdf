@@ -393,6 +393,39 @@ public final class SmokeTest {
         System.out.println("extractPageText + aligned placeText + maskedText ok ("
                 + aligned.length + " bytes)");
 
+        // 23. Stamping fonts, vertical anchors, paragraph wrapping, stamp space
+        //     and image anchoring.
+        byte[] anchored;
+        try (EditableDoc ed = EditableDoc.load(plain)) {
+            int fid = ed.addFontFile(font);
+            assertThat(fid >= 0, "addFontFile id: " + fid);
+            assertThat(ed.placeText(0, 72, 520, "LineBottomAnchor", 12.0, 0, 0, 0, 0.0,
+                    Align.LEFT, fid, VerticalAnchor.LINE_BOTTOM), "placeText LINE_BOTTOM");
+            assertThat(ed.maskedText(0, 72, 470, 200, 24, "TopFlush", 12.0,
+                    null, null, Align.LEFT, fid, VerticalAlign.TOP, 0.0),
+                    "maskedText valign TOP padding 0");
+            PlaceParagraphResult para = ed.placeParagraphMeasured(0, 72, 440, 120,
+                    "a wrapped paragraph stamped across several narrow lines",
+                    12.0, 0, 0, 0, Align.LEFT, -1, 0.0, 1.0, VerticalAnchor.TOP, 0.0);
+            assertThat(para.lines() > 1, "paragraph wrapped: " + para.lines() + " lines");
+            assertThat(para.height() > 0, "paragraph height: " + para.height());
+            assertThat(ed.placeParagraph(0, 300, 440, 120, "simple overload paragraph"),
+                    "placeParagraph simple overload");
+            ed.setStampSpace(StampSpace.MEDIA);
+            assertThat(ed.placeText(0, 72, 380, "MediaSpace", 12.0, 0, 0, 0, 0.0),
+                    "placeText in media space");
+            ed.setStampSpace(StampSpace.VISIBLE);
+            assertThat(ed.drawImage(0, tinyPng(), 300, 380, 40, 20, 90.0,
+                    ImageAnchor.BOUNDING_BOX), "drawImage BOUNDING_BOX");
+            anchored = ed.toBytes();
+        }
+        String anchoredText = Pdf.extractText(anchored);
+        assertThat(anchoredText.contains("LineBottomAnchor"), "anchored text extracted");
+        assertThat(anchoredText.contains("wrapped"), "wrapped paragraph word extracted");
+        assertThat(anchoredText.contains("MediaSpace"), "media-space text extracted");
+        System.out.println("stamping fonts + anchors + paragraph + stamp space ok ("
+                + anchored.length + " bytes)");
+
         System.out.println("OK: full Java binding surface exercised");
     }
 

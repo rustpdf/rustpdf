@@ -419,6 +419,49 @@ final class SmokeTest: XCTestCase {
         XCTAssertTrue(page0.contains("Título"), "single-page extraction returns page text")
         XCTAssertThrowsError(try Pdf.extractPageText(pdfa, pageIndex: 99),
                              "out-of-range page index throws")
+
+        // 24. Stamping fonts + vertical anchors + paragraph wrapping (stamping v2).
+        do {
+            let ed = try EditableDoc(loading: pdfa)
+            // Embedded stamping font + layout line-box anchor.
+            let fid = try ed.addFontFile(fontURL.path)
+            XCTAssertGreaterThanOrEqual(fid, 0, "font id should be non-negative")
+            XCTAssertTrue(ed.placeText(0, 72, 500, "ANCHORED", size: 12,
+                                       fontId: fid, anchor: .lineBottom),
+                          "place_text anchored page+font existed")
+            XCTAssertFalse(ed.placeText(0, 72, 500, "x", fontId: 99),
+                           "invalid font id reports not found")
+            // Masked text hung from the top edge, flush with the box (padding 0).
+            XCTAssertTrue(ed.maskedText(0, 100, 420, 200, 30, "VTOP", size: 12,
+                                        valign: .top, padding: 0),
+                          "masked_text valign page existed")
+            // Paragraph wrapping: a narrow box must break between the words.
+            XCTAssertTrue(ed.placeParagraph(0, 72, 400, 90,
+                                            "wrapme alpha bravo charlie delta echo", size: 12),
+                          "place_paragraph page existed")
+            let (lines, height) = ed.placeParagraphMeasured(
+                0, 72, 300, 90, "wrapme alpha bravo charlie delta echo",
+                size: 12, anchor: .bottom)
+            XCTAssertGreaterThanOrEqual(lines, 2, "narrow paragraph should wrap: \(lines) lines")
+            XCTAssertGreaterThan(height, 12.0, "consumed height should exceed one line: \(height)")
+            // Media (raw user-space) stamping coordinates.
+            try ed.setStampSpace(.media)
+            XCTAssertTrue(ed.placeText(0, 72, 260, "MEDIA-SPACE", size: 12),
+                          "place_text in media space page existed")
+            try ed.setStampSpace(.visible)
+            // Bounding-box anchored image rotation (legacy layout semantics).
+            XCTAssertTrue(ed.drawImage(0, image: Self.tinyPNG, x: 72, y: 200,
+                                       width: 40, height: 20, rotationDeg: 90,
+                                       anchor: .boundingBox),
+                          "draw_image bounding-box anchored page existed")
+            let stamped = try ed.toBytes()
+            // NOTE: never assert contains("") — it is false in Swift.
+            let stampedText = try Pdf.extractText(stamped)
+            XCTAssertTrue(stampedText.contains("ANCHORED"), "embedded-font stamp extractable")
+            XCTAssertTrue(stampedText.contains("VTOP"), "valign masked text extractable")
+            XCTAssertTrue(stampedText.contains("wrapme"), "wrapped paragraph extractable")
+            XCTAssertTrue(stampedText.contains("MEDIA-SPACE"), "media-space stamp extractable")
+        }
     }
 
     /// Locate the `openssl` CLI for the Model-A signer (a stand-in HSM).

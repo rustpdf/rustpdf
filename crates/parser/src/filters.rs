@@ -11,6 +11,13 @@ use cos::{Dict, Object};
 
 use crate::error::{PdfError, Result};
 
+/// Hard ceiling on the number of bytes any single filter may produce. A
+/// FlateDecode/LZWDecode stream of a few KB can otherwise expand to gigabytes
+/// (a "zip bomb"), exhausting memory from a tiny hostile file. 1 GiB is far
+/// larger than any legitimate decoded stream (a full 300-dpi A4 RGB page is
+/// ~24 MiB) yet bounds the worst case to a recoverable error.
+const MAX_DECODED: usize = 1 << 30;
+
 /// Apply a chain of filters to `raw`. `parms[i]` is the (already-resolved)
 /// `DecodeParms` dictionary for `filters[i]`, if any.
 pub fn apply_filters(raw: &[u8], filters: &[Vec<u8>], parms: &[Option<Dict>]) -> Result<Vec<u8>> {
@@ -51,16 +58,28 @@ fn as_int(o: &Object) -> Option<i64> {
 
 fn inflate(data: &[u8]) -> Result<Vec<u8>> {
     // Try zlib first, then raw deflate (some producers omit the zlib header).
+    // Both reads are bounded by `MAX_DECODED` so a decompression bomb cannot
+    // exhaust memory: we read one byte past the ceiling and reject if reached.
     let mut out = Vec::new();
     if flate2::read::ZlibDecoder::new(data)
+        .take(MAX_DECODED as u64 + 1)
         .read_to_end(&mut out)
         .is_ok()
         && !out.is_empty()
     {
+        if out.len() > MAX_DECODED {
+            return Err(PdfError::Filter("flate output exceeds size limit".into()));
+        }
         return Ok(out);
     }
     out.clear();
-    match flate2::read::DeflateDecoder::new(data).read_to_end(&mut out) {
+    match flate2::read::DeflateDecoder::new(data)
+        .take(MAX_DECODED as u64 + 1)
+        .read_to_end(&mut out)
+    {
+        Ok(_) if out.len() > MAX_DECODED => {
+            Err(PdfError::Filter("flate output exceeds size limit".into()))
+        }
         Ok(_) => Ok(out),
         Err(e) => Err(PdfError::Filter(format!("flate: {e}"))),
     }
@@ -81,8 +100,24 @@ fn predictor_decode(data: Vec<u8>, parm: Option<&Dict>) -> Vec<u8> {
         .unwrap_or(8)
         .max(1) as usize;
     let columns = parm.get("Columns").and_then(as_int).unwrap_or(1).max(1) as usize;
-    let bpp = (colors * bpc).div_ceil(8).max(1); // bytes per pixel
-    let row_len = (colors * bpc * columns).div_ceil(8); // bytes per row
+    // Geometry is attacker-controlled: use checked arithmetic and reject an
+    // over-large row (e.g. `/Columns 2000000000`) instead of allocating GiB or
+    // overflowing `usize`. A row can never legitimately exceed the decoded data.
+    let bpp = colors
+        .checked_mul(bpc)
+        .map(|b| b.div_ceil(8).max(1))
+        .unwrap_or(1); // bytes per pixel
+    let Some(row_len) = colors
+        .checked_mul(bpc)
+        .and_then(|cb| cb.checked_mul(columns))
+        .map(|bits| bits.div_ceil(8))
+    else {
+        return data;
+    };
+    if row_len > data.len().saturating_add(1) {
+        // A row wider than all the input bytes cannot be reconstructed.
+        return data;
+    }
 
     if predictor == 2 {
         tiff_predictor2(data, colors, bpc, columns)
@@ -305,11 +340,19 @@ fn lzw_decode(data: &[u8], early_change: bool) -> Vec<u8> {
                 return out; // corrupt
             };
             out.extend_from_slice(&entry);
+            if out.len() > MAX_DECODED {
+                return out; // bomb guard: stop past the ceiling
+            }
 
+            // The dictionary never legitimately grows past 4096 entries (12-bit
+            // codes). Refusing to push beyond that bounds memory to ~4096×len
+            // and matches conforming encoders, which emit CLEAR before overflow.
             if let Some(p) = prev {
-                let mut new_entry = table[p as usize].clone();
-                new_entry.push(entry[0]);
-                table.push(new_entry);
+                if table.len() < 4096 {
+                    let mut new_entry = table[p as usize].clone();
+                    new_entry.push(entry[0]);
+                    table.push(new_entry);
+                }
             }
             prev = Some(code);
 
@@ -357,6 +400,37 @@ mod tests {
         assert_eq!(run_length_decode(&[2, b'A', b'B', b'C', 128]), b"ABC");
         // repeat 'X' 3 times: 257-255 = 2 -> wait, 256-254... use 254 => 257-254=3
         assert_eq!(run_length_decode(&[254, b'X', 128]), b"XXX");
+    }
+
+    #[test]
+    fn predictor_with_huge_columns_does_not_overflow_or_alloc() {
+        // `/Columns 2_000_000_000` used to force a ~2 GiB allocation (release)
+        // or an `attempt to multiply with overflow` panic (debug). It must now
+        // bail out and return the data unchanged.
+        let mut parm = Dict::new();
+        parm.set(cos::Name::new("Predictor"), Object::Integer(12));
+        parm.set(cos::Name::new("Columns"), Object::Integer(2_000_000_000));
+        parm.set(cos::Name::new("Colors"), Object::Integer(1));
+        parm.set(cos::Name::new("BitsPerComponent"), Object::Integer(8));
+        let data = vec![0u8; 16];
+        let out = predictor_decode(data.clone(), Some(&parm));
+        assert_eq!(out, data);
+    }
+
+    #[test]
+    fn flate_bomb_is_rejected() {
+        use flate2::{write::ZlibEncoder, Compression};
+        use std::io::Write;
+        // Compress more than MAX_DECODED zero bytes; the decoder must refuse.
+        let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
+        // Feed in 1 GiB + 1 of zeros in chunks (compresses to a few KB).
+        let chunk = vec![0u8; 1 << 20];
+        for _ in 0..=(MAX_DECODED >> 20) {
+            enc.write_all(&chunk).unwrap();
+        }
+        let compressed = enc.finish().unwrap();
+        let r = apply_filters(&compressed, &[b"FlateDecode".to_vec()], &[None]);
+        assert!(r.is_err(), "expected size-limit error for flate bomb");
     }
 
     #[test]

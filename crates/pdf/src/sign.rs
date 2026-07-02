@@ -322,6 +322,10 @@ pub fn begin_signing(pdf: &[u8], opts: &SignOptions) -> Result<SigningSession, S
 /// and phase 2 (embed) run in different processes and only the prepared bytes
 /// crossed the boundary; otherwise [`SigningSession::complete`] is more direct.
 pub fn complete_signing(document: &[u8], container: &[u8]) -> Result<Vec<u8>, SignError> {
+    // Gate the final embed step like every other signing entry point; without
+    // this, the two-phase flow could finalize a signed PDF on an unlicensed
+    // host (the gate on `begin_signing` alone was asymmetric).
+    crate::require(license::Feature::Signatures)?;
     let a = rfind_sub(document, b"/Contents <")
         .map(|p| p + b"/Contents ".len())
         .ok_or_else(|| SignError::Structure("no /Contents placeholder".into()))?;

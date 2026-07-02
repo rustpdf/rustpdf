@@ -468,4 +468,62 @@ let plain;
   console.log(`drawImage ok (${out.length} bytes)`);
 }
 
+// 22. Stamping fonts + vertical anchors + paragraph wrapping + stamp space +
+//     image anchor (EditableDoc stamping additions).
+{
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  const ed = rp.EditableDoc.load(pdfa);
+
+  // Embedded stamping font (subset, real metrics) + LineBottom anchor.
+  const fnt = ed.addFontFile(font);
+  assert.ok(fnt >= 0, `addFontFile returns an id, got ${fnt}`);
+  const fnt2 = ed.addFont(fs.readFileSync(font));
+  assert.ok(fnt2 >= 0, `addFont returns an id, got ${fnt2}`);
+  assert.strictEqual(
+    ed.placeText(0, 72, 200, 'ANCHORED-FONT', 14, [0, 0, 0], 0.0, rp.Align.Left, fnt, rp.VerticalAnchor.LineBottom),
+    true, 'placeText with embedded font + LineBottom anchor');
+  // Unknown fontId → found = false (page exists, font does not).
+  assert.strictEqual(
+    ed.placeText(0, 72, 220, 'nope', 12, [0, 0, 0], 0.0, rp.Align.Left, 99, rp.VerticalAnchor.Top),
+    false, 'placeText unknown fontId → false');
+
+  // maskedText with valign Top and flush (0) padding.
+  assert.strictEqual(
+    ed.maskedText(0, 60, 240, 200, 30, 'MASK-TOP', 12, [0, 0, 0], [1, 1, 1],
+      rp.Align.Left, -1, rp.VerticalAlign.Top, 0),
+    true, 'maskedText valign=Top padding=0');
+
+  // placeParagraph: wrap into a narrow column; the wrapped word must extract.
+  const para = 'wrapped paragraph stamping WRAPPEDWORD keeps flowing across lines';
+  assert.strictEqual(
+    ed.placeParagraph(0, 72, 400, 120, para, { size: 12 }),
+    true, 'placeParagraph page 0');
+  const m = ed.placeParagraphMeasured(0, 300, 400, 120, para,
+    { size: 12, anchor: rp.VerticalAnchor.Bottom, maxHeight: 300 });
+  assert.ok(m.lines > 1, `paragraph wraps into multiple lines, got ${m.lines}`);
+  assert.ok(m.height > 0, `paragraph reports consumed height, got ${m.height}`);
+  assert.strictEqual(ed.placeParagraph(99, 0, 0, 100, 'nope'), false, 'placeParagraph missing page');
+
+  // Media stamp space: raw PDF user space (legacy layout semantics), then back.
+  ed.setStampSpace(rp.StampSpace.Media);
+  assert.strictEqual(ed.placeText(0, 72, 60, 'MEDIA-SPACE', 10), true, 'placeText in media space');
+  ed.setStampSpace(rp.StampSpace.Visible);
+
+  // drawImage with a BoundingBox rotation anchor.
+  assert.strictEqual(
+    ed.drawImage(0, png, 400, 600, 80, 40, 90.0, rp.ImageAnchor.BoundingBox),
+    true, 'drawImage anchor=BoundingBox');
+
+  const out = ed.toBytes();
+  ed.close();
+  const txt = rp.extractText(out);
+  assert.ok(txt.includes('ANCHORED-FONT'), 'embedded-font stamp extracts');
+  assert.ok(txt.includes('MASK-TOP'), 'masked (valign Top) text extracts');
+  assert.ok(txt.includes('WRAPPEDWORD'), 'wrapped paragraph text extracts');
+  assert.ok(txt.includes('MEDIA-SPACE'), 'media-space stamp extracts');
+  console.log(`stamping fonts + anchors + paragraph (${m.lines} lines, ${m.height.toFixed(1)}pt) + stampSpace + image anchor ok (${out.length} bytes)`);
+}
+
 console.log('OK: full Node binding surface exercised');

@@ -2,10 +2,20 @@
 
 use std::ptr;
 
-use crate::enums::{Align, Encryption, PdfVersion, PdfaLevel};
+use crate::enums::{
+    Align, Encryption, ImageAnchor, PdfVersion, PdfaLevel, StampSpace, VerticalAlign,
+    VerticalAnchor,
+};
 use crate::error::{PdfError, PdfStatus, Result};
 use crate::ffi::{self, RawEditable};
 use crate::util::{check, cstr, last_error, take_buffer};
+use crate::FontId;
+
+/// The `font_id` the C ABI understands for "no embedded font" (built-in
+/// Helvetica).
+fn font_code(font: Option<FontId>) -> i32 {
+    font.map_or(-1, |f| f.0)
+}
 
 /// An existing PDF loaded for manipulation (merge/split/encrypt/…).
 pub struct EditableDoc {
@@ -511,6 +521,260 @@ impl EditableDoc {
                 width,
                 height,
                 rotation_deg,
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Register a stamping font from a TrueType/OpenType file for the
+    /// `place_*`/`masked_*` primitives (embedded and subset on save), exactly
+    /// like [`crate::Document::add_font_file`] + `show_text`. Pass the returned
+    /// id as `Some(font)`; `None` keeps the built-in Helvetica.
+    pub fn add_font_file(&mut self, path: &str) -> Result<FontId> {
+        let a = ffi::api()?;
+        let path = cstr(path)?;
+        let mut id = 0;
+        check(a, unsafe {
+            (a.pdf_editable_add_font_file)(self.handle, path.as_ptr(), &mut id)
+        })?;
+        Ok(FontId(id))
+    }
+
+    /// Register a stamping font from raw TrueType/OpenType bytes. See
+    /// [`add_font_file`](Self::add_font_file).
+    pub fn add_font(&mut self, data: &[u8]) -> Result<FontId> {
+        let a = ffi::api()?;
+        let mut id = 0;
+        check(a, unsafe {
+            (a.pdf_editable_add_font)(self.handle, data.as_ptr(), data.len(), &mut id)
+        })?;
+        Ok(FontId(id))
+    }
+
+    /// Like [`place_text_aligned`](Self::place_text_aligned) but with an
+    /// explicit **vertical anchor** for `y` and an optional embedded font.
+    /// [`VerticalAnchor::Baseline`] keeps the historical behavior;
+    /// [`VerticalAnchor::Top`] hangs the text from `y` (baseline at
+    /// `y − ascent × size`, legacy fixed-position layout semantics);
+    /// [`VerticalAnchor::Bottom`] rests the descender line on `y`
+    /// (`LineTop`/`LineBottom` use the layout line box). Ascent/descent come
+    /// from the selected font's metrics: `font` is an id from
+    /// [`add_font_file`](Self::add_font_file)/[`add_font`](Self::add_font), or
+    /// `None` for the built-in Helvetica. Returns whether the page (and font)
+    /// existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_anchored(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+        anchor: VerticalAnchor,
+        font: Option<FontId>,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (r, g, b) = color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_place_text_anchored)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                text.as_ptr(),
+                size,
+                r,
+                g,
+                b,
+                rotation_deg,
+                align.code(),
+                anchor.code(),
+                font_code(font),
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Like [`masked_text`](Self::masked_text) but with an explicit **vertical
+    /// alignment** of the line inside the box, an explicit horizontal edge
+    /// inset `pad` (points) for `Align::Left`/`Align::Right` (the text starts
+    /// at `x + pad` or ends at `x + width − pad`; `pad < 0` keeps the
+    /// historical default `min(0.15 × size, width / 4)`; `0.0` starts flush
+    /// with the box edge, rectangle-based DrawString semantics), and an optional
+    /// embedded font (`None` = built-in Helvetica). Returns whether the page
+    /// (and font) existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_padded(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        valign: VerticalAlign,
+        pad: f64,
+        font: Option<FontId>,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (tr, tg, tb) = text_color;
+        let (br, bg, bb) = bg_color;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_masked_text_pad)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                width,
+                height,
+                text.as_ptr(),
+                size,
+                tr,
+                tg,
+                tb,
+                br,
+                bg,
+                bb,
+                align.code(),
+                valign.code(),
+                pad,
+                font_code(font),
+                &mut found,
+            )
+        })?;
+        Ok(found != 0)
+    }
+
+    /// Stamp a **paragraph with automatic word wrapping** on page
+    /// `page_index`: break `text` into lines that fit `width` points and draw
+    /// them from `(x, y)` per `anchor` (`'\n'` forces a break).
+    /// [`VerticalAnchor::Top`] draws downward from the top-left corner (first
+    /// baseline at `y − ascent × size`, legacy fixed-position layout semantics);
+    /// [`VerticalAnchor::Baseline`] makes `y` the first line's baseline;
+    /// [`VerticalAnchor::Bottom`]/[`VerticalAnchor::LineBottom`] are
+    /// **bottom-pinned**: the block's bottom rests on `y` and grows upward by
+    /// its real content height. `align` gaps of every line but the last of
+    /// each paragraph are stretched for [`Align::Justify`]. `font` is an id
+    /// from [`add_font_file`](Self::add_font_file)/[`add_font`](Self::add_font)
+    /// (`None` = built-in Helvetica). `max_height > 0.0` truncates lines that
+    /// would overflow it (`<= 0.0` = unlimited; for bottom anchors it is a
+    /// ceiling cutting lines from the top). `line_height` scales the default
+    /// `1.2 × size` baseline-to-baseline leading (`<= 0.0` = `1.0`).
+    /// `rotation_deg` rotates the block counter-clockwise about the anchor.
+    ///
+    /// Returns `(lines, height, found)`: the number of lines drawn, the
+    /// block's laid-out height in points, and whether the page (and font)
+    /// existed and `width`/`size` were valid.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_paragraph(
+        &mut self,
+        page_index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        align: Align,
+        anchor: VerticalAnchor,
+        font: Option<FontId>,
+        max_height: f64,
+        line_height: f64,
+        rotation_deg: f64,
+    ) -> Result<(i32, f64, bool)> {
+        let a = ffi::api()?;
+        let text = cstr(text)?;
+        let (r, g, b) = color;
+        let mut height = 0.0f64;
+        let mut lines = 0;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_place_paragraph_anchored)(
+                self.handle,
+                page_index as i32,
+                x,
+                y,
+                width,
+                text.as_ptr(),
+                size,
+                r,
+                g,
+                b,
+                align.code(),
+                anchor.code(),
+                font_code(font),
+                max_height,
+                line_height,
+                rotation_deg,
+                &mut height,
+                &mut lines,
+                &mut found,
+            )
+        })?;
+        Ok((lines, height, found != 0))
+    }
+
+    /// Choose the **coordinate space** of the positioned stamping primitives
+    /// ([`fill_rect`](Self::fill_rect), `place_text*`, `masked_text*`,
+    /// [`place_paragraph`](Self::place_paragraph), `draw_image*`) for
+    /// subsequent calls. [`StampSpace::Visible`] (default) keeps the
+    /// historical displayed-space coordinates, compensating `/Rotate`;
+    /// [`StampSpace::Media`] uses raw PDF user space (legacy layout engines
+    /// `fixed-position layout`/rotation semantics). Watermarks and
+    /// redaction are unaffected.
+    pub fn set_stamp_space(&mut self, space: StampSpace) -> Result<&mut Self> {
+        let a = ffi::api()?;
+        check(a, unsafe {
+            (a.pdf_editable_set_stamp_space)(self.handle, space.code())
+        })?;
+        Ok(self)
+    }
+
+    /// Like [`draw_image`](Self::draw_image) but with an explicit **rotation
+    /// anchor**: [`ImageAnchor::Corner`] (the historical behavior) rotates the
+    /// image about its lower-left corner at `(x, y)`;
+    /// [`ImageAnchor::BoundingBox`] lands the rotated image's axis-aligned
+    /// bounding box's lower-left corner at `(x, y)`. Returns whether the page
+    /// existed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_image_anchored(
+        &mut self,
+        page_index: usize,
+        image: &[u8],
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        rotation_deg: f64,
+        anchor: ImageAnchor,
+    ) -> Result<bool> {
+        let a = ffi::api()?;
+        let mut found = 0;
+        check(a, unsafe {
+            (a.pdf_editable_draw_image_anchored)(
+                self.handle,
+                page_index as i32,
+                image.as_ptr(),
+                image.len(),
+                x,
+                y,
+                width,
+                height,
+                rotation_deg,
+                anchor.code(),
                 &mut found,
             )
         })?;

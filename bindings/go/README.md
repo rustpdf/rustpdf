@@ -1,20 +1,16 @@
-# rustpdf (Go binding)
+# RustPdf for Go
 
-Idiomatic Go binding for the `rust-pdf` core over its C ABI (`libpdf_ffi`), via
-**cgo**. It covers the whole product surface: vector graphics, embedded/subsetted
-fonts and text, wrapping paragraphs, images, **PDF/A** (levels 1b–3a),
-**tagged/accessible** output, embedded-file attachments, **AcroForm** fields,
-manipulation (merge/split/rotate/optimize/incremental update), **text
-extraction**, **page rendering** (page to PNG image), **encryption** (RC4 /
-AES-128 / AES-256) and **digital signatures** (PKCS#7 / PAdES) — plus **feature
-licensing**.
+Generate, edit, sign and process PDFs from Go: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Prebuilt native libraries ship with the module.
 
-Files (package `rustpdf`):
+## Documentation
 
-* `rustpdf.go` — cgo preamble, package-level funcs (`Version`, `ActivateLicense`,
-  `ExtractText`, `Sign`, `Timestamp`, `AddDss`), enums, error type, helpers;
-* `document.go` — the `Document` authoring type;
-* `editable.go` — the `EditableDoc` manipulation type.
+- **Full API reference:** https://rustpdf.dev/docs/go
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
+
+The public API is the `Document` type (create PDFs), the `EditableDoc` type
+(load and edit existing PDFs) and package-level functions (`Version`,
+`ActivateLicense`, `ExtractText`, `Sign`, `Timestamp`, `AddDss`).
 
 ## Installing (consumers)
 

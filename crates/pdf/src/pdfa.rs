@@ -230,9 +230,19 @@ pub(crate) fn document_id(info: &[(&str, String)]) -> Vec<u8> {
 }
 
 fn xml(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
+    // Escape markup delimiters and drop characters that are illegal in XML 1.0
+    // (all C0 controls except tab/LF/CR). A stray control char pasted into a
+    // Title/Author would make the XMP `/Metadata` stream non-well-formed and
+    // fail veraPDF's PDF/A check; strip it so metadata can't break conformance.
+    s.chars()
+        .filter(|&c| c == '\t' || c == '\n' || c == '\r' || c >= ' ')
+        .map(|c| match c {
+            '&' => "&amp;".to_string(),
+            '<' => "&lt;".to_string(),
+            '>' => "&gt;".to_string(),
+            other => other.to_string(),
+        })
+        .collect()
 }
 
 #[cfg(test)]

@@ -158,6 +158,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; paragraphs</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -567,9 +568,9 @@ with EditableDoc.load_file("form.pdf") as ed:
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Paint a filled rectangle or a line of text at exact coordinates on an existing page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). The classic use is masking a placeholder with an opaque white box, then writing the real value over it.</p>
       <div class="api"><code>fill_rect(page_index, x, y, width, height, color=(1,1,1), opacity=1.0) → bool</code></div>
-      <div class="api"><code>place_text(page_index, x, y, text, size=12.0, color=(0,0,0), rotation_deg=0.0, align=Align.LEFT) → bool</code></div>
-      <div class="api"><code>masked_text(page_index, x, y, width, height, text, size=12.0, text_color=(0,0,0), bg_color=(1,1,1), align=Align.LEFT) → bool</code></div>
-      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg=0.0) → bool</code></div>
+      <div class="api"><code>place_text(page_index, x, y, text, size=12.0, color=(0,0,0), rotation_deg=0.0, align=Align.LEFT, font_id=-1, anchor=VerticalAnchor.BASELINE) → bool</code></div>
+      <div class="api"><code>masked_text(page_index, x, y, width, height, text, size=12.0, text_color=(0,0,0), bg_color=(1,1,1), align=Align.LEFT, font_id=-1, valign=VerticalAlign.MIDDLE, padding=None) → bool</code></div>
+      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg=0.0, anchor=ImageAnchor.CORNER) → bool</code></div>
       <p><code>color</code> is an RGB tuple (default opaque white for <code>fill_rect</code>, black for <code>place_text</code>); <code>rotation_deg</code> rotates the text/image counter-clockwise about its anchor. <code>draw_image</code> takes raw JPEG/PNG <code>bytes</code> and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. Each returns whether the page existed.</p>
       <p><code>place_text</code>'s <code>align</code> shifts the start point along the baseline: <code>Align.LEFT</code> starts at <code>x</code>, <code>Align.RIGHT</code> ends at <code>x</code>, <code>Align.CENTER</code> centers on <code>x</code>. <code>masked_text</code> is the one-call mask-and-stamp convenience: it fills an opaque <code>bg_color</code> box <code>[x, y, x+width, y+height]</code>, then writes the text aligned per <code>align</code> and <b>vertically centered</b> in the box — no need to hand-compute the baseline.</p>
       <div class="code has-label"><span class="lbl">python</span><pre><code>import rustpdf
@@ -586,6 +587,61 @@ with EditableDoc.load_file("invoice.pdf") as ed:
     # stamp a logo onto the page
     ed.draw_image(0, open("logo.png", "rb").read(), 72, g.height - 90, 120, 48)
     ed.save("invoice-filled.pdf")</code></pre></div>
+
+      <!-- ED STAMP -->
+      <h2 id="ed-stamp">Stamping: fonts, anchors &amp; paragraphs <span class="badge free">free</span></h2>
+      <p>The positioned-drawing primitives above take optional parameters that unlock embedded fonts, precise vertical anchoring and wrapped paragraphs: the toolkit for filling templates coming from legacy layout engines or legacy PDF libraries coordinates. See the <a href="/positioning.html">Interactive positioning guide</a> to explore each anchor visually.</p>
+
+      <h3>Custom fonts</h3>
+      <div class="api"><code>add_font_file(path) → int</code> &nbsp; <code>add_font(data: bytes) → int</code></div>
+      <p>Register a TrueType/OpenType font on the <code>EditableDoc</code> and pass the returned id as <code>font_id</code> to <code>place_text</code> / <code>masked_text</code> / <code>place_paragraph</code>. The font is embedded as a subset, so the stamp renders with the real glyphs and metrics (full Unicode, no WinAnsi limit). <code>font_id=-1</code> (the default) keeps the built-in Helvetica.</p>
+
+      <h3>Vertical anchors</h3>
+      <p><code>place_text</code>'s <code>anchor</code> says what <code>y</code> means: <code>VerticalAnchor.BASELINE</code> (the default and historical behavior), <code>TOP</code> (text hangs from <code>y</code>: the baseline lands <code>ascent × size</code> below it, matching legacy fixed-position layout), <code>BOTTOM</code> (the descender line rests on <code>y</code>), and <code>LINE_TOP</code>/<code>LINE_BOTTOM</code>, the top/bottom of the <b>layout line box</b> (font line metrics plus a fixed half-leading), which reproduce legacy layout engines line placement exactly. Ascent/descent come from the selected font's metrics.</p>
+
+      <h3>masked_text: vertical alignment &amp; padding</h3>
+      <p><code>valign</code> aligns the line inside the box: <code>VerticalAlign.MIDDLE</code> (the default: cap-height centering), <code>TOP</code> (baseline at <code>y + height − ascent × size</code>, top line-alignment in rectangle-based text APIs) or <code>BOTTOM</code>. <code>padding</code> is the horizontal edge inset (points) for <code>Align.LEFT</code>/<code>Align.RIGHT</code>: <code>None</code> keeps the historical <code>min(0.15 × size, width / 4)</code>; pass <code>0</code> to start flush with the box edge like rectangle-based DrawString APIs.</p>
+
+      <h3>Wrapped paragraphs</h3>
+      <div class="api"><code>place_paragraph(page_index, x, y, width, text, size=12.0, color=(0,0,0), align=Align.LEFT, font_id=-1, max_height=None, line_height=1.0, anchor=VerticalAnchor.TOP, rotation_deg=0.0) → bool</code></div>
+      <div class="api"><code>place_paragraph_measured(…) → (lines: int, height: float)</code></div>
+      <p>Stamps a paragraph with automatic word wrapping: <code>text</code> is broken into lines that fit <code>width</code> points (<code>\n</code> forces a break) and drawn from the anchor <code>(x, y)</code>. With the default <code>VerticalAnchor.TOP</code> the first baseline lands <code>ascent × size</code> below <code>y</code> (legacy fixed-position layout) and each further line steps down by <code>size × 1.2 × line_height</code>. The bottom-pinned anchors (<code>BOTTOM</code>/<code>LINE_BOTTOM</code>) rest the block's bottom on <code>y</code> and grow it upward by its real content height. <code>max_height</code> is a ceiling: lines that would overflow it are cut (<code>None</code> = unlimited); <code>Align.JUSTIFY</code> stretches the word gaps of every line but the last of each paragraph. <code>place_paragraph_measured</code> additionally returns how many lines were drawn (detects truncation) and the consumed block height in points, so you can stack blocks without re-measuring.</p>
+
+      <h3>Coordinate space (Visible vs Media)</h3>
+      <div class="api"><code>stamp_space: StampSpace</code> &nbsp; <code>set_stamp_space(space)</code></div>
+      <p>Sets the coordinate space of all subsequent stamping calls. <code>StampSpace.VISIBLE</code> (default) keeps the historical behavior: coordinates in the page's displayed space, compensating <code>/Rotate</code> so a <code>rotation_deg=0</code> stamp reads upright on screen. <code>StampSpace.MEDIA</code> interprets coordinates and <code>rotation_deg</code> in the raw PDF user space (the raw-coordinate semantics of legacy layout engines), never composing with the page's <code>/Rotate</code>. Use it to reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages. Watermarks and redaction are unaffected.</p>
+
+      <h3>Image anchor</h3>
+      <p><code>draw_image</code>'s <code>anchor</code> controls how a <b>rotated</b> image is anchored at <code>(x, y)</code>: <code>ImageAnchor.CORNER</code> (default) rotates the image about its own lower-left corner, sweeping it around the point; <code>ImageAnchor.BOUNDING_BOX</code> lands the rotated image's bounding box with its lower-left at <code>(x, y)</code> (bounding-box layout semantics; e.g. a 90° image occupies <code>[x, x+height] × [y, y+width]</code>).</p>
+
+      <div class="code has-label"><span class="lbl">python</span><pre><code>from rustpdf import EditableDoc, Align, VerticalAnchor, VerticalAlign, StampSpace, ImageAnchor
+
+with EditableDoc.load_file("template.pdf") as ed:
+    times = ed.add_font_file("times.ttf")            # embedded subset
+
+    # hang the text from y like legacy fixed-position layout
+    ed.place_text(0, 72, 700, "Náme with accents ✓", size=12,
+                  font_id=times, anchor=VerticalAnchor.TOP)
+
+    # mask a box, text flush with the edge and hung from the top
+    ed.masked_text(0, 400, 680, 140, 18, "R$ 1.234,56", size=11,
+                   valign=VerticalAlign.TOP, padding=0)
+
+    # wrapped paragraph pinned by its bottom, with a height ceiling
+    lines, used = ed.place_paragraph_measured(
+        0, 72, 120, 300, "Terms and conditions… " * 12, size=9,
+        anchor=VerticalAnchor.BOTTOM, max_height=140, align=Align.JUSTIFY)
+
+    # reproduce legacy raw-space coordinates on a rotated scan
+    ed.stamp_space = StampSpace.MEDIA
+    ed.place_text(0, 50, 50, "legacy layout engines-space stamp", size=10)
+    ed.stamp_space = StampSpace.VISIBLE
+
+    # rotated image anchored by its bounding box (bounding-box layout)
+    ed.draw_image(0, open("sig.png", "rb").read(), 420, 100, 120, 40,
+                  rotation_deg=90.0, anchor=ImageAnchor.BOUNDING_BOX)
+    ed.save("filled.pdf")</code></pre></div>
+      <div class="note"><b>Backward compatible.</b> The defaults (<code>font_id=-1</code>, <code>anchor=VerticalAnchor.BASELINE</code>, <code>valign=VerticalAlign.MIDDLE</code>, <code>padding=None</code>, <code>ImageAnchor.CORNER</code>, <code>StampSpace.VISIBLE</code>) reproduce the previous behavior exactly: existing calls keep working unchanged.</div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -865,6 +921,34 @@ open("page1.png", "wb").write(png)</code></pre></div>
         <tr><td><code>Align.CENTER</code></td><td>Centered</td></tr>
         <tr><td><code>Align.JUSTIFY</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>VerticalAnchor.BASELINE</code></td><td><code>y</code> is the text baseline (default of <code>place_text</code>)</td></tr>
+        <tr><td><code>VerticalAnchor.TOP</code></td><td>Text hangs from <code>y</code>: baseline at <code>y − ascent × size</code> (legacy fixed-position layout); default of <code>place_paragraph</code></td></tr>
+        <tr><td><code>VerticalAnchor.BOTTOM</code></td><td>Descender line rests on <code>y</code>; bottom-pins a paragraph block</td></tr>
+        <tr><td><code>VerticalAnchor.LINE_TOP</code></td><td>Top of the layout line box (matches legacy layout engines line placement exactly)</td></tr>
+        <tr><td><code>VerticalAnchor.LINE_BOTTOM</code></td><td>Bottom of the layout line box</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>VerticalAlign.TOP</code></td><td>Line hangs from the box's top edge (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>VerticalAlign.MIDDLE</code></td><td>Cap-height centered in the box (default of <code>masked_text</code>)</td></tr>
+        <tr><td><code>VerticalAlign.BOTTOM</code></td><td>Descender line rests on the box's bottom edge</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>StampSpace.VISIBLE</code></td><td>Coordinates in the page's displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>StampSpace.MEDIA</code></td><td>Raw PDF user space (legacy layout semantics), never composes with <code>/Rotate</code></td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>ImageAnchor.CORNER</code></td><td>Rotate the image about its own lower-left corner at <code>(x, y)</code> (default)</td></tr>
+        <tr><td><code>ImageAnchor.BOUNDING_BOX</code></td><td>Land the rotated image's bounding box with its lower-left at <code>(x, y)</code> (bounding-box layout)</td></tr>
+      </table>
       <h3>AFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -940,6 +1024,7 @@ except PdfError as e:
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; paragraphs</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

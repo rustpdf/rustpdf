@@ -62,6 +62,28 @@ fn acroform_has_all_field_types_with_appearances() {
 }
 
 #[test]
+fn appearance_stream_uses_winansi_not_utf8() {
+    // Regression: the `/AP` appearance draws with a WinAnsi Helvetica, so a
+    // value like "São Paulo" must be transcoded to the single WinAnsi byte
+    // 0xE3 (emitted as octal \343), NOT the two UTF-8 bytes 0xC3 0xA3 which
+    // render as "SÃ£o". `/V` stores UTF-16BE and is checked separately.
+    let bytes = form();
+    // The octal escape for 'ã' (0xE3) must appear in a content-stream literal.
+    let needle = b"S\\343o Paulo"; // "S" \343 "o Paulo"
+    assert!(
+        bytes.windows(needle.len()).any(|w| w == needle),
+        "expected WinAnsi octal escape for the appearance value"
+    );
+    // The raw UTF-8 encoding of 'ã' must NOT appear inside an appearance literal
+    // preceding " Paulo" (guards against a UTF-8 regression).
+    let utf8_bad = b"S\xc3\xa3o Paulo";
+    assert!(
+        !bytes.windows(utf8_bad.len()).any(|w| w == utf8_bad),
+        "appearance stream must not contain raw UTF-8 for the field value"
+    );
+}
+
+#[test]
 fn hierarchical_names_nest_under_a_parent() {
     let bytes = form();
     let text = String::from_utf8_lossy(&bytes);

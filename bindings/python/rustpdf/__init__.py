@@ -41,6 +41,10 @@ __all__ = [
     "PdfError",
     "PdfaLevel",
     "Align",
+    "VerticalAnchor",
+    "VerticalAlign",
+    "StampSpace",
+    "ImageAnchor",
     "AFRelationship",
     "Encryption",
     "FacturxProfile",
@@ -102,6 +106,61 @@ class Align(IntEnum):
     RIGHT = 1
     CENTER = 2
     JUSTIFY = 3
+
+
+class VerticalAnchor(IntEnum):
+    """What ``y`` means for :meth:`EditableDoc.place_text` /
+    :meth:`EditableDoc.place_paragraph`. ``BASELINE`` is the historical
+    place_text default; ``TOP`` hangs the text from ``y`` (baseline at
+    ``y − ascent × size``, legacy fixed-position layout semantics); ``BOTTOM``
+    rests the descender line on ``y``. ``LINE_TOP``/``LINE_BOTTOM`` use the
+    **layout line box** (OS/2 win metrics — or typo × 1.2 — plus the legacy engine's default
+    half-leading of 0.21 em) and match legacy layout engines line placement exactly."""
+
+    BASELINE = 0
+    TOP = 1
+    BOTTOM = 2
+    LINE_TOP = 3
+    LINE_BOTTOM = 4
+
+
+class VerticalAlign(IntEnum):
+    """Vertical alignment of the text line inside a
+    :meth:`EditableDoc.masked_text` box. ``MIDDLE`` (the historical default)
+    centers the cap-height block; ``TOP`` hangs the line from the top edge
+    (baseline at ``y + height − ascent × size``, legacy PDF libraries
+    top line-alignment semantics); ``BOTTOM`` rests the descender line on
+    the bottom edge."""
+
+    TOP = 0
+    MIDDLE = 1
+    BOTTOM = 2
+
+
+class StampSpace(IntEnum):
+    """Coordinate space of the positioned stamping primitives (see
+    :attr:`EditableDoc.stamp_space`). ``VISIBLE`` (historical default):
+    coordinates in the page's displayed space, compensating ``/Rotate`` so a
+    ``rotation_deg=0`` stamp reads upright on screen. ``MEDIA``: raw PDF user
+    space (the raw-coordinate semantics of legacy layout engines) — no
+    composition with the page's ``/Rotate`` or crop offset; ``rotation_deg``
+    is the baseline angle in media space. Use ``MEDIA`` to reproduce
+    coordinates computed for legacy PDF libraries on rotated (scanned) pages."""
+
+    VISIBLE = 0
+    MEDIA = 1
+
+
+class ImageAnchor(IntEnum):
+    """How a rotated image is anchored at ``(x, y)``
+    (:meth:`EditableDoc.draw_image`). ``CORNER`` (default): the image's own
+    lower-left corner — the image sweeps around it when rotated.
+    ``BOUNDING_BOX``: the rotated image's bounding box lands with its
+    lower-left at ``(x, y)`` (bounding-box layout semantics — pixels always
+    at/above/right of the anchor)."""
+
+    CORNER = 0
+    BOUNDING_BOX = 1
 
 
 class AFRelationship(IntEnum):
@@ -568,6 +627,41 @@ _ed_draw_image = _bind(
     [_ED, c_int, _U8, c_size_t, c_double, c_double, c_double, c_double,
      c_double, POINTER(c_int)],
 )
+# Stamping fonts + anchored text/paragraph/image + stamp space (EditableDoc)
+_ed_add_font_file = _bind(
+    "pdf_editable_add_font_file", c_int, [_ED, c_char_p, POINTER(c_int)]
+)
+_ed_add_font = _bind(
+    "pdf_editable_add_font", c_int, [_ED, _U8, c_size_t, POINTER(c_int)]
+)
+_ed_place_text_anchored = _bind(
+    "pdf_editable_place_text_anchored",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_double, c_int, c_int, c_int, POINTER(c_int)],
+)
+_ed_masked_text_pad = _bind(
+    "pdf_editable_masked_text_pad",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_double, c_double, c_double,
+     c_int, c_int, c_double, c_int, POINTER(c_int)],
+)
+_ed_place_paragraph_anchored = _bind(
+    "pdf_editable_place_paragraph_anchored",
+    c_int,
+    [_ED, c_int, c_double, c_double, c_double, c_char_p, c_double,
+     c_double, c_double, c_double, c_int, c_int, c_int,
+     c_double, c_double, c_double,
+     POINTER(c_double), POINTER(c_int), POINTER(c_int)],
+)
+_ed_set_stamp_space = _bind("pdf_editable_set_stamp_space", c_int, [_ED, c_int])
+_ed_draw_image_anchored = _bind(
+    "pdf_editable_draw_image_anchored",
+    c_int,
+    [_ED, c_int, _U8, c_size_t, c_double, c_double, c_double, c_double,
+     c_double, c_int, POINTER(c_int)],
+)
 # Network TSA (AD-RT) — issue #41 P1
 _timestamp_begin = _bind(
     "pdf_timestamp_begin",
@@ -945,6 +1039,7 @@ class EditableDoc:
         if not handle:
             raise PdfError(_last_error_text())
         self._h = handle
+        self._stamp_space = StampSpace.VISIBLE
 
     @classmethod
     def load(cls, data: bytes, password: str | None = None) -> "EditableDoc":
@@ -1077,57 +1172,193 @@ class EditableDoc:
                              r, g, b, opacity, byref(found)))
         return bool(found.value)
 
+    def add_font_file(self, path) -> int:
+        """Register a TrueType/OpenType font (from a file path) for text
+        stamping; returns a ``font_id`` usable with the ``font_id`` parameter of
+        :meth:`place_text` / :meth:`masked_text` / :meth:`place_paragraph`. The
+        font is embedded as a subset — stamped text renders with the real font's
+        glyphs and metrics, exactly like :meth:`Document.add_font_file` +
+        ``show_text``."""
+        fid = c_int(-1)
+        _check(_ed_add_font_file(self._ptr(), _enc(path), byref(fid)))
+        return fid.value
+
+    def add_font(self, data: bytes) -> int:
+        """Register a stamping font from raw TrueType/OpenType bytes. See
+        :meth:`add_font_file`."""
+        ptr, n, _keep = _as_u8(bytes(data))
+        fid = c_int(-1)
+        _check(_ed_add_font(self._ptr(), ptr, n, byref(fid)))
+        return fid.value
+
     def place_text(self, page_index: int, x: float, y: float, text: str,
                    size: float = 12.0, color: tuple[float, float, float] = (0.0, 0.0, 0.0),
-                   rotation_deg: float = 0.0, align: Align = Align.LEFT) -> bool:
-        """Draw a line of positioned text with baseline at ``(x, y)`` on page
-        ``page_index`` (0-based), standard Helvetica at ``size`` points in RGB
-        ``color``. ``rotation_deg`` rotates the text counter-clockwise about its
-        anchor. ``align`` shifts the start point along the baseline so the text is
+                   rotation_deg: float = 0.0, align: Align = Align.LEFT,
+                   font_id: int = -1,
+                   anchor: VerticalAnchor = VerticalAnchor.BASELINE) -> bool:
+        """Draw a line of positioned text anchored at ``(x, y)`` on page
+        ``page_index`` (0-based) at ``size`` points in RGB ``color``.
+        ``rotation_deg`` rotates the text counter-clockwise about its anchor.
+        ``align`` shifts the start point along the baseline so the text is
         ``Align.LEFT`` (start at ``x``), ``Align.RIGHT`` (end at ``x``) or
         ``Align.CENTER`` (centered on ``x``) — ``Align.JUSTIFY`` behaves like left.
-        Coordinates are in the page's VISIBLE space (origin lower-left, y up) — the
-        text lands where a viewer sees it regardless of ``/Rotate``. Returns
-        whether the page existed."""
+        Pass ``font_id`` from :meth:`add_font_file`/:meth:`add_font` to stamp with
+        an embedded TrueType/OpenType font (e.g. Times New Roman); leave it at
+        ``-1`` to use the built-in Helvetica. ``anchor`` says what ``y`` means:
+        ``VerticalAnchor.BASELINE`` (default, historical behavior),
+        ``VerticalAnchor.TOP`` (text hangs from ``y`` — the baseline lands
+        ``ascent × size`` below it, matching legacy fixed-position layout),
+        ``VerticalAnchor.BOTTOM`` (the descender line rests on ``y``), or the
+        ``LINE_TOP``/``LINE_BOTTOM`` layout line-box variants. Ascent/descent come
+        from the selected font's metrics. Coordinates are in the page's VISIBLE
+        space (origin lower-left, y up) — the text lands where a viewer sees it
+        regardless of ``/Rotate`` (see :attr:`stamp_space`). Returns whether the
+        page (and font) existed."""
         r, g, b = color
         found = c_int(0)
-        _check(_ed_place_text_aligned(self._ptr(), page_index, x, y, _enc(text), size,
-                                      r, g, b, rotation_deg, int(align), byref(found)))
+        _check(_ed_place_text_anchored(self._ptr(), page_index, x, y, _enc(text),
+                                       size, r, g, b, rotation_deg, int(align),
+                                       int(anchor), int(font_id), byref(found)))
         return bool(found.value)
 
     def masked_text(self, page_index: int, x: float, y: float, width: float,
                     height: float, text: str, size: float = 12.0,
                     text_color: tuple[float, float, float] = (0.0, 0.0, 0.0),
                     bg_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
-                    align: Align = Align.LEFT) -> bool:
+                    align: Align = Align.LEFT, font_id: int = -1,
+                    valign: VerticalAlign = VerticalAlign.MIDDLE,
+                    padding: float | None = None) -> bool:
         """Draw ``text`` over an opaque background box ``[x, y, x+width, y+height]``
         on page ``page_index`` (0-based): fill the box in ``bg_color`` (default
-        white), then write the text (standard Helvetica at ``size`` points in
-        ``text_color``, default black) horizontally aligned per ``align`` and
-        vertically centered within the box. The classic use is masking a
-        placeholder and stamping the real value over it without hand-computing the
-        baseline. Coordinates are in the page's VISIBLE space (origin lower-left, y
-        up). Returns whether the page existed."""
+        white), then write the text (``size`` points in ``text_color``, default
+        black) horizontally aligned per ``align`` inside the box. The classic use
+        is masking a placeholder and stamping the real value over it without
+        hand-computing the baseline. Pass ``font_id`` from
+        :meth:`add_font_file`/:meth:`add_font` to stamp with an embedded font;
+        ``-1`` uses the built-in Helvetica. ``valign`` controls the vertical
+        alignment of the line inside the box: ``VerticalAlign.MIDDLE`` (default,
+        historical cap-height centering), ``VerticalAlign.TOP`` (line hangs from
+        the top edge — baseline at ``y + height − ascent × size``, matching
+        top line-alignment in rectangle-based text APIs) or ``VerticalAlign.BOTTOM``
+        (descender line rests on the bottom edge). ``padding`` is the horizontal
+        edge inset (points) for ``Align.LEFT``/``Align.RIGHT``: text starts at
+        ``x + padding`` (or ends at ``x + width − padding``); ``None`` keeps the
+        historical ``min(0.15 × size, width / 4)``, ``0`` starts flush with the
+        box edge like legacy PDF libraries ``DrawString``. Coordinates are in the page's
+        VISIBLE space (origin lower-left, y up). Returns whether the page (and
+        font) existed."""
         tr, tg, tb = text_color
         br, bg, bb = bg_color
         found = c_int(0)
-        _check(_ed_masked_text(self._ptr(), page_index, x, y, width, height,
-                               _enc(text), size, tr, tg, tb, br, bg, bb,
-                               int(align), byref(found)))
+        _check(_ed_masked_text_pad(self._ptr(), page_index, x, y, width, height,
+                                   _enc(text), size, tr, tg, tb, br, bg, bb,
+                                   int(align), int(valign),
+                                   -1.0 if padding is None else float(padding),
+                                   int(font_id), byref(found)))
         return bool(found.value)
 
+    def place_paragraph(self, page_index: int, x: float, y: float, width: float,
+                        text: str, size: float = 12.0,
+                        color: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                        align: Align = Align.LEFT, font_id: int = -1,
+                        max_height: float | None = None, line_height: float = 1.0,
+                        anchor: VerticalAnchor = VerticalAnchor.TOP,
+                        rotation_deg: float = 0.0) -> bool:
+        """Stamp a **paragraph with automatic word wrapping**: ``text`` is broken
+        into lines that fit ``width`` points (greedy, by word — ``\\n`` forces a
+        break) and drawn from the anchor ``(x, y)``. With the default
+        ``VerticalAnchor.TOP`` the first baseline lands ``ascent × size`` below
+        ``y``, like legacy fixed-position layout; each further line steps down by
+        ``size × 1.2 × line_height``. ``align`` lays lines out inside
+        ``[x, x+width]`` (``Align.JUSTIFY`` stretches the word gaps of every line
+        but the last of each paragraph). ``anchor`` says what ``y`` means for the
+        block: ``TOP`` (default) — top of the box; ``BASELINE`` — the first
+        line's baseline; ``BOTTOM``/``LINE_BOTTOM`` — **bottom-pinned**: the
+        block's bottom rests on ``y`` and grows upward by its real content
+        height; ``LINE_TOP`` — top-anchored via the layout line box.
+        ``max_height`` truncates lines that would overflow it (with a
+        bottom-pinned anchor it is a ceiling that cuts overflowing lines from the
+        top); ``None`` = unlimited. Pass ``font_id`` from
+        :meth:`add_font_file`/:meth:`add_font` to wrap and draw with an embedded
+        font (its real metrics drive the break points); ``-1`` uses the built-in
+        Helvetica. ``rotation_deg`` rotates the laid-out block counter-clockwise
+        about the anchor. Returns whether the page (and font) existed and the box
+        was valid."""
+        r, g, b = color
+        found = c_int(0)
+        _check(_ed_place_paragraph_anchored(
+            self._ptr(), page_index, x, y, width, _enc(text), size, r, g, b,
+            int(align), int(anchor), int(font_id),
+            0.0 if max_height is None else float(max_height), line_height,
+            rotation_deg, None, None, byref(found)))
+        return bool(found.value)
+
+    def place_paragraph_measured(self, page_index: int, x: float, y: float,
+                                 width: float, text: str, size: float = 12.0,
+                                 color: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                                 align: Align = Align.LEFT, font_id: int = -1,
+                                 max_height: float | None = None,
+                                 line_height: float = 1.0,
+                                 anchor: VerticalAnchor = VerticalAnchor.TOP,
+                                 rotation_deg: float = 0.0) -> tuple[int, float]:
+        """Like :meth:`place_paragraph` but returns ``(lines, height)``: the
+        number of lines actually drawn (detects ``max_height`` truncation) and
+        the **consumed block height** in points (top of the first drawn line's
+        box to the bottom of the last one's; ``0.0`` when nothing fit) — stack
+        blocks without re-measuring."""
+        r, g, b = color
+        height = c_double(0.0)
+        lines = c_int(0)
+        found = c_int(0)
+        _check(_ed_place_paragraph_anchored(
+            self._ptr(), page_index, x, y, width, _enc(text), size, r, g, b,
+            int(align), int(anchor), int(font_id),
+            0.0 if max_height is None else float(max_height), line_height,
+            rotation_deg, byref(height), byref(lines), byref(found)))
+        return (lines.value, height.value)
+
+    @property
+    def stamp_space(self) -> StampSpace:
+        """Coordinate space of the positioned stamping primitives
+        (:meth:`fill_rect`, :meth:`place_text`, :meth:`masked_text`,
+        :meth:`place_paragraph`, :meth:`draw_image`) for subsequent calls.
+        ``StampSpace.VISIBLE`` (default) keeps the historical behavior —
+        coordinates in the page's displayed space, compensating ``/Rotate``.
+        ``StampSpace.MEDIA`` interprets coordinates and ``rotation_deg`` in the
+        raw PDF user space (legacy layout semantics), never composing with the page's
+        ``/Rotate`` — use it to reproduce legacy-engine placement on rotated/scanned
+        pages. Watermarks and redaction are unaffected."""
+        return self._stamp_space
+
+    @stamp_space.setter
+    def stamp_space(self, space: StampSpace) -> None:
+        _check(_ed_set_stamp_space(self._ptr(), int(space)))
+        self._stamp_space = StampSpace(space)
+
+    def set_stamp_space(self, space: StampSpace) -> "EditableDoc":
+        """Chained-call form of :attr:`stamp_space`."""
+        self.stamp_space = space
+        return self
+
     def draw_image(self, page_index: int, image: bytes, x: float, y: float,
-                   width: float, height: float, rotation_deg: float = 0.0) -> bool:
+                   width: float, height: float, rotation_deg: float = 0.0,
+                   anchor: ImageAnchor = ImageAnchor.CORNER) -> bool:
         """Draw an ``image`` (JPEG/PNG bytes, dispatched on signature) on page
-        ``page_index`` (0-based) with its lower-left corner at ``(x, y)``, scaled
-        to ``width``×``height`` points and rotated ``rotation_deg`` degrees
-        counter-clockwise about that corner. Coordinates are in the page's
-        VISIBLE space (origin lower-left, y up) — the image lands where a viewer
-        sees it regardless of ``/Rotate``. Returns whether the page existed."""
+        ``page_index`` (0-based) at ``(x, y)``, scaled to ``width``×``height``
+        points and rotated ``rotation_deg`` degrees counter-clockwise.
+        ``anchor`` controls how a rotated image is anchored:
+        ``ImageAnchor.CORNER`` (default) rotates the image about its own
+        lower-left corner at ``(x, y)``; ``ImageAnchor.BOUNDING_BOX`` lands the
+        rotated image's bounding box with its lower-left at ``(x, y)`` (legacy layout engines
+        semantics — e.g. a 90° image occupies ``[x, x+height] × [y, y+width]``).
+        Coordinates are in the page's VISIBLE space (origin lower-left, y up) —
+        the image lands where a viewer sees it regardless of ``/Rotate``.
+        Returns whether the page existed."""
         ptr, n, _keep = _as_u8(bytes(image))
         found = c_int(0)
-        _check(_ed_draw_image(self._ptr(), page_index, ptr, n, x, y, width,
-                              height, rotation_deg, byref(found)))
+        _check(_ed_draw_image_anchored(self._ptr(), page_index, ptr, n, x, y,
+                                       width, height, rotation_deg, int(anchor),
+                                       byref(found)))
         return bool(found.value)
 
     # normalization (issue #41 P1)
@@ -1503,7 +1734,7 @@ def complete_signature(document: bytes, container: bytes) -> bytes:
 
 def list_signatures(pdf: bytes) -> list[SignatureField]:
     """List the signature fields in ``pdf`` (detect existing signatures before
-    signing — the iText ``SignatureUtil.getSignatureNames`` equivalent). An empty
+    signing — a classic pre-sign signature-field inventory). An empty
     list means there are no signature fields."""
     pp, pn, _k = _as_u8(bytes(pdf))
     text = _take(lambda p, ln: _list_signatures(pp, pn, p, ln)).decode("utf-8")

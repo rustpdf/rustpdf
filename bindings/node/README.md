@@ -1,15 +1,12 @@
-# rustpdf (Node.js binding)
+# RustPdf for Node.js
 
-Idiomatic Node.js/TypeScript binding for the `rust-pdf` core over its C ABI
-(`libpdf_ffi`), using **[Koffi](https://koffi.dev)** (pure FFI — no native
-compilation, no node-gyp). It covers the whole product surface: vector graphics,
-embedded/subsetted fonts and text, wrapping paragraphs, images, **PDF/A**
-(levels 1b–3a), **tagged/accessible** output, embedded-file attachments,
-**AcroForm** fields, manipulation (merge/split/rotate/optimize/incremental
-update), **text extraction**, **page rendering** (page to PNG image),
-**encryption** (RC4 / AES-128 / AES-256) and **digital signatures** (PKCS#7 /
-PAdES) — plus **feature licensing**. Ships with TypeScript types
-(`lib/index.d.ts`).
+Generate, edit, sign and process PDFs from Node.js: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. No native compilation, no node-gyp.
+
+## Documentation
+
+- **Full API reference:** https://rustpdf.dev/docs/node
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
 
 ## Install
 

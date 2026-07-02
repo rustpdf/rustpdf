@@ -142,9 +142,17 @@ impl Prepared {
     }
 
     fn encrypt_dict(&self, num: u32, dict: &Dict) -> Dict {
+        // The `/Contents` of a signature / document-timestamp dict (identified
+        // by `/ByteRange`) must be left in the clear (ISO 32000 §7.6.2), so it
+        // round-trips through our own reader and validates in any viewer.
+        let is_signature = dict.get("ByteRange").is_some();
         let mut out = Dict::new();
         for (k, v) in dict.iter() {
-            out.set(k.clone(), self.encrypt_object(num, v));
+            if is_signature && k.as_str() == "Contents" {
+                out.set(k.clone(), v.clone());
+            } else {
+                out.set(k.clone(), self.encrypt_object(num, v));
+            }
         }
         out
     }

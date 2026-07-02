@@ -6,6 +6,7 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.StringArray;
+import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.LongByReference;
 import com.sun.jna.ptr.PointerByReference;
@@ -216,6 +217,35 @@ final class FFI {
         int pdf_editable_draw_image(Pointer ed, int index, byte[] data, long len,
                                     double x, double y, double width, double height,
                                     double rotationDeg, IntByReference outFound);
+
+        // ---- Stamping fonts, anchors + paragraph wrapping (EditableDoc) -----
+        int pdf_editable_add_font_file(Pointer ed, String path, IntByReference outId);
+        int pdf_editable_add_font(Pointer ed, byte[] data, long len, IntByReference outId);
+        int pdf_editable_place_text_anchored(Pointer ed, int index, double x, double y,
+                                             String text, double size,
+                                             double r, double g, double b,
+                                             double rotationDeg, int align, int anchor,
+                                             int fontId, IntByReference outFound);
+        int pdf_editable_masked_text_pad(Pointer ed, int index, double x, double y,
+                                         double width, double height, String text, double size,
+                                         double textR, double textG, double textB,
+                                         double bgR, double bgG, double bgB,
+                                         int align, int valign, double pad, int fontId,
+                                         IntByReference outFound);
+        int pdf_editable_place_paragraph_anchored(Pointer ed, int index, double x, double y,
+                                                  double width, String text, double size,
+                                                  double r, double g, double b,
+                                                  int align, int anchor, int fontId,
+                                                  double maxHeight, double lineHeight,
+                                                  double rotationDeg,
+                                                  DoubleByReference outHeight,
+                                                  IntByReference outLines,
+                                                  IntByReference outFound);
+        int pdf_editable_set_stamp_space(Pointer ed, int space);
+        int pdf_editable_draw_image_anchored(Pointer ed, int index, byte[] data, long len,
+                                             double x, double y, double width, double height,
+                                             double rotationDeg, int anchor,
+                                             IntByReference outFound);
 
         // ---- Normalization — issue #41 P1 (EditableDoc) ---------------------
         int pdf_editable_set_version(Pointer ed, int version);

@@ -51,6 +51,11 @@ pub struct Font {
     num_glyphs: u16,
     bbox: [i16; 4],
     postscript_name: String,
+    typo_ascender: Option<i16>,
+    typo_descender: Option<i16>,
+    typo_line_gap: Option<i16>,
+    win_ascent: Option<i16>,
+    win_descent: Option<i16>,
 }
 
 impl std::fmt::Debug for Font {
@@ -89,6 +94,16 @@ impl Font {
             .unwrap_or((ascender as f32 * 0.7) as i16);
         let x_height = face.x_height().unwrap_or((ascender as f32 * 0.5) as i16);
 
+        // Raw OS/2 typographic + Windows metrics (independent of the
+        // USE_TYPO_METRICS-aware `ascender()`/`descender()` above), used by
+        // consumers that reproduce legacy line-box models (e.g. iText).
+        let os2 = face.tables().os2;
+        let typo_ascender = os2.map(|t| t.typographic_ascender());
+        let typo_descender = os2.map(|t| t.typographic_descender());
+        let typo_line_gap = os2.map(|t| t.typographic_line_gap());
+        let win_ascent = os2.map(|t| t.windows_ascender());
+        let win_descent = os2.map(|t| t.windows_descender());
+
         let font = Font {
             index,
             units_per_em,
@@ -105,6 +120,11 @@ impl Font {
             num_glyphs: face.number_of_glyphs(),
             bbox: [bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max],
             postscript_name,
+            typo_ascender,
+            typo_descender,
+            typo_line_gap,
+            win_ascent,
+            win_descent,
             data,
         };
         Ok(font)
@@ -154,6 +174,33 @@ impl Font {
     /// Capital height in font units.
     pub fn cap_height(&self) -> i16 {
         self.cap_height
+    }
+
+    /// OS/2 `sTypoAscender` in font units (`None` when the face has no OS/2
+    /// table). Raw table value — NOT the USE_TYPO_METRICS-aware [`Self::ascender`].
+    pub fn typo_ascender(&self) -> Option<i16> {
+        self.typo_ascender
+    }
+
+    /// OS/2 `sTypoDescender` in font units (typically negative).
+    pub fn typo_descender(&self) -> Option<i16> {
+        self.typo_descender
+    }
+
+    /// OS/2 `sTypoLineGap` in font units.
+    pub fn typo_line_gap(&self) -> Option<i16> {
+        self.typo_line_gap
+    }
+
+    /// OS/2 `usWinAscent` in font units (positive).
+    pub fn win_ascent(&self) -> Option<i16> {
+        self.win_ascent
+    }
+
+    /// OS/2 `usWinDescent` in font units, **negated** (≤ 0, like
+    /// [`Self::descender`]) — the table stores a positive magnitude.
+    pub fn win_descent(&self) -> Option<i16> {
+        self.win_descent
     }
 
     /// x-height in font units.

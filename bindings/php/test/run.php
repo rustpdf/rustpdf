@@ -21,10 +21,14 @@ use RustPdf\PdfaLevel;
 use RustPdf\PdfException;
 use RustPdf\PdfOverview;
 use RustPdf\PdfRect;
+use RustPdf\ImageAnchor;
 use RustPdf\SignatureField;
 use RustPdf\SigningOptions;
 use RustPdf\SigningSession;
+use RustPdf\StampSpace;
 use RustPdf\TextHit;
+use RustPdf\VerticalAlign;
+use RustPdf\VerticalAnchor;
 
 function repoRoot(): string
 {
@@ -416,5 +420,40 @@ $aligned = $alignEd->toBytes();
 check(strlen($aligned) > 0, 'aligned/masked bytes produced');
 check(str_contains(Pdf::extractText($aligned), 'MASKEDVALUE'), 'masked text is extractable');
 echo "placeText align + maskedText ok\n";
+
+// 28. Stamping fonts + vertical anchors + valign/padding + paragraph wrapping
+//     + stamp space + image anchor.
+$stampEd = EditableDoc::load($pdfa);
+$stampFont = $stampEd->addFontFile($font);
+check($stampFont >= 0, 'addFontFile returned a font id');
+$fontBytes = (string) file_get_contents($font);
+check($stampEd->addFont($fontBytes) >= 0, 'addFont (bytes) returned a font id');
+check(
+    $stampEd->placeText(0, 72.0, 500.0, 'ANCHOREDLINE', 14.0, [0.0, 0.0, 0.0], 0.0, Align::Left, $stampFont, VerticalAnchor::LineBottom),
+    'placeText anchor LineBottom with embedded font',
+);
+check(
+    $stampEd->maskedText(0, 72.0, 430.0, 200.0, 40.0, 'TOPALIGNED', 12.0, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], Align::Left, -1, VerticalAlign::Top, 0.0),
+    'maskedText valign Top padding 0',
+);
+$para = str_repeat('wrappedword ', 30);
+$measured = $stampEd->placeParagraphMeasured(0, 72.0, 400.0, 150.0, $para, 12.0, [0.0, 0.0, 0.0], Align::Left, $stampFont);
+check($measured['lines'] > 1, 'placeParagraph wrapped into multiple lines: ' . $measured['lines']);
+check($measured['height'] > 0.0, 'placeParagraph measured a height: ' . $measured['height']);
+check(!$stampEd->placeParagraph(99, 0.0, 0.0, 100.0, 'x'), 'placeParagraph missing page returns false');
+$stampEd->setStampSpace(StampSpace::Media);
+check($stampEd->placeText(0, 72.0, 60.0, 'MEDIASPACE', 10.0), 'placeText in media space');
+$stampEd->setStampSpace(StampSpace::Visible);
+check(
+    $stampEd->drawImage(0, $png, 300.0, 60.0, 80.0, 80.0, 45.0, ImageAnchor::BoundingBox),
+    'drawImage anchor BoundingBox',
+);
+$stamped = $stampEd->toBytes();
+$stampedText = Pdf::extractText($stamped);
+check(str_contains($stampedText, 'wrappedword'), 'wrapped paragraph text is extractable');
+check(str_contains($stampedText, 'ANCHOREDLINE'), 'anchored text is extractable');
+check(str_contains($stampedText, 'MEDIASPACE'), 'media-space text is extractable');
+echo 'stamping fonts + anchors + paragraph ok (' . $measured['lines'] . ' lines, '
+    . round($measured['height'], 1) . " pt)\n";
 
 echo "OK: full PHP binding surface exercised\n";

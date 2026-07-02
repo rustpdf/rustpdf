@@ -48,6 +48,9 @@ pub enum PdfStatus {
     InvalidArgument = 11,
     /// License activation failed (bad signature, expired, or malformed).
     License = 12,
+    /// The operation cannot be performed safely on this input (e.g. redaction
+    /// of a page whose content cannot be rewritten) — see the last error.
+    Unsupported = 13,
 }
 
 thread_local! {

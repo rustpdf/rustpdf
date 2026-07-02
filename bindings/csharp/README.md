@@ -1,24 +1,16 @@
-# RustPdf (.NET binding)
+# RustPdf for .NET
 
-Idiomatic C#/.NET binding for the `rust-pdf` core over its C ABI
-(`libpdf_ffi`), using source-generated P/Invoke (`LibraryImport`). It mirrors the
-full product surface: vector graphics, embedded/subsetted fonts and text,
-wrapping paragraphs, images, **PDF/A** (levels 1b–3a), **tagged/accessible**
-output, embedded-file attachments, **AcroForm** fields, manipulation
-(merge/split/rotate/optimize/incremental update), **text extraction**,
-**page rendering** (page to PNG image), **encryption** (RC4 / AES-128 /
-AES-256) and **digital signatures** (PKCS#7 / PAdES) — plus **feature
-licensing**.
+Generate, edit, sign and process PDFs from .NET: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Native libraries for macOS, Linux and Windows are bundled, so `dotnet add package RustPdf` is all it takes.
 
-Layout:
+## Documentation
 
-* `RustPdf/Native.cs` — raw P/Invoke (1:1 with `include/pdf.h`) + a native-library
-  resolver;
-* `RustPdf/Document.cs`, `EditableDoc.cs` — `IDisposable` wrappers with fluent,
-  exception-based APIs;
-* `RustPdf/Pdf.cs` — static helpers (`Version`, `ActivateLicense`, `ExtractText`,
-  `Sign`, `Timestamp`, `AddDss`) and the `PdfaLevel` / `Align` / `AFRelationship`
-  / `Encryption` enums.
+- **Full API reference:** https://rustpdf.dev/docs/csharp
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
+
+The public API is three types: `Document` (create PDFs), `EditableDoc` (load and
+edit existing PDFs) and the static `Pdf` class (extract, sign, render, verify),
+all `IDisposable` with exception-based error handling.
 
 ## Install
 

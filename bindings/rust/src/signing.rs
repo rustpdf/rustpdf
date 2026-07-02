@@ -298,7 +298,7 @@ pub fn complete_signature(document: &[u8], container: &[u8]) -> Result<Vec<u8>> 
 }
 
 /// List the signature fields in `pdf` (detect existing signatures before
-/// signing — the iText `SignatureUtil.getSignatureNames` equivalent). An empty
+/// signing — the classic pre-sign signature-field inventory). An empty
 /// vector means there are no signature fields.
 pub fn list_signatures(pdf: &[u8]) -> Result<Vec<SignatureField>> {
     let a = ffi::api()?;

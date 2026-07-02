@@ -65,6 +65,62 @@ public enum Certify: Int32, Sendable {
     case formsAndAnnotations = 3
 }
 
+/// What the `y` coordinate of a positioned text stamp means
+/// (``EditableDoc/placeText(_:_:_:_:size:color:rotationDeg:align:fontId:anchor:)``
+/// and the block anchor of ``EditableDoc/placeParagraph(_:_:_:_:_:size:color:align:fontId:maxHeight:lineHeight:anchor:rotationDeg:)``).
+/// `baseline` is the historical default for `placeText`; `top` hangs the text
+/// from `y` (baseline at `y − ascent × size`, legacy fixed-position layout
+/// semantics); `bottom` rests the descender line on `y`. The `line*` cases use
+/// the **layout line box** (OS/2 win metrics — or typo × 1.2 — plus the legacy engine's
+/// default half-leading of 0.21 em) instead of the raw ascent/descent, matching
+/// legacy layout engines line placement exactly. Ascent/descent come from the selected font
+/// (embedded font metrics, or Helvetica AFM).
+public enum VerticalAnchor: Int32, Sendable {
+    case baseline   = 0
+    case top        = 1
+    case bottom     = 2
+    /// Top of the layout line box.
+    case lineTop    = 3
+    /// Bottom of the layout line box.
+    case lineBottom = 4
+}
+
+/// Vertical alignment of the text line inside a
+/// ``EditableDoc/maskedText(_:_:_:_:_:_:size:textColor:bgColor:align:fontId:valign:padding:)``
+/// box. `middle` (the historical default) centers the cap-height block; `top`
+/// hangs the line from the top edge (baseline at `y + height − ascent × size`,
+/// top line-alignment semantics of rectangle-based text APIs); `bottom` rests the descender
+/// line on the bottom edge.
+public enum VerticalAlign: Int32, Sendable {
+    case top    = 0
+    case middle = 1
+    case bottom = 2
+}
+
+/// Coordinate space of the positioned stamping primitives (`fillRect`,
+/// `placeText`, `maskedText`, `placeParagraph`, `drawImage`) — set via
+/// ``EditableDoc/setStampSpace(_:)``. `visible` (historical default):
+/// coordinates in the page's displayed space, compensating `/Rotate` so a
+/// `rotationDeg = 0` stamp reads upright on screen. `media`: raw PDF user
+/// space (legacy fixed-position layout semantics) — no
+/// composition with the page's `/Rotate` or crop offset; `rotationDeg` is the
+/// baseline angle in media space. Watermarks and redaction are unaffected.
+public enum StampSpace: Int32, Sendable {
+    case visible = 0
+    case media   = 1
+}
+
+/// How a rotated image is anchored at `(x, y)`
+/// (``EditableDoc/drawImage(_:image:x:y:width:height:rotationDeg:anchor:)``).
+/// `corner` (default): the image's own lower-left corner — the image sweeps
+/// around it when rotated. `boundingBox`: the rotated image's bounding box
+/// lands with its lower-left at `(x, y)` (bounding-box layout semantics — pixels
+/// always at/above/right of the anchor).
+public enum ImageAnchor: Int32, Sendable {
+    case corner      = 0
+    case boundingBox = 1
+}
+
 /// The PDF version written in the header (argument to ``Document/setVersion(_:)``).
 public enum PdfVersion: Int32, Sendable {
     case v14 = 0

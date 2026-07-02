@@ -1,9 +1,9 @@
 {
     "name": "rust-pdf/rustpdf",
-    "description": "Idiomatic PHP binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) via FFI.",
+    "description": "Generate, edit, sign and process PDFs in PHP: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/php",
     "type": "library",
     "license": "proprietary",
-    "homepage": "https://rustpdf.dev",
+    "homepage": "https://rustpdf.dev/docs/php",
     "require": {
         "php": ">=8.1",
         "ext-ffi": "*"

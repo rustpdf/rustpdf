@@ -605,12 +605,14 @@ ed.close();</code></pre></div>
 
       <!-- ED DRAW -->
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
-      <p>Place a filled rectangle or a line of text at exact coordinates on a page, for stamping a value into a form, masking a region, or adding a small note. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1).</p>
+      <p>Place a filled rectangle, a line of text, a wrapped paragraph or an image at exact coordinates on a page, for stamping a value into a form, masking a region, or adding a note. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code> (switch to raw media space with <code>setStampSpace</code> below). Text uses the standard Helvetica font by default (keep it to WinAnsi / Latin-1), or an embedded TrueType/OpenType font registered with <code>addFontFile</code>/<code>addFont</code>. See the <a href="/positioning.html">Interactive positioning guide</a> to explore the anchors and coordinate spaces visually.</p>
       <div class="api"><code>fillRect(pageIndex, x, y, width, height, color = [1, 1, 1], opacity = 1.0) → boolean</code></div>
-      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left) → boolean</code></div>
-      <div class="api"><code>maskedText(pageIndex, x, y, width, height, text, size = 12, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left) → boolean</code></div>
-      <div class="api"><code>drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0) → boolean</code></div>
-      <p>All four return <code>false</code> if the page index does not exist. <code>rotationDeg</code> rotates the text or image counter-clockwise about its anchor <code>(x, y)</code>. <code>placeText</code>'s optional <code>align</code> (an <code>Align</code> value) shifts the start point along the baseline so the text is left/right/center aligned about <code>(x, y)</code> (<code>Justify</code> behaves like <code>Left</code>). <code>maskedText</code> bundles the mask-then-stamp pattern: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code>, then writes the text horizontally aligned per <code>align</code> and vertically centered within the box — handy for replacing a placeholder without hand-computing the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes (a Buffer or Uint8Array) and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
+      <div class="api"><code>placeText(pageIndex, x, y, text, size = 12, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left, fontId = -1, anchor = VerticalAnchor.Baseline) → boolean</code></div>
+      <div class="api"><code>maskedText(pageIndex, x, y, width, height, text, size = 12, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left, fontId = -1, valign = VerticalAlign.Middle, padding = null) → boolean</code></div>
+      <div class="api"><code>placeParagraph(pageIndex, x, y, width, text, { size?, color?, align?, fontId?, maxHeight?, lineHeight?, anchor?, rotationDeg? }?) → boolean</code></div>
+      <div class="api"><code>placeParagraphMeasured(pageIndex, x, y, width, text, opts?) → { lines, height }</code></div>
+      <div class="api"><code>drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0, anchor = ImageAnchor.Corner) → boolean</code></div>
+      <p>All return <code>false</code> if the page index (or <code>fontId</code>) does not exist. <code>rotationDeg</code> rotates the text or image counter-clockwise about its anchor <code>(x, y)</code>. <code>placeText</code>'s <code>align</code> (an <code>Align</code> value) shifts the start point along the baseline so the text is left/right/center aligned about <code>(x, y)</code> (<code>Justify</code> behaves like <code>Left</code>). <code>maskedText</code> bundles the mask-then-stamp pattern: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code>, then writes the text over it — handy for replacing a placeholder without hand-computing the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes (a Buffer or Uint8Array) scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("form.pdf");
 const { width, height } = rustpdf.measurePage(fs.readFileSync("form.pdf"), 0);
 
@@ -625,6 +627,55 @@ ed.maskedText(0, 60, height - 160, 200, 24, "APPROVED", 18,
 ed.drawImage(0, fs.readFileSync("logo.png"), 64, height - 200, 120, 48);
 ed.save("stamped.pdf");
 ed.close();</code></pre></div>
+
+      <h3>Embedded stamping fonts</h3>
+      <p>Register a TrueType/OpenType font and pass its <code>fontId</code> to <code>placeText</code>, <code>maskedText</code> or <code>placeParagraph</code> to stamp with the real font's glyphs and metrics (Unicode included) instead of the built-in Helvetica. The font is embedded as a subset, exactly like <code>Document.addFontFile</code> plus <code>showText</code>; <code>-1</code> (the default) keeps Helvetica.</p>
+      <div class="api"><code>addFontFile(path) → number</code> &nbsp; <code>addFont(data) → number</code></div>
+      <div class="code has-label"><span class="lbl">typescript</span><pre><code>const font: number = ed.addFontFile("TimesNewRoman.ttf");
+ed.placeText(0, 72, 500, "Assinatura — João", 14, [0, 0, 0], 0, Align.Left, font);</code></pre></div>
+
+      <h3>Vertical anchors</h3>
+      <p><code>placeText</code>'s <code>anchor</code> (a <code>VerticalAnchor</code> value) says what <code>y</code> means: <code>Baseline</code> (default, the historical behavior), <code>Top</code> (the text hangs from <code>y</code>: the baseline lands <code>ascent × size</code> below it, matching legacy fixed-position layout), <code>Bottom</code> (the descender line rests on <code>y</code>), or <code>LineTop</code>/<code>LineBottom</code>, which anchor via the <b>layout line box</b> (OS/2 win metrics, or typo × 1.2, plus a fixed half-leading of 0.21 em) and so reproduce the legacy engine's line placement exactly. Ascent/descent come from the selected font's metrics.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { VerticalAnchor, Align } = require("rustpdf");
+// same y a migrated legacy fixed-position layout call used — same visual result
+ed.placeText(0, 72, 500, "Total: € 1.234,00", 12, [0, 0, 0], 0,
+             Align.Left, -1, VerticalAnchor.LineBottom);</code></pre></div>
+
+      <h3>maskedText: vertical alignment &amp; padding</h3>
+      <p><code>valign</code> (a <code>VerticalAlign</code> value) controls where the line sits inside the box: <code>Middle</code> (default) keeps the historical cap-height centering, <code>Top</code> hangs the line from the top edge (baseline at <code>y + height − ascent × size</code>, top line-alignment in rectangle-based text APIs semantics), <code>Bottom</code> rests the descender line on the bottom edge. <code>padding</code> is the horizontal edge inset (points) for <code>Left</code>/<code>Right</code> alignment: text starts at <code>x + padding</code> (or ends at <code>x + width − padding</code>); <code>null</code> keeps the historical <code>min(0.15 × size, width / 4)</code>, and <code>0</code> starts flush with the box edge like rectangle-based DrawString APIs.</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { VerticalAlign, Align } = require("rustpdf");
+ed.maskedText(0, 60, 700, 220, 40, "Maria Silva", 12,
+              [0, 0, 0], [1, 1, 1], Align.Left, -1, VerticalAlign.Top, 0);</code></pre></div>
+
+      <h3>Wrapped paragraphs</h3>
+      <p><code>placeParagraph</code> breaks <code>text</code> into lines that fit <code>width</code> points (greedy, by word; <code>'\n'</code> forces a break) and draws them downward: with the default <code>anchor: VerticalAnchor.Top</code> the first baseline lands <code>ascent × size</code> below <code>y</code>, like legacy fixed-position layout. <code>align: Align.Justify</code> stretches the word gaps of every line but the last of each paragraph. <code>maxHeight</code> is a <b>ceiling</b>: lines whose descender would cross it are cut (a hard height ceiling). <code>anchor: Bottom</code>/<code>LineBottom</code> <b>bottom-pins</b> the block: its bottom rests on <code>y</code> and it grows upward by its real content height; with <code>maxHeight</code> the box is <code>[y, y+maxHeight]</code> and overflowing lines are cut from the top (the last lines stay pinned). <code>lineHeight</code> scales the default <code>1.2 × size</code> leading, and <code>rotationDeg</code> rotates the laid-out block about the anchor. <code>placeParagraphMeasured</code> additionally returns the number of lines drawn and the <b>consumed height</b> in points, so blocks can be stacked without re-measuring.</p>
+      <div class="code has-label"><span class="lbl">typescript</span><pre><code>import { EditableDoc, Align, VerticalAnchor } from "rustpdf";
+
+const notes = "Long remittance information that will not fit on one line…";
+const { lines, height } = ed.placeParagraphMeasured(0, 72, 720, 220, notes, {
+  size: 10, align: Align.Justify, maxHeight: 120,
+});
+// stack the next block right below the consumed height
+ed.placeParagraph(0, 72, 720 - height - 8, 220, "Second block", { size: 10 });
+
+// bottom-pinned: the block's bottom rests on y = 60 and grows upward
+ed.placeParagraph(0, 350, 60, 200, notes, {
+  size: 9, anchor: VerticalAnchor.Bottom, maxHeight: 90,
+});</code></pre></div>
+
+      <h3>Stamp coordinate space</h3>
+      <p><code>setStampSpace</code> chooses the coordinate space of all the positioned primitives above for subsequent calls. <code>StampSpace.Visible</code> (default) keeps the historical behavior: coordinates in the page's displayed space, compensating <code>/Rotate</code> so a <code>rotationDeg = 0</code> stamp reads upright on screen. <code>StampSpace.Media</code> interprets coordinates and <code>rotationDeg</code> in the raw PDF user space (the raw-coordinate semantics of legacy layout engines), never composing with the page's <code>/Rotate</code> or crop offset; use it to reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages. Watermarks and redaction are unaffected.</p>
+      <div class="api"><code>setStampSpace(space) → this</code></div>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { StampSpace } = require("rustpdf");
+ed.setStampSpace(StampSpace.Media);        // legacy layout engines-compatible raw user space
+ed.placeText(0, 100, 100, "as legacy layout engines placed it", 10);
+ed.setStampSpace(StampSpace.Visible);      // back to the default</code></pre></div>
+
+      <h3>Image rotation anchor</h3>
+      <p><code>drawImage</code>'s <code>anchor</code> (an <code>ImageAnchor</code> value) controls how a rotated image is anchored at <code>(x, y)</code>. With <code>Corner</code> (the default), <code>(x, y)</code> is the image's own lower-left corner, which the image sweeps around when rotated. With <code>BoundingBox</code>, the <b>rotated image's bounding box</b> lands with its lower-left at <code>(x, y)</code> (bounding-box layout semantics: the drawn pixels always sit at/above/right of the anchor; a 90° image occupies <code>[x, x+height] × [y, y+width]</code>).</p>
+      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { ImageAnchor } = require("rustpdf");
+ed.drawImage(0, fs.readFileSync("stamp.png"), 400, 600, 80, 40, 90.0,
+             ImageAnchor.BoundingBox);</code></pre></div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -954,6 +1005,34 @@ fs.writeFileSync("page1.png", renderPageToPng(data, 0, 150.0));</code></pre></di
         <tr><td><code>FacturxProfile.Basic</code></td><td>Basic, with line items</td></tr>
         <tr><td><code>FacturxProfile.EN16931</code></td><td>EN 16931 (Comfort): the interoperable core, default</td></tr>
         <tr><td><code>FacturxProfile.Extended</code></td><td>EN 16931 plus extensions</td></tr>
+      </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>What <code>y</code> means (placeText / placeParagraph)</th></tr>
+        <tr><td><code>VerticalAnchor.Baseline</code></td><td>The (first) baseline: the historical default of <code>placeText</code></td></tr>
+        <tr><td><code>VerticalAnchor.Top</code></td><td>Top of the text: baseline lands <code>ascent × size</code> below <code>y</code> (legacy fixed-position layout); default of <code>placeParagraph</code></td></tr>
+        <tr><td><code>VerticalAnchor.Bottom</code></td><td>Bottom of the text: descender line rests on <code>y</code>; bottom-pins a paragraph</td></tr>
+        <tr><td><code>VerticalAnchor.LineTop</code></td><td>Top of the layout line box (exact legacy layout engines line placement)</td></tr>
+        <tr><td><code>VerticalAnchor.LineBottom</code></td><td>Bottom of the layout line box; bottom-pins a paragraph with line-box leading</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Line placement inside a <code>maskedText</code> box</th></tr>
+        <tr><td><code>VerticalAlign.Top</code></td><td>Line hangs from the top edge (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>VerticalAlign.Middle</code></td><td>Cap-height centering: the historical default</td></tr>
+        <tr><td><code>VerticalAlign.Bottom</code></td><td>Descender line rests on the bottom edge</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Coordinate space of the positioned primitives</th></tr>
+        <tr><td><code>StampSpace.Visible</code></td><td>Displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>StampSpace.Media</code></td><td>Raw PDF user space (legacy layout semantics), ignoring <code>/Rotate</code></td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>How a rotated <code>drawImage</code> is anchored</th></tr>
+        <tr><td><code>ImageAnchor.Corner</code></td><td>The image's own lower-left corner sits at <code>(x, y)</code> (default)</td></tr>
+        <tr><td><code>ImageAnchor.BoundingBox</code></td><td>The rotated image's bounding box lands with its lower-left at <code>(x, y)</code> (legacy layout engines)</td></tr>
       </table>
 
       <!-- ERRORS -->

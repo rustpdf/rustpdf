@@ -9,12 +9,12 @@
 
     <!-- NuGet package metadata -->
     <PackageId>RustPdf</PackageId>
-    <Version>0.4.6</Version>
+    <Version>0.4.7</Version>
     <Authors>rust-pdf</Authors>
     <Company>rust-pdf</Company>
-    <Description>Idiomatic .NET binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) over its C ABI. Bundles the native libpdf_ffi for osx-arm64, osx-x64, linux-x64, linux-arm64 and win-x64 — no native build required.</Description>
+    <Description>Generate, edit, sign and process PDFs in .NET: PDF/A, AES-256 encryption, digital signatures (PAdES) with HSM support, forms, stamping, redaction, text extraction and page rendering. Works out of the box on macOS, Linux and Windows. Full docs: https://rustpdf.dev/docs/csharp</Description>
     <Copyright>Copyright (c) rust-pdf</Copyright>
-    <PackageProjectUrl>https://github.com/rustpdf/rustpdf</PackageProjectUrl>
+    <PackageProjectUrl>https://rustpdf.dev/docs/csharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/rustpdf/rustpdf</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>pdf;pdfa;signing;pades;acroform;accessibility;encryption</PackageTags>

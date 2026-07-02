@@ -191,9 +191,18 @@ pub(crate) fn collect_usage(obj: &TextObject, fonts: &[RegisteredFont], usage: &
         let bounds: Vec<usize> = boundaries.into_iter().collect();
 
         let u = &mut usage[run.font.0];
+        // When one input cluster shapes to several glyphs (a decomposed accent,
+        // a Thai/Indic base+mark, etc.), only the *first* glyph of the cluster
+        // carries the cluster's text; the rest map to nothing. Otherwise each
+        // glyph would re-emit the whole cluster string and extraction would read
+        // "ắ" back as "ắắ". Clusters already assigned in this run are tracked.
+        let mut assigned_clusters: BTreeSet<usize> = BTreeSet::new();
         for g in &glyphs {
             u.used_gids.insert(g.gid);
             let start = g.cluster as usize;
+            if !assigned_clusters.insert(start) {
+                continue; // a later glyph of an already-mapped cluster
+            }
             let end = bounds
                 .iter()
                 .copied()

@@ -387,12 +387,17 @@ fn parse_postscript(reader: &PdfReader, obj: &Object, dict: &Dict) -> Function {
     }
 }
 
+/// Nesting/recursion cap for Type 4 (PostScript calculator) functions. These
+/// have no loops, so legitimate `{…}` nesting is shallow; the bound stops a
+/// hostile `{{{{…` from overflowing the native stack during parse or eval.
+const MAX_PS_DEPTH: u32 = 100;
+
 fn lex_ps(data: &[u8]) -> Vec<PsTok> {
     let mut pos = 0;
-    parse_ps_block(data, &mut pos, false)
+    parse_ps_block(data, &mut pos, false, 0)
 }
 
-fn parse_ps_block(data: &[u8], pos: &mut usize, nested: bool) -> Vec<PsTok> {
+fn parse_ps_block(data: &[u8], pos: &mut usize, nested: bool, depth: u32) -> Vec<PsTok> {
     let mut out = Vec::new();
     while *pos < data.len() {
         let c = data[*pos];
@@ -402,7 +407,14 @@ fn parse_ps_block(data: &[u8], pos: &mut usize, nested: bool) -> Vec<PsTok> {
         }
         if c == b'{' {
             *pos += 1;
-            let inner = parse_ps_block(data, pos, true);
+            let inner = if depth >= MAX_PS_DEPTH {
+                // Too deep: consume the braces but drop the contents so we
+                // neither recurse further nor mis-balance the outer scan.
+                skip_ps_block(data, pos);
+                Vec::new()
+            } else {
+                parse_ps_block(data, pos, true, depth + 1)
+            };
             out.push(PsTok::Proc(inner));
             continue;
         }
@@ -442,6 +454,27 @@ fn parse_ps_block(data: &[u8], pos: &mut usize, nested: bool) -> Vec<PsTok> {
         // unknown token: ignore
     }
     out
+}
+
+/// Consume a `{…}` block's bytes (already past the opening brace) without
+/// building any tokens, tracking brace balance iteratively. Used when the
+/// nesting cap is hit so the outer parser stays in sync.
+fn skip_ps_block(data: &[u8], pos: &mut usize) {
+    let mut balance = 1u32;
+    while *pos < data.len() && balance > 0 {
+        match data[*pos] {
+            b'{' => balance += 1,
+            b'}' => balance -= 1,
+            b'%' => {
+                while *pos < data.len() && data[*pos] != b'\n' {
+                    *pos += 1;
+                }
+                continue;
+            }
+            _ => {}
+        }
+        *pos += 1;
+    }
 }
 
 fn ps_op(s: &str) -> Option<PsOp> {
@@ -494,13 +527,20 @@ fn ps_op(s: &str) -> Option<PsOp> {
 }
 
 fn run_ps(prog: &[PsTok], stack: &mut Vec<f32>) {
+    run_ps_depth(prog, stack, 0);
+}
+
+fn run_ps_depth(prog: &[PsTok], stack: &mut Vec<f32>, depth: u32) {
+    if depth >= MAX_PS_DEPTH {
+        return;
+    }
     // Pending procedure blocks for if/ifelse are tracked as index ranges.
     let mut procs: Vec<&[PsTok]> = Vec::new();
     for tok in prog {
         match tok {
             PsTok::Num(n) => stack.push(*n),
             PsTok::Proc(p) => procs.push(p),
-            PsTok::Op(op) => apply_ps(*op, stack, &mut procs),
+            PsTok::Op(op) => apply_ps(*op, stack, &mut procs, depth),
         }
     }
 }
@@ -516,7 +556,7 @@ fn bool_f(b: bool) -> f32 {
     }
 }
 
-fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>) {
+fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>, depth: u32) {
     use PsOp::*;
     match op {
         Add => {
@@ -537,19 +577,14 @@ fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>) {
         }
         Idiv => {
             let (b, a) = (pop(s), pop(s));
-            s.push(if b != 0.0 {
-                (a as i64 / b as i64) as f32
-            } else {
-                0.0
-            });
+            // `checked_div` covers both b==0 and the i64::MIN / -1 overflow.
+            let r = (a as i64).checked_div(b as i64).unwrap_or(0);
+            s.push(r as f32);
         }
         Mod => {
             let (b, a) = (pop(s), pop(s));
-            s.push(if b != 0.0 {
-                (a as i64 % b as i64) as f32
-            } else {
-                0.0
-            });
+            let r = (a as i64).checked_rem(b as i64).unwrap_or(0);
+            s.push(r as f32);
         }
         Neg => {
             let a = pop(s);
@@ -692,7 +727,27 @@ fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>) {
         }
         Bitshift => {
             let (sh, a) = (pop(s) as i64, pop(s) as i64);
-            let v = if sh >= 0 { a << sh } else { a >> (-sh) };
+            // Shift counts are attacker-controlled: a shift of >= 64 (or the
+            // negation of a large-negative count) would panic in debug and is
+            // UB-adjacent in release. Clamp to a well-defined 0 past 63 bits.
+            let v = if sh >= 0 {
+                if sh >= 64 {
+                    0
+                } else {
+                    a << sh
+                }
+            } else {
+                let r = sh.unsigned_abs();
+                if r >= 64 {
+                    if a < 0 {
+                        -1
+                    } else {
+                        0
+                    }
+                } else {
+                    a >> r
+                }
+            };
             s.push(v as f32);
         }
         True => s.push(1.0),
@@ -702,7 +757,7 @@ fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>) {
             let cond = pop(s);
             if cond != 0.0 {
                 if let Some(p) = proc {
-                    run_ps(p, s);
+                    run_ps_depth(p, s, depth + 1);
                 }
             }
         }
@@ -712,7 +767,7 @@ fn apply_ps(op: PsOp, s: &mut Vec<f32>, procs: &mut Vec<&[PsTok]>) {
             let cond = pop(s);
             let chosen = if cond != 0.0 { p1 } else { p2 };
             if let Some(p) = chosen {
-                run_ps(p, s);
+                run_ps_depth(p, s, depth + 1);
             }
         }
     }
@@ -824,6 +879,38 @@ mod tests {
         };
         assert_eq!(f.eval(&[8.0])[0], 100.0);
         assert_eq!(f.eval(&[2.0])[0], 0.0);
+    }
+
+    #[test]
+    fn postscript_deeply_nested_braces_do_not_overflow_stack() {
+        // 200k nested `{` used to recurse once per brace at parse time,
+        // overflowing the native stack. It must now parse without crashing.
+        let mut src = vec![b'{'; 200_001];
+        src.extend(std::iter::repeat_n(b'}', 200_001));
+        let _ = lex_ps(&src); // must return, not abort
+    }
+
+    #[test]
+    fn postscript_extreme_operands_do_not_panic() {
+        // bitshift >= 64, idiv/mod by zero and i64::MIN / -1 must all be
+        // well-defined rather than panicking.
+        for prog_src in [
+            b"{ 1 1000 bitshift }".as_slice(),
+            b"{ 1 -1000 bitshift }".as_slice(),
+            b"{ 5 0 idiv }".as_slice(),
+            b"{ 5 0 mod }".as_slice(),
+        ] {
+            let prog = match lex_ps(prog_src).into_iter().next() {
+                Some(PsTok::Proc(p)) => p,
+                _ => unreachable!(),
+            };
+            let f = Function::PostScript {
+                domain: vec![(-1e30, 1e30)],
+                range: vec![(-1e30, 1e30)],
+                prog,
+            };
+            let _ = f.eval(&[1.0]); // must not panic
+        }
     }
 
     #[test]

@@ -175,12 +175,14 @@ impl Document {
 
         // Body: one indirect object per filled slot. Record byte offsets for
         // the cross-reference table.
-        let mut offsets: Vec<u32> = vec![0; self.objects.len()];
+        // u64 offsets: the classic 10-digit xref field holds up to ~10 GB, so a
+        // u32 would silently truncate byte offsets past 4 GiB in large files.
+        let mut offsets: Vec<u64> = vec![0; self.objects.len()];
         for (number, slot) in self.objects.iter().enumerate().skip(1) {
             let object = slot
                 .as_ref()
                 .ok_or(WriteError::UnassignedObject(number as u32))?;
-            offsets[number] = out.len() as u32;
+            offsets[number] = out.len() as u64;
             write_decimal(number as u64, &mut out);
             out.extend_from_slice(b" 0 obj\n");
             object.write_to(&mut out);
@@ -195,8 +197,8 @@ impl Document {
         out.push(b'\n');
         // Object 0: the head of the free list, generation 65535.
         out.extend_from_slice(b"0000000000 65535 f\r\n");
-        for offset in offsets.iter().skip(1) {
-            write_xref_entry(*offset, 0, b'n', &mut out);
+        for &offset in offsets.iter().skip(1) {
+            write_xref_entry(offset, 0, b'n', &mut out);
         }
 
         // Trailer.
@@ -260,8 +262,12 @@ impl Document {
         };
         let total = xref_num as usize + 1;
 
-        // Cross-reference entries: (type, field2, field3). Slot 0 is the free head.
-        let mut entries: Vec<(u8, u32, u32)> = vec![(0, 0, 65535); total];
+        // Cross-reference entries: (type, field2, field3). Slot 0 is the free
+        // head. field2 is u64 so byte offsets past 4 GiB are not truncated;
+        // field3 (ObjStm member index or generation) is u32 so a stream with
+        // more than 65 535 members is not wrapped. The `/W` widths below are
+        // sized to the actual maxima, so both stay self-describing.
+        let mut entries: Vec<(u8, u64, u32)> = vec![(0, 0, 65535); total];
 
         // Build the object stream: a header of "objnum offset" pairs followed by
         // the concatenated object bodies; `/First` is the header length.
@@ -280,7 +286,7 @@ impl Document {
                 header.push(b' ');
                 write_decimal(off as u64, &mut header);
                 header.push(b' ');
-                entries[num as usize] = (2, objstm_num, idx as u32);
+                entries[num as usize] = (2, objstm_num as u64, idx as u32);
             }
             let first = header.len();
             let mut data = header;
@@ -309,7 +315,7 @@ impl Document {
 
         // Standalone stream objects.
         for &num in &stream_objs {
-            entries[num as usize] = (1, out.len() as u32, 0);
+            entries[num as usize] = (1, out.len() as u64, 0);
             write_decimal(num as u64, &mut out);
             out.extend_from_slice(b" 0 obj\n");
             self.objects[num as usize]
@@ -320,7 +326,7 @@ impl Document {
         }
         // The object stream itself.
         if let Some(stm) = objstm {
-            entries[objstm_num as usize] = (1, out.len() as u32, 0);
+            entries[objstm_num as usize] = (1, out.len() as u64, 0);
             write_decimal(objstm_num as u64, &mut out);
             out.extend_from_slice(b" 0 obj\n");
             Object::Stream(stm).write_to(&mut out);
@@ -329,12 +335,19 @@ impl Document {
 
         // The cross-reference stream (its own entry is type 1 at this offset).
         let xref_offset = out.len();
-        entries[xref_num as usize] = (1, xref_offset as u32, 0);
-        let mut xdata = Vec::with_capacity(total * 7);
+        entries[xref_num as usize] = (1, xref_offset as u64, 0);
+        // Size field 2/3 to the actual maxima, keeping the historical minimums
+        // (4 and 2 bytes) so normal files are byte-identical, but widening when
+        // an offset exceeds 4 GiB or an ObjStm index exceeds 65 535.
+        let max_f2 = entries.iter().map(|e| e.1).max().unwrap_or(0);
+        let max_f3 = entries.iter().map(|e| e.2).max().unwrap_or(0);
+        let w2 = byte_width(max_f2).max(4);
+        let w3 = byte_width(max_f3 as u64).max(2);
+        let mut xdata = Vec::with_capacity(total * (1 + w2 + w3));
         for &(t, f2, f3) in &entries {
             xdata.push(t);
-            xdata.extend_from_slice(&f2.to_be_bytes());
-            xdata.extend_from_slice(&(f3 as u16).to_be_bytes());
+            xdata.extend_from_slice(&f2.to_be_bytes()[8 - w2..]);
+            xdata.extend_from_slice(&(f3 as u64).to_be_bytes()[8 - w3..]);
         }
         let mut xdict = Dict::new()
             .with("Type", Object::name("XRef"))
@@ -344,8 +357,8 @@ impl Document {
                 "W",
                 Object::Array(vec![
                     Object::Integer(1),
-                    Object::Integer(4),
-                    Object::Integer(2),
+                    Object::Integer(w2 as i64),
+                    Object::Integer(w3 as i64),
                 ]),
             )
             .with(
@@ -382,6 +395,11 @@ impl Document {
 }
 
 /// zlib-compress (`FlateDecode`) for object/cross-reference streams.
+/// Minimum number of big-endian bytes needed to represent `v` (1..=8).
+fn byte_width(v: u64) -> usize {
+    (64 - v.leading_zeros()).max(1).div_ceil(8) as usize
+}
+
 fn flate_encode(data: &[u8]) -> Vec<u8> {
     use flate2::{write::ZlibEncoder, Compression};
     use std::io::Write;
@@ -393,8 +411,8 @@ fn flate_encode(data: &[u8]) -> Vec<u8> {
 }
 
 /// Write a 20-byte classic xref entry: `nnnnnnnnnn ggggg t\r\n`.
-fn write_xref_entry(offset: u32, generation: u16, kind: u8, out: &mut Vec<u8>) {
-    write_zero_padded(offset as u64, 10, out);
+fn write_xref_entry(offset: u64, generation: u16, kind: u8, out: &mut Vec<u8>) {
+    write_zero_padded(offset, 10, out);
     out.push(b' ');
     write_zero_padded(generation as u64, 5, out);
     out.push(b' ');
@@ -445,6 +463,20 @@ mod tests {
     fn missing_root_errors() {
         let doc = Document::new(PdfVersion::V1_7);
         assert_eq!(doc.write().unwrap_err(), WriteError::MissingRoot);
+    }
+
+    #[test]
+    fn byte_width_covers_field_boundaries() {
+        assert_eq!(byte_width(0), 1);
+        assert_eq!(byte_width(255), 1);
+        assert_eq!(byte_width(256), 2);
+        assert_eq!(byte_width(65_535), 2);
+        // The exact boundary that used to wrap the ObjStm index into a u16.
+        assert_eq!(byte_width(65_536), 3);
+        assert_eq!(byte_width(0xFFFF_FFFF), 4);
+        // A >4 GiB offset needs a 5th byte (the old u32 truncated here).
+        assert_eq!(byte_width(0x1_0000_0000), 5);
+        assert_eq!(byte_width(u64::MAX), 8);
     }
 
     #[test]

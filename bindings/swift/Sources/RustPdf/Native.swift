@@ -93,6 +93,18 @@ typealias HMaskedTextFn = (OpaquePointer?, Int32, Double, Double, Double, Double
                            UnsafeMutablePointer<Int32>?) -> Int32
 typealias HDrawImageFn  = (OpaquePointer?, Int32, UnsafePointer<UInt8>?, UInt, Double, Double,
                            Double, Double, Double, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HPlaceTextAnchoredFn = (OpaquePointer?, Int32, Double, Double, UnsafePointer<CChar>?, Double,
+                           Double, Double, Double, Double, Int32, Int32, Int32,
+                           UnsafeMutablePointer<Int32>?) -> Int32
+typealias HMaskedTextPadFn = (OpaquePointer?, Int32, Double, Double, Double, Double, UnsafePointer<CChar>?,
+                           Double, Double, Double, Double, Double, Double, Double, Int32, Int32,
+                           Double, Int32, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HPlaceParagraphAnchoredFn = (OpaquePointer?, Int32, Double, Double, Double,
+                           UnsafePointer<CChar>?, Double, Double, Double, Double, Int32, Int32,
+                           Int32, Double, Double, Double, UnsafeMutablePointer<Double>?,
+                           UnsafeMutablePointer<Int32>?, UnsafeMutablePointer<Int32>?) -> Int32
+typealias HDrawImageAnchoredFn = (OpaquePointer?, Int32, UnsafePointer<UInt8>?, UInt, Double, Double,
+                           Double, Double, Double, Int32, UnsafeMutablePointer<Int32>?) -> Int32
 typealias ExtractPageTextFn = (UnsafePointer<UInt8>?, UInt, UInt, OutBuf, OutLen) -> Int32
 typealias ExtractImagesFn = (UnsafePointer<UInt8>?, UInt, UnsafePointer<CChar>?,
                              UnsafeMutablePointer<UInt>?) -> Int32
@@ -216,6 +228,17 @@ final class Native {
     let pdf_editable_place_text_aligned: HPlaceTextAlignedFn = CRustPdf.pdf_editable_place_text_aligned
     let pdf_editable_masked_text: HMaskedTextFn = CRustPdf.pdf_editable_masked_text
     let pdf_editable_draw_image: HDrawImageFn = CRustPdf.pdf_editable_draw_image
+
+    // ---- editable: stamping fonts + anchored stamping primitives -------------
+    let pdf_editable_add_font_file: HCStrOutIdFn = CRustPdf.pdf_editable_add_font_file
+    let pdf_editable_add_font: HBytesOutIdFn = CRustPdf.pdf_editable_add_font
+    let pdf_editable_place_text_anchored: HPlaceTextAnchoredFn = CRustPdf.pdf_editable_place_text_anchored
+    let pdf_editable_masked_text_pad: HMaskedTextPadFn = CRustPdf.pdf_editable_masked_text_pad
+    let pdf_editable_place_paragraph_anchored: HPlaceParagraphAnchoredFn =
+        CRustPdf.pdf_editable_place_paragraph_anchored
+    let pdf_editable_set_stamp_space: H1IFn = CRustPdf.pdf_editable_set_stamp_space
+    let pdf_editable_draw_image_anchored: HDrawImageAnchoredFn = CRustPdf.pdf_editable_draw_image_anchored
+
     let pdf_editable_convert_to_pdfa: H1IFn = CRustPdf.pdf_editable_convert_to_pdfa
     let pdf_editable_set_version: H1IFn = CRustPdf.pdf_editable_set_version
     let pdf_editable_strip_pdfa: HFn = CRustPdf.pdf_editable_strip_pdfa

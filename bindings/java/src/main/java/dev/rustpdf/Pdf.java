@@ -445,7 +445,7 @@ public final class Pdf {
 
     /**
      * List the signature fields in {@code pdf} (detect existing signatures before
-     * signing — the iText {@code SignatureUtil.getSignatureNames} equivalent). An
+     * signing — the classic pre-sign signature-field inventory). An
      * empty list means there are no signature fields.
      */
     public static List<SignatureField> listSignatures(byte[] pdf) {

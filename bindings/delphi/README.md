@@ -1,9 +1,12 @@
-# RustPdf — Delphi / Free Pascal binding
+# RustPdf for Delphi / Free Pascal
 
-Idiomatic Object Pascal binding for the rust-pdf core over its C ABI
-(`libpdf_ffi`). One thin unit, **pure FFI** — no native compilation, no
-headers to install. Works with **Delphi** (10.x+, Windows/macOS/Linux) and
-**Free Pascal** (3.2+), since both speak the C calling convention natively.
+Generate, edit, sign and process PDFs from Delphi / Free Pascal: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. One thin unit, nothing to compile; works with Delphi 10.x+ and FPC 3.2+.
+
+## Documentation
+
+- **Full API reference:** https://rustpdf.dev/docs/delphi
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
 
 The unit dynamically loads the cdylib at run time, so there is no fixed link
 name: it finds the library via the `RUSTPDF_LIB` environment variable or by

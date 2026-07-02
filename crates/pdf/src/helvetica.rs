@@ -12,6 +12,14 @@
 /// above the baseline) — the visual height used to vertically center a line.
 pub const CAP_HEIGHT: f64 = 718.0;
 
+/// Helvetica ascender in 1000-unit glyph space (Adobe AFM `Ascender`), used to
+/// resolve top-anchored stamps (`VerticalAnchor::Top` / `VerticalAlign::Top`).
+pub const ASCENT: f64 = 718.0;
+
+/// Helvetica descender in 1000-unit glyph space (Adobe AFM `Descender`,
+/// negative — depth of descenders below the baseline).
+pub const DESCENT: f64 = -207.0;
+
 /// WinAnsi-indexed advance widths (1000 units/em). Control codes are 0.
 #[rustfmt::skip]
 const WIDTHS: [u16; 256] = [
@@ -52,10 +60,11 @@ const WIDTHS: [u16; 256] = [
 fn char_width(c: char) -> u16 {
     let code = c as u32;
     if code < 256 {
-        let w = WIDTHS[code as usize];
-        if w != 0 {
-            return w;
-        }
+        // The WinAnsi table is authoritative for the whole 0..256 range: a 0
+        // there is a control / undefined slot with genuinely no advance, not a
+        // cue to fall back to the 556 average (which mis-measured tabs/newlines
+        // by ~0.5 em and threw off centered/right-aligned stamp placement).
+        return WIDTHS[code as usize];
     }
     match c {
         '\u{2018}' | '\u{2019}' => 222, // ‘ ’

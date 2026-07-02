@@ -205,7 +205,7 @@ pub unsafe extern "C" fn pdf_document_add_font_file(
         match d.add_font_file(path) {
             Ok(id) => unsafe { write_id(out_id, id.index()) },
             Err(e) => {
-                set_last_error(format!("font load failed: {e}"));
+                set_last_error(format!("font load failed for '{path}': {e}"));
                 PdfStatus::Font
             }
         }

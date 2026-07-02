@@ -380,6 +380,82 @@ ffi_api! {
         *mut c_int,
     ) -> c_int;
 
+    // --- embedded-font stamping + anchored placement (issue #54) ---
+    fn pdf_editable_add_font_file(*mut RawEditable, *const c_char, *mut c_int) -> c_int;
+    fn pdf_editable_add_font(*mut RawEditable, *const u8, usize, *mut c_int) -> c_int;
+    fn pdf_editable_place_text_anchored(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
+        c_int,
+        c_int,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_masked_text_pad(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
+        c_int,
+        c_double,
+        c_int,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_place_paragraph_anchored(
+        *mut RawEditable,
+        c_int,
+        c_double,
+        c_double,
+        c_double,
+        *const c_char,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
+        c_int,
+        c_int,
+        c_double,
+        c_double,
+        c_double,
+        *mut c_double,
+        *mut c_int,
+        *mut c_int,
+    ) -> c_int;
+    fn pdf_editable_set_stamp_space(*mut RawEditable, c_int) -> c_int;
+    fn pdf_editable_draw_image_anchored(
+        *mut RawEditable,
+        c_int,
+        *const u8,
+        usize,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_double,
+        c_int,
+        *mut c_int,
+    ) -> c_int;
+
     // --- forms fill / flatten / watermark / redact / PDF-A convert (Tier 1 / 2) ---
     fn pdf_editable_set_checkbox(*mut RawEditable, *const c_char, c_int, *mut c_int) -> c_int;
     fn pdf_editable_set_radio(

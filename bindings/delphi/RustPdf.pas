@@ -38,7 +38,8 @@ type
     psEncrypt         = 9,
     psSign            = 10,
     psInvalidArgument = 11,
-    psLicense         = 12
+    psLicense         = 12,
+    psUnsupported     = 13
   );
 
   { PDF/A conformance level (argument to TPdfDocument.Pdfa). }
@@ -47,6 +48,34 @@ type
 
   { Paragraph alignment. }
   TPdfAlign = (paLeft, paRight, paCenter, paJustify);
+
+  { What Y means for TPdfEditable.PlaceText / PlaceParagraph. vaBaseline is the
+    historical PlaceText behavior (Y = baseline); vaTop hangs the text from Y
+    (baseline at Y - ascent x size, legacy fixed-position layout semantics); vaBottom
+    rests the descender line on Y. vaLineTop/vaLineBottom anchor via the legacy layout engines
+    "line box" (ascent+descent) -- for PlaceParagraph they also use the line-box
+    height as the leading basis, so a single line and a wrapped block agree
+    vertically. }
+  TVerticalAnchor = (vaBaseline, vaTop, vaBottom, vaLineTop, vaLineBottom);
+
+  { Vertical alignment of the line inside a TPdfEditable.MaskedText box:
+    vlMiddle is the historical cap-height centering; vlTop hangs the line from
+    the top edge (top line-alignment in rectangle-based text APIs semantics); vlBottom rests the
+    descender line on the bottom edge. }
+  TVerticalAlign = (vlTop, vlMiddle, vlBottom);
+
+  { Coordinate space of the positioned stamping primitives (FillRect,
+    PlaceText, MaskedText, PlaceParagraph, DrawImage). ssVisible (default):
+    coordinates in the page's displayed space, compensating /Rotate. ssMedia:
+    raw PDF user space (legacy fixed-position layout semantics) -- no composition
+    with the page's /Rotate or crop offset. }
+  TStampSpace = (ssVisible, ssMedia);
+
+  { How a rotated TPdfEditable.DrawImage is anchored: iaCorner (default)
+    rotates the image about its own lower-left corner at (X, Y); iaBoundingBox
+    lands the rotated image's bounding box with its lower-left at (X, Y)
+    (bounding-box layout semantics). }
+  TImageAnchor = (iaCorner, iaBoundingBox);
 
   { Embedded-file relationship (PDF/A-3 attachments). }
   TAFRelationship = (afSource, afData, afAlternative, afSupplement, afUnspecified);
@@ -334,34 +363,89 @@ type
       lower-left, y up), regardless of /Rotate. Returns False if the page does
       not exist. Issue #45 P1. }
     function FillRect(PageIndex: Integer; X, Y, Width, Height, R, G, B, Opacity: Double): Boolean;
-    { Draw a line of standard-Helvetica text with its baseline at (X, Y) on page
-      PageIndex (0-based), RGB (each 0..1). Coordinates are in the page's VISIBLE
-      space (origin lower-left, y up), regardless of /Rotate; RotationDeg rotates
-      the text counter-clockwise about the (X, Y) anchor. Returns False if the
-      page does not exist. Issue #45 P1. }
+    { Register a TrueType/OpenType stamping font (from a file path). The id is
+      accepted by the FontId parameter of PlaceText / MaskedText /
+      PlaceParagraph; the font is embedded as a subset, so stamped text renders
+      with the real font's glyphs and metrics. }
+    function AddFontFile(const Path: string): Integer;
+    { Register a stamping font from raw TrueType/OpenType bytes. See AddFontFile. }
+    function AddFont(const Data: TBytes): Integer;
+    { Choose the coordinate space of the positioned stamping primitives
+      (FillRect, PlaceText, MaskedText, PlaceParagraph, DrawImage) for
+      subsequent calls: ssVisible (default, the page's displayed space,
+      compensating /Rotate) or ssMedia (raw PDF user space, legacy layout semantics).
+      Watermarks and redaction are unaffected. }
+    procedure SetStampSpace(Space: TStampSpace);
+    { Draw a line of text with its baseline at (X, Y) on page PageIndex
+      (0-based), RGB (each 0..1). Coordinates are in the page's VISIBLE space
+      (origin lower-left, y up), regardless of /Rotate (see SetStampSpace);
+      RotationDeg rotates the text counter-clockwise about the (X, Y) anchor.
+      FontId (from AddFontFile/AddFont) stamps with an embedded font; -1 uses
+      the built-in Helvetica. Anchor says what Y means (vaBaseline = the
+      historical baseline). Returns False if the page does not exist.
+      Issue #45 P1. }
     function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String;
                        Size, R, G, B, RotationDeg: Double;
-                       Align: TPdfAlign = paLeft): Boolean;
+                       Align: TPdfAlign = paLeft; FontId: Integer = -1;
+                       Anchor: TVerticalAnchor = vaBaseline): Boolean;
+    { Stamp a paragraph with automatic word wrapping: Text is broken into lines
+      that fit Width points (#10 forces a break) and drawn downward from
+      (X, Y). Anchor says what Y means for the block: vaTop (default) is the
+      top of the box (first baseline at Y - ascent x Size, legacy layout engines
+      fixed-position layout); vaBaseline is the first line's baseline;
+      vaBottom/vaLineBottom pin the block's BOTTOM to Y (it grows upward by its
+      real content height). MaxHeight > 0 is a height ceiling that truncates
+      overflowing lines (0 = unlimited); LineHeight scales the default
+      1.2 x Size leading. FontId as in PlaceText (the embedded font's metrics
+      drive the break points). RotationDeg rotates the laid-out block
+      counter-clockwise about the (X, Y) anchor. Returns False if the page (or
+      font) was missing or the box was invalid. }
+    function PlaceParagraph(PageIndex: Integer; X, Y, Width: Double;
+                            const Text: UTF8String; Size: Double = 12.0;
+                            R: Double = 0.0; G: Double = 0.0; B: Double = 0.0;
+                            Align: TPdfAlign = paLeft; FontId: Integer = -1;
+                            MaxHeight: Double = 0.0; LineHeight: Double = 1.0;
+                            Anchor: TVerticalAnchor = vaTop;
+                            RotationDeg: Double = 0.0): Boolean;
+    { Like PlaceParagraph but also reports the number of lines drawn and the
+      consumed block height in points (top of the first drawn line's box to the
+      bottom of the last one's; 0 when nothing fit) -- stack blocks without
+      re-measuring. }
+    function PlaceParagraphMeasured(PageIndex: Integer; X, Y, Width: Double;
+                                    const Text: UTF8String; Size, R, G, B: Double;
+                                    Align: TPdfAlign; FontId: Integer;
+                                    MaxHeight, LineHeight: Double;
+                                    Anchor: TVerticalAnchor; RotationDeg: Double;
+                                    out Lines: Integer; out Height: Double): Boolean;
     { Draw a line of standard-Helvetica text over an opaque background box
       [X, Y, X+Width, Y+Height] on page PageIndex (0-based): fills the box in the
       bg colour (each 0..1), then writes Text (Size points, text colour each 0..1)
-      horizontally aligned per Align and vertically centred in the box. Coordinates
-      are in the page's VISIBLE space (origin lower-left, y up), regardless of
-      /Rotate. Text colour defaults to black, background to white. Returns False if
-      the page does not exist. Issue #50. }
+      horizontally aligned per Align and vertically per VAlign (vlMiddle =
+      historical cap-height centering) in the box. Coordinates are in the page's
+      VISIBLE space (origin lower-left, y up), regardless of /Rotate. Text colour
+      defaults to black, background to white. FontId (from AddFontFile/AddFont)
+      stamps with an embedded font; -1 uses the built-in Helvetica. Padding is
+      the horizontal edge inset (points) for paLeft/paRight (< 0 keeps the
+      historical min(0.15 x Size, Width / 4); 0 starts flush with the box edge).
+      Returns False if the page does not exist. Issue #50. }
     function MaskedText(PageIndex: Integer; X, Y, Width, Height: Double;
                         const Text: UTF8String; Size: Double;
                         TextR: Double = 0.0; TextG: Double = 0.0; TextB: Double = 0.0;
                         BgR: Double = 1.0; BgG: Double = 1.0; BgB: Double = 1.0;
-                        Align: TPdfAlign = paLeft): Boolean;
+                        Align: TPdfAlign = paLeft; FontId: Integer = -1;
+                        VAlign: TVerticalAlign = vlMiddle;
+                        Padding: Double = -1.0): Boolean;
     { Draw an image (PNG or JPEG bytes; the core dispatches on the signature) on
       page PageIndex (0-based), the image's lower-left corner at (X, Y), scaled to
       Width x Height points. Coordinates are in the page's VISIBLE space (origin
       lower-left, y up), regardless of /Rotate; RotationDeg rotates the image
-      counter-clockwise about the (X, Y) corner. Returns False if the page does
-      not exist. Issue #50. }
+      counter-clockwise about the anchor: iaCorner (default) is the image's own
+      lower-left corner at (X, Y); iaBoundingBox lands the rotated image's
+      bounding box with its lower-left at (X, Y) (bounding-box layout semantics).
+      Returns False if the page does not exist. Issue #50. }
     function DrawImage(PageIndex: Integer; const Image: TBytes;
-                       X, Y, Width, Height, RotationDeg: Double): Boolean;
+                       X, Y, Width, Height, RotationDeg: Double;
+                       Anchor: TImageAnchor = iaCorner): Boolean;
     function ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable;
     { Set the PDF version header (0=1.4, 1=1.5, 2=1.7, 3=2.0). }
     function SetVersion(V: Integer): TPdfEditable;
@@ -633,6 +717,13 @@ type
   Tpdf_editable_place_text_aligned = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; align: Integer; out out_found: Integer): Integer; cdecl;
   Tpdf_editable_masked_text = function(ed: Pointer; index: Integer; x, y, width, height: Double; text: PAnsiChar; size, text_r, text_g, text_b, bg_r, bg_g, bg_b: Double; align: Integer; out out_found: Integer): Integer; cdecl;
   Tpdf_extract_page_text    = function(data: PByte; len: NativeUInt; page_index: NativeUInt; out outptr: PByte; out outlen: NativeUInt): Integer; cdecl;
+  Tpdf_editable_add_font_file = function(ed: Pointer; path: PAnsiChar; out outid: Integer): Integer; cdecl;
+  Tpdf_editable_add_font    = function(ed: Pointer; data: PByte; len: NativeUInt; out outid: Integer): Integer; cdecl;
+  Tpdf_editable_place_text_anchored = function(ed: Pointer; index: Integer; x, y: Double; text: PAnsiChar; size, r, g, b, rotation_deg: Double; align, anchor, font_id: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_masked_text_pad = function(ed: Pointer; index: Integer; x, y, width, height: Double; text: PAnsiChar; size, text_r, text_g, text_b, bg_r, bg_g, bg_b: Double; align, valign: Integer; pad: Double; font_id: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_place_paragraph_anchored = function(ed: Pointer; index: Integer; x, y, width: Double; text: PAnsiChar; size, r, g, b: Double; align, anchor, font_id: Integer; max_height, line_height, rotation_deg: Double; out out_height: Double; out out_lines: Integer; out out_found: Integer): Integer; cdecl;
+  Tpdf_editable_set_stamp_space = function(ed: Pointer; space: Integer): Integer; cdecl;
+  Tpdf_editable_draw_image_anchored = function(ed: Pointer; index: Integer; data: PByte; len: NativeUInt; x, y, width, height, rotation_deg: Double; anchor: Integer; out out_found: Integer): Integer; cdecl;
 
 { ---- deferred / external signing (issue #41) ---- }
 
@@ -787,6 +878,13 @@ var
   Fpdf_editable_place_text_aligned: Tpdf_editable_place_text_aligned;
   Fpdf_editable_masked_text: Tpdf_editable_masked_text;
   Fpdf_extract_page_text: Tpdf_extract_page_text;
+  Fpdf_editable_add_font_file: Tpdf_editable_add_font_file;
+  Fpdf_editable_add_font: Tpdf_editable_add_font;
+  Fpdf_editable_place_text_anchored: Tpdf_editable_place_text_anchored;
+  Fpdf_editable_masked_text_pad: Tpdf_editable_masked_text_pad;
+  Fpdf_editable_place_paragraph_anchored: Tpdf_editable_place_paragraph_anchored;
+  Fpdf_editable_set_stamp_space: Tpdf_editable_set_stamp_space;
+  Fpdf_editable_draw_image_anchored: Tpdf_editable_draw_image_anchored;
   Fpdf_sign_begin: Tpdf_sign_begin;
   Fpdf_sign_complete: Tpdf_sign_complete;
   Fpdf_sign_with: Tpdf_sign_with;
@@ -990,6 +1088,13 @@ begin
   Fpdf_editable_place_text_aligned := Tpdf_editable_place_text_aligned(Bind('pdf_editable_place_text_aligned'));
   Fpdf_editable_masked_text := Tpdf_editable_masked_text(Bind('pdf_editable_masked_text'));
   Fpdf_extract_page_text := Tpdf_extract_page_text(Bind('pdf_extract_page_text'));
+  Fpdf_editable_add_font_file := Tpdf_editable_add_font_file(Bind('pdf_editable_add_font_file'));
+  Fpdf_editable_add_font := Tpdf_editable_add_font(Bind('pdf_editable_add_font'));
+  Fpdf_editable_place_text_anchored := Tpdf_editable_place_text_anchored(Bind('pdf_editable_place_text_anchored'));
+  Fpdf_editable_masked_text_pad := Tpdf_editable_masked_text_pad(Bind('pdf_editable_masked_text_pad'));
+  Fpdf_editable_place_paragraph_anchored := Tpdf_editable_place_paragraph_anchored(Bind('pdf_editable_place_paragraph_anchored'));
+  Fpdf_editable_set_stamp_space := Tpdf_editable_set_stamp_space(Bind('pdf_editable_set_stamp_space'));
+  Fpdf_editable_draw_image_anchored := Tpdf_editable_draw_image_anchored(Bind('pdf_editable_draw_image_anchored'));
   Fpdf_sign_begin := Tpdf_sign_begin(Bind('pdf_sign_begin'));
   Fpdf_sign_complete := Tpdf_sign_complete(Bind('pdf_sign_complete'));
   Fpdf_sign_with := Tpdf_sign_with(Bind('pdf_sign_with'));
@@ -2054,38 +2159,98 @@ begin
   Result := found <> 0;
 end;
 
+function TPdfEditable.AddFontFile(const Path: string): Integer;
+var
+  up: UTF8String;
+  id: Integer;
+begin
+  up := U8(Path);
+  id := 0;
+  Check(Fpdf_editable_add_font_file(H, PAnsiChar(up), id));
+  Result := id;
+end;
+
+function TPdfEditable.AddFont(const Data: TBytes): Integer;
+var
+  id: Integer;
+begin
+  id := 0;
+  Check(Fpdf_editable_add_font(H, BytePtr(Data), Length(Data), id));
+  Result := id;
+end;
+
+procedure TPdfEditable.SetStampSpace(Space: TStampSpace);
+begin
+  Check(Fpdf_editable_set_stamp_space(H, Ord(Space)));
+end;
+
 function TPdfEditable.PlaceText(PageIndex: Integer; X, Y: Double;
   const Text: UTF8String; Size, R, G, B, RotationDeg: Double;
-  Align: TPdfAlign): Boolean;
+  Align: TPdfAlign; FontId: Integer; Anchor: TVerticalAnchor): Boolean;
 var
   found: Integer;
 begin
   found := 0;
-  Check(Fpdf_editable_place_text_aligned(H, PageIndex, X, Y, PAnsiChar(Text), Size,
-        R, G, B, RotationDeg, Ord(Align), found));
+  Check(Fpdf_editable_place_text_anchored(H, PageIndex, X, Y, PAnsiChar(Text), Size,
+        R, G, B, RotationDeg, Ord(Align), Ord(Anchor), FontId, found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.PlaceParagraph(PageIndex: Integer; X, Y, Width: Double;
+  const Text: UTF8String; Size, R, G, B: Double; Align: TPdfAlign;
+  FontId: Integer; MaxHeight, LineHeight: Double; Anchor: TVerticalAnchor;
+  RotationDeg: Double): Boolean;
+var
+  height: Double;
+  lines, found: Integer;
+begin
+  height := 0.0;
+  lines := 0;
+  found := 0;
+  Check(Fpdf_editable_place_paragraph_anchored(H, PageIndex, X, Y, Width,
+        PAnsiChar(Text), Size, R, G, B, Ord(Align), Ord(Anchor), FontId,
+        MaxHeight, LineHeight, RotationDeg, height, lines, found));
+  Result := found <> 0;
+end;
+
+function TPdfEditable.PlaceParagraphMeasured(PageIndex: Integer; X, Y, Width: Double;
+  const Text: UTF8String; Size, R, G, B: Double; Align: TPdfAlign;
+  FontId: Integer; MaxHeight, LineHeight: Double; Anchor: TVerticalAnchor;
+  RotationDeg: Double; out Lines: Integer; out Height: Double): Boolean;
+var
+  found: Integer;
+begin
+  Lines := 0;
+  Height := 0.0;
+  found := 0;
+  Check(Fpdf_editable_place_paragraph_anchored(H, PageIndex, X, Y, Width,
+        PAnsiChar(Text), Size, R, G, B, Ord(Align), Ord(Anchor), FontId,
+        MaxHeight, LineHeight, RotationDeg, Height, Lines, found));
   Result := found <> 0;
 end;
 
 function TPdfEditable.MaskedText(PageIndex: Integer; X, Y, Width, Height: Double;
   const Text: UTF8String; Size: Double; TextR, TextG, TextB, BgR, BgG, BgB: Double;
-  Align: TPdfAlign): Boolean;
+  Align: TPdfAlign; FontId: Integer; VAlign: TVerticalAlign;
+  Padding: Double): Boolean;
 var
   found: Integer;
 begin
   found := 0;
-  Check(Fpdf_editable_masked_text(H, PageIndex, X, Y, Width, Height, PAnsiChar(Text),
-        Size, TextR, TextG, TextB, BgR, BgG, BgB, Ord(Align), found));
+  Check(Fpdf_editable_masked_text_pad(H, PageIndex, X, Y, Width, Height,
+        PAnsiChar(Text), Size, TextR, TextG, TextB, BgR, BgG, BgB, Ord(Align),
+        Ord(VAlign), Padding, FontId, found));
   Result := found <> 0;
 end;
 
 function TPdfEditable.DrawImage(PageIndex: Integer; const Image: TBytes;
-  X, Y, Width, Height, RotationDeg: Double): Boolean;
+  X, Y, Width, Height, RotationDeg: Double; Anchor: TImageAnchor): Boolean;
 var
   found: Integer;
 begin
   found := 0;
-  Check(Fpdf_editable_draw_image(H, PageIndex, BytePtr(Image), Length(Image),
-        X, Y, Width, Height, RotationDeg, found));
+  Check(Fpdf_editable_draw_image_anchored(H, PageIndex, BytePtr(Image), Length(Image),
+        X, Y, Width, Height, RotationDeg, Ord(Anchor), found));
   Result := found <> 0;
 end;
 

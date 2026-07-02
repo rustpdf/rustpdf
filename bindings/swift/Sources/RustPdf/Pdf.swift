@@ -573,7 +573,7 @@ public enum Pdf {
     }
 
     /// List the signature fields in `pdf` (detect existing signatures before
-    /// signing — the iText `SignatureUtil.getSignatureNames` equivalent). An
+    /// signing — the classic pre-sign signature-field inventory). An
     /// empty array means there are no signature fields.
     public static func listSignatures(_ pdf: [UInt8]) throws -> [SignatureField] {
         let bytes = try withBytes(pdf) { ptr, len in

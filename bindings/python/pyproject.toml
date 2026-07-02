@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rustpdf"
-version = "0.4.6"
-description = "Generate, manipulate, sign and validate PDFs — Python binding for the rust-pdf core"
+version = "0.4.7"
+description = "Generate, edit, sign and process PDFs in Python: PDF/A, AES-256, digital signatures (PAdES), forms, stamping, redaction, extraction and rendering. Docs: https://rustpdf.dev/docs/python"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }

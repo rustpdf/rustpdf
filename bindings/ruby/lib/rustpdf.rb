@@ -40,6 +40,48 @@ module RustPdf
     JUSTIFY = 3
   end
 
+  # What +y+ means for stamped text (EditableDoc#place_text /
+  # #place_paragraph). BASELINE is the historical place_text behavior; TOP
+  # hangs the text from +y+ (baseline lands ascent x size below it, legacy layout engines
+  # fixed-position layout semantics); BOTTOM rests the descender line on +y+.
+  # LINE_TOP / LINE_BOTTOM anchor via the layout line box (its height is also
+  # the leading basis, so a single line and a wrapped block agree vertically).
+  module VerticalAnchor
+    BASELINE = 0
+    TOP = 1
+    BOTTOM = 2
+    LINE_TOP = 3
+    LINE_BOTTOM = 4
+  end
+
+  # Vertical alignment of the line inside a masked_text box. MIDDLE is the
+  # historical cap-height centering; TOP hangs the line from the top edge
+  # (top line-alignment in rectangle-based text APIs semantics); BOTTOM rests the descender
+  # line on the bottom edge.
+  module VerticalAlign
+    TOP = 0
+    MIDDLE = 1
+    BOTTOM = 2
+  end
+
+  # Coordinate space of the positioned stamping primitives (EditableDoc).
+  # VISIBLE (default) compensates the page /Rotate so coordinates match what
+  # a viewer displays; MEDIA is the raw PDF user space (legacy layout engines
+  # fixed-position layout/rotation semantics — no /Rotate composition).
+  module StampSpace
+    VISIBLE = 0
+    MEDIA = 1
+  end
+
+  # How a rotated EditableDoc#draw_image is anchored. CORNER (default) rotates
+  # the image about its own lower-left corner at (x, y); BOUNDING_BOX lands
+  # the rotated image's bounding box with its lower-left at (x, y) (legacy layout engines
+  # layout semantics).
+  module ImageAnchor
+    CORNER = 0
+    BOUNDING_BOX = 1
+  end
+
   # Embedded-file relationship (PDF/A-3).
   module Relationship
     SOURCE = 0

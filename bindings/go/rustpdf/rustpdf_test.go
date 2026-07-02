@@ -671,6 +671,97 @@ func TestFullSurface(t *testing.T) {
 			t.Fatalf("aligned/masked text missing from extraction: %q", txt)
 		}
 	}
+
+	// 23. Stamping v2: embedded fonts, vertical anchors, masked-text padding,
+	// paragraph wrapping, stamp space and image anchor.
+	{
+		ed, err := Load(plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ed.Close()
+
+		// Embedded stamping font (Roboto).
+		fid, err := ed.AddFontFile(font)
+		if err != nil {
+			t.Fatalf("add font file: %v", err)
+		}
+		if fid < 0 {
+			t.Fatalf("bad font id: %d", fid)
+		}
+		if _, err := ed.AddFont([]byte("not a font")); err == nil {
+			t.Fatal("AddFont with garbage must error")
+		}
+
+		// Vertical anchor: hang the line from y using the layout line box.
+		if ok := ed.PlaceTextAnchored(0, 72, 620, "ANCHORED", 14, 0, 0, 0, 0,
+			AlignLeft, AnchorLineBottom, fid); !ok {
+			t.Fatal("PlaceTextAnchored: page should exist")
+		}
+		// Masked text with valign Top and a flush (0) edge inset.
+		if ok := ed.MaskedTextPadded(0, 72, 560, 200, 30, "PADDED", 12,
+			[3]float64{0, 0, 0}, [3]float64{1, 1, 0.8},
+			AlignLeft, VAlignTop, 0, -1); !ok {
+			t.Fatal("MaskedTextPadded: page should exist")
+		}
+
+		// Paragraph wrapping: a long text in a narrow box must wrap.
+		lines, height, ok := ed.PlaceParagraph(0, 72, 520, 180,
+			strings.Repeat("wrapped words flow nicely ", 4), 12, 0, 0, 0,
+			AlignLeft, fid, 0, 1.0, AnchorTop, 0)
+		if !ok {
+			t.Fatal("PlaceParagraph: page should exist")
+		}
+		if lines <= 1 {
+			t.Fatalf("paragraph should wrap: lines=%d", lines)
+		}
+		if height <= 0 {
+			t.Fatalf("paragraph height not measured: %v", height)
+		}
+		// Bottom-pinned block with a maxHeight ceiling truncates from the top.
+		cut, _, ok := ed.PlaceParagraph(0, 300, 420, 180,
+			strings.Repeat("pinned bottom block ", 6), 12, 0, 0, 0,
+			AlignLeft, -1, 30, 1.0, AnchorBottom, 0)
+		if !ok || cut >= lines {
+			t.Fatalf("maxHeight ceiling should cut lines: cut=%d full=%d ok=%v", cut, lines, ok)
+		}
+
+		// Media space: stamp in raw PDF user space, then restore.
+		if err := ed.SetStampSpace(StampMedia); err != nil {
+			t.Fatal(err)
+		}
+		if ok := ed.PlaceTextAnchored(0, 72, 380, "MEDIA", 12, 0, 0, 0, 0,
+			AlignLeft, AnchorBaseline, -1); !ok {
+			t.Fatal("PlaceTextAnchored in media space: page should exist")
+		}
+		if err := ed.SetStampSpace(StampVisible); err != nil {
+			t.Fatal(err)
+		}
+
+		// Rotated image anchored by its bounding box.
+		if ok := ed.DrawImageAnchored(0, makePNG(t), 400, 300, 100, 60, 90,
+			ImageAnchorBoundingBox); !ok {
+			t.Fatal("DrawImageAnchored: page should exist")
+		}
+		// Out-of-range page returns false (no panic, no content).
+		if ok := ed.DrawImageAnchored(9, makePNG(t), 0, 0, 10, 10, 0, ImageAnchorCorner); ok {
+			t.Fatal("DrawImageAnchored on missing page should return false")
+		}
+
+		out, err := ed.ToBytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		txt, err := ExtractText(out)
+		if err != nil {
+			t.Fatalf("extract stamped text: %v", err)
+		}
+		for _, want := range []string{"ANCHORED", "PADDED", "wrapped", "MEDIA"} {
+			if !strings.Contains(txt, want) {
+				t.Fatalf("stamped text %q missing from extraction: %q", want, txt)
+			}
+		}
+	}
 }
 
 // makePNG encodes a tiny solid-color PNG in memory.

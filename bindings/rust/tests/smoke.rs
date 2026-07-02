@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::sync::Once;
 
 use rustpdf::{
-    Align, Bookmark, Document, EditableDoc, Encryption, FacturxProfile, PdfVersion, PdfaLevel,
-    SigningOptions,
+    Align, Bookmark, Document, EditableDoc, Encryption, FacturxProfile, ImageAnchor, PdfVersion,
+    PdfaLevel, SigningOptions, StampSpace, VerticalAlign, VerticalAnchor,
 };
 
 static INIT: Once = Once::new();
@@ -445,6 +445,100 @@ fn full_surface() {
         )
         .unwrap());
 
+    // --- anchored stamping + embedded fonts (issue #54) ---
+    let roboto = paint
+        .add_font_file("../../assets/fonts/Roboto-Regular.ttf")
+        .expect("register stamping font");
+    assert!(
+        paint
+            .place_text_anchored(
+                0,
+                72.0,
+                400.0,
+                "ANCHORED_MARKER",
+                14.0,
+                (0.0, 0.0, 0.0),
+                0.0,
+                Align::Left,
+                VerticalAnchor::LineBottom,
+                Some(roboto),
+            )
+            .unwrap(),
+        "place_text_anchored should report the page existed"
+    );
+    assert!(
+        paint
+            .masked_text_padded(
+                0,
+                72.0,
+                360.0,
+                200.0,
+                24.0,
+                "PADDED_MARKER",
+                12.0,
+                (0.0, 0.0, 0.0),
+                (1.0, 1.0, 1.0),
+                Align::Left,
+                VerticalAlign::Top,
+                0.0,
+                None,
+            )
+            .unwrap(),
+        "masked_text_padded should report the page existed"
+    );
+    // A narrow column forces the paragraph to wrap onto several lines.
+    let (lines, height, found) = paint
+        .place_paragraph(
+            0,
+            72.0,
+            330.0,
+            120.0,
+            "WRAPPED words flowing across a deliberately narrow column",
+            12.0,
+            (0.0, 0.0, 0.0),
+            Align::Left,
+            VerticalAnchor::Top,
+            None,
+            0.0,
+            0.0,
+            0.0,
+        )
+        .expect("place_paragraph");
+    assert!(found, "place_paragraph should report the page existed");
+    assert!(
+        lines > 1,
+        "narrow paragraph should wrap, got {lines} line(s)"
+    );
+    assert!(height > 0.0, "paragraph should report its height: {height}");
+    // Media-space stamping: switch the coordinate space, then place.
+    paint.set_stamp_space(StampSpace::Media).unwrap();
+    assert!(
+        paint
+            .place_text(0, 72.0, 160.0, "MEDIA_MARKER", 12.0, (0.0, 0.0, 0.0), 0.0)
+            .unwrap(),
+        "media-space place_text should report the page existed"
+    );
+    paint.set_stamp_space(StampSpace::Visible).unwrap();
+    // Rotated image anchored by its bounding box.
+    assert!(
+        paint
+            .draw_image_anchored(
+                0,
+                png,
+                72.0,
+                100.0,
+                64.0,
+                64.0,
+                30.0,
+                ImageAnchor::BoundingBox
+            )
+            .unwrap(),
+        "draw_image_anchored should report the page existed"
+    );
+    assert!(!paint
+        .draw_image_anchored(99, png, 0.0, 0.0, 10.0, 10.0, 0.0, ImageAnchor::Corner)
+        .unwrap());
+
     let painted = paint.to_bytes().expect("paint to bytes");
     let painted_text = rustpdf::extract_text(&painted).expect("extract painted text");
     assert!(
@@ -458,6 +552,22 @@ fn full_surface() {
     assert!(
         painted_text.contains("MASKED_MARKER"),
         "masked text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("ANCHORED_MARKER"),
+        "anchored (embedded-font) text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("PADDED_MARKER"),
+        "padded masked text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("WRAPPED"),
+        "wrapped paragraph text should be extractable, got: {painted_text:?}"
+    );
+    assert!(
+        painted_text.contains("MEDIA_MARKER"),
+        "media-space text should be extractable, got: {painted_text:?}"
     );
 
     // --- extract_page_text (single page) ---

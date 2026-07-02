@@ -112,7 +112,10 @@ pub(crate) fn require(feature: Feature) -> Result<(), LicenseError> {
     }
 }
 
-pub use edit::{ConvertError, EditableDoc, WatermarkOptions};
+pub use edit::{
+    ConvertError, EditableDoc, ImageAnchor, StampSpace, VerticalAlign, VerticalAnchor,
+    WatermarkOptions,
+};
 pub use encrypt::{Encryption, Permissions};
 pub use extract::{extract_page_text, extract_text, page_text};
 pub use extract_image::{extract_images, ExtractedImage, ImageFormat};
@@ -128,6 +131,7 @@ pub use inspect::{inspect, PdfOverview};
 pub use outline::Bookmark;
 pub use paragraph::{Align, Paragraph};
 pub use parser::{PdfError, PdfReader};
+pub use redact::RedactError;
 pub use render::{
     page_count as render_page_count, render_page_rgba, render_page_rgba_with, render_page_to_png,
     render_page_to_png_with, PageRenderError, RenderOptions, RenderedPage,

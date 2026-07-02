@@ -19,6 +19,9 @@ pub enum PdfStatus {
     Sign,
     InvalidArgument,
     License,
+    /// The operation is not supported for this document (e.g. stamping an
+    /// embedded font on a page whose content cannot be rewritten).
+    Unsupported,
     /// The cdylib could not be located/loaded (binding-side, no C equivalent).
     LibraryNotLoaded,
     /// An unknown status code came back from the library.
@@ -41,6 +44,7 @@ impl PdfStatus {
             10 => Self::Sign,
             11 => Self::InvalidArgument,
             12 => Self::License,
+            13 => Self::Unsupported,
             other => Self::Unknown(other),
         }
     }

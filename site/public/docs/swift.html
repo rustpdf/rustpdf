@@ -147,6 +147,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -559,10 +560,10 @@ try ed.save(to: "stamped.pdf")</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>func fillRect(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, color: (Double, Double, Double) = (1, 1, 1), opacity: Double = 1.0) -&gt; Bool</code></div>
-      <div class="api"><code>func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), rotationDeg: Double = 0.0, align: Align = .left) -&gt; Bool</code></div>
-      <div class="api"><code>func maskedText(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, _ text: String, size: Double = 12, textColor: (Double, Double, Double) = (0, 0, 0), bgColor: (Double, Double, Double) = (1, 1, 1), align: Align = .left) -&gt; Bool</code></div>
-      <div class="api"><code>func drawImage(_ pageIndex: Int, image: [UInt8], x: Double, y: Double, width: Double, height: Double, rotationDeg: Double = 0.0) -&gt; Bool</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>placeText</code> takes an <code>align</code> (<code>.left</code>, <code>.right</code> or <code>.center</code>) that shifts the start point along the baseline so the anchor <code>(x, y)</code> is the text's left, right or center edge. <code>maskedText</code> does the mask-and-write in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code> (default white), then writes the text horizontally aligned per <code>align</code> and vertically centered within the box, so you never hand-compute the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
+      <div class="api"><code>func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), rotationDeg: Double = 0.0, align: Align = .left, fontId: Int = -1, anchor: VerticalAnchor = .baseline) -&gt; Bool</code></div>
+      <div class="api"><code>func maskedText(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double, _ text: String, size: Double = 12, textColor: (Double, Double, Double) = (0, 0, 0), bgColor: (Double, Double, Double) = (1, 1, 1), align: Align = .left, fontId: Int = -1, valign: VerticalAlign = .middle, padding: Double? = nil) -&gt; Bool</code></div>
+      <div class="api"><code>func drawImage(_ pageIndex: Int, image: [UInt8], x: Double, y: Double, width: Double, height: Double, rotationDeg: Double = 0.0, anchor: ImageAnchor = .corner) -&gt; Bool</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>placeText</code> takes an <code>align</code> (<code>.left</code>, <code>.right</code> or <code>.center</code>) that shifts the start point along the baseline so the anchor <code>(x, y)</code> is the text's left, right or center edge. <code>maskedText</code> does the mask-and-write in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code> (default white), then writes the text horizontally aligned per <code>align</code> and vertically centered within the box, so you never hand-compute the baseline. <code>drawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points. The trailing <code>fontId</code>/<code>anchor</code>/<code>valign</code>/<code>padding</code> parameters are covered in <a href="#ed-stamp">Stamping fonts &amp; anchors</a> below.</p>
       <div class="code has-label"><span class="lbl">swift</span><pre><code>let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "invoice.pdf")))
 let g = try Pdf.measurePage(data, 0)              // read the page geometry first
 let ed = try EditableDoc(data)
@@ -573,6 +574,56 @@ _ = ed.maskedText(0, 400, g.height - 60, 120, 18, "PAID", size: 12, align: .cent
 let logo = try [UInt8](Data(contentsOf: URL(fileURLWithPath: "logo.png")))
 _ = ed.drawImage(0, image: logo, x: 404, y: g.height - 120, width: 120, height: 48)
 try ed.save(to: "stamped.pdf")</code></pre></div>
+
+      <!-- ED STAMP (fonts + anchors + paragraphs) -->
+      <h2 id="ed-stamp">Stamping fonts &amp; anchors <span class="badge free">free</span></h2>
+      <p>The stamping primitives above accept an embedded font, explicit vertical anchoring, and a paragraph mode with automatic word wrapping. See the <a href="/positioning.html">interactive positioning guide</a> for a visual tour of the anchor and coordinate-space semantics.</p>
+
+      <h3>Embedded stamping fonts</h3>
+      <div class="api"><code>func addFontFile(_ path: String) throws -&gt; Int</code></div>
+      <div class="api"><code>func addFont(_ data: [UInt8]) throws -&gt; Int</code></div>
+      <p>Register a TrueType/OpenType font and pass the returned id as <code>fontId</code> to <code>placeText</code>, <code>maskedText</code> or <code>placeParagraph</code>. The font is embedded as a subset, so stamped text renders with the real font's glyphs and metrics (full Unicode, not just WinAnsi). Leave <code>fontId</code> at <code>-1</code> to keep the built-in Helvetica.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>let ed = try EditableDoc(loading: data)
+let times = try ed.addFontFile("/Library/Fonts/Times New Roman.ttf")
+_ = ed.placeText(0, 72, 700, "Assinado por João", size: 12, fontId: times)</code></pre></div>
+
+      <h3>Vertical anchors (placeText)</h3>
+      <p><code>anchor</code> says what <code>y</code> means: <code>.baseline</code> (default, the historical behavior), <code>.top</code> hangs the text from <code>y</code> (the baseline lands <code>ascent × size</code> below it, legacy fixed-position layout semantics), <code>.bottom</code> rests the descender line on <code>y</code>. The <code>.lineTop</code>/<code>.lineBottom</code> variants use the <b>layout line box</b> (OS/2 win metrics plus a fixed half-leading) instead of the raw ascent/descent, matching legacy layout engines line placement exactly. Ascent/descent come from the selected font (embedded metrics, or the Helvetica AFM).</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>// y = 700 is the TOP of the text, not the baseline:
+_ = ed.placeText(0, 72, 700, "hung from the top", size: 12, anchor: .top)
+// reproduce a legacy fixed-position layout line exactly:
+_ = ed.placeText(0, 72, 640, "layout line box", size: 12, anchor: .lineBottom)</code></pre></div>
+
+      <h3>maskedText: vertical alignment &amp; padding</h3>
+      <p><code>valign</code> places the line inside the box: <code>.middle</code> (default, historical cap-height centering), <code>.top</code> hangs the line from the top edge (top line-alignment in rectangle-based text APIs semantics), <code>.bottom</code> rests the descender line on the bottom edge. <code>padding</code> is the horizontal edge inset (points) for <code>.left</code>/<code>.right</code> alignment: <code>nil</code> keeps the historical <code>min(0.15 × size, width / 4)</code>; pass <code>0</code> to start flush with the box edge like rectangle-based DrawString APIs.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>_ = ed.maskedText(0, 400, 700, 120, 36, "R$ 1.234,56", size: 12,
+                  valign: .top, padding: 0)</code></pre></div>
+
+      <h3>Paragraphs with word wrapping</h3>
+      <div class="api"><code>func placeParagraph(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ text: String, size: Double = 12, color: (Double, Double, Double) = (0, 0, 0), align: Align = .left, fontId: Int = -1, maxHeight: Double? = nil, lineHeight: Double = 1.0, anchor: VerticalAnchor = .top, rotationDeg: Double = 0.0) -&gt; Bool</code></div>
+      <div class="api"><code>func placeParagraphMeasured(...) -&gt; (lines: Int, height: Double)</code></div>
+      <p><code>placeParagraph</code> breaks <code>text</code> into lines that fit <code>width</code> points (greedy, by word; <code>\n</code> forces a break) and draws them from <code>(x, y)</code> downward. With the default <code>anchor: .top</code> the first baseline lands <code>ascent × size</code> below <code>y</code> (legacy fixed-position layout); <code>.baseline</code> makes <code>y</code> the first line's baseline; <code>.bottom</code>/<code>.lineBottom</code> <b>bottom-pin</b> the block: its bottom rests on <code>y</code> and it grows upward by its real content height. <code>maxHeight</code> is a ceiling that truncates overflowing lines (with a bottom anchor the cut comes from the top and the last lines stay pinned); it never inflates the position. <code>lineHeight</code> scales the default <code>1.2 × size</code> leading, and <code>fontId</code> wraps and draws with an embedded font, whose real metrics drive the break points. <code>placeParagraphMeasured</code> takes the same arguments and also reports the number of lines drawn and the consumed block height in points, so you can stack blocks without re-measuring.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>// wrap a long remark into a 250 pt column, top at y = 500:
+_ = ed.placeParagraph(0, 72, 500, 250,
+                      "Observação: este documento foi assinado digitalmente e " +
+                      "dispensa carimbo físico.", size: 10)
+// bottom-pinned block with a 80 pt ceiling, measured:
+let (lines, height) = ed.placeParagraphMeasured(
+    0, 72, 120, 250, longDisclaimer, size: 8,
+    maxHeight: 80, anchor: .bottom)
+print("drew \(lines) lines, \(height) pt tall")</code></pre></div>
+
+      <h3>Coordinate space: visible vs media</h3>
+      <div class="api"><code>func setStampSpace(_ space: StampSpace) throws -&gt; EditableDoc</code></div>
+      <p>By default the stamping primitives work in the page's <b>visible</b> space (<code>.visible</code>): coordinates are what a viewer sees, compensating the page's <code>/Rotate</code>, so a <code>rotationDeg: 0</code> stamp always reads upright on screen. <code>.media</code> switches subsequent calls to the <b>raw PDF user space</b> (the raw-coordinate semantics of legacy layout engines): no composition with <code>/Rotate</code> or the crop offset, and <code>rotationDeg</code> is the baseline angle in media space. Use it to reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages. Watermarks and redaction are unaffected.</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>try ed.setStampSpace(.media)          // legacy layout engines-compatible coordinates
+_ = ed.placeText(0, 72, 260, "same numbers as the legacy layout engines code", size: 12)
+try ed.setStampSpace(.visible)        // back to the default</code></pre></div>
+
+      <h3>Rotated image anchoring</h3>
+      <p><code>drawImage</code>'s <code>anchor</code> controls how a rotated image is anchored at <code>(x, y)</code>: <code>.corner</code> (default) rotates the image about its own lower-left corner, so the image sweeps around the point; <code>.boundingBox</code> lands the <b>rotated image's bounding box</b> with its lower-left at <code>(x, y)</code> (bounding-box layout semantics: the drawn pixels always sit at/above/right of the anchor, e.g. a 90° image occupies <code>[x, x+height] × [y, y+width]</code>).</p>
+      <div class="code has-label"><span class="lbl">swift</span><pre><code>_ = ed.drawImage(0, image: stamp, x: 72, y: 200, width: 120, height: 48,
+                 rotationDeg: 90, anchor: .boundingBox)</code></pre></div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -962,6 +1013,7 @@ try Data(png).write(to: URL(fileURLWithPath: "page1.png"))</code></pre></div>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

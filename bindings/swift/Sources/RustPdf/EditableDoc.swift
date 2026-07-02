@@ -275,63 +275,192 @@ public final class EditableDoc {
         return found != 0
     }
 
-    /// Draw a line of positioned text with baseline at `(x, y)` on page
-    /// `pageIndex` (0-based), standard Helvetica at `size` points in RGB `color`
-    /// (each 0..=1, default black). `rotationDeg` rotates the text
-    /// counter-clockwise about its anchor `(x, y)` (match the page rotation to
-    /// follow a rotated page). `align` shifts the start point along the baseline
-    /// so the anchor `(x, y)` is the text's left (default), right or center.
-    /// Coordinates are in the page's **visible** space (origin lower-left, y up),
-    /// regardless of the page's `/Rotate`. Returns whether the page existed.
+    /// Register a TrueType/OpenType font (from a file at `path`) for text
+    /// stamping; returns a `fontId` usable with the `fontId` parameter of
+    /// ``placeText``/``maskedText``/``placeParagraph``. The font is embedded as
+    /// a subset — stamped text renders with the real font's glyphs and metrics,
+    /// exactly like ``Document/addFont(file:)`` + `showText`.
+    public func addFontFile(_ path: String) throws -> Int {
+        var id: Int32 = -1
+        try path.withCString { p in
+            try check(Native.shared.pdf_editable_add_font_file(handle, p, &id))
+        }
+        return Int(id)
+    }
+
+    /// Register a stamping font from raw TrueType/OpenType bytes. See
+    /// ``addFontFile(_:)``.
+    public func addFont(_ data: [UInt8]) throws -> Int {
+        var id: Int32 = -1
+        try withBytes(data) { ptr, len in
+            try check(Native.shared.pdf_editable_add_font(handle, ptr, len, &id))
+        }
+        return Int(id)
+    }
+
+    /// Choose the coordinate space of the positioned stamping primitives
+    /// (``fillRect``, ``placeText``, ``maskedText``, ``placeParagraph``,
+    /// ``drawImage``) for subsequent calls. ``StampSpace/visible`` (default)
+    /// keeps the historical behavior — coordinates in the page's displayed
+    /// space, compensating `/Rotate`. ``StampSpace/media`` interprets
+    /// coordinates and `rotationDeg` in the raw PDF user space (legacy layout engines
+    /// semantics), never composing with the page's `/Rotate` — use it to
+    /// reproduce legacy-engine placement on rotated/scanned pages. Watermarks and
+    /// redaction are unaffected.
+    @discardableResult
+    public func setStampSpace(_ space: StampSpace) throws -> EditableDoc {
+        try check(Native.shared.pdf_editable_set_stamp_space(handle, space.rawValue)); return self
+    }
+
+    /// Draw a line of positioned text anchored at `(x, y)` on page `pageIndex`
+    /// (0-based) at `size` points in RGB `color` (each 0..=1, default black).
+    /// `rotationDeg` rotates the text counter-clockwise about its anchor
+    /// `(x, y)` (match the page rotation to follow a rotated page). `align`
+    /// shifts the start point along the baseline so the anchor `(x, y)` is the
+    /// text's left (default), right or center. Pass `fontId` from
+    /// ``addFontFile(_:)``/``addFont(_:)`` to stamp with an embedded
+    /// TrueType/OpenType font; `-1` (default) uses the built-in Helvetica
+    /// (keep the text WinAnsi / Latin-1). `anchor` says what `y` means:
+    /// ``VerticalAnchor/baseline`` (default), ``VerticalAnchor/top`` (baseline
+    /// lands `ascent × size` below `y`, legacy fixed-position layout),
+    /// ``VerticalAnchor/bottom`` (descender line rests on `y`), or the legacy layout engines
+    /// line-box variants ``VerticalAnchor/lineTop``/``VerticalAnchor/lineBottom``.
+    /// Coordinates are in the page's **visible** space (origin lower-left, y
+    /// up), regardless of the page's `/Rotate` (see ``setStampSpace(_:)``).
+    /// Returns whether the page (and font) existed.
     @discardableResult
     public func placeText(_ pageIndex: Int, _ x: Double, _ y: Double, _ text: String,
                           size: Double = 12, color: (Double, Double, Double) = (0, 0, 0),
-                          rotationDeg: Double = 0.0, align: Align = .left) -> Bool {
+                          rotationDeg: Double = 0.0, align: Align = .left,
+                          fontId: Int = -1, anchor: VerticalAnchor = .baseline) -> Bool {
         var found: Int32 = 0
         text.withCString { t in
-            try? check(Native.shared.pdf_editable_place_text_aligned(
+            try? check(Native.shared.pdf_editable_place_text_anchored(
                 handle, Int32(pageIndex), x, y, t, size,
-                color.0, color.1, color.2, rotationDeg, align.rawValue, &found))
+                color.0, color.1, color.2, rotationDeg, align.rawValue,
+                anchor.rawValue, Int32(fontId), &found))
         }
         return found != 0
     }
 
+    /// Stamp a **paragraph with automatic word wrapping** on page `pageIndex`:
+    /// `text` is broken into lines that fit `width` points (greedy, by word;
+    /// `\n` forces a break) and drawn from `(x, y)` per `anchor`:
+    /// ``VerticalAnchor/top`` (default) — `y` is the top of the block, the
+    /// first baseline lands `ascent × size` below it (legacy layout engines
+    /// `fixed-position layout`); ``VerticalAnchor/baseline`` — `y` is the first
+    /// line's baseline; ``VerticalAnchor/bottom``/``VerticalAnchor/lineBottom``
+    /// — **bottom-pinned**: the block's bottom rests on `y` and grows upward
+    /// (with `maxHeight` as a ceiling that cuts overflowing lines from the
+    /// top). `align` lays lines out inside `[x, x+width]` (`.justify`
+    /// stretches the word gaps of every line but the last of each paragraph).
+    /// `fontId` from ``addFontFile(_:)``/``addFont(_:)`` wraps and draws with
+    /// that embedded font (its real metrics drive the break points); `-1` uses
+    /// the built-in Helvetica. `maxHeight` (`nil` = unlimited) truncates lines
+    /// that would overflow; `lineHeight` scales the default `1.2 × size`
+    /// leading. `rotationDeg` rotates the laid-out block counter-clockwise
+    /// about the anchor `(x, y)`. Returns whether the page (and font) existed
+    /// and the box was valid.
+    @discardableResult
+    public func placeParagraph(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double,
+                               _ text: String, size: Double = 12,
+                               color: (Double, Double, Double) = (0, 0, 0),
+                               align: Align = .left, fontId: Int = -1,
+                               maxHeight: Double? = nil, lineHeight: Double = 1.0,
+                               anchor: VerticalAnchor = .top, rotationDeg: Double = 0.0) -> Bool {
+        var found: Int32 = 0
+        text.withCString { t in
+            try? check(Native.shared.pdf_editable_place_paragraph_anchored(
+                handle, Int32(pageIndex), x, y, width, t, size,
+                color.0, color.1, color.2, align.rawValue, anchor.rawValue,
+                Int32(fontId), maxHeight ?? 0.0, lineHeight, rotationDeg,
+                nil, nil, &found))
+        }
+        return found != 0
+    }
+
+    /// Like ``placeParagraph(_:_:_:_:_:size:color:align:fontId:maxHeight:lineHeight:anchor:rotationDeg:)``
+    /// but returns both the number of **lines drawn** (0 when the page/font was
+    /// invalid or nothing fit — useful to detect `maxHeight` truncation) and
+    /// the **consumed block height** in points (top of the first drawn line's
+    /// box to the bottom of the last one's) — stack blocks without
+    /// re-measuring.
+    @discardableResult
+    public func placeParagraphMeasured(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double,
+                                       _ text: String, size: Double = 12,
+                                       color: (Double, Double, Double) = (0, 0, 0),
+                                       align: Align = .left, fontId: Int = -1,
+                                       maxHeight: Double? = nil, lineHeight: Double = 1.0,
+                                       anchor: VerticalAnchor = .top,
+                                       rotationDeg: Double = 0.0) -> (lines: Int, height: Double) {
+        var found: Int32 = 0
+        var lines: Int32 = 0
+        var height: Double = 0
+        text.withCString { t in
+            try? check(Native.shared.pdf_editable_place_paragraph_anchored(
+                handle, Int32(pageIndex), x, y, width, t, size,
+                color.0, color.1, color.2, align.rawValue, anchor.rawValue,
+                Int32(fontId), maxHeight ?? 0.0, lineHeight, rotationDeg,
+                &height, &lines, &found))
+        }
+        return (Int(lines), height)
+    }
+
     /// Draw `text` over an opaque background box `[x, y, x+width, y+height]`:
-    /// fills the box in `bgColor` (default white), then writes the text (standard
-    /// Helvetica at `size` points in `textColor`, default black) horizontally
-    /// aligned per `align` and vertically centered within the box. The classic
-    /// use is masking a placeholder and stamping the real value over it without
+    /// fills the box in `bgColor` (default white), then writes the text at
+    /// `size` points in `textColor` (default black) horizontally aligned per
+    /// `align` and vertically laid out per `valign`:
+    /// ``VerticalAlign/middle`` (default, historical cap-height centering),
+    /// ``VerticalAlign/top`` (line hangs from the top edge — baseline at
+    /// `y + height − ascent × size`, top line-alignment in rectangle-based text APIs), or
+    /// ``VerticalAlign/bottom`` (descender line rests on the bottom edge).
+    /// `fontId` from ``addFontFile(_:)``/``addFont(_:)`` stamps with an
+    /// embedded font; `-1` (default) uses the built-in Helvetica. `padding` is
+    /// the horizontal edge inset (points) for `.left`/`.right` alignment: the
+    /// text starts at `x + padding` (or ends at `x + width − padding`); `nil`
+    /// keeps the historical `min(0.15 × size, width / 4)`, `0` starts flush
+    /// with the box edge (rectangle-based DrawString semantics). The classic use
+    /// is masking a placeholder and stamping the real value over it without
     /// hand-computing the baseline. Coordinates are in the page's **visible**
-    /// space (origin lower-left, y up). Returns whether the page existed.
+    /// space (origin lower-left, y up). Returns whether the page (and font)
+    /// existed.
     @discardableResult
     public func maskedText(_ pageIndex: Int, _ x: Double, _ y: Double, _ width: Double, _ height: Double,
                            _ text: String, size: Double = 12,
                            textColor: (Double, Double, Double) = (0, 0, 0),
                            bgColor: (Double, Double, Double) = (1, 1, 1),
-                           align: Align = .left) -> Bool {
+                           align: Align = .left, fontId: Int = -1,
+                           valign: VerticalAlign = .middle, padding: Double? = nil) -> Bool {
         var found: Int32 = 0
         text.withCString { t in
-            try? check(Native.shared.pdf_editable_masked_text(
+            try? check(Native.shared.pdf_editable_masked_text_pad(
                 handle, Int32(pageIndex), x, y, width, height, t, size,
                 textColor.0, textColor.1, textColor.2,
-                bgColor.0, bgColor.1, bgColor.2, align.rawValue, &found))
+                bgColor.0, bgColor.1, bgColor.2, align.rawValue,
+                valign.rawValue, padding ?? -1.0, Int32(fontId), &found))
         }
         return found != 0
     }
 
     /// Draw an image (PNG or JPEG `image` bytes, dispatched on the file
-    /// signature) on page `index` (0-based) with its lower-left corner at
-    /// `(x, y)`, scaled to `width`×`height` points and rotated `rotationDeg`
-    /// degrees counter-clockwise about that corner. Coordinates are in the
-    /// page's **visible** space (origin lower-left, y up), honoring the page's
-    /// `/Rotate`. Returns whether the page existed.
+    /// signature) on page `index` (0-based) at `(x, y)`, scaled to
+    /// `width`×`height` points and rotated `rotationDeg` degrees
+    /// counter-clockwise. `anchor` controls how a rotated image is anchored:
+    /// ``ImageAnchor/corner`` (default) rotates the image about its own
+    /// lower-left corner at `(x, y)`; ``ImageAnchor/boundingBox`` lands the
+    /// rotated image's bounding box with its lower-left at `(x, y)` (legacy layout engines
+    /// semantics — e.g. a 90° image occupies `[x, x+height] × [y, y+width]`).
+    /// Coordinates are in the page's **visible** space (origin lower-left,
+    /// y up), honoring the page's `/Rotate`. Returns whether the page existed.
     @discardableResult
     public func drawImage(_ index: Int, image: [UInt8], x: Double, y: Double,
-                          width: Double, height: Double, rotationDeg: Double = 0.0) -> Bool {
+                          width: Double, height: Double, rotationDeg: Double = 0.0,
+                          anchor: ImageAnchor = .corner) -> Bool {
         var found: Int32 = 0
         withBytes(image) { ptr, len in
-            try? check(Native.shared.pdf_editable_draw_image(
-                handle, Int32(index), ptr, len, x, y, width, height, rotationDeg, &found))
+            try? check(Native.shared.pdf_editable_draw_image_anchored(
+                handle, Int32(index), ptr, len, x, y, width, height, rotationDeg,
+                anchor.rawValue, &found))
         }
         return found != 0
     }

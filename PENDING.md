@@ -137,6 +137,61 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
 
 ## FFI + binding Python
 
+- ✅ **JPEG CMYK no rasterizador (FINDING-007, 2026-07)**: `jpeg-decoder` já
+  devolve CMYK verdadeiro (resolve APP14/YCCK sozinho); o `render` invertia de
+  novo → K=0 virava K=1 → retângulo preto. Agora a inversão só acontece quando
+  o `/Decode` inverte **e** o JPEG não é Adobe (o `/Decode [1 0…]` do embed
+  compensa o armazenamento invertido que o decoder já desfez — validado contra
+  mutool, que renderiza o mesmo arquivo ciano). Embed já estava correto
+  (`/DeviceCMYK` + `/Decode` com APP14). Fixture `cmyk_adobe.jpg` committado.
+  Pendente: conversão via perfil ICC embutido no JPEG (hoje naive CMYK→RGB;
+  mutool usa ICC — diferença perceptual pequena, mesmo matiz).
+
+- ✅ **Redação glyph-level (FINDING-006, 2026-07)**: `EditableDoc::redact` agora
+  remove de verdade — interseção por **glifo** com métricas das fontes da página
+  (substituição por deslocamentos `TJ`, vizinhos mantêm posição), `Do` derrubado
+  por overlap de bbox (recurso podado + objeto anulado quando sem referência),
+  anotações interceptantes removidas, e **falha ruidosa** (`RedactError` /
+  `PdfStatus::Unsupported=13`) para inline images/stream não-decodável — nunca
+  pinta caixa sobre dado ainda presente. Pendências: mascaramento pixel-a-pixel
+  de imagem parcialmente coberta (hoje remove a imagem inteira — conservador) e
+  redação dentro de Form XObjects mantidos (o Form que intersecta é derrubado
+  por inteiro).
+
+- ⏳ **Estampagem com fonte embutida + âncora vertical + parágrafo com quebra
+  só em core+FFI+C#** (FINDING-001/002/003, 2026-07): `EditableDoc::add_font`/
+  `add_font_file`, `place_text_with_font*`, `masked_text_with_font*`, os
+  controles de âncora vertical `VerticalAnchor` (Baseline/Top/Bottom em
+  `place_text_anchored`/`pdf_editable_place_text_anchored`) e `VerticalAlign`
+  (Top/Middle/Bottom em `masked_text_valign`/`pdf_editable_masked_text_valign`),
+  a estampagem de **parágrafo com word-wrap** `place_paragraph`/
+  `place_paragraph_with_font` (`pdf_editable_place_paragraph`; âncora topo,
+  align 4 modos, `max_height`, `line_height`), e o **modo de espaço de
+  coordenadas** `StampSpace` Visible/Media (`set_stamp_space`/
+  `pdf_editable_set_stamp_space`; Media = espaço bruto da mídia estilo iText,
+  sem compor o `/Rotate` da página — FINDING-004), as **âncoras de line-box
+  iText** `VerticalAnchor::LineTop`/`LineBottom` (métricas OS/2 win — ou
+  typo×1.2 — + meio-leading 0.21em, calibradas contra iText `SetFixedPosition`),
+  as **âncoras de bloco** do parágrafo (`place_paragraph_anchored`/
+  `_with_font_anchored` + `pdf_editable_place_paragraph_anchored`; Bottom =
+  **bottom-pin**: o fundo do bloco repousa em `y`, `max_height` é teto que
+  corta pelo topo) e o **inset configurável** do masked text
+  (`masked_text_padded`/`_with_font_padded` + `pdf_editable_masked_text_pad`;
+  pad 0 = rente à borda, estilo Syncfusion) existem no core, na FFI e no
+  binding C# (params opcionais `fontId`/`anchor`/`valign`/`padding`/
+  `rotationDeg`; `PlaceParagraph`/`PlaceParagraphCounted`/
+  `PlaceParagraphMeasured` com altura consumida; propriedade
+  `EditableDoc.StampSpace`). Âncoras `Line*` do parágrafo usam o **advance
+  iText** (métricas selecionadas + 0.35em) como leading; rotação de parágrafo
+  gira o bloco em torno da âncora (pivô documentado e testado); `DrawImage`
+  ganhou `ImageAnchor` Corner/BoundingBox (`draw_image_anchored` /
+  `pdf_editable_draw_image_anchored`; BoundingBox = bbox rotacionado com canto
+  em (x,y), estilo iText). Contrato de coordenadas em `docs/COORDINATES.md`.
+  O crate `fonts` expõe as métricas OS/2 cruas (`typo_*`/`win_*`). Os outros
+  **9 bindings** (Python, Node, Go, PHP, Ruby, Java, Swift, Delphi, Rust)
+  ainda não expõem essas APIs — portar quando o loop de validação C#
+  estabilizar.
+
 - ✅ **Superfície do C ABI completa** (~80 exports, `crates/ffi/src/{lib,build,
   editable,signing,verify}.rs`): gráficos vetoriais, **fontes+texto+parágrafos**,
   **imagens+figura**, **PDF/A 1b–3a**, **tagging/heading**, **anexos**, **forms**

@@ -277,6 +277,115 @@ func (e *EditableDoc) MaskedText(pageIndex int, x, y, width, height float64, tex
 	return found != 0
 }
 
+// AddFontFile registers a TrueType/OpenType font (from a file path) for text
+// stamping and returns its font id, usable with the fontID parameter of
+// PlaceTextAnchored / MaskedTextPadded / PlaceParagraph. The font is embedded
+// as a subset — stamped text renders with the real font's glyphs and metrics,
+// exactly like Document.AddFontFile + ShowText.
+func (e *EditableDoc) AddFontFile(path string) (int, error) {
+	c := C.CString(path)
+	defer C.free(unsafe.Pointer(c))
+	var id C.int
+	if err := check(C.pdf_editable_add_font_file(e.h, c, &id)); err != nil {
+		return 0, err
+	}
+	return int(id), nil
+}
+
+// AddFont registers a stamping font from raw TrueType/OpenType bytes and
+// returns its font id. See AddFontFile.
+func (e *EditableDoc) AddFont(data []byte) (int, error) {
+	var id C.int
+	st := C.pdf_editable_add_font(e.h, uptr(data), C.uintptr_t(len(data)), &id)
+	runtime.KeepAlive(data)
+	if err := check(st); err != nil {
+		return 0, err
+	}
+	return int(id), nil
+}
+
+// PlaceTextAnchored draws a line of text on page pageIndex (0-based) like
+// PlaceTextAligned, but with an explicit vertical anchor saying what y means
+// (AnchorBaseline keeps the historical behavior; AnchorTop hangs the text from
+// y; AnchorBottom rests the descender line on y; AnchorLineTop/AnchorLineBottom
+// use the layout line box) and an optional embedded font: pass fontID from
+// AddFontFile/AddFont to stamp with that font, or -1 for the built-in
+// Helvetica. It returns whether the page (and font) existed. Coordinates are in
+// the page's visible space (origin lower-left, y up).
+func (e *EditableDoc) PlaceTextAnchored(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64, align Align, anchor VerticalAnchor, fontID int) bool {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var found C.int
+	C.pdf_editable_place_text_anchored(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), c, C.double(size),
+		C.double(r), C.double(g), C.double(b), C.double(rotationDeg),
+		C.int(align), C.int(anchor), C.int(fontID), &found)
+	return found != 0
+}
+
+// MaskedTextPadded is MaskedText with an explicit vertical alignment of the
+// line inside the box (VAlignMiddle keeps the historical cap-height centering;
+// VAlignTop hangs the line from the top edge; VAlignBottom rests the descender
+// line on the bottom edge), a horizontal edge inset padding (points) for
+// left/right alignment — text starts at x + padding (or ends at
+// x + width − padding); a negative padding keeps the historical default
+// min(0.15 × size, width / 4), 0 starts flush with the box edge — and an
+// optional embedded font (fontID from AddFontFile/AddFont, or -1 for the
+// built-in Helvetica). It returns whether the page (and font) existed.
+// textColor and bgColor are [r, g, b] triples (each 0..=1).
+func (e *EditableDoc) MaskedTextPadded(pageIndex int, x, y, width, height float64, text string, size float64, textColor, bgColor [3]float64, align Align, valign VerticalAlign, padding float64, fontID int) bool {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var found C.int
+	C.pdf_editable_masked_text_pad(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), C.double(width), C.double(height),
+		c, C.double(size),
+		C.double(textColor[0]), C.double(textColor[1]), C.double(textColor[2]),
+		C.double(bgColor[0]), C.double(bgColor[1]), C.double(bgColor[2]),
+		C.int(align), C.int(valign), C.double(padding), C.int(fontID), &found)
+	return found != 0
+}
+
+// PlaceParagraph stamps a paragraph with automatic word wrapping on page
+// pageIndex (0-based): text is broken into lines that fit width points (greedy,
+// by word; '\n' forces a break) and drawn downward from the anchor (x, y).
+// anchor says what y means for the block: AnchorTop — top of the box (the first
+// baseline lands ascent × size below y, legacy fixed-position layout semantics);
+// AnchorBaseline — the first line's baseline; AnchorBottom/AnchorLineBottom —
+// bottom-pinned: the block's bottom rests on y and grows upward by its real
+// content height (with maxHeight the box is [y, y+maxHeight] and overflowing
+// lines are cut from the top). align lays lines out inside [x, x+width]
+// (AlignJustify stretches the word gaps of every line but the last of each
+// paragraph). Pass fontID from AddFontFile/AddFont to wrap and draw with an
+// embedded font (its real metrics drive the break points), or -1 for the
+// built-in Helvetica. maxHeight > 0 truncates lines that would cross the limit
+// (<= 0 = unlimited); lineHeight scales the default 1.2 × size leading
+// (<= 0 = 1.0); rotationDeg rotates the laid-out block counter-clockwise about
+// the anchor. It returns the number of lines drawn, the consumed block height
+// in points, and whether the page (and font) existed and the box was valid.
+func (e *EditableDoc) PlaceParagraph(pageIndex int, x, y, width float64, text string, size, r, g, b float64, align Align, fontID int, maxHeight, lineHeight float64, anchor VerticalAnchor, rotationDeg float64) (lines int, height float64, found bool) {
+	c := C.CString(text)
+	defer C.free(unsafe.Pointer(c))
+	var h C.double
+	var n, ok C.int
+	C.pdf_editable_place_paragraph_anchored(
+		e.h, C.int(pageIndex), C.double(x), C.double(y), C.double(width), c, C.double(size),
+		C.double(r), C.double(g), C.double(b), C.int(align), C.int(anchor),
+		C.int(fontID), C.double(maxHeight), C.double(lineHeight), C.double(rotationDeg),
+		&h, &n, &ok)
+	return int(n), float64(h), ok != 0
+}
+
+// SetStampSpace chooses the coordinate space of the positioned stamping
+// primitives (FillRect, PlaceText*, MaskedText*, PlaceParagraph, DrawImage*)
+// for subsequent calls: StampVisible (the default) keeps coordinates in the
+// page's displayed space, compensating /Rotate; StampMedia interprets
+// coordinates and rotations in the raw PDF user space (legacy layout semantics).
+// Watermarks and redaction are unaffected.
+func (e *EditableDoc) SetStampSpace(space StampSpace) error {
+	return check(C.pdf_editable_set_stamp_space(e.h, C.int(space)))
+}
+
 // DrawImage stamps an image (in-memory PNG or JPEG bytes, dispatched on the
 // file signature) onto page index (0-based) with its lower-left corner at
 // (x, y), scaled to width×height points, and returns whether the page existed.
@@ -289,6 +398,22 @@ func (e *EditableDoc) DrawImage(index int, image []byte, x, y, width, height, ro
 		e.h, C.int(index), uptr(image), C.uintptr_t(len(image)),
 		C.double(x), C.double(y), C.double(width), C.double(height),
 		C.double(rotationDeg), &found)
+	runtime.KeepAlive(image)
+	return found != 0
+}
+
+// DrawImageAnchored is DrawImage with an explicit rotation anchor:
+// ImageAnchorCorner (the DrawImage behavior) rotates the image about its own
+// lower-left corner at (x, y); ImageAnchorBoundingBox lands the rotated
+// image's bounding box with its lower-left at (x, y) (bounding-box layout semantics —
+// e.g. a 90-degree image occupies [x, x+height] × [y, y+width]). It returns
+// whether the page existed.
+func (e *EditableDoc) DrawImageAnchored(index int, image []byte, x, y, width, height, rotationDeg float64, anchor ImageAnchor) bool {
+	var found C.int
+	C.pdf_editable_draw_image_anchored(
+		e.h, C.int(index), uptr(image), C.uintptr_t(len(image)),
+		C.double(x), C.double(y), C.double(width), C.double(height),
+		C.double(rotationDeg), C.int(anchor), &found)
 	runtime.KeepAlive(image)
 	return found != 0
 }

@@ -158,6 +158,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping: fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -236,7 +237,7 @@ Pdf.ActivateLicense(token);   // throws PdfException if forged / expired / malfo
       <ul>
         <li>Units are <b>points</b> (1 pt = 1/72 inch). A4 is <code>595 × 842</code>, US&nbsp;Letter <code>612 × 792</code>.</li>
         <li>The origin <code>(0, 0)</code> is the <b>bottom-left</b> corner; <code>y</code> grows upward.</li>
-        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph.</li>
+        <li>For text, <code>(x, y)</code> is the <b>baseline</b> of the first glyph by default; stamping calls accept an explicit <code>VerticalAnchor</code> (see <a href="#ed-stamp">stamping</a> and the <a href="/positioning.html">interactive positioning guide</a>).</li>
         <li>Drawing/text always targets the <b>most recently added page</b>.</li>
       </ul>
 
@@ -567,9 +568,9 @@ ed.Save("stamped.pdf");</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>rotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>bool FillRect(int pageIndex, double x, double y, double width, double height, (double R, double G, double B)? color = null, double opacity = 1.0)</code></div>
-      <div class="api"><code>bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0, (double R, double G, double B)? color = null, double rotationDeg = 0.0, Align align = Align.Left)</code></div>
-      <div class="api"><code>bool MaskedText(int pageIndex, double x, double y, double width, double height, string text, double size = 12.0, (double R, double G, double B)? textColor = null, (double R, double G, double B)? bgColor = null, Align align = Align.Left)</code></div>
-      <div class="api"><code>bool DrawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg = 0.0)</code></div>
+      <div class="api"><code>bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0, (double R, double G, double B)? color = null, double rotationDeg = 0.0, Align align = Align.Left, int fontId = -1, VerticalAnchor anchor = VerticalAnchor.Baseline)</code></div>
+      <div class="api"><code>bool MaskedText(int pageIndex, double x, double y, double width, double height, string text, double size = 12.0, (double R, double G, double B)? textColor = null, (double R, double G, double B)? bgColor = null, Align align = Align.Left, int fontId = -1, VerticalAlign valign = VerticalAlign.Middle, double? padding = null)</code></div>
+      <div class="api"><code>bool DrawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg = 0.0, ImageAnchor anchor = ImageAnchor.Corner)</code></div>
       <p>A typical use is masking a spot with an opaque white box, then writing a value over it. <code>MaskedText</code> does exactly that in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bgColor</code> (default opaque white), then writes the text in <code>textColor</code> horizontally aligned per <code>align</code> and vertically centered in the box, so you never hand-compute the baseline. <code>PlaceText</code>'s <code>align</code> shifts the start point along the baseline by the text width for <code>Center</code> or <code>Right</code>. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(x, y)</code> scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>byte[] data = File.ReadAllBytes("invoice.pdf");
 PageGeometry g = Pdf.MeasurePage(data, 0);          // read the page geometry first
@@ -581,9 +582,50 @@ ed.MaskedText(0, 400, g.Height - 60, 120, 18, "R$ 1.250,00", size: 12, align: Al
 ed.DrawImage(0, File.ReadAllBytes("logo.png"), 404, g.Height - 120, 120, 48);
 ed.Save("stamped.pdf");</code></pre></div>
 
+      <!-- ED STAMP -->
+      <h2 id="ed-stamp">Stamping: fonts, anchors &amp; paragraphs <span class="badge free">free</span></h2>
+      <p>Everything below extends the positioned-drawing primitives with production-grade control: real embedded fonts, explicit vertical anchors, word-wrapping paragraphs and a per-document coordinate space. Try every mode live in the <a href="/positioning.html">interactive positioning guide</a>.</p>
+
+      <h3>Embedded stamping fonts</h3>
+      <div class="api"><code>int AddFontFile(string path)</code> &nbsp; <code>int AddFont(byte[] data)</code></div>
+      <p>Register a TrueType/OpenType font on the <code>EditableDoc</code> and pass its <code>fontId</code> to <code>PlaceText</code>/<code>MaskedText</code>/<code>PlaceParagraph</code>. The font is embedded as a subset; text may be arbitrary Unicode. <code>fontId: -1</code> keeps the built-in Helvetica (WinAnsi).</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("contract.pdf");
+int times = ed.AddFontFile("/Library/Fonts/Times New Roman.ttf");
+ed.PlaceText(0, 72, 96, "Assinado por Maria — ação registrada", size: 11, fontId: times);</code></pre></div>
+
+      <h3>Vertical anchors: what <code>y</code> means</h3>
+      <p><code>VerticalAnchor.Baseline</code> (default) anchors the text baseline. <code>Top</code>/<code>Bottom</code> anchor the geometric ascender/descender lines. <code>LineTop</code>/<code>LineBottom</code> anchor the <b>layout line box</b> (OS/2 win metrics + half-leading), the drop-in pair when matching output from legacy layout engines's <code>fixed-position layout</code>. Rotation always pivots at the anchor <code>(x, y)</code>; anchor offsets rotate with the text.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>// y is the BOTTOM of the line box, like legacy fixed-position layout:
+ed.PlaceText(0, 72, 140, "Total: R$ 1.250,00", size: 12, fontId: times,
+             anchor: VerticalAnchor.LineBottom);</code></pre></div>
+
+      <h3>MaskedText: box alignment &amp; padding</h3>
+      <p><code>valign</code> places the line inside the box: <code>Top</code> (top line-alignment in rectangle-based text APIs), <code>Middle</code> (default, cap-height centered) or <code>Bottom</code>. <code>padding</code> is the horizontal inset for <code>Left</code>/<code>Right</code> alignment; <code>null</code> keeps the default <code>min(0.15 × size, width / 4)</code>, <code>0</code> starts flush at the box edge.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>ed.MaskedText(0, 400, 700, 120, 18, "R$ 1.250,00", size: 12,
+              valign: VerticalAlign.Top, padding: 0);</code></pre></div>
+
+      <h3>Paragraphs: wrapping, bottom-pin, ceiling</h3>
+      <div class="api"><code>bool PlaceParagraph(int pageIndex, double x, double y, double width, string text, double size = 12.0, (double R, double G, double B)? color = null, Align align = Align.Left, int fontId = -1, double? maxHeight = null, double lineHeight = 1.0, VerticalAnchor anchor = VerticalAnchor.Top, double rotationDeg = 0.0)</code></div>
+      <div class="api"><code>(int Lines, double Height) PlaceParagraphMeasured(...)</code> &nbsp; <code>int PlaceParagraphCounted(...)</code></div>
+      <p>Breaks <code>text</code> greedily by word inside <code>width</code> (<code>\n</code> forces a line break). <code>anchor: Top</code> (default) hangs the block from <code>y</code>. <code>Bottom</code>/<code>LineBottom</code> <b>bottom-pin</b> it: the block's bottom rests on <code>y</code> and grows upward by its real content height; <code>maxHeight</code> is a <b>ceiling</b> that cuts overflowing lines from the top (the last lines stay pinned) and never inflates the position. <code>PlaceParagraphMeasured</code> also returns the consumed height, so blocks stack without re-measuring. The <code>Line*</code> anchors use the layout line box for the first line and the legacy multiplied-leading advance between lines.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>var (lines, height) = ed.PlaceParagraphMeasured(0, 72, 96, 220,
+    "Digitally signed by Maria Silva\nReason: Approval\n2026-07-02 14:31 UTC",
+    size: 10, fontId: times, maxHeight: 64, anchor: VerticalAnchor.LineBottom);</code></pre></div>
+
+      <h3>Coordinate space on rotated scans: <code>StampSpace</code></h3>
+      <div class="api"><code>StampSpace EditableDoc.StampSpace { get; set; }</code></div>
+      <p><code>Visible</code> (default): coordinates in the page as displayed; the library compensates <code>/Rotate</code>, so a <code>rotationDeg: 0</code> stamp reads upright on screen. <code>Media</code>: the raw PDF user space (the semantics of legacy engines that draw in raw coordinates), nothing composed on top of your math. Applies to <code>FillRect</code>, <code>PlaceText</code>, <code>MaskedText</code>, <code>PlaceParagraph</code> and <code>DrawImage</code>; watermarks and redaction are unaffected.</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>ed.StampSpace = StampSpace.Media;   // porting coordinates computed for legacy PDF libraries
+ed.PlaceText(0, x, y, "APPROVED", rotationDeg: 90, anchor: VerticalAnchor.LineBottom);</code></pre></div>
+
+      <h3>Rotated images: <code>ImageAnchor</code></h3>
+      <p><code>Corner</code> (default) keeps <code>(x, y)</code> as the image's own lower-left corner; the image sweeps around it when rotated. <code>BoundingBox</code> lands the rotated image's bounding box at <code>(x, y)</code> (bounding-box layout: a 90&deg; image occupies <code>[x, x+height] × [y, y+width]</code>).</p>
+      <div class="code has-label"><span class="lbl">csharp</span><pre><code>ed.DrawImage(0, File.ReadAllBytes("stamp.png"), 404, 96, 120, 48,
+             rotationDeg: 90, anchor: ImageAnchor.BoundingBox);</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
-      <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
+      <p><b>True redaction</b>: every shown <b>glyph</b> whose box intersects a rectangle is <b>removed</b> from the content stream (surviving glyphs keep their exact positions), images/XObjects overlapping a rect are dropped with their data, and intersecting annotations are deleted; only then are opaque black boxes painted. The call <b>throws</b> when a page cannot be safely rewritten (inline <code>BI</code> images, undecodable streams) instead of painting over still-present data.</p>
       <div class="api"><code>Redact(pageIndex, rects) → bool</code></div>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>using var ed = EditableDoc.LoadFile("statement.pdf");
 // rects = list of (x0, y0, x1, y1) tuples on that page
@@ -710,7 +752,7 @@ byte[] signed = session.Complete(cmsDer);
 File.WriteAllBytes("contract.signed.pdf", signed);</code></pre></div>
 
       <h3>Inspect existing signature fields</h3>
-      <p>Before signing, list the signature fields already present (the iText <code>SignatureUtil.getSignatureNames</code> equivalent). An empty list means the document is unsigned.</p>
+      <p>Before signing, list the signature fields already present (a classic pre-sign signature-field inventory). An empty list means the document is unsigned.</p>
       <div class="api"><code>Pdf.ListSignatures(pdf) → IReadOnlyList&lt;SignatureField&gt;</code></div>
       <div class="code has-label"><span class="lbl">csharp</span><pre><code>foreach (SignatureField f in Pdf.ListSignatures(pdf))
     Console.WriteLine($"{f.Name} signed: {f.Signed}");</code></pre></div>
@@ -885,6 +927,34 @@ File.WriteAllBytes("page1.png", png);</code></pre></div>
         <tr><td><code>Align.Center</code></td><td>Centered</td></tr>
         <tr><td><code>Align.Justify</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>VerticalAnchor.Baseline</code></td><td><code>y</code> is the text baseline (default)</td></tr>
+        <tr><td><code>VerticalAnchor.Top</code></td><td><code>y</code> is the ascender line (geometric top)</td></tr>
+        <tr><td><code>VerticalAnchor.Bottom</code></td><td><code>y</code> is the descender line (geometric bottom)</td></tr>
+        <tr><td><code>VerticalAnchor.LineTop</code></td><td><code>y</code> is the top of the layout line box</td></tr>
+        <tr><td><code>VerticalAnchor.LineBottom</code></td><td><code>y</code> is the bottom of the layout line box</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>VerticalAlign.Top</code></td><td>Line hangs from the box top (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>VerticalAlign.Middle</code></td><td>Cap-height centered (default)</td></tr>
+        <tr><td><code>VerticalAlign.Bottom</code></td><td>Descender rests on the box bottom</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>StampSpace.Visible</code></td><td>Coordinates in the displayed page, <code>/Rotate</code> compensated (default)</td></tr>
+        <tr><td><code>StampSpace.Media</code></td><td>Raw PDF user space, legacy layout semantics (no composition)</td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>ImageAnchor.Corner</code></td><td>Rotate about the image's own lower-left corner (default)</td></tr>
+        <tr><td><code>ImageAnchor.BoundingBox</code></td><td>Rotated bounding box lands at <code>(x, y)</code> (bounding-box layout)</td></tr>
+      </table>
       <h3>AFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -964,6 +1034,7 @@ catch (PdfException e)
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping: fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

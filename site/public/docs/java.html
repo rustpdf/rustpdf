@@ -61,7 +61,7 @@
         }
       },
       "datePublished": "2026-02-01",
-      "dateModified": "2026-06-29",
+      "dateModified": "2026-07-02",
       "author": {
         "@type": "Organization",
         "@id": "https://rustpdf.dev/#org",
@@ -159,6 +159,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; paragraphs</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -186,7 +187,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Java</h1>
-      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-07-02</p>
       <p class="docs-lead">The <code>dev.rustpdf:rustpdf</code> Maven artifact wraps the rust-pdf C core with idiomatic, chainable classes over pure-Java FFI (<a href="https://github.com/java-native-access/jna">JNA</a>), so there is no native build step on your side. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. The published artifact is a fat JAR that bundles the native library for every supported platform.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>Document</code> authors a new PDF; <code>EditableDoc</code> loads and manipulates an existing one. Both implement <code>AutoCloseable</code> and hold a native handle, so use them with try-with-resources to free it promptly. Using a <code>Document</code> or <code>EditableDoc</code> after it has been closed throws <code>IllegalStateException</code> (never a crash); calling <code>close()</code> more than once is safe.</div>
@@ -620,6 +621,72 @@ try (EditableDoc ed = EditableDoc.load(data)) {
     ed.save("stamped.pdf");
 }</code></pre></div>
 
+      <!-- ED STAMP -->
+      <h2 id="ed-stamp">Stamping: fonts, anchors &amp; paragraphs <span class="badge free">free</span></h2>
+      <p>The positioned-drawing primitives above have overloads that unlock embedded fonts, precise vertical anchoring and wrapped paragraphs: the toolkit for filling templates coming from legacy layout engines or legacy PDF libraries coordinates. See the <a href="/positioning.html">Interactive positioning guide</a> to explore each anchor visually.</p>
+
+      <h3>Custom fonts</h3>
+      <div class="api"><code>int addFontFile(String path)</code> &nbsp; <code>int addFont(byte[] data)</code></div>
+      <p>Register a TrueType/OpenType font on the <code>EditableDoc</code> and pass the returned id as the <code>fontId</code> argument of <code>placeText</code> / <code>maskedText</code> / <code>placeParagraph</code>. The font is embedded as a subset, so the stamp renders with the real glyphs and metrics (full Unicode, no WinAnsi limit). <code>fontId = -1</code> keeps the built-in Helvetica.</p>
+
+      <h3>Vertical anchors</h3>
+      <div class="api"><code>boolean placeText(int pageIndex, double x, double y, String text, double size, double r, double g, double b, double rotationDeg, Align align, int fontId)</code></div>
+      <div class="api"><code>boolean placeText(…, Align align, int fontId, VerticalAnchor anchor)</code></div>
+      <p>The <code>anchor</code> says what <code>y</code> means: <code>VerticalAnchor.BASELINE</code> (the default and historical behavior), <code>TOP</code> (text hangs from <code>y</code>: the baseline lands <code>ascent × size</code> below it), <code>BOTTOM</code> (the descender line rests on <code>y</code>), and <code>LINE_TOP</code>/<code>LINE_BOTTOM</code>, the top/bottom of the <b>layout line box</b> (font line metrics plus a fixed half-leading). Ascent/descent come from the selected font's metrics.</p>
+      <div class="note"><b>Migrating from legacy layout engines?</b> <code>VerticalAnchor.LINE_BOTTOM</code> reproduces <code>fixed-position layout(x, y, width)</code> exactly: such engines position an element by the bottom of its line box, so a legacy <code>y</code> passed unchanged with <code>LINE_BOTTOM</code> lands the text on the same spot. For rotated (scanned) pages also switch to <code>StampSpace.MEDIA</code> below.</div>
+
+      <h3>maskedText: vertical alignment &amp; padding</h3>
+      <div class="api"><code>boolean maskedText(int pageIndex, double x, double y, double width, double height, String text, double size, double[] textColor, double[] bgColor, Align align, int fontId, VerticalAlign valign)</code></div>
+      <div class="api"><code>boolean maskedText(…, VerticalAlign valign, double padding)</code></div>
+      <p><code>valign</code> aligns the line inside the box: <code>VerticalAlign.MIDDLE</code> (the default: cap-height centering), <code>TOP</code> (baseline at <code>y + height − ascent × size</code>, top line-alignment in rectangle-based text APIs) or <code>BOTTOM</code>. <code>padding</code> is the horizontal edge inset (points) for <code>Align.LEFT</code>/<code>Align.RIGHT</code>: a negative value keeps the historical <code>min(0.15 × size, width / 4)</code>; pass <code>0</code> to start flush with the box edge like rectangle-based DrawString APIs.</p>
+
+      <h3>Wrapped paragraphs</h3>
+      <div class="api"><code>boolean placeParagraph(int pageIndex, double x, double y, double width, String text)</code></div>
+      <div class="api"><code>boolean placeParagraph(int pageIndex, double x, double y, double width, String text, double size, double r, double g, double b, Align align, int fontId, double maxHeight, double lineHeight, VerticalAnchor anchor, double rotationDeg)</code></div>
+      <div class="api"><code>PlaceParagraphResult placeParagraphMeasured(…)  // lines() + height()</code></div>
+      <p>Stamps a paragraph with automatic word wrapping: <code>text</code> is broken into lines that fit <code>width</code> points (<code>\n</code> forces a break) and drawn from the anchor <code>(x, y)</code>. With the default <code>VerticalAnchor.TOP</code> the first baseline lands <code>ascent × size</code> below <code>y</code> (legacy fixed-position layout) and each further line steps down by <code>size × 1.2 × lineHeight</code>. The bottom-pinned anchors (<code>BOTTOM</code>/<code>LINE_BOTTOM</code>) rest the block's bottom on <code>y</code> and grow it upward by its real content height. <code>maxHeight &gt; 0</code> is a ceiling: lines that would overflow it are cut (<code>&lt;= 0</code> = unlimited); <code>Align.JUSTIFY</code> stretches the word gaps of every line but the last of each paragraph. <code>placeParagraphMeasured</code> additionally returns a <code>PlaceParagraphResult</code> with how many <code>lines()</code> were drawn (detects truncation) and the consumed block <code>height()</code> in points, so you can stack blocks without re-measuring.</p>
+
+      <h3>Coordinate space (Visible vs Media)</h3>
+      <div class="api"><code>EditableDoc setStampSpace(StampSpace space)</code></div>
+      <p>Sets the coordinate space of all subsequent stamping calls. <code>StampSpace.VISIBLE</code> (default) keeps the historical behavior: coordinates in the page's displayed space, compensating <code>/Rotate</code> so a <code>rotationDeg = 0</code> stamp reads upright on screen. <code>StampSpace.MEDIA</code> interprets coordinates and <code>rotationDeg</code> in the raw PDF user space (the raw-coordinate semantics of legacy layout engines), never composing with the page's <code>/Rotate</code>. Use it to reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages. Watermarks and redaction are unaffected.</p>
+
+      <h3>Image anchor</h3>
+      <div class="api"><code>boolean drawImage(int pageIndex, byte[] image, double x, double y, double width, double height, double rotationDeg, ImageAnchor anchor)</code></div>
+      <p>The <code>anchor</code> controls how a <b>rotated</b> image is anchored at <code>(x, y)</code>: <code>ImageAnchor.CORNER</code> (default) rotates the image about its own lower-left corner, sweeping it around the point; <code>ImageAnchor.BOUNDING_BOX</code> lands the rotated image's bounding box with its lower-left at <code>(x, y)</code> (bounding-box layout semantics; e.g. a 90° image occupies <code>[x, x+height] × [y, y+width]</code>).</p>
+
+      <div class="code has-label"><span class="lbl">java</span><pre><code>import dev.rustpdf.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+try (EditableDoc ed = EditableDoc.loadFile(Path.of("template.pdf"))) {
+    int times = ed.addFontFile("times.ttf");                    // embedded subset
+
+    // hang the text from y like legacy PDF engines fixed-position layout
+    ed.placeText(0, 72, 700, "Náme with accents ✓", 12, 0, 0, 0, 0,
+                 Align.LEFT, times, VerticalAnchor.TOP);
+
+    // mask a box; text flush with the edge and hung from the top
+    ed.maskedText(0, 400, 680, 140, 18, "R$ 1.234,56", 11,
+                  null, null, Align.LEFT, times, VerticalAlign.TOP, 0);
+
+    // wrapped paragraph pinned by its bottom, with a height ceiling
+    PlaceParagraphResult r = ed.placeParagraphMeasured(
+        0, 72, 120, 300, "Terms and conditions… ".repeat(12), 9, 0, 0, 0,
+        Align.JUSTIFY, -1, 140, 1.0, VerticalAnchor.BOTTOM, 0);
+    System.out.println(r.lines() + " lines, " + r.height() + " pt used");
+
+    // reproduce legacy raw-space coordinates on a rotated scan
+    ed.setStampSpace(StampSpace.MEDIA);
+    ed.placeText(0, 50, 50, "legacy layout engines-space stamp", 10, 0, 0, 0, 0);
+    ed.setStampSpace(StampSpace.VISIBLE);
+
+    // rotated image anchored by its bounding box (bounding-box layout)
+    ed.drawImage(0, Files.readAllBytes(Path.of("sig.png")), 420, 100, 120, 40,
+                 90.0, ImageAnchor.BOUNDING_BOX);
+    ed.save("filled.pdf");
+}</code></pre></div>
+      <div class="note"><b>Backward compatible.</b> The shorter overloads (no <code>fontId</code>, no anchor) behave exactly as before: built-in Helvetica, <code>VerticalAnchor.BASELINE</code>, <code>VerticalAlign.MIDDLE</code>, the historical padding, <code>ImageAnchor.CORNER</code> and <code>StampSpace.VISIBLE</code> — existing code keeps compiling and rendering unchanged.</div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
@@ -767,7 +834,7 @@ byte[] signed = session.complete(cmsDer);
 Files.write(Path.of("contract.signed.pdf"), signed);</code></pre></div>
 
       <h3>Inspect existing signature fields</h3>
-      <p>Before signing, list the signature fields already present (the iText <code>SignatureUtil.getSignatureNames</code> equivalent). An empty list means the document is unsigned. Each <code>SignatureField</code> is a record with <code>name()</code> and <code>signed()</code>.</p>
+      <p>Before signing, list the signature fields already present (a classic pre-sign signature-field inventory). An empty list means the document is unsigned. Each <code>SignatureField</code> is a record with <code>name()</code> and <code>signed()</code>.</p>
       <div class="api"><code>Pdf.listSignatures(pdf) → List&lt;SignatureField&gt;</code></div>
       <div class="code has-label"><span class="lbl">java</span><pre><code>for (SignatureField f : Pdf.listSignatures(pdf))
     System.out.println(f.name() + " signed: " + f.signed());</code></pre></div>
@@ -928,6 +995,34 @@ Files.write(Path.of("page1.png"), png);</code></pre></div>
         <tr><td><code>Align.CENTER</code></td><td>Centered</td></tr>
         <tr><td><code>Align.JUSTIFY</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning of <code>y</code></th></tr>
+        <tr><td><code>VerticalAnchor.BASELINE</code></td><td>Text baseline (default, historical behavior)</td></tr>
+        <tr><td><code>VerticalAnchor.TOP</code></td><td>Text hangs from <code>y</code> (baseline at <code>y − ascent × size</code>)</td></tr>
+        <tr><td><code>VerticalAnchor.BOTTOM</code></td><td>Descender line rests on <code>y</code></td></tr>
+        <tr><td><code>VerticalAnchor.LINE_TOP</code></td><td>Top of the layout line box</td></tr>
+        <tr><td><code>VerticalAnchor.LINE_BOTTOM</code></td><td>Bottom of the layout line box (matches legacy fixed-position layout)</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Line position inside a <code>maskedText</code> box</th></tr>
+        <tr><td><code>VerticalAlign.TOP</code></td><td>Hangs from the top edge (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>VerticalAlign.MIDDLE</code></td><td>Cap-height centering (default, historical behavior)</td></tr>
+        <tr><td><code>VerticalAlign.BOTTOM</code></td><td>Descender line rests on the bottom edge</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Coordinate space of stamping calls</th></tr>
+        <tr><td><code>StampSpace.VISIBLE</code></td><td>Displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>StampSpace.MEDIA</code></td><td>Raw PDF user space (legacy layout semantics), ignores <code>/Rotate</code></td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Rotation anchor at <code>(x, y)</code></th></tr>
+        <tr><td><code>ImageAnchor.CORNER</code></td><td>The image's own lower-left corner (default)</td></tr>
+        <tr><td><code>ImageAnchor.BOUNDING_BOX</code></td><td>Lower-left of the rotated image's bounding box (bounding-box layout)</td></tr>
+      </table>
       <h3>AFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -1003,6 +1098,7 @@ try (Document doc = new Document()) {
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; paragraphs</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

@@ -1,10 +1,10 @@
 [package]
 name = "rustpdf"
-version = "0.4.6"
+version = "0.4.7"
 edition = "2021"
 rust-version = "1.82"
 license = "LicenseRef-Proprietary"
-description = "Safe Rust bindings for the rust-pdf engine. Loads the precompiled libpdf_ffi cdylib at runtime — the engine source is never shipped."
+description = "Generate, edit, sign and process PDFs in Rust: PDF/A, AES-256, digital signatures (PAdES), forms, stamping, redaction, extraction and rendering. Docs: https://rustpdf.dev/docs/"
 keywords = ["pdf", "pdfa", "signatures", "ffi"]
 categories = ["api-bindings"]
 # Publishing: this crate is distributed through a PRIVATE cargo registry, not

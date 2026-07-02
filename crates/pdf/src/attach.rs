@@ -5,7 +5,7 @@
 //! catalog's `/Names /EmbeddedFiles` name tree **and** in the document-level
 //! `/AF` array, which is what makes them conforming associated files.
 
-use cos::{Dict, Object, PdfString, Stream};
+use cos::{Dict, Object, PdfString, Reference, Stream};
 use writer::Document as WriterDoc;
 
 use crate::Attachment;
@@ -16,7 +16,10 @@ const MOD_DATE: &[u8] = b"D:20260101000000Z";
 /// Build the embedded-file objects and wire them into `catalog`
 /// (`/Names /EmbeddedFiles` + `/AF`).
 pub(crate) fn apply(doc: &mut WriterDoc, catalog: &mut Dict, attachments: &[Attachment]) {
-    let mut names: Vec<Object> = Vec::new();
+    // Name-tree entries must be emitted with keys in ascending byte order
+    // (ISO 32000 §7.9.6); readers binary-search the tree and strict validators
+    // (veraPDF / Factur-X) reject an unsorted `/Names` array.
+    let mut pairs: Vec<(Vec<u8>, Reference)> = Vec::new();
     let mut af: Vec<Object> = Vec::new();
 
     for a in attachments {
@@ -43,11 +46,15 @@ pub(crate) fn apply(doc: &mut WriterDoc, catalog: &mut Dict, attachments: &[Atta
             );
         let fs_ref = doc.add(filespec);
 
-        names.push(Object::String(PdfString::literal(
-            a.name.clone().into_bytes(),
-        )));
-        names.push(Object::Reference(fs_ref));
+        pairs.push((a.name.clone().into_bytes(), fs_ref));
         af.push(Object::Reference(fs_ref));
+    }
+
+    pairs.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut names: Vec<Object> = Vec::with_capacity(pairs.len() * 2);
+    for (key, fs_ref) in pairs {
+        names.push(Object::String(PdfString::literal(key)));
+        names.push(Object::Reference(fs_ref));
     }
 
     let embedded = Dict::new().with("Names", Object::Array(names));

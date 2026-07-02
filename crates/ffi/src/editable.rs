@@ -6,7 +6,8 @@ use std::ffi::{c_char, c_double, c_int, c_uchar};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use pdf::{
-    Align, ConvertError, EditableDoc, Encryption, Image, PdfaLevel, Permissions, WatermarkOptions,
+    Align, ConvertError, EditableDoc, Encryption, Image, ImageAnchor, PdfaLevel, Permissions,
+    StampSpace, VerticalAlign, VerticalAnchor, WatermarkOptions,
 };
 
 /// Map a C-ABI alignment int to [`Align`] (0=Left, 1=Right, 2=Center, 3=Justify;
@@ -20,7 +21,41 @@ fn align_from_int(a: c_int) -> Align {
     }
 }
 
+/// Map a C-ABI vertical-anchor int to [`VerticalAnchor`] (0=Baseline, 1=Top,
+/// 2=Bottom, 3=LineTop, 4=LineBottom — the `Line*` variants use the legacy engine's
+/// line-box model; anything else = Baseline).
+fn anchor_from_int(a: c_int) -> VerticalAnchor {
+    match a {
+        1 => VerticalAnchor::Top,
+        2 => VerticalAnchor::Bottom,
+        3 => VerticalAnchor::LineTop,
+        4 => VerticalAnchor::LineBottom,
+        _ => VerticalAnchor::Baseline,
+    }
+}
+
+/// Map a C-ABI vertical-align int to [`VerticalAlign`] (0=Top, 1=Middle,
+/// 2=Bottom; anything else = Middle).
+fn valign_from_int(v: c_int) -> VerticalAlign {
+    match v {
+        0 => VerticalAlign::Top,
+        2 => VerticalAlign::Bottom,
+        _ => VerticalAlign::Middle,
+    }
+}
+
 use crate::{bytes, clear_last_error, cstr, emit_buffer, guard, set_last_error, PdfStatus};
+
+/// Write a registered font id to `out` (NULL-checked).
+unsafe fn write_font_id(out: *mut c_int, id: usize) -> PdfStatus {
+    if out.is_null() {
+        set_last_error("null out_id");
+        return PdfStatus::NullPointer;
+    }
+    unsafe { *out = id as c_int };
+    clear_last_error();
+    PdfStatus::Ok
+}
 
 fn pdfa_level(v: c_int) -> PdfaLevel {
     match v {
@@ -716,6 +751,647 @@ pub unsafe extern "C" fn pdf_editable_masked_text(
     })
 }
 
+/// Register a TrueType/OpenType font (from a file path) for text stamping;
+/// writes its `font_id` to `out_id`. Use the id with
+/// [`pdf_editable_place_text_font`] / [`pdf_editable_masked_text_font`].
+///
+/// # Safety
+/// `ed`, `path`, `out_id` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_add_font_file(
+    ed: *mut PdfEditable,
+    path: *const c_char,
+    out_id: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_add_font_file", |d| {
+        let path = match unsafe { cstr(path, "pdf_editable_add_font_file:path") } {
+            Ok(p) => p.to_string(),
+            Err(st) => return st,
+        };
+        match d.add_font_file(&path) {
+            Ok(id) => unsafe { write_font_id(out_id, id) },
+            Err(e) => {
+                set_last_error(format!("font load failed for '{path}': {e}"));
+                PdfStatus::Font
+            }
+        }
+    })
+}
+
+/// Register a stamping font from raw TrueType/OpenType bytes; writes its
+/// `font_id` to `out_id`.
+///
+/// # Safety
+/// `ed`, `data` (`len` bytes) and `out_id` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_add_font(
+    ed: *mut PdfEditable,
+    data: *const u8,
+    len: usize,
+    out_id: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_add_font", |d| {
+        match d.add_font(unsafe { bytes(data, len) }.to_vec()) {
+            Ok(id) => unsafe { write_font_id(out_id, id) },
+            Err(e) => {
+                set_last_error(format!("font load failed: {e}"));
+                PdfStatus::Font
+            }
+        }
+    })
+}
+
+/// Like [`pdf_editable_place_text_aligned`] but draws with the embedded font
+/// `font_id` (from [`pdf_editable_add_font_file`]/[`pdf_editable_add_font`])
+/// instead of the built-in Helvetica. `out_found` receives `1` if the page and
+/// font existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_text_font(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    rotation_deg: f64,
+    align: c_int,
+    font_id: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_text_font", |d| {
+        let text = match unsafe { cstr(text, "place_text_font:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.place_text_with_font(
+            index.max(0) as usize,
+            x,
+            y,
+            &text,
+            size,
+            (r, g, b),
+            rotation_deg,
+            align_from_int(align),
+            font_id.max(0) as usize,
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_masked_text`] but draws the text with the embedded font
+/// `font_id`. `out_found` receives `1` if the page and font existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_masked_text_font(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    text: *const c_char,
+    size: f64,
+    text_r: f64,
+    text_g: f64,
+    text_b: f64,
+    bg_r: f64,
+    bg_g: f64,
+    bg_b: f64,
+    align: c_int,
+    font_id: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_masked_text_font", |d| {
+        let text = match unsafe { cstr(text, "masked_text_font:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let found = d.masked_text_with_font(
+            index.max(0) as usize,
+            x,
+            y,
+            width,
+            height,
+            &text,
+            size,
+            (text_r, text_g, text_b),
+            (bg_r, bg_g, bg_b),
+            align_from_int(align),
+            font_id.max(0) as usize,
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_place_text_aligned`] but with an explicit **vertical
+/// anchor** (`0`=Baseline, `1`=Top, `2`=Bottom) saying what `y` means, and an
+/// optional embedded font: `font_id >= 0` (from [`pdf_editable_add_font_file`]/
+/// [`pdf_editable_add_font`]) stamps with that font, `-1` uses the built-in
+/// Helvetica. `Top` hangs the text from `y` (baseline at `y − ascent × size`,
+/// legacy fixed-position layout semantics); `Bottom` rests the descender line on
+/// `y`. Ascent/descent come from the selected font's metrics. `out_found`
+/// receives `1` if the page (and font) existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_text_anchored(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    rotation_deg: f64,
+    align: c_int,
+    anchor: c_int,
+    font_id: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_text_anchored", |d| {
+        let text = match unsafe { cstr(text, "place_text_anchored:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let idx = index.max(0) as usize;
+        let found = if font_id >= 0 {
+            d.place_text_with_font_anchored(
+                idx,
+                x,
+                y,
+                &text,
+                size,
+                (r, g, b),
+                rotation_deg,
+                align_from_int(align),
+                font_id as usize,
+                anchor_from_int(anchor),
+            )
+        } else {
+            d.place_text_anchored(
+                idx,
+                x,
+                y,
+                &text,
+                size,
+                (r, g, b),
+                rotation_deg,
+                align_from_int(align),
+                anchor_from_int(anchor),
+            )
+        };
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_masked_text`] but with an explicit **vertical
+/// alignment** of the line inside the box (`0`=Top, `1`=Middle, `2`=Bottom)
+/// and an optional embedded font (`font_id >= 0`; `-1` = built-in Helvetica).
+/// `Top` hangs the line from the top edge (baseline at
+/// `y + height − ascent × size`, top line-alignment semantics of rectangle-based text APIs);
+/// `Middle` keeps the historical cap-height centering; `Bottom` rests the
+/// descender line on the bottom edge. `out_found` receives `1` if the page
+/// (and font) existed, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_masked_text_valign(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    text: *const c_char,
+    size: f64,
+    text_r: f64,
+    text_g: f64,
+    text_b: f64,
+    bg_r: f64,
+    bg_g: f64,
+    bg_b: f64,
+    align: c_int,
+    valign: c_int,
+    font_id: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_masked_text_valign", |d| {
+        let text = match unsafe { cstr(text, "masked_text_valign:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let idx = index.max(0) as usize;
+        let found = if font_id >= 0 {
+            d.masked_text_with_font_valign(
+                idx,
+                x,
+                y,
+                width,
+                height,
+                &text,
+                size,
+                (text_r, text_g, text_b),
+                (bg_r, bg_g, bg_b),
+                align_from_int(align),
+                font_id as usize,
+                valign_from_int(valign),
+            )
+        } else {
+            d.masked_text_valign(
+                idx,
+                x,
+                y,
+                width,
+                height,
+                &text,
+                size,
+                (text_r, text_g, text_b),
+                (bg_r, bg_g, bg_b),
+                align_from_int(align),
+                valign_from_int(valign),
+            )
+        };
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Choose the **coordinate space** of the positioned stamping primitives
+/// (`pdf_editable_fill_rect`, `place_text*`, `masked_text*`,
+/// `place_paragraph`, `draw_image`) for subsequent calls (FINDING-004).
+/// `space`: `0` = **visible** (historical default — coordinates in the page's
+/// displayed space, compensating `/Rotate` so a `rotation_deg = 0` stamp reads
+/// upright on screen); `1` = **media** (raw PDF user space, legacy layout engines
+/// `fixed-position layout`/rotation semantics — no composition with the
+/// page's `/Rotate` or crop offset; `rotation_deg` is the baseline angle in
+/// media space). Watermarks and redaction are unaffected.
+///
+/// # Safety
+/// `ed` valid.
+#[no_mangle]
+pub unsafe extern "C" fn pdf_editable_set_stamp_space(
+    ed: *mut PdfEditable,
+    space: c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_set_stamp_space", |d| {
+        d.set_stamp_space(if space == 1 {
+            StampSpace::Media
+        } else {
+            StampSpace::Visible
+        });
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Stamp a **paragraph with automatic word wrapping** on page `index`
+/// (FINDING-003): break `text` into lines that fit `width` points and draw
+/// them from the **top-left corner** `(x, y)` downward (first baseline at
+/// `y − ascent × size`, legacy fixed-position layout semantics; `'\n'` forces a
+/// break). `align` is 0=Left, 1=Right, 2=Center, 3=Justify (gaps of every
+/// line but the last of each paragraph are stretched). `font_id >= 0` (from
+/// [`pdf_editable_add_font_file`]/[`pdf_editable_add_font`]) wraps and draws
+/// with that embedded font; `-1` uses the built-in Helvetica. `max_height`
+/// `> 0` truncates lines whose descender would cross `y − max_height`
+/// (`<= 0` = unlimited). `line_height` scales the default `1.2 × size`
+/// baseline-to-baseline leading (`<= 0` = `1.0`). `out_lines` (optional)
+/// receives the number of lines drawn; `out_found` receives `1` if the page
+/// (and font) existed and `width`/`size` were valid, else `0`.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_lines`/`out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_paragraph(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    align: c_int,
+    font_id: c_int,
+    max_height: f64,
+    line_height: f64,
+    out_lines: *mut c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_paragraph", |d| {
+        let text = match unsafe { cstr(text, "place_paragraph:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let idx = index.max(0) as usize;
+        let mh = (max_height > 0.0).then_some(max_height);
+        let lh = if line_height > 0.0 { line_height } else { 1.0 };
+        let drawn = if font_id >= 0 {
+            d.place_paragraph_with_font(
+                idx,
+                x,
+                y,
+                width,
+                &text,
+                size,
+                (r, g, b),
+                align_from_int(align),
+                font_id as usize,
+                mh,
+                lh,
+            )
+        } else {
+            d.place_paragraph(
+                idx,
+                x,
+                y,
+                width,
+                &text,
+                size,
+                (r, g, b),
+                align_from_int(align),
+                mh,
+                lh,
+            )
+        };
+        if !out_lines.is_null() {
+            unsafe { *out_lines = drawn.unwrap_or(0) as c_int };
+        }
+        if !out_found.is_null() {
+            unsafe { *out_found = drawn.is_some() as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_draw_image`] but with an explicit **rotation anchor**
+/// (`anchor`: `0` = Corner — `(x, y)` is the image's own lower-left corner,
+/// the image sweeps around it when rotated (the `pdf_editable_draw_image`
+/// default); `1` = BoundingBox — the **rotated image's bounding box** lands
+/// with its lower-left at `(x, y)`, bounding-box layout semantics: the drawn pixels
+/// always sit at/above/right of the anchor).
+///
+/// # Safety
+/// `ed` valid; `data` points to `len` readable bytes; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_draw_image_anchored(
+    ed: *mut PdfEditable,
+    index: c_int,
+    data: *const u8,
+    len: usize,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    rotation_deg: f64,
+    anchor: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_draw_image_anchored", |d| {
+        let buf = unsafe { bytes(data, len) };
+        let img = if buf.starts_with(&[0xFF, 0xD8]) {
+            Image::from_jpeg(buf.to_vec())
+        } else {
+            Image::from_png(buf)
+        };
+        let img = match img {
+            Ok(i) => i,
+            Err(e) => {
+                set_last_error(format!("draw_image load failed: {e}"));
+                return PdfStatus::Image;
+            }
+        };
+        let found = d.draw_image_anchored(
+            index.max(0) as usize,
+            &img,
+            x,
+            y,
+            width,
+            height,
+            rotation_deg,
+            if anchor == 1 {
+                ImageAnchor::BoundingBox
+            } else {
+                ImageAnchor::Corner
+            },
+        );
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_place_paragraph`] but with an explicit **block
+/// anchor**, a **rotation about the anchor**, and a measured result.
+/// `anchor`: 0=Baseline — `y` is the first line's baseline; 1=Top — the
+/// default of the non-anchored export; 2=Bottom / 4=LineBottom —
+/// **bottom-pinned**: the block's bottom rests on `y` and grows upward by its
+/// real content height; `max_height > 0` is a **ceiling** that cuts
+/// overflowing lines from the top (the last lines stay pinned) and never
+/// inflates the position; 3=LineTop — top-anchored via the layout line box.
+/// The `Line*` anchors also use the line-box height as the leading basis (a
+/// single line and a wrapped block agree vertically); the geometric anchors
+/// keep the plain `1.2 em` leading. `rotation_deg` rotates the laid-out block
+/// counter-clockwise about the anchor `(x, y)` (the pivot is the anchor —
+/// invariant under rotation). `out_height` (optional) receives the consumed
+/// block height in points; `out_lines` the number of lines drawn.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_height`/`out_lines`/`out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_place_paragraph_anchored(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    text: *const c_char,
+    size: f64,
+    r: f64,
+    g: f64,
+    b: f64,
+    align: c_int,
+    anchor: c_int,
+    font_id: c_int,
+    max_height: f64,
+    line_height: f64,
+    rotation_deg: f64,
+    out_height: *mut f64,
+    out_lines: *mut c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_place_paragraph_anchored", |d| {
+        let text = match unsafe { cstr(text, "place_paragraph_anchored:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let idx = index.max(0) as usize;
+        let mh = (max_height > 0.0).then_some(max_height);
+        let lh = if line_height > 0.0 { line_height } else { 1.0 };
+        let anchor = anchor_from_int(anchor);
+        let drawn = if font_id >= 0 {
+            d.place_paragraph_with_font_anchored(
+                idx,
+                x,
+                y,
+                width,
+                &text,
+                size,
+                (r, g, b),
+                align_from_int(align),
+                font_id as usize,
+                mh,
+                lh,
+                anchor,
+                rotation_deg,
+            )
+        } else {
+            d.place_paragraph_anchored(
+                idx,
+                x,
+                y,
+                width,
+                &text,
+                size,
+                (r, g, b),
+                align_from_int(align),
+                mh,
+                lh,
+                anchor,
+                rotation_deg,
+            )
+        };
+        if !out_height.is_null() {
+            unsafe { *out_height = drawn.map(|(_, h)| h).unwrap_or(0.0) };
+        }
+        if !out_lines.is_null() {
+            unsafe { *out_lines = drawn.map(|(n, _)| n).unwrap_or(0) as c_int };
+        }
+        if !out_found.is_null() {
+            unsafe { *out_found = drawn.is_some() as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
+/// Like [`pdf_editable_masked_text_valign`] but with an explicit horizontal
+/// edge inset `pad` (points) for Left/Right alignment: the text starts at
+/// `x + pad` (or ends at `x + width − pad`). `pad < 0` keeps the historical
+/// default `min(0.15 × size, width / 4)`; `0` starts flush with the box edge
+/// (rectangle-based DrawString semantics). `font_id >= 0` draws with that
+/// embedded font, `-1` = built-in Helvetica.
+///
+/// # Safety
+/// `ed`, `text` valid; `out_found` writable or NULL.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn pdf_editable_masked_text_pad(
+    ed: *mut PdfEditable,
+    index: c_int,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    text: *const c_char,
+    size: f64,
+    text_r: f64,
+    text_g: f64,
+    text_b: f64,
+    bg_r: f64,
+    bg_g: f64,
+    bg_b: f64,
+    align: c_int,
+    valign: c_int,
+    pad: f64,
+    font_id: c_int,
+    out_found: *mut c_int,
+) -> PdfStatus {
+    with_editable(ed, "pdf_editable_masked_text_pad", |d| {
+        let text = match unsafe { cstr(text, "masked_text_pad:text") } {
+            Ok(s) => s.to_string(),
+            Err(st) => return st,
+        };
+        let idx = index.max(0) as usize;
+        let pad = (pad >= 0.0).then_some(pad);
+        let found = if font_id >= 0 {
+            d.masked_text_with_font_padded(
+                idx,
+                x,
+                y,
+                width,
+                height,
+                &text,
+                size,
+                (text_r, text_g, text_b),
+                (bg_r, bg_g, bg_b),
+                align_from_int(align),
+                font_id as usize,
+                valign_from_int(valign),
+                pad,
+            )
+        } else {
+            d.masked_text_padded(
+                idx,
+                x,
+                y,
+                width,
+                height,
+                &text,
+                size,
+                (text_r, text_g, text_b),
+                (bg_r, bg_g, bg_b),
+                align_from_int(align),
+                valign_from_int(valign),
+                pad,
+            )
+        };
+        if !out_found.is_null() {
+            unsafe { *out_found = found as c_int };
+        }
+        clear_last_error();
+        PdfStatus::Ok
+    })
+}
+
 /// Draw an image (from in-memory JPEG/PNG bytes `data`/`len`, dispatched on the
 /// file signature) on page `index` (0-based) with its lower-left corner at
 /// `(x, y)`, scaled to `width`×`height` points, rotated `rotation_deg` degrees
@@ -844,7 +1520,18 @@ pub unsafe extern "C" fn pdf_editable_redact(
                 flat[i * 4 + 3],
             ]);
         }
-        let found = d.redact(index, &boxes);
+        let found = match d.redact(index, &boxes) {
+            Ok(f) => f,
+            Err(e) => {
+                // Fail loudly: nothing was removed or drawn (a silent
+                // paint-over would mask still-present data).
+                set_last_error(format!("redact failed: {e}"));
+                if !out_found.is_null() {
+                    unsafe { *out_found = 0 };
+                }
+                return PdfStatus::Unsupported;
+            }
+        };
         if !out_found.is_null() {
             unsafe { *out_found = found as c_int };
         }

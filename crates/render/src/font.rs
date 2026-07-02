@@ -447,7 +447,7 @@ fn parse_w_array(reader: &PdfReader, w: Option<&Object>) -> HashMap<u32, f32> {
             Some(Object::Array(ws)) => {
                 for (j, wo) in ws.iter().enumerate() {
                     if let Some(wv) = num(wo) {
-                        map.insert(c + j as u32, wv / 1000.0);
+                        map.insert(c.saturating_add(j as u32), wv / 1000.0);
                     }
                 }
                 i += 2;
@@ -459,7 +459,7 @@ fn parse_w_array(reader: &PdfReader, w: Option<&Object>) -> HashMap<u32, f32> {
                     .and_then(|o| int(reader.resolve(o)))
                     .unwrap_or(c as i64) as u32;
                 let wv = arr.get(i + 2).and_then(num).unwrap_or(0.0) / 1000.0;
-                for cid in c..=c_last.min(c + 65_535) {
+                for cid in c..=c_last.min(c.saturating_add(65_535)) {
                     map.insert(cid, wv);
                 }
                 i += 3;

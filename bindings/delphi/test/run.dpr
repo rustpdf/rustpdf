@@ -238,6 +238,12 @@ var
   { issue #50 — place_text_aligned / masked_text / extract_page_text }
   AlignedBytes, MaskedBytes: TBytes;
   PageText: string;
+  { stamping fonts + vertical anchors + paragraphs + stamp space }
+  StampDoc: TPdfEditable;
+  StampFont, ParaLines: Integer;
+  ParaHeight: Double;
+  StampBytes: TBytes;
+  StampText: string;
 {$IFDEF UNIX}
   Signer: TOpenSslSigner;
   KeyPemPath: string;
@@ -746,6 +752,55 @@ begin
   end;
   Assert(Blocked, 'extract_page_text on a missing page raises psInvalidArgument');
   Writeln('extract_page_text ok');
+
+  { 18. Stamping fonts, vertical anchors, wrapped paragraphs, stamp space and
+    the bounding-box image anchor. }
+  StampDoc := TPdfEditable.Load(PlainBytes);
+  try
+    StampFont := StampDoc.AddFontFile(Font);
+    Assert(StampFont >= 0, 'editable add_font_file returns a font id');
+    { Embedded Roboto, anchored via the layout line box (bottom). }
+    Assert(StampDoc.PlaceText(0, 72, 560, 'ANCHORED-LINE', 14, 0, 0, 0, 0.0,
+            paLeft, StampFont, vaLineBottom),
+      'place_text with an embedded font + vaLineBottom succeeds');
+    { Top-aligned masked text, flush with the box edge (Padding = 0). }
+    Assert(StampDoc.MaskedText(0, 60, 500, 220, 30, 'MASKED-TOP', 12,
+            0, 0, 0, 1, 1, 1, paLeft, StampFont, vlTop, 0.0),
+      'masked_text with vlTop + zero padding succeeds');
+    { A 130 pt column wraps this builtin-Helvetica paragraph to several lines. }
+    Assert(StampDoc.PlaceParagraphMeasured(0, 72, 460, 130,
+            'wrapped paragraph stamping keeps every word intact', 12,
+            0, 0, 0, paLeft, -1, 0.0, 1.0, vaTop, 0.0, ParaLines, ParaHeight),
+      'place_paragraph_measured succeeds');
+    Assert(ParaLines > 1, 'narrow paragraph wraps to multiple lines');
+    Assert(ParaHeight > 0.0, 'paragraph reports a consumed block height');
+    Assert(not StampDoc.PlaceParagraph(99, 0, 0, 100, 'x'),
+      'place_paragraph on a missing page -> false');
+    { Bottom-pinned block with a height ceiling (legacy fixed-position layout). }
+    Assert(StampDoc.PlaceParagraph(0, 300, 380, 130,
+            'bottom pinned block grows upward from its anchor', 10,
+            0, 0, 0, paLeft, -1, 60.0, 1.0, vaBottom),
+      'bottom-pinned place_paragraph succeeds');
+    { Media-space stamping (raw PDF user space, no /Rotate composition). }
+    StampDoc.SetStampSpace(ssMedia);
+    Assert(StampDoc.PlaceText(0, 72, 420, 'MEDIA-SPACE', 12, 0, 0, 0, 0.0),
+      'place_text in media space succeeds');
+    StampDoc.SetStampSpace(ssVisible);
+    { Rotated image anchored by its bounding box (bounding-box layout semantics). }
+    Assert(StampDoc.DrawImage(0, TinyPng, 300, 300, 60, 40, 90.0, iaBoundingBox),
+      'draw_image with iaBoundingBox succeeds');
+    StampBytes := StampDoc.ToBytes;
+  finally
+    StampDoc.Free;
+  end;
+  StampText := Pdf.ExtractText(StampBytes);
+  Assert(TextContains(StampText, 'ANCHORED-LINE'),
+    'embedded-font anchored text is extractable');
+  Assert(TextContains(StampText, 'MASKED-TOP'), 'masked vlTop text is extractable');
+  Assert(TextContains(StampText, 'intact'), 'wrapped paragraph word is extractable');
+  Assert(TextContains(StampText, 'MEDIA-SPACE'), 'media-space text is extractable');
+  Writeln(Format('stamp fonts + anchors + paragraphs + stamp space ok (%d lines, %.1f pt)',
+    [ParaLines, ParaHeight]));
 
   Writeln('OK: full Delphi/Object-Pascal binding surface exercised');
 end.

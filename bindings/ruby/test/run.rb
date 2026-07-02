@@ -361,4 +361,36 @@ page0 = RustPdf.extract_page_text(masked, 0)
 check(page0.include?("MASKED"), "extract_page_text returns page 0 text")
 puts "extract_page_text ok (#{page0.bytesize} bytes)"
 
+# 26. Stamping fonts + vertical anchors + paragraph wrap + stamp space +
+#     image anchor (anchored stamping APIs).
+st_ed = RustPdf::EditableDoc.load(pdfa)
+fid = st_ed.add_font_file(font)
+check(fid >= 0, "add_font_file returned an id: #{fid}")
+check(st_ed.place_text(0, 72, 320, "ANCHORED", 12, [0, 0, 0], 0,
+                       font_id: fid, anchor: RustPdf::VerticalAnchor::LINE_BOTTOM),
+      "place_text LINE_BOTTOM page existed")
+check(st_ed.masked_text(0, 72, 270, 200, 30, "VALIGNTOP", 12, [0, 0, 0], [1, 1, 1],
+                        valign: RustPdf::VerticalAlign::TOP, padding: 0),
+      "masked_text valign TOP pad 0 page existed")
+para = st_ed.place_paragraph_measured(0, 72, 240, 120, "wrapme over and over into lines " * 3,
+                                      size: 10, font_id: fid)
+check(para[:lines] > 1, "paragraph wrapped into lines: #{para.inspect}")
+check(para[:height].positive?, "paragraph reports consumed height: #{para.inspect}")
+check(st_ed.place_paragraph(0, 300, 120, 150, "bottom pinned block",
+                            anchor: RustPdf::VerticalAnchor::BOTTOM, max_height: 100),
+      "place_paragraph bottom-pinned page existed")
+check(!st_ed.place_paragraph(99, 0, 0, 100, "x"), "place_paragraph missing page")
+st_ed.stamp_space = RustPdf::StampSpace::MEDIA
+check(st_ed.stamp_space == RustPdf::StampSpace::MEDIA, "stamp_space reads back")
+check(st_ed.place_text(0, 72, 60, "MEDIASPACE"), "place_text in media space")
+st_ed.set_stamp_space(RustPdf::StampSpace::VISIBLE)
+check(st_ed.draw_image(0, tiny_png, 220, 60, 32, 32, 90.0,
+                       anchor: RustPdf::ImageAnchor::BOUNDING_BOX),
+      "draw_image BOUNDING_BOX anchor page existed")
+st_text = RustPdf.extract_text(st_ed.to_bytes)
+check(st_text.include?("wrapme"), "wrapped paragraph text extractable")
+check(st_text.include?("MEDIASPACE"), "media-space text extractable")
+puts "stamping fonts + anchors + paragraph + stamp_space + image anchor ok " \
+     "(#{para[:lines]} lines, #{para[:height].round(1)} pt)"
+
 puts "OK: full Ruby binding surface exercised"

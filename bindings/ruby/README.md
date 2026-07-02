@@ -1,21 +1,16 @@
-# rustpdf (Ruby binding)
+# RustPdf for Ruby
 
-Idiomatic Ruby binding for the `rust-pdf` core over its C ABI (`libpdf_ffi`),
-using the built-in **Fiddle** standard library — no native gem to compile. It
-covers the whole product surface: vector graphics, embedded/subsetted fonts and
-text, wrapping paragraphs, images, **PDF/A** (levels 1b–3a),
-**tagged/accessible** output, embedded-file attachments, **AcroForm** fields,
-manipulation (merge/split/rotate/optimize/incremental update), **text
-extraction**, **page rendering** (page to PNG image), **encryption** (RC4 / AES-128 / AES-256) and **digital signatures**
-(PKCS#7 / PAdES) — plus **feature licensing**.
+Generate, edit, sign and process PDFs from Ruby: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Pure Ruby gem (stdlib Fiddle), no native extension to compile.
 
-Files (module `RustPdf`):
+## Documentation
 
-* `lib/rustpdf.rb` — module functions (`version`, `activate_license`,
-  `extract_text`, `sign`, `timestamp`, `add_dss`), enums, error, helpers;
-* `lib/rustpdf/native.rb` — the Fiddle signature table + loader;
-* `lib/rustpdf/document.rb`, `editable_doc.rb` — the `Document` / `EditableDoc`
-  classes.
+- **Full API reference:** https://rustpdf.dev/docs/ruby
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
+
+The public API is `RustPdf::Document` (create PDFs), `RustPdf::EditableDoc`
+(load and edit existing PDFs) and module functions (`version`,
+`activate_license`, `extract_text`, `sign`, `timestamp`, `add_dss`).
 
 ## Loading the native library
 

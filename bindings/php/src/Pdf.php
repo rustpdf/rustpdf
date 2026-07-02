@@ -439,7 +439,7 @@ final class Pdf
 
     /**
      * List the signature fields in `$pdf` (detect existing signatures before
-     * signing — the iText `SignatureUtil.getSignatureNames` equivalent). An
+     * signing — the classic pre-sign signature-field inventory). An
      * empty list means there are no signature fields.
      *
      * @return list<SignatureField>

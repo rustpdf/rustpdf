@@ -38,6 +38,35 @@ pub struct EditableDoc {
     /// Whether [`redact`](EditableDoc::redact) was called (gates output behind
     /// the Redaction feature license).
     redacted: bool,
+    /// Pages whose original content has already been wrapped in a balanced
+    /// `q…Q` so appended stamps start from the page's initial CTM regardless of
+    /// how the original stream left the graphics state.
+    isolated_pages: BTreeSet<u32>,
+    /// TrueType/OpenType fonts registered for text stamping (see
+    /// [`add_font`](EditableDoc::add_font)). Each is embedded as a subset Type0
+    /// font at serialization time; stamps reference it by object number.
+    stamp_fonts: Vec<StampFont>,
+    /// Coordinate space for the positioned stamping primitives (see
+    /// [`set_stamp_space`](EditableDoc::set_stamp_space)).
+    stamp_space: StampSpace,
+}
+
+/// A font registered on an [`EditableDoc`] for stamping arbitrary text
+/// (`place_text`/`masked_text` with a `font_id`). The glyph program is embedded
+/// as a subset at `to_bytes` time; content streams emit the *original* glyph ids
+/// and a `CIDToGIDMap` remaps them into the subset, so stamps render with the
+/// real font's glyphs and metrics — identical to `Document::show_text`.
+#[derive(Debug, Clone)]
+struct StampFont {
+    font: fonts::Font,
+    /// Reserved object number of the Type0 font dict (referenced by pages).
+    obj: u32,
+    /// Content-stream resource name (e.g. `StF0`).
+    resource: String,
+    /// Original glyph ids used by any stamp with this font.
+    used: BTreeSet<u16>,
+    /// First-seen source text per original glyph id (for `ToUnicode`).
+    gid_to_unicode: BTreeMap<u16, String>,
 }
 
 impl EditableDoc {
@@ -86,6 +115,9 @@ impl EditableDoc {
             version: PdfVersion::V1_7,
             forced_id: None,
             redacted: false,
+            isolated_pages: BTreeSet::new(),
+            stamp_fonts: Vec::new(),
+            stamp_space: StampSpace::Visible,
         })
     }
 
@@ -242,6 +274,9 @@ impl EditableDoc {
             version: PdfVersion::V1_7,
             forced_id: None,
             redacted: false,
+            isolated_pages: BTreeSet::new(),
+            stamp_fonts: Vec::new(),
+            stamp_space: StampSpace::Visible,
         }
     }
 
@@ -941,11 +976,760 @@ impl EditableDoc {
         let content = format!(
             "q\n{upright}/{gs_name} gs\n{r:.3} {g:.3} {b:.3} rg\n\
              {x:.2} {y:.2} {width:.2} {height:.2} re\nf\nQ\n",
-            upright = geom.upright_cm(),
+            upright = self.stamp_cm(&geom),
         );
         self.append_content(page, content.into_bytes());
         self.add_page_resource(page, "ExtGState", &gs_name, gs);
         true
+    }
+
+    /// Choose the **coordinate space** of the positioned stamping primitives
+    /// (`fill_rect`, `place_text*`, `masked_text*`, `place_paragraph*`,
+    /// `draw_image`) for subsequent calls (FINDING-004).
+    ///
+    /// The default, [`StampSpace::Visible`], keeps the historical behavior:
+    /// coordinates in the page's visible space, compensating `/Rotate` (a
+    /// stamp on a rotated scan reads upright). [`StampSpace::Media`] disables
+    /// that compensation entirely: coordinates and `rotation_deg` are taken in
+    /// the raw PDF user space, matching iText `SetFixedPosition`/
+    /// `SetRotationAngle` — the stamp's text matrix is composed relative to the
+    /// media, never to the page's `/Rotate`. Watermarks and redaction keep
+    /// visible-space semantics regardless of this mode.
+    pub fn set_stamp_space(&mut self, space: StampSpace) {
+        self.stamp_space = space;
+    }
+
+    /// The active stamping coordinate space.
+    pub fn stamp_space(&self) -> StampSpace {
+        self.stamp_space
+    }
+
+    /// The `cm` prefix realizing the active [`StampSpace`] for a page: the
+    /// visible-space up-righting transform, or nothing for raw media space.
+    fn stamp_cm(&self, geom: &PageGeom) -> String {
+        match self.stamp_space {
+            StampSpace::Visible => geom.upright_cm(),
+            StampSpace::Media => String::new(),
+        }
+    }
+
+    // ---- arbitrary-font stamping (embedded TrueType/OpenType) ------------
+
+    /// Register a TrueType/OpenType font from raw bytes for text stamping,
+    /// returning a `font_id` usable with [`place_text_with_font`] and
+    /// [`masked_text_with_font`]. The font is embedded as a **subset** at
+    /// serialization time (same shaping/subsetting pipeline as
+    /// [`Document::add_font_file`](crate::Document::add_font_file)), so stamped
+    /// text renders with the real font's glyphs and metrics — e.g. a serifed
+    /// Times, not the built-in Helvetica used by the plain stamp calls.
+    pub fn add_font(&mut self, data: impl Into<Vec<u8>>) -> Result<usize, fonts::FontError> {
+        let font = fonts::Font::from_bytes(data, 0)?;
+        Ok(self.register_stamp_font(font))
+    }
+
+    /// Register a font for stamping from a file path. See [`add_font`].
+    pub fn add_font_file(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<usize, fonts::FontError> {
+        let font = fonts::Font::from_file(path)?;
+        Ok(self.register_stamp_font(font))
+    }
+
+    fn register_stamp_font(&mut self, font: fonts::Font) -> usize {
+        let obj = self.allocate();
+        let id = self.stamp_fonts.len();
+        self.stamp_fonts.push(StampFont {
+            font,
+            obj,
+            resource: format!("StF{id}"),
+            used: BTreeSet::new(),
+            gid_to_unicode: BTreeMap::new(),
+        });
+        id
+    }
+
+    /// Like [`place_text_aligned`](EditableDoc::place_text_aligned) but draws
+    /// with the embedded font registered as `font_id` (from [`add_font`] /
+    /// [`add_font_file`]). Text may be arbitrary Unicode (it is shaped and
+    /// mapped to the font's glyphs); width for alignment comes from the real
+    /// font's advances. Returns `false` if `index` or `font_id` is out of range.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_with_font(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+        font_id: usize,
+    ) -> bool {
+        self.place_text_with_font_anchored(
+            index,
+            x,
+            y,
+            text,
+            size,
+            color,
+            rotation_deg,
+            align,
+            font_id,
+            VerticalAnchor::Baseline,
+        )
+    }
+
+    /// Like [`place_text_with_font`](EditableDoc::place_text_with_font) but with
+    /// an explicit **vertical anchor**: what `y` means. `Baseline` is the
+    /// historical behavior; `Top` hangs the text from `y` (baseline at
+    /// `y − ascent × size`, matching iText `SetFixedPosition`); `Bottom` rests
+    /// the descender line on `y`. Ascent/descent come from the embedded font's
+    /// own metrics. The anchor shift follows `rotation_deg` (it is applied
+    /// perpendicular to the baseline direction).
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_with_font_anchored(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+        font_id: usize,
+        anchor: VerticalAnchor,
+    ) -> bool {
+        if font_id >= self.stamp_fonts.len() {
+            return false;
+        }
+        let Some(&page) = self.page_order.get(index) else {
+            return false;
+        };
+        let geom = self.page_geometry(page);
+        let (r, g, b) = (
+            color.0.clamp(0.0, 1.0),
+            color.1.clamp(0.0, 1.0),
+            color.2.clamp(0.0, 1.0),
+        );
+        // Shape the run, collect used glyphs / ToUnicode, and build the 2-byte
+        // CID hex string plus the run's advance width (in text-space points).
+        let (hex, width) = self.shape_stamp_run(font_id, text, size);
+        let theta = rotation_deg.to_radians();
+        let (ca, sa) = (theta.cos(), theta.sin());
+        let dx = match align {
+            Align::Left | Align::Justify => 0.0,
+            Align::Center => -width / 2.0,
+            Align::Right => -width,
+        };
+        let (asc, desc) = self.stamp_font_metrics(Some(font_id));
+        let line = self.stamp_line_metrics(Some(font_id));
+        let dy = baseline_shift(anchor, asc, desc, line, size);
+        // Map the local (dx, dy) offset through the rotation so both the
+        // horizontal alignment and the vertical anchor follow the text.
+        let (sx, sy) = (x + dx * ca - dy * sa, y + dx * sa + dy * ca);
+        let resource = self.stamp_fonts[font_id].resource.clone();
+        let font_obj = self.stamp_fonts[font_id].obj;
+        let content = format!(
+            "q\n{upright}BT\n/{res} {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n\
+             {ca:.5} {sa:.5} {nsa:.5} {ca:.5} {sx:.2} {sy:.2} Tm\n<{hex}> Tj\nET\nQ\n",
+            upright = self.stamp_cm(&geom),
+            nsa = -sa,
+            res = resource,
+        );
+        self.append_content(page, content.into_bytes());
+        self.add_page_resource(page, "Font", &resource, font_obj);
+        true
+    }
+
+    /// Like [`masked_text`](EditableDoc::masked_text) but draws the text with the
+    /// embedded font registered as `font_id`. The vertical centering uses the
+    /// real font's cap height. Returns `false` if `index`/`font_id` is invalid.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_with_font(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        font_id: usize,
+    ) -> bool {
+        self.masked_text_with_font_valign(
+            index,
+            x,
+            y,
+            width,
+            height,
+            text,
+            size,
+            text_color,
+            bg_color,
+            align,
+            font_id,
+            VerticalAlign::Middle,
+        )
+    }
+
+    /// Like [`masked_text_with_font`](EditableDoc::masked_text_with_font) but
+    /// with an explicit **vertical alignment** of the line inside the box.
+    /// `Middle` (the historical default) centers the cap-height block; `Top`
+    /// hangs the line from the top edge (baseline at
+    /// `y + height − ascent × size`, matching Syncfusion `LineAlignment = Top`);
+    /// `Bottom` rests the descender line on the bottom edge. Metrics come from
+    /// the embedded font. Returns `false` if `index`/`font_id` is invalid.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_with_font_valign(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        font_id: usize,
+        valign: VerticalAlign,
+    ) -> bool {
+        self.masked_text_with_font_padded(
+            index, x, y, width, height, text, size, text_color, bg_color, align, font_id, valign,
+            None,
+        )
+    }
+
+    /// Like [`masked_text_padded`](EditableDoc::masked_text_padded) (same
+    /// `pad` semantics — `None` = historical `min(0.15 × size, width / 4)`,
+    /// `Some(0.0)` = flush with the box edge) but drawing with the embedded
+    /// font `font_id`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_with_font_padded(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        font_id: usize,
+        valign: VerticalAlign,
+        pad: Option<f64>,
+    ) -> bool {
+        if font_id >= self.stamp_fonts.len() || self.page_order.get(index).is_none() {
+            return false;
+        }
+        self.fill_rect(index, x, y, width, height, bg_color, 1.0);
+        let font = &self.stamp_fonts[font_id].font;
+        let cap = font.cap_height() as f64 / font.units_per_em() as f64;
+        let (asc, desc) = self.stamp_font_metrics(Some(font_id));
+        let pad = pad.unwrap_or_else(|| (size * 0.15).min(width / 4.0));
+        let baseline_y = masked_baseline(valign, y, height, size, cap, asc, desc);
+        let anchor_x = match align {
+            Align::Left | Align::Justify => x + pad,
+            Align::Center => x + width / 2.0,
+            Align::Right => x + width - pad,
+        };
+        self.place_text_with_font(
+            index, anchor_x, baseline_y, text, size, text_color, 0.0, align, font_id,
+        )
+    }
+
+    /// `(ascent, descent)` in em fractions (descent ≤ 0) for a stamp font:
+    /// the embedded font's own metrics, or Helvetica's AFM values for the
+    /// built-in stamps (`font_id = None`).
+    fn stamp_font_metrics(&self, font_id: Option<usize>) -> (f64, f64) {
+        match font_id {
+            Some(id) => {
+                let f = &self.stamp_fonts[id].font;
+                let upem = f.units_per_em() as f64;
+                (f.ascender() as f64 / upem, f.descender() as f64 / upem)
+            }
+            None => (
+                crate::helvetica::ASCENT / 1000.0,
+                crate::helvetica::DESCENT / 1000.0,
+            ),
+        }
+    }
+
+    /// `(line_ascent, line_descent)` of the **iText 7 line box** in em
+    /// fractions (both positive magnitudes), for `LineTop`/`LineBottom`
+    /// anchors: iText selects OS/2 **win** ascent/descent when present and
+    /// distinct from the typo values, else typo × 1.2 (its
+    /// `TYPO_ASCENDER_SCALE_COEFF`), and pads each side with a half-leading of
+    /// `0.175 × 1.2 = 0.21` of the raw ascent+descent sum (default multiplied
+    /// leading 1.35). Calibrated against iText `SetFixedPosition` output:
+    /// ≤ 0.11 pt across Times New Roman and Montserrat at 12–13 pt.
+    fn stamp_line_metrics(&self, font_id: Option<usize>) -> (f64, f64) {
+        const HALF_LEADING: f64 = 0.21;
+        let (asc, desc, half) = match font_id {
+            Some(id) => {
+                let f = &self.stamp_fonts[id].font;
+                let upem = f.units_per_em() as f64;
+                match (f.win_ascent(), f.win_descent()) {
+                    (Some(wa), Some(wd))
+                        if wa > 0
+                            && wd < 0
+                            && !(f.typo_ascender() == Some(wa)
+                                && f.typo_descender() == Some(wd)) =>
+                    {
+                        let (a, d) = (wa as f64 / upem, -wd as f64 / upem);
+                        (a, d, HALF_LEADING * (a + d))
+                    }
+                    _ => {
+                        let a = f.typo_ascender().unwrap_or_else(|| f.ascender()) as f64 / upem;
+                        let d =
+                            -(f.typo_descender().unwrap_or_else(|| f.descender()) as f64) / upem;
+                        (a * 1.2, d * 1.2, HALF_LEADING * (a + d))
+                    }
+                }
+            }
+            None => {
+                // Standard Helvetica: AFM metrics via iText's typo × 1.2 branch.
+                let a = crate::helvetica::ASCENT / 1000.0;
+                let d = -crate::helvetica::DESCENT / 1000.0;
+                (a * 1.2, d * 1.2, HALF_LEADING * (a + d))
+            }
+        };
+        (asc + half, desc + half)
+    }
+
+    /// Baseline-to-baseline **advance** (em) of the iText 7 layout for the
+    /// `Line*` anchors: the selected line metrics (win raw, or typo × 1.2)
+    /// plus `(L − 1) × size` with the default multiplied leading `L = 1.35` —
+    /// distinct from the single-line box (`stamp_line_metrics`), which pads
+    /// 0.21 em on each side. Calibrated: Times 12 → 17.49 pt (bench 17.47).
+    fn stamp_line_advance(&self, font_id: Option<usize>) -> f64 {
+        const LEADING_EXTRA: f64 = 0.35; // iText default multiplied leading − 1
+        let sum = match font_id {
+            Some(id) => {
+                let f = &self.stamp_fonts[id].font;
+                let upem = f.units_per_em() as f64;
+                match (f.win_ascent(), f.win_descent()) {
+                    (Some(wa), Some(wd))
+                        if wa > 0
+                            && wd < 0
+                            && !(f.typo_ascender() == Some(wa)
+                                && f.typo_descender() == Some(wd)) =>
+                    {
+                        (wa as f64 - wd as f64) / upem
+                    }
+                    _ => {
+                        let a = f.typo_ascender().unwrap_or_else(|| f.ascender()) as f64;
+                        let d = f.typo_descender().unwrap_or_else(|| f.descender()) as f64;
+                        (a - d) / upem * 1.2
+                    }
+                }
+            }
+            None => (crate::helvetica::ASCENT - crate::helvetica::DESCENT) / 1000.0 * 1.2,
+        };
+        sum + LEADING_EXTRA
+    }
+
+    /// Shape `text` with stamp font `font_id`, accumulate glyph usage, and return
+    /// `(hex CID string, run width in points)`. The width is the sum of the
+    /// shaper's advances scaled to `size`, matching the emitted `/W` widths.
+    fn shape_stamp_run(&mut self, font_id: usize, text: &str, size: f64) -> (String, f64) {
+        use fonts::{shape, Direction};
+        let sf = &self.stamp_fonts[font_id];
+        let upem = sf.font.units_per_em() as f64;
+        let glyphs = shape(&sf.font, text, Direction::LeftToRight);
+
+        // Cluster boundaries for ToUnicode (first glyph of a cluster carries the
+        // text; the rest map to nothing — see the collect_usage F2 fix).
+        let mut boundaries: BTreeSet<usize> = glyphs.iter().map(|g| g.cluster as usize).collect();
+        boundaries.insert(text.len());
+        let bounds: Vec<usize> = boundaries.into_iter().collect();
+
+        let mut hex = String::with_capacity(glyphs.len() * 4);
+        let mut total_adv = 0i64;
+        let mut used: Vec<u16> = Vec::with_capacity(glyphs.len());
+        let mut mappings: Vec<(u16, String)> = Vec::new();
+        let mut assigned: BTreeSet<usize> = BTreeSet::new();
+        for g in &glyphs {
+            hex.push_str(&format!("{:04X}", g.gid));
+            total_adv += g.x_advance as i64;
+            used.push(g.gid);
+            let start = g.cluster as usize;
+            if assigned.insert(start) {
+                let end = bounds
+                    .iter()
+                    .copied()
+                    .find(|&b| b > start)
+                    .unwrap_or(text.len());
+                if let Some(slice) = text.get(start..end) {
+                    mappings.push((g.gid, slice.to_string()));
+                }
+            }
+        }
+        let width = size * total_adv as f64 / upem;
+
+        let sf = &mut self.stamp_fonts[font_id];
+        for gid in used {
+            sf.used.insert(gid);
+        }
+        for (gid, s) in mappings {
+            sf.gid_to_unicode.entry(gid).or_insert(s);
+        }
+        (hex, width)
+    }
+
+    /// Measure `text` with stamp font `font_id` **without** recording glyph
+    /// usage: shape and sum the advances, scaled to `size` points. Used by the
+    /// paragraph wrapper, which measures words before deciding what to emit.
+    fn measure_stamp_text(&self, font_id: usize, text: &str, size: f64) -> f64 {
+        use fonts::{shape, Direction};
+        let sf = &self.stamp_fonts[font_id];
+        let upem = sf.font.units_per_em() as f64;
+        let glyphs = shape(&sf.font, text, Direction::LeftToRight);
+        let total: i64 = glyphs.iter().map(|g| g.x_advance as i64).sum();
+        size * total as f64 / upem
+    }
+
+    /// Stamp a **paragraph with automatic word wrapping** on page `index`
+    /// (FINDING-003): break `text` into lines that fit `width` points (greedy,
+    /// by word — the same break points as [`Paragraph`](crate::Paragraph) in
+    /// document generation; a single word wider than the box gets its own
+    /// overflowing line), then draw each line in the standard Helvetica.
+    ///
+    /// `(x, y)` is the **top-left corner** of the text box (consistent with
+    /// `VerticalAnchor::Top` from FINDING-002, i.e. iText `SetFixedPosition`):
+    /// the first baseline lands `ascent × size` below `y`, and each further
+    /// line steps down by `size × 1.2 × line_height` (pass `line_height = 1.0`
+    /// for the same default leading as document-generation paragraphs).
+    /// `'\n'` forces a line break. `align` lays each line out inside
+    /// `[x, x + width]`; `Justify` stretches the word gaps of every line except
+    /// the last of each paragraph. `max_height` (points, from `y` downward)
+    /// truncates: lines whose descender would cross `y − max_height` are not
+    /// drawn (iText `SetMaxHeight` semantics).
+    ///
+    /// Returns the number of lines actually drawn, or `None` if `index` is out
+    /// of range or `width`/`size` is not positive. Text is WinAnsi like
+    /// [`place_text`](EditableDoc::place_text); for an embedded font use
+    /// [`place_paragraph_with_font`](EditableDoc::place_paragraph_with_font).
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_paragraph(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        align: Align,
+        max_height: Option<f64>,
+        line_height: f64,
+    ) -> Option<usize> {
+        self.place_paragraph_anchored(
+            index,
+            x,
+            y,
+            width,
+            text,
+            size,
+            color,
+            align,
+            max_height,
+            line_height,
+            VerticalAnchor::Top,
+            0.0,
+        )
+        .map(|(n, _)| n)
+    }
+
+    /// Like [`place_paragraph`](EditableDoc::place_paragraph) but with an
+    /// explicit **block anchor** saying what `y` means, a **rotation** about
+    /// the anchor, and a measured result:
+    ///
+    /// * `Top` (the [`place_paragraph`] default): `y` is the top of the text
+    ///   box; `max_height` truncates lines below `y − max_height`.
+    /// * `LineTop`: like `Top` but using the iText line-box metrics (see
+    ///   [`VerticalAnchor::LineTop`]) — first baseline **and** leading come
+    ///   from the line box, so one line and N lines agree vertically.
+    /// * `Baseline`: `y` is the **first line's baseline**.
+    /// * `Bottom` / `LineBottom`: **bottom-pinned** — the block's bottom rests
+    ///   on `y` and the block grows *upward* by its real content height.
+    ///   `max_height` is a **ceiling**: when the content is taller, the excess
+    ///   lines are cut **from the top** (the *last* lines stay pinned to `y`);
+    ///   when the content is shorter, it does NOT inflate the position.
+    ///   `Bottom` uses the geometric (hhea) metrics and the plain `1.2 em`
+    ///   leading; `LineBottom` uses the iText line box for both.
+    ///
+    /// `rotation_deg` rotates the whole laid-out block counter-clockwise
+    /// **about the anchor `(x, y)`** — the anchor point is invariant under
+    /// rotation (the documented pivot for every positioned stamp).
+    ///
+    /// Returns `(lines_drawn, consumed_height)` — the height in points of the
+    /// drawn block (first line's box top to last line's box bottom, `0.0` when
+    /// nothing fit), so callers can stack blocks without re-measuring.
+    ///
+    /// [`place_paragraph`]: EditableDoc::place_paragraph
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_paragraph_anchored(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        align: Align,
+        max_height: Option<f64>,
+        line_height: f64,
+        anchor: VerticalAnchor,
+        rotation_deg: f64,
+    ) -> Option<(usize, f64)> {
+        let &page = self.page_order.get(index)?;
+        if !(width.is_finite() && width > 0.0 && size.is_finite() && size > 0.0) {
+            return None;
+        }
+        let helv = self.helvetica();
+        let geom = self.page_geometry(page);
+        let (r, g, b) = (
+            color.0.clamp(0.0, 1.0),
+            color.1.clamp(0.0, 1.0),
+            color.2.clamp(0.0, 1.0),
+        );
+        let space_w = crate::helvetica::text_width(" ", size);
+        let lines = wrap_stamp_lines(text, width, space_w, |w| {
+            crate::helvetica::text_width(w, size)
+        });
+        let (asc, desc) = self.stamp_font_metrics(None);
+        let line_box = self.stamp_line_metrics(None);
+        let leading = paragraph_leading(anchor, size, line_height, self.stamp_line_advance(None));
+        let plan = paragraph_plan(
+            anchor,
+            size,
+            leading,
+            lines.len(),
+            asc,
+            desc,
+            line_box,
+            max_height,
+        );
+        let theta = rotation_deg.to_radians();
+        let (ca, sa) = (theta.cos(), theta.sin());
+
+        let mut out = format!(
+            "q\n{upright}BT\n/HelvD {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n",
+            upright = self.stamp_cm(&geom),
+        );
+        let mut drawn = 0usize;
+        for (i, line) in lines.iter().enumerate().skip(plan.skip) {
+            if drawn >= plan.take {
+                break;
+            }
+            // Block-local baseline (anchor at 0), then rotated about (x, y).
+            let ly = plan.first_local - (i - plan.skip) as f64 * leading;
+            if let Some(floor) = plan.floor {
+                // Truncate once the line's bottom would cross the box floor.
+                if ly - plan.drop < floor - 1e-9 {
+                    break;
+                }
+            }
+            drawn += 1;
+            if line.words.is_empty() {
+                continue; // blank line (consecutive '\n') — occupies space only
+            }
+            let justify = align == Align::Justify && !line.last && line.gaps() > 0;
+            let extra = if justify {
+                (width - line.width).max(0.0) / line.gaps() as f64
+            } else {
+                0.0
+            };
+            if align == Align::Justify {
+                // Tw applies to byte 32 of the WinAnsi string; reset (0) on
+                // non-stretched lines so the last line stays natural.
+                out.push_str(&format!("{extra:.3} Tw\n"));
+            }
+            let lx = match align {
+                Align::Left | Align::Justify => 0.0,
+                Align::Center => (width - line.width).max(0.0) / 2.0,
+                Align::Right => (width - line.width).max(0.0),
+            };
+            let (gx, gy) = (x + lx * ca - ly * sa, y + lx * sa + ly * ca);
+            out.push_str(&format!(
+                "{ca:.5} {sa:.5} {nsa:.5} {ca:.5} {gx:.2} {gy:.2} Tm\n({txt}) Tj\n",
+                nsa = -sa,
+                txt = escape_pdf_literal(&line.text()),
+            ));
+        }
+        out.push_str("ET\nQ\n");
+        self.append_content(page, out.into_bytes());
+        self.add_page_resource(page, "Font", "HelvD", helv);
+        Some((drawn, plan.consumed_height(drawn, leading)))
+    }
+
+    /// Like [`place_paragraph`](EditableDoc::place_paragraph) but wrapping and
+    /// drawing with the embedded font registered as `font_id` (from
+    /// [`add_font`](EditableDoc::add_font) /
+    /// [`add_font_file`](EditableDoc::add_font_file)): line breaks are computed
+    /// from the real font's shaped advances, and `Top` anchoring uses its
+    /// ascent/descent. Justified gaps are emitted as `TJ` adjustments (2-byte
+    /// CID text ignores the `Tw` word-spacing operator). Returns the number of
+    /// lines drawn, or `None` if `index`/`font_id` is out of range or
+    /// `width`/`size` is not positive.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_paragraph_with_font(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        align: Align,
+        font_id: usize,
+        max_height: Option<f64>,
+        line_height: f64,
+    ) -> Option<usize> {
+        self.place_paragraph_with_font_anchored(
+            index,
+            x,
+            y,
+            width,
+            text,
+            size,
+            color,
+            align,
+            font_id,
+            max_height,
+            line_height,
+            VerticalAnchor::Top,
+            0.0,
+        )
+        .map(|(n, _)| n)
+    }
+
+    /// Like [`place_paragraph_anchored`](EditableDoc::place_paragraph_anchored)
+    /// (same block-anchor semantics) but wrapping and drawing with the embedded
+    /// font `font_id`, using its real metrics for the anchors.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_paragraph_with_font_anchored(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        align: Align,
+        font_id: usize,
+        max_height: Option<f64>,
+        line_height: f64,
+        anchor: VerticalAnchor,
+        rotation_deg: f64,
+    ) -> Option<(usize, f64)> {
+        if font_id >= self.stamp_fonts.len() {
+            return None;
+        }
+        let &page = self.page_order.get(index)?;
+        if !(width.is_finite() && width > 0.0 && size.is_finite() && size > 0.0) {
+            return None;
+        }
+        let geom = self.page_geometry(page);
+        let (r, g, b) = (
+            color.0.clamp(0.0, 1.0),
+            color.1.clamp(0.0, 1.0),
+            color.2.clamp(0.0, 1.0),
+        );
+        let space_w = self.measure_stamp_text(font_id, " ", size);
+        let lines = wrap_stamp_lines(text, width, space_w, |w| {
+            self.measure_stamp_text(font_id, w, size)
+        });
+        let (asc, desc) = self.stamp_font_metrics(Some(font_id));
+        let line_box = self.stamp_line_metrics(Some(font_id));
+        let leading = paragraph_leading(
+            anchor,
+            size,
+            line_height,
+            self.stamp_line_advance(Some(font_id)),
+        );
+        let plan = paragraph_plan(
+            anchor,
+            size,
+            leading,
+            lines.len(),
+            asc,
+            desc,
+            line_box,
+            max_height,
+        );
+        let theta = rotation_deg.to_radians();
+        let (ca, sa) = (theta.cos(), theta.sin());
+        let resource = self.stamp_fonts[font_id].resource.clone();
+        let font_obj = self.stamp_fonts[font_id].obj;
+
+        let mut out = format!(
+            "q\n{upright}BT\n/{resource} {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n",
+            upright = self.stamp_cm(&geom),
+        );
+        let mut drawn = 0usize;
+        for (i, line) in lines.iter().enumerate().skip(plan.skip) {
+            if drawn >= plan.take {
+                break;
+            }
+            let ly = plan.first_local - (i - plan.skip) as f64 * leading;
+            if let Some(floor) = plan.floor {
+                if ly - plan.drop < floor - 1e-9 {
+                    break;
+                }
+            }
+            drawn += 1;
+            if line.words.is_empty() {
+                continue;
+            }
+            let justify = align == Align::Justify && !line.last && line.gaps() > 0;
+            let lx = match align {
+                Align::Left | Align::Justify => 0.0,
+                Align::Center => (width - line.width).max(0.0) / 2.0,
+                Align::Right => (width - line.width).max(0.0),
+            };
+            let (gx, gy) = (x + lx * ca - ly * sa, y + lx * sa + ly * ca);
+            let tm = format!(
+                "{ca:.5} {sa:.5} {nsa:.5} {ca:.5} {gx:.2} {gy:.2} Tm",
+                nsa = -sa
+            );
+            if justify {
+                // Per-word runs glued by TJ adjustments carrying the (stretched)
+                // gap: a positive TJ number shrinks the displacement, so the gap
+                // G points becomes −G·1000/size thousandths.
+                let extra = (width - line.width).max(0.0) / line.gaps() as f64;
+                let gap = -((space_w + extra) * 1000.0 / size);
+                let mut seg = String::new();
+                for (wi, word) in line.words.iter().enumerate() {
+                    if wi > 0 {
+                        seg.push_str(&format!(" {gap:.1} "));
+                    }
+                    let (hex, _) = self.shape_stamp_run(font_id, word, size);
+                    seg.push_str(&format!("<{hex}>"));
+                }
+                out.push_str(&format!("{tm}\n[{seg}] TJ\n"));
+            } else {
+                let (hex, _) = self.shape_stamp_run(font_id, &line.text(), size);
+                out.push_str(&format!("{tm}\n<{hex}> Tj\n"));
+            }
+        }
+        out.push_str("ET\nQ\n");
+        self.append_content(page, out.into_bytes());
+        self.add_page_resource(page, "Font", &resource, font_obj);
+        Some((drawn, plan.consumed_height(drawn, leading)))
     }
 
     /// Draw a line of **positioned text** with its baseline starting at
@@ -957,6 +1741,10 @@ impl EditableDoc {
     /// `text` should be WinAnsi (Latin-1), like other standard-font stamps.
     /// Coordinates are in the page's **visible** space (origin at the displayed
     /// lower-left, y up). Returns `false` if `index` is out of range.
+    ///
+    /// To stamp with an arbitrary embedded font (e.g. Times New Roman), register
+    /// it with [`add_font`](EditableDoc::add_font) and use
+    /// [`place_text_with_font`](EditableDoc::place_text_with_font).
     #[allow(clippy::too_many_arguments)]
     pub fn place_text(
         &mut self,
@@ -990,6 +1778,40 @@ impl EditableDoc {
         rotation_deg: f64,
         align: Align,
     ) -> bool {
+        self.place_text_anchored(
+            index,
+            x,
+            y,
+            text,
+            size,
+            color,
+            rotation_deg,
+            align,
+            VerticalAnchor::Baseline,
+        )
+    }
+
+    /// Like [`place_text_aligned`](EditableDoc::place_text_aligned) but with an
+    /// explicit **vertical anchor**: what `y` means. `Baseline` is the
+    /// historical behavior; `Top` hangs the text from `y` (baseline at
+    /// `y − ascent × size`, matching iText `SetFixedPosition`); `Bottom` rests
+    /// the descender line on `y`. Ascent/descent are Helvetica's AFM metrics;
+    /// for an embedded font use
+    /// [`place_text_with_font_anchored`](EditableDoc::place_text_with_font_anchored).
+    /// The anchor shift follows `rotation_deg`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn place_text_anchored(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+        color: (f64, f64, f64),
+        rotation_deg: f64,
+        align: Align,
+        anchor: VerticalAnchor,
+    ) -> bool {
         let Some(&page) = self.page_order.get(index) else {
             return false;
         };
@@ -1009,12 +1831,17 @@ impl EditableDoc {
             Align::Center => -crate::helvetica::text_width(text, size) / 2.0,
             Align::Right => -crate::helvetica::text_width(text, size),
         };
-        let (sx, sy) = (x + dx * ca, y + dx * sa);
+        let (asc, desc) = self.stamp_font_metrics(None);
+        let line = self.stamp_line_metrics(None);
+        let dy = baseline_shift(anchor, asc, desc, line, size);
+        // Map the local (dx, dy) offset through the rotation so both the
+        // horizontal alignment and the vertical anchor follow the text.
+        let (sx, sy) = (x + dx * ca - dy * sa, y + dx * sa + dy * ca);
         // Tm rotates about the (shifted) start: [cos sin -sin cos sx sy].
         let content = format!(
             "q\n{upright}BT\n/HelvD {size:.2} Tf\n{r:.3} {g:.3} {b:.3} rg\n\
              {ca:.5} {sa:.5} {nsa:.5} {ca:.5} {sx:.2} {sy:.2} Tm\n({txt}) Tj\nET\nQ\n",
-            upright = geom.upright_cm(),
+            upright = self.stamp_cm(&geom),
             nsa = -sa,
             txt = escape_pdf_literal(text),
         );
@@ -1045,15 +1872,82 @@ impl EditableDoc {
         bg_color: (f64, f64, f64),
         align: Align,
     ) -> bool {
+        self.masked_text_valign(
+            index,
+            x,
+            y,
+            width,
+            height,
+            text,
+            size,
+            text_color,
+            bg_color,
+            align,
+            VerticalAlign::Middle,
+        )
+    }
+
+    /// Like [`masked_text`](EditableDoc::masked_text) but with an explicit
+    /// **vertical alignment** of the line inside the box. `Middle` (the
+    /// historical default) centers the cap-height block; `Top` hangs the line
+    /// from the top edge (baseline at `y + height − ascent × size`, matching
+    /// Syncfusion `LineAlignment = Top`); `Bottom` rests the descender line on
+    /// the bottom edge. Metrics are Helvetica's AFM values; for an embedded
+    /// font use
+    /// [`masked_text_with_font_valign`](EditableDoc::masked_text_with_font_valign).
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_valign(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        valign: VerticalAlign,
+    ) -> bool {
+        self.masked_text_padded(
+            index, x, y, width, height, text, size, text_color, bg_color, align, valign, None,
+        )
+    }
+
+    /// Like [`masked_text_valign`](EditableDoc::masked_text_valign) but with an
+    /// explicit horizontal **edge inset** (`pad`, points) for `Left`/`Right`
+    /// alignment: the text starts at `x + pad` (or ends at `x + width − pad`).
+    /// `None` keeps the historical default `min(0.15 × size, width / 4)`; pass
+    /// `Some(0.0)` to start exactly at the box edge (Syncfusion `DrawString`
+    /// has no inset — FINDING-004 follow-up dX). `Center` ignores it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn masked_text_padded(
+        &mut self,
+        index: usize,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        text: &str,
+        size: f64,
+        text_color: (f64, f64, f64),
+        bg_color: (f64, f64, f64),
+        align: Align,
+        valign: VerticalAlign,
+        pad: Option<f64>,
+    ) -> bool {
         if self.page_order.get(index).is_none() {
             return false;
         }
         // Opaque background box first.
         self.fill_rect(index, x, y, width, height, bg_color, 1.0);
-        // Vertically center the cap-height block; horizontal anchor per align,
-        // with a small inset on the left/right edges so glyphs don't touch.
-        let pad = (size * 0.15).min(width / 4.0);
-        let baseline_y = y + (height - size * crate::helvetica::CAP_HEIGHT / 1000.0) / 2.0;
+        // Vertical placement per valign; horizontal anchor per align, with a
+        // small inset on the left/right edges so glyphs don't touch.
+        let pad = pad.unwrap_or_else(|| (size * 0.15).min(width / 4.0));
+        let cap = crate::helvetica::CAP_HEIGHT / 1000.0;
+        let (asc, desc) = self.stamp_font_metrics(None);
+        let baseline_y = masked_baseline(valign, y, height, size, cap, asc, desc);
         let anchor_x = match align {
             Align::Left | Align::Justify => x + pad,
             Align::Center => x + width / 2.0,
@@ -1085,6 +1979,38 @@ impl EditableDoc {
         height: f64,
         rotation_deg: f64,
     ) -> bool {
+        self.draw_image_anchored(
+            index,
+            image,
+            x,
+            y,
+            width,
+            height,
+            rotation_deg,
+            ImageAnchor::Corner,
+        )
+    }
+
+    /// Like [`draw_image`](EditableDoc::draw_image) but with an explicit
+    /// **rotation anchor**: [`ImageAnchor::Corner`] (the default of
+    /// `draw_image`) keeps `(x, y)` as the image's own lower-left corner — the
+    /// image sweeps *around* it when rotated; [`ImageAnchor::BoundingBox`]
+    /// places the **rotated image's bounding box** with its lower-left at
+    /// `(x, y)`, so the drawn pixels always land at/above/right of the anchor
+    /// (iText layout semantics — e.g. a 90° image occupies
+    /// `[x, x+height] × [y, y+width]`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_image_anchored(
+        &mut self,
+        index: usize,
+        image: &images::Image,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        rotation_deg: f64,
+        anchor: ImageAnchor,
+    ) -> bool {
         let Some(&page) = self.page_order.get(index) else {
             return false;
         };
@@ -1093,13 +2019,29 @@ impl EditableDoc {
         let geom = self.page_geometry(page);
         let theta = rotation_deg.to_radians();
         let (ca, sa) = (theta.cos(), theta.sin());
-        // Rotate about the anchor (x, y), then scale the unit image square to
-        // width×height drawn up-right from that anchor.
+        // BoundingBox: shift so the rotated rect's bbox lower-left lands on
+        // the anchor (the rect corners are (0,0), (w,0), (0,h), (w,h) mapped
+        // through the rotation).
+        let (bx, by) = match anchor {
+            ImageAnchor::Corner => (0.0, 0.0),
+            ImageAnchor::BoundingBox => {
+                let xs = [0.0, width * ca, -height * sa, width * ca - height * sa];
+                let ys = [0.0, width * sa, height * ca, width * sa + height * ca];
+                (
+                    -xs.iter().cloned().fold(f64::INFINITY, f64::min),
+                    -ys.iter().cloned().fold(f64::INFINITY, f64::min),
+                )
+            }
+        };
+        // Rotate about the (shifted) anchor, then scale the unit image square
+        // to width×height drawn up-right from it.
         let content = format!(
-            "q\n{upright}{ca:.5} {sa:.5} {nsa:.5} {ca:.5} {x:.2} {y:.2} cm\n\
+            "q\n{upright}{ca:.5} {sa:.5} {nsa:.5} {ca:.5} {tx:.2} {ty:.2} cm\n\
              {width:.2} 0 0 {height:.2} 0 0 cm\n/{name} Do\nQ\n",
-            upright = geom.upright_cm(),
+            upright = self.stamp_cm(&geom),
             nsa = -sa,
+            tx = x + bx,
+            ty = y + by,
         );
         self.append_content(page, content.into_bytes());
         self.add_page_resource(page, "XObject", &name, img_num);
@@ -1295,14 +2237,36 @@ impl EditableDoc {
     /// Append `ops` (raw content-stream operators) after the page's existing
     /// content as a new stream in the `/Contents` array.
     fn append_content(&mut self, page: u32, ops: Vec<u8>) {
-        let stream_ref = self.allocate();
-        self.objects
-            .insert(stream_ref, Object::Stream(Stream::new(ops)));
         let mut contents = match as_dict(self.objects.get(&page)).and_then(|d| d.get("Contents")) {
             Some(Object::Reference(r)) => vec![Object::Reference(*r)],
             Some(Object::Array(a)) => a.clone(),
             _ => Vec::new(),
         };
+
+        // Isolate the page's original content in a balanced `q … Q` the first
+        // time we stamp it. Content streams in a `/Contents` array concatenate
+        // into one stream, so without this a page whose original content ends
+        // with a top-level `cm` (or an unmatched `q`) would leave a non-identity
+        // CTM active, and the stamp — which assumes the page's initial CTM —
+        // would render at the wrong place or scale. Misplacing a redaction box
+        // is a confidentiality bug, so this matters beyond cosmetics.
+        if self.isolated_pages.insert(page) && !contents.is_empty() {
+            let q_ref = self.allocate();
+            self.objects
+                .insert(q_ref, Object::Stream(Stream::new(b"q\n".to_vec())));
+            let big_q_ref = self.allocate();
+            self.objects
+                .insert(big_q_ref, Object::Stream(Stream::new(b"\nQ\n".to_vec())));
+            let mut wrapped = Vec::with_capacity(contents.len() + 2);
+            wrapped.push(Object::Reference(Reference::new(q_ref)));
+            wrapped.append(&mut contents);
+            wrapped.push(Object::Reference(Reference::new(big_q_ref)));
+            contents = wrapped;
+        }
+
+        let stream_ref = self.allocate();
+        self.objects
+            .insert(stream_ref, Object::Stream(Stream::new(ops)));
         contents.push(Object::Reference(Reference::new(stream_ref)));
         self.update_dict(page, |d| {
             d.set("Contents", Object::Array(contents.clone()));
@@ -1331,25 +2295,33 @@ impl EditableDoc {
 
     // ---- redaction (Tier 2) ----------------------------------------------
 
-    /// **Redact** rectangular regions on page `index`: the text and graphics
-    /// whose origin falls inside any rect in `rects` (`[x0,y0,x1,y1]`, page
-    /// points) are *removed* from the content stream — not just covered — so the
-    /// data is gone from the file, then opaque black rectangles are painted over
-    /// the regions. Returns whether the page existed.
+    /// **Redact** rectangular regions on page `index` (`rects` =
+    /// `[x0, y0, x1, y1]` in raw page points): every shown **glyph** whose box
+    /// intersects a rect is *removed* from the content stream (surviving glyphs
+    /// of the same run keep their positions via `TJ` displacements), XObject
+    /// paints (images/forms) overlapping a rect are dropped — with the page's
+    /// resource entry pruned and the object itself nulled when nothing else
+    /// references it — and annotations whose `/Rect` intersects are deleted.
+    /// Only then are opaque black boxes painted over the regions.
     ///
-    /// Content is rewritten when it can be decoded (uncompressed or
-    /// `FlateDecode`) and carries no inline images; otherwise the regions are
-    /// still covered with black boxes but the underlying bytes are left intact
-    /// (call [`EditableDoc::optimize`] is not enough there — prefer
-    /// pre-decompressing such files).
-    pub fn redact(&mut self, index: usize, rects: &[[f64; 4]]) -> bool {
+    /// After a successful call the redacted text is not extractable and its
+    /// glyph codes are absent from the file. Returns `Ok(false)` if `index` is
+    /// out of range, and **fails loudly** ([`RedactError`]) when the content
+    /// cannot be safely rewritten (undecodable stream, inline `BI` image) — in
+    /// that case *nothing* is removed **or drawn**, so a black box never masks
+    /// data that is still present.
+    ///
+    /// Conservative by design: a partially covered image is removed entirely
+    /// (pixel-level masking of image data is not attempted), and a Form
+    /// XObject overlapping a rect is dropped whole.
+    pub fn redact(
+        &mut self,
+        index: usize,
+        rects: &[[f64; 4]],
+    ) -> Result<bool, crate::redact::RedactError> {
         let Some(&page) = self.page_order.get(index) else {
-            return false;
+            return Ok(false);
         };
-        // Redaction is a licensed (Enterprise) feature, enforced at output
-        // (`to_bytes`/`save`) so a missing license fails serialization with a
-        // clear error instead of silently dropping the redaction.
-        self.redacted = true;
         let content_nums: Vec<u32> =
             match as_dict(self.objects.get(&page)).and_then(|d| d.get("Contents")) {
                 Some(Object::Reference(r)) => vec![r.number],
@@ -1363,9 +2335,9 @@ impl EditableDoc {
                 _ => Vec::new(),
             };
 
-        // Decode + concatenate the page content.
+        // Decode + concatenate the page content. Undecodable content is a
+        // hard error — silently painting over unremoved data is a leak.
         let mut content = Vec::new();
-        let mut decodable = !content_nums.is_empty();
         for &n in &content_nums {
             if let Some(Object::Stream(s)) = self.objects.get(&n) {
                 match decode_stream(s) {
@@ -1373,33 +2345,44 @@ impl EditableDoc {
                         content.extend_from_slice(&d);
                         content.push(b'\n');
                     }
-                    None => {
-                        decodable = false;
-                        break;
+                    None => return Err(crate::redact::RedactError::Undecodable),
+                }
+            }
+        }
+
+        if let Some(&first) = content_nums.first() {
+            let fonts = self.redact_fonts(page);
+            let outcome = crate::redact::redact_content(&content, rects, &fonts)?;
+            // Replace the first content stream with the redacted bytes and
+            // drop the rest, so the removed text is gone from the file.
+            self.objects
+                .insert(first, Object::Stream(Stream::new(outcome.content)));
+            for &n in &content_nums[1..] {
+                self.objects.remove(&n);
+            }
+            self.update_dict(page, |d| {
+                d.set("Contents", Object::Reference(Reference::new(first)));
+            });
+            // Prune XObjects whose every paint was dropped: remove this page's
+            // resource entry and null the object once nothing references it.
+            for name in outcome.dropped_xobjects.difference(&outcome.used_xobjects) {
+                let name = String::from_utf8_lossy(name).into_owned();
+                if let Some(num) = self.remove_page_xobject_entry(page, &name) {
+                    if !self.is_referenced(num) {
+                        self.objects.insert(num, Object::Null);
                     }
                 }
             }
         }
 
-        if decodable {
-            if let (Some(filtered), Some(&first)) = (
-                crate::redact::redact_content(&content, rects),
-                content_nums.first(),
-            ) {
-                // Replace the first content stream with the redacted bytes and
-                // drop the rest, so the removed text is gone from the file.
-                self.objects
-                    .insert(first, Object::Stream(Stream::new(filtered)));
-                for &n in &content_nums[1..] {
-                    self.objects.remove(&n);
-                }
-                self.update_dict(page, |d| {
-                    d.set("Contents", Object::Reference(Reference::new(first)));
-                });
-            }
-        }
+        // Remove annotations whose /Rect intersects a redaction rect.
+        self.remove_intersecting_annots(page, rects);
 
-        // Paint opaque black rectangles over the redacted regions.
+        // Only after removal succeeded: paint opaque black rectangles.
+        // Redaction is a licensed (Enterprise) feature, enforced at output
+        // (`to_bytes`/`save`) so a missing license fails serialization with a
+        // clear error instead of silently dropping the redaction.
+        self.redacted = true;
         let mut boxes = String::from("q\n0 g\n");
         for r in rects {
             let x0 = r[0].min(r[2]);
@@ -1410,7 +2393,195 @@ impl EditableDoc {
         }
         boxes.push_str("f\nQ\n");
         self.append_content(page, boxes.into_bytes());
-        true
+        Ok(true)
+    }
+
+    /// The page's effective `/Resources` dict (own or inherited via `/Parent`).
+    fn page_resources_dict(&self, page: u32) -> Option<&Dict> {
+        let mut cur = page;
+        for _ in 0..32 {
+            let d = as_dict(self.objects.get(&cur))?;
+            if let Some(res) = d.get("Resources") {
+                return self.deref_dict(res);
+            }
+            match d.get("Parent") {
+                Some(Object::Reference(r)) => cur = r.number,
+                _ => return None,
+            }
+        }
+        None
+    }
+
+    /// Width oracles for every font in the page's resources (redaction glyph
+    /// measurement): Type0 → `/W`+`/DW` keyed by CID; simple → `/FirstChar`+
+    /// `/Widths` keyed by byte code, `/MissingWidth` fallback.
+    fn redact_fonts(&self, page: u32) -> BTreeMap<Vec<u8>, crate::redact::RFont> {
+        let mut out = BTreeMap::new();
+        let Some(fonts) = self
+            .page_resources_dict(page)
+            .and_then(|r| r.get("Font"))
+            .and_then(|o| self.deref_dict(o))
+            .cloned()
+        else {
+            return out;
+        };
+        for (name, fo) in fonts.iter() {
+            let Some(fd) = self.deref_dict(fo) else {
+                continue;
+            };
+            let two_byte =
+                matches!(fd.get("Subtype"), Some(Object::Name(n)) if n.as_str() == "Type0");
+            let mut widths: BTreeMap<u32, f64> = BTreeMap::new();
+            let mut default_width = 0.5;
+            if two_byte {
+                if let Some(cid) = fd
+                    .get("DescendantFonts")
+                    .map(|o| self.deref_obj(o))
+                    .and_then(|o| match o {
+                        Object::Array(a) => a.first().and_then(|f| self.deref_dict(f)),
+                        Object::Dict(d) => Some(d),
+                        _ => None,
+                    })
+                {
+                    if let Some(dw) = cid.get("DW").and_then(obj_num) {
+                        default_width = dw / 1000.0;
+                    } else {
+                        default_width = 1.0;
+                    }
+                    if let Some(Object::Array(w)) = cid.get("W").map(|o| self.deref_obj(o)) {
+                        parse_cid_widths(w, &mut widths);
+                    }
+                }
+            } else {
+                let first = fd.get("FirstChar").and_then(obj_num).unwrap_or(0.0) as i64;
+                if let Some(Object::Array(a)) = fd.get("Widths").map(|o| self.deref_obj(o)) {
+                    for (i, w) in a.iter().enumerate() {
+                        if let Some(wv) = obj_num(w) {
+                            widths.insert((first + i as i64) as u32, wv / 1000.0);
+                        }
+                    }
+                }
+                if let Some(mw) = fd
+                    .get("FontDescriptor")
+                    .and_then(|o| self.deref_dict(o))
+                    .and_then(|d| d.get("MissingWidth"))
+                    .and_then(obj_num)
+                {
+                    default_width = mw / 1000.0;
+                }
+            }
+            out.insert(
+                name.as_str().as_bytes().to_vec(),
+                crate::redact::RFont {
+                    two_byte,
+                    widths,
+                    default_width,
+                },
+            );
+        }
+        out
+    }
+
+    /// Resolve a reference to its object (identity for direct objects).
+    fn deref_obj<'a>(&'a self, o: &'a Object) -> &'a Object {
+        match o {
+            Object::Reference(r) => self.objects.get(&r.number).unwrap_or(o),
+            other => other,
+        }
+    }
+
+    /// Remove `name` from this page's `/Resources /XObject`, giving the page
+    /// its **own** resources copy first (never mutating a dict shared with
+    /// other pages). Returns the removed entry's object number.
+    fn remove_page_xobject_entry(&mut self, page: u32, name: &str) -> Option<u32> {
+        let mut res = self.page_resources_dict(page).cloned().unwrap_or_default();
+        let mut xdict = res
+            .get("XObject")
+            .and_then(|o| self.deref_dict(o))
+            .cloned()
+            .unwrap_or_default();
+        let num = match xdict.remove(name) {
+            Some(Object::Reference(r)) => Some(r.number),
+            Some(_) | None => None,
+        };
+        res.set("XObject", Object::Dict(xdict));
+        self.update_dict(page, |d| {
+            d.set("Resources", Object::Dict(res));
+        });
+        num
+    }
+
+    /// Delete page annotations whose `/Rect` overlaps any redaction rect;
+    /// annotation objects that become unreferenced are nulled.
+    fn remove_intersecting_annots(&mut self, page: u32, rects: &[[f64; 4]]) {
+        let annots: Vec<Object> = match as_dict(self.objects.get(&page))
+            .and_then(|d| d.get("Annots"))
+            .map(|o| self.deref_obj(o))
+        {
+            Some(Object::Array(a)) => a.clone(),
+            _ => return,
+        };
+        let mut kept: Vec<Object> = Vec::new();
+        let mut removed_nums: Vec<u32> = Vec::new();
+        for a in annots {
+            let rect = self
+                .deref_dict(&a)
+                .and_then(|d| d.get("Rect"))
+                .map(|o| self.deref_obj(o))
+                .and_then(|o| match o {
+                    Object::Array(v) if v.len() == 4 => {
+                        let n: Vec<f64> = v.iter().filter_map(obj_num).collect();
+                        (n.len() == 4).then(|| [n[0], n[1], n[2], n[3]])
+                    }
+                    _ => None,
+                });
+            let hit = rect.is_some_and(|r| {
+                let b = [
+                    r[0].min(r[2]),
+                    r[1].min(r[3]),
+                    r[0].max(r[2]),
+                    r[1].max(r[3]),
+                ];
+                crate::redact::rect_overlaps(b, rects)
+            });
+            if hit {
+                if let Object::Reference(r) = &a {
+                    removed_nums.push(r.number);
+                }
+            } else {
+                kept.push(a);
+            }
+        }
+        if removed_nums.is_empty() {
+            return;
+        }
+        self.update_dict(page, |d| {
+            if kept.is_empty() {
+                d.remove("Annots");
+            } else {
+                d.set("Annots", Object::Array(kept));
+            }
+        });
+        for num in removed_nums {
+            if !self.is_referenced(num) {
+                self.objects.insert(num, Object::Null);
+            }
+        }
+    }
+
+    /// Whether any object in the graph still references object `num`
+    /// (excluding `num`'s own body).
+    fn is_referenced(&self, num: u32) -> bool {
+        fn visit(o: &Object, num: u32) -> bool {
+            match o {
+                Object::Reference(r) => r.number == num,
+                Object::Array(a) => a.iter().any(|x| visit(x, num)),
+                Object::Dict(d) => d.iter().any(|(_, v)| visit(v, num)),
+                Object::Stream(s) => s.dict.iter().any(|(_, v)| visit(v, num)),
+                _ => false,
+            }
+        }
+        self.objects.iter().any(|(&n, o)| n != num && visit(o, num))
     }
 
     // ---- 6.8 optimize -----------------------------------------------------
@@ -1981,6 +3152,15 @@ impl EditableDoc {
         }
         objects.insert(self.catalog, Object::Dict(catalog));
 
+        // Materialize embedded stamp fonts (subset Type0) into the object graph.
+        let mut next = objects.keys().copied().max().unwrap_or(0) + 1;
+        for sf in &self.stamp_fonts {
+            if sf.used.is_empty() {
+                continue; // registered but never drawn
+            }
+            build_stamp_font(sf, &mut objects, &mut next);
+        }
+
         objects
     }
 
@@ -2070,6 +3250,104 @@ impl Default for WatermarkOptions {
     }
 }
 
+/// What the `y` coordinate of a positioned text stamp means
+/// ([`EditableDoc::place_text_anchored`] and friends).
+///
+/// **Which one to use:** `Baseline` for typographic control; `Top`/`Bottom`
+/// for plain font geometry (ascender/descender lines); `LineTop`/`LineBottom`
+/// only to reproduce iText 7's layout box (drop-in parity — the iText leading
+/// model never leaks into the defaults). Full contract (units, origin,
+/// spaces, rotation pivot): `docs/COORDINATES.md`.
+///
+/// Legacy libraries disagree on the vertical anchor: iText's
+/// `SetFixedPosition` lays text down from the **top** of its box, while a raw
+/// PDF `Tm` (and this library's historical behavior) anchors the **baseline**.
+/// The ascent/descent used to resolve `Top`/`Bottom` come from the selected
+/// font (the embedded font's own metrics, or Helvetica's AFM values for the
+/// built-in stamps).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum VerticalAnchor {
+    /// `y` is the text **baseline** (historical default).
+    #[default]
+    Baseline,
+    /// `y` is the **top** of the text box (ascender line): the baseline is
+    /// drawn `ascent × size` below `y`.
+    Top,
+    /// `y` is the **bottom** of the text box (descender line): the baseline is
+    /// drawn `|descent| × size` above `y`.
+    Bottom,
+    /// `y` is the **top of the iText line box**: the baseline is drawn
+    /// `line_ascent × size` below `y`, where the line box reproduces iText 7's
+    /// layout model (OS/2 **win** ascent/descent — or typo × 1.2 when the font
+    /// has no distinct win metrics — plus a half-leading of
+    /// `0.21 × (ascent + descent)` on each side, iText's default multiplied
+    /// leading of 1.35). Use this to match `SetFixedPosition` line placement
+    /// exactly, including fonts whose win and hhea metrics differ.
+    LineTop,
+    /// `y` is the **bottom of the iText line box**: the baseline is drawn
+    /// `line_descent × size` above `y` (same model as [`LineTop`]).
+    ///
+    /// [`LineTop`]: VerticalAnchor::LineTop
+    LineBottom,
+}
+
+/// Vertical alignment of the single text line inside a
+/// [`masked_text`](EditableDoc::masked_text) box.
+///
+/// `Middle` (the historical default) centers the cap-height block in the box.
+/// `Top` matches e.g. Syncfusion `DrawString` with `LineAlignment = Top`: the
+/// line box hangs from the top edge, so the baseline sits `ascent × size`
+/// below `y + height`. `Bottom` rests the descender line on the bottom edge.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum VerticalAlign {
+    /// First line hangs from the top edge of the box.
+    Top,
+    /// Cap-height block vertically centered (historical default).
+    #[default]
+    Middle,
+    /// Descender line rests on the bottom edge of the box.
+    Bottom,
+}
+
+/// Coordinate space in which the **positioned stamping primitives**
+/// (`fill_rect`, the `place_text`/`masked_text`/`place_paragraph` families and
+/// `draw_image`) interpret their coordinates — see
+/// [`set_stamp_space`](EditableDoc::set_stamp_space).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum StampSpace {
+    /// Coordinates in the page's **visible** space (historical default):
+    /// origin at the *displayed* lower-left corner of the crop box, y up,
+    /// compensating the page's `/Rotate` so a `rotation_deg = 0` stamp reads
+    /// upright on screen.
+    #[default]
+    Visible,
+    /// Coordinates in the raw **media** space (PDF user space, like an iText
+    /// `PdfCanvas` / `SetFixedPosition`): origin at the media origin, no
+    /// compensation for `/Rotate` or the crop-box offset. `rotation_deg` is
+    /// the baseline angle *in media space* — on a `/Rotate 90` page a
+    /// `rotation_deg = 0` stamp reads sideways on screen, exactly as iText
+    /// draws it. Use this to reproduce coordinates computed for iText.
+    ///
+    /// `Visible` stays the default within 0.x; `Media` — the least surprising
+    /// space for code treating the PDF as a file format — may become the
+    /// default in a future major (see `docs/COORDINATES.md`).
+    Media,
+}
+
+/// How a **rotated image** is anchored at `(x, y)` —
+/// [`draw_image_anchored`](EditableDoc::draw_image_anchored).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ImageAnchor {
+    /// `(x, y)` is the image's own lower-left corner (the `draw_image`
+    /// default): the image sweeps around that corner when rotated.
+    #[default]
+    Corner,
+    /// `(x, y)` is the lower-left of the **rotated image's bounding box**:
+    /// the drawn pixels always land at/above/right of the anchor, like
+    /// iText's rotated-image layout.
+    BoundingBox,
+}
+
 /// A page's effective geometry (crop box in unrotated user space + `/Rotate`).
 struct PageGeom {
     x0: f64,
@@ -2105,6 +3383,158 @@ impl PageGeom {
 
 // ---- free helpers ----------------------------------------------------------
 
+/// Emit a subset Type0/CIDFontType2 font for a stamp font into `objects`,
+/// numbering descendants from `*next`. The Type0 dict lands at `sf.obj` (the
+/// number pages already reference). Content streams emit *original* glyph ids as
+/// 2-byte CIDs; a `CIDToGIDMap` stream remaps them to the subset glyph ids, and
+/// `/W` + `/ToUnicode` are keyed by the original gid (= CID). This mirrors the
+/// `Document` font path but keeps the CIDs stable for already-emitted content.
+fn build_stamp_font(sf: &StampFont, objects: &mut BTreeMap<u32, Object>, next: &mut u32) {
+    let mut alloc = |obj: Object| -> u32 {
+        let n = *next;
+        *next += 1;
+        objects.insert(n, obj);
+        n
+    };
+
+    let font = &sf.font;
+    let upem = font.units_per_em();
+    let to_gs = |v: f64| -> i64 { (v * 1000.0 / upem as f64).round() as i64 };
+
+    let used: Vec<u16> = sf.used.iter().copied().collect();
+    let Ok(subset) = font.subset(&used) else {
+        return; // subsetting failed: skip (stamp shows nothing rather than crash)
+    };
+
+    // FontFile2 (embedded subset program).
+    let mut ff_dict = Dict::new();
+    ff_dict.set("Length1", subset.data.len() as i64);
+    let font_file = alloc(Object::Stream(Stream::with_dict(
+        ff_dict,
+        subset.data.clone(),
+    )));
+
+    // CIDToGIDMap: CID (= original gid) → subset gid, big-endian 2 bytes each.
+    let max_cid = used.iter().copied().max().unwrap_or(0) as usize;
+    let mut c2g = vec![0u8; (max_cid + 1) * 2];
+    for &old in &used {
+        if let Some(new) = subset.new_gid(old) {
+            let i = old as usize * 2;
+            c2g[i] = (new >> 8) as u8;
+            c2g[i + 1] = (new & 0xff) as u8;
+        }
+    }
+    let cid_to_gid = alloc(Object::Stream(Stream::new(c2g)));
+
+    // FontDescriptor.
+    let bbox = font.bbox();
+    let base_name = sanitize_font_name(font.postscript_name());
+    let descriptor = Dict::new()
+        .with("Type", Object::name("FontDescriptor"))
+        .with("FontName", Object::name(base_name.clone()))
+        .with("Flags", font.descriptor_flags() as i64)
+        .with(
+            "FontBBox",
+            Object::Array(vec![
+                Object::Integer(to_gs(bbox[0] as f64)),
+                Object::Integer(to_gs(bbox[1] as f64)),
+                Object::Integer(to_gs(bbox[2] as f64)),
+                Object::Integer(to_gs(bbox[3] as f64)),
+            ]),
+        )
+        .with("ItalicAngle", Object::Real(font.italic_angle() as f64))
+        .with("Ascent", to_gs(font.ascender() as f64))
+        .with("Descent", to_gs(font.descender() as f64))
+        .with("CapHeight", to_gs(font.cap_height() as f64))
+        .with("StemV", Object::Real(font.stem_v()))
+        .with("FontFile2", Reference::new(font_file));
+    let descriptor_ref = alloc(Object::Dict(descriptor));
+
+    // /W keyed by CID (= original gid): one `cid [w]` entry per used glyph.
+    let mut w_items = Vec::with_capacity(used.len() * 2);
+    for &old in &used {
+        w_items.push(Object::Integer(old as i64));
+        w_items.push(Object::Array(vec![Object::Integer(to_gs(
+            font.advance(old) as f64,
+        ))]));
+    }
+    let cid_system_info = Dict::new()
+        .with("Registry", PdfString::literal("Adobe"))
+        .with("Ordering", PdfString::literal("Identity"))
+        .with("Supplement", 0);
+    let cid_font = Dict::new()
+        .with("Type", Object::name("Font"))
+        .with("Subtype", Object::name("CIDFontType2"))
+        .with("BaseFont", Object::name(base_name.clone()))
+        .with("CIDSystemInfo", Object::Dict(cid_system_info))
+        .with("FontDescriptor", Reference::new(descriptor_ref))
+        .with("CIDToGIDMap", Reference::new(cid_to_gid))
+        .with("DW", 1000)
+        .with("W", Object::Array(w_items));
+    let cid_font_ref = alloc(Object::Dict(cid_font));
+
+    // ToUnicode CMap keyed by CID (= original gid).
+    let to_unicode = alloc(Object::Stream(Stream::new(build_stamp_tounicode(
+        &sf.gid_to_unicode,
+    ))));
+
+    // Type0 root at the reserved number.
+    let type0 = Dict::new()
+        .with("Type", Object::name("Font"))
+        .with("Subtype", Object::name("Type0"))
+        .with("BaseFont", Object::name(base_name))
+        .with("Encoding", Object::name("Identity-H"))
+        .with(
+            "DescendantFonts",
+            Object::Array(vec![Reference::new(cid_font_ref).into()]),
+        )
+        .with("ToUnicode", Reference::new(to_unicode));
+    objects.insert(sf.obj, Object::Dict(type0));
+}
+
+/// Build a minimal `ToUnicode` CMap mapping 2-byte CIDs to UTF-16BE text.
+fn build_stamp_tounicode(map: &BTreeMap<u16, String>) -> Vec<u8> {
+    let mut body = String::new();
+    let entries: Vec<(u16, &String)> = map.iter().map(|(&g, s)| (g, s)).collect();
+    for chunk in entries.chunks(100) {
+        body.push_str(&format!("{} beginbfchar\n", chunk.len()));
+        for (gid, s) in chunk {
+            let mut u16be = String::new();
+            for u in s.encode_utf16() {
+                u16be.push_str(&format!("{u:04X}"));
+            }
+            if u16be.is_empty() {
+                u16be.push_str("0000");
+            }
+            body.push_str(&format!("<{gid:04X}> <{u16be}>\n"));
+        }
+        body.push_str("endbfchar\n");
+    }
+    format!(
+        "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n\
+         /CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n\
+         1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n{body}\
+         endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend"
+    )
+    .into_bytes()
+}
+
+/// Sanitize a PostScript name for use as a PDF `/BaseFont` name.
+fn sanitize_font_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .filter(|c| {
+            c.is_ascii_graphic()
+                && !matches!(c, '(' | ')' | '<' | '>' | '[' | ']' | '/' | '%' | ' ')
+        })
+        .collect();
+    if cleaned.is_empty() {
+        "Embedded".to_string()
+    } else {
+        cleaned
+    }
+}
+
 /// A `cm` matrix that maps an appearance XObject's BBox into the widget Rect,
 /// emitting `q … cm /name Do Q` (Matrix on the appearance is assumed identity).
 fn flatten_draw(name: &str, rect: [f64; 4], bbox: [f64; 4]) -> String {
@@ -2123,6 +3553,257 @@ fn flatten_draw(name: &str, rect: [f64; 4], bbox: [f64; 4]) -> String {
     let e = rect[0] - sx * bbox[0];
     let f = rect[1] - sy * bbox[1];
     format!("q {sx:.4} 0 0 {sy:.4} {e:.2} {f:.2} cm /{name} Do Q\n")
+}
+
+/// Numeric value of a direct object (integer or real).
+fn obj_num(o: &Object) -> Option<f64> {
+    match o {
+        Object::Integer(i) => Some(*i as f64),
+        Object::Real(r) => Some(*r),
+        _ => None,
+    }
+}
+
+/// Parse a CIDFont `/W` array into `cid → width` (em units, i.e. /1000).
+fn parse_cid_widths(arr: &[Object], map: &mut std::collections::BTreeMap<u32, f64>) {
+    let mut i = 0;
+    while i < arr.len() {
+        let Some(c) = arr.get(i).and_then(obj_num) else {
+            break;
+        };
+        let c = c as u32;
+        match arr.get(i + 1) {
+            Some(Object::Array(ws)) => {
+                for (j, wo) in ws.iter().enumerate() {
+                    if let Some(wv) = obj_num(wo) {
+                        map.insert(c + j as u32, wv / 1000.0);
+                    }
+                }
+                i += 2;
+            }
+            Some(o) => {
+                let c_last = obj_num(o).map(|v| v as u32).unwrap_or(c);
+                let wv = arr.get(i + 2).and_then(obj_num).unwrap_or(0.0) / 1000.0;
+                for cid in c..=c_last.min(c + 65_535) {
+                    map.insert(cid, wv);
+                }
+                i += 3;
+            }
+            None => break,
+        }
+    }
+}
+
+/// Baseline-to-baseline distance for an anchored stamped paragraph.
+/// Geometric anchors (`Top`/`Baseline`/`Bottom`) keep the plain
+/// `1.2 em × line_height` leading (the document-generation default); the
+/// `Line*` anchors use the **iText multiplied-leading advance** (`line_adv`,
+/// from `stamp_line_advance`) so wrapped blocks match iText line spacing.
+fn paragraph_leading(anchor: VerticalAnchor, size: f64, line_height: f64, line_adv: f64) -> f64 {
+    let lh = if line_height > 0.0 { line_height } else { 1.0 };
+    let basis = match anchor {
+        VerticalAnchor::LineTop | VerticalAnchor::LineBottom => line_adv,
+        _ => 1.2,
+    };
+    size * basis * lh
+}
+
+/// Layout plan for an anchored stamped paragraph, in **block-local**
+/// coordinates (the anchor `(x, y)` is the local origin, so the emitters can
+/// rotate the whole block about it). Lines step down `leading` from
+/// `first_local`; `skip` wrapped lines are dropped from the top (bottom-pin
+/// ceiling cut), at most `take` lines are drawn, and — for the top-anchored
+/// family — a line is drawn only while `local_baseline − drop ≥ floor`.
+struct ParagraphPlan {
+    /// Local baseline of the first *drawn* line.
+    first_local: f64,
+    /// Wrapped lines cut from the top (bottom-pin `max_height` overflow).
+    skip: usize,
+    /// Cap on drawn lines (`usize::MAX` when the floor rules instead).
+    take: usize,
+    /// Local-y floor for the top-anchored family (`y − max_height`).
+    floor: Option<f64>,
+    /// Baseline → line-box-bottom distance (points) for the floor check.
+    drop: f64,
+    /// Per-line box extent above/below the baseline (points), for
+    /// [`consumed_height`](ParagraphPlan::consumed_height).
+    box_asc: f64,
+    box_desc: f64,
+}
+
+impl ParagraphPlan {
+    /// Height in points actually consumed by `drawn` lines (top of the first
+    /// drawn line's box to the bottom of the last one's), `0.0` when nothing
+    /// was drawn.
+    fn consumed_height(&self, drawn: usize, leading: f64) -> f64 {
+        if drawn == 0 {
+            0.0
+        } else {
+            self.box_asc + self.box_desc + (drawn - 1) as f64 * leading
+        }
+    }
+}
+
+/// Build the [`ParagraphPlan`] for an anchor. `asc`/`desc` are the font's
+/// hhea metrics in em (desc ≤ 0); `line_box` the iText line box magnitudes
+/// (see `stamp_line_metrics`). `Top`/`Baseline`/`Bottom` use the geometric
+/// metrics; `LineTop`/`LineBottom` the line box. `Bottom`/`LineBottom` are
+/// **bottom-pinned**: the block's bottom rests on the anchor, `max_height` is
+/// a ceiling that cuts overflowing lines **from the top** (the last lines
+/// stay pinned).
+#[allow(clippy::too_many_arguments)]
+fn paragraph_plan(
+    anchor: VerticalAnchor,
+    size: f64,
+    leading: f64,
+    n_lines: usize,
+    asc: f64,
+    desc: f64,
+    line_box: (f64, f64),
+    max_height: Option<f64>,
+) -> ParagraphPlan {
+    let geom = (asc * size, -desc * size);
+    let line = (line_box.0 * size, line_box.1 * size);
+    match anchor {
+        VerticalAnchor::Top | VerticalAnchor::LineTop | VerticalAnchor::Baseline => {
+            let (bx, first) = match anchor {
+                VerticalAnchor::Top => (geom, -geom.0),
+                VerticalAnchor::LineTop => (line, -line.0),
+                _ => (geom, 0.0),
+            };
+            ParagraphPlan {
+                first_local: first,
+                skip: 0,
+                take: usize::MAX,
+                floor: max_height.map(|h| -h),
+                drop: bx.1,
+                box_asc: bx.0,
+                box_desc: bx.1,
+            }
+        }
+        VerticalAnchor::Bottom | VerticalAnchor::LineBottom => {
+            let bx = if anchor == VerticalAnchor::Bottom {
+                geom
+            } else {
+                line
+            };
+            let single = bx.0 + bx.1;
+            let take = match max_height {
+                Some(h) if h + 1e-9 < single => 0,
+                Some(h) => ((((h - single) / leading) + 1e-9).floor() as usize + 1).min(n_lines),
+                None => n_lines,
+            };
+            ParagraphPlan {
+                first_local: bx.1 + take.saturating_sub(1) as f64 * leading,
+                skip: n_lines - take,
+                take,
+                floor: None,
+                drop: bx.1,
+                box_asc: bx.0,
+                box_desc: bx.1,
+            }
+        }
+    }
+}
+
+/// Baseline offset (in text-local y, points) that realizes a
+/// [`VerticalAnchor`] given the font's ascent/descent in em fractions
+/// (`descent ≤ 0`). `Baseline` → 0; `Top` → the baseline drops `ascent × size`
+/// below the anchor; `Bottom` → it rises `|descent| × size` above it.
+fn baseline_shift(
+    anchor: VerticalAnchor,
+    ascent_em: f64,
+    descent_em: f64,
+    line: (f64, f64),
+    size: f64,
+) -> f64 {
+    match anchor {
+        VerticalAnchor::Baseline => 0.0,
+        VerticalAnchor::Top => -ascent_em * size,
+        VerticalAnchor::Bottom => -descent_em * size,
+        VerticalAnchor::LineTop => -line.0 * size,
+        VerticalAnchor::LineBottom => line.1 * size,
+    }
+}
+
+/// Baseline y for a single line inside a `masked_text` box `[y, y+height]`
+/// under a [`VerticalAlign`]. `Middle` keeps the historical cap-height
+/// centering; `Top`/`Bottom` hang/rest the line box (ascent above the
+/// baseline, `|descent|` below) on the corresponding edge. Em fractions;
+/// `descent_em ≤ 0`.
+fn masked_baseline(
+    valign: VerticalAlign,
+    y: f64,
+    height: f64,
+    size: f64,
+    cap_em: f64,
+    ascent_em: f64,
+    descent_em: f64,
+) -> f64 {
+    match valign {
+        VerticalAlign::Top => y + height - ascent_em * size,
+        VerticalAlign::Middle => y + (height - size * cap_em) / 2.0,
+        VerticalAlign::Bottom => y - descent_em * size,
+    }
+}
+
+/// One wrapped paragraph line: its words, natural width (Σ word widths +
+/// single-space gaps) in points, and whether it ends its source paragraph
+/// (the last line is never justified).
+struct WrapLine {
+    words: Vec<String>,
+    width: f64,
+    last: bool,
+}
+
+impl WrapLine {
+    fn gaps(&self) -> usize {
+        self.words.len().saturating_sub(1)
+    }
+
+    fn text(&self) -> String {
+        self.words.join(" ")
+    }
+}
+
+/// Greedy word wrapping for stamped paragraphs — the same break rule as the
+/// document-generation [`Paragraph`](crate::Paragraph) engine: fill each line
+/// while `width + space + word ≤ box_w`; a word wider than the box gets its
+/// own (overflowing) line. `'\n'` forces a break (an empty paragraph yields a
+/// blank line); runs of other whitespace collapse to one space.
+fn wrap_stamp_lines(
+    text: &str,
+    box_w: f64,
+    space_w: f64,
+    measure: impl Fn(&str) -> f64,
+) -> Vec<WrapLine> {
+    let mut out = Vec::new();
+    for para in text.split('\n') {
+        let mut cur: Vec<String> = Vec::new();
+        let mut w = 0.0;
+        for word in para.split_whitespace() {
+            let ww = measure(word);
+            if !cur.is_empty() && w + space_w + ww > box_w + 1e-9 {
+                out.push(WrapLine {
+                    words: std::mem::take(&mut cur),
+                    width: w,
+                    last: false,
+                });
+                w = 0.0;
+            }
+            if !cur.is_empty() {
+                w += space_w;
+            }
+            w += ww;
+            cur.push(word.to_string());
+        }
+        out.push(WrapLine {
+            words: cur,
+            width: w,
+            last: true,
+        });
+    }
+    out
 }
 
 /// Escape a string as a PDF literal for a **WinAnsi**-encoded standard font

@@ -184,7 +184,7 @@
     <!-- MAIN -->
     <main id="main" class="docs-main">
       <h1>Ruby</h1>
-      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-06-29</p>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 0">Last updated: 2026-07-02</p>
       <p class="docs-lead">The <code>rustpdf</code> gem wraps the rust-pdf C core with idiomatic, chainable classes over Ruby's built-in <a href="https://github.com/ruby/fiddle" rel="noopener">Fiddle</a> standard library (pure FFI, no native gem to compile). It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures.</p>
 
       <div class="note"><b>Two classes do almost everything.</b> <code>RustPdf::Document</code> authors a new PDF; <code>RustPdf::EditableDoc</code> loads and manipulates an existing one. Each holds a native handle, so call <code>close</code> when done to free it promptly (or let the GC do it).</div>
@@ -558,12 +558,12 @@ ed.close</code></pre></div>
 
       <!-- ED DRAW -->
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
-      <p>Place a filled rectangle or a line of text at exact coordinates on a page. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code>. Text uses the standard Helvetica font, so keep it to WinAnsi (Latin-1). Both return whether the page existed.</p>
+      <p>Place a filled rectangle, a line of text, a wrapped paragraph or an image at exact coordinates on a page. Coordinates are in the page's <b>visible</b> space by default (origin lower-left, y up), so content lands where the viewer sees it regardless of the page's <code>/Rotate</code> (see the <a href="/positioning.html">Interactive positioning guide</a>). All return whether the page (and font) existed.</p>
       <div class="api"><code>fill_rect(page_index, x, y, width, height, color = [1.0, 1.0, 1.0], opacity = 1.0) → Boolean</code></div>
-      <div class="api"><code>place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0, align: RustPdf::Align::LEFT) → Boolean</code></div>
-      <div class="api"><code>masked_text(page_index, x, y, width, height, text, size = 12.0, text_color = [0.0, 0.0, 0.0], bg_color = [1.0, 1.0, 1.0], align: RustPdf::Align::LEFT) → Boolean</code></div>
-      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0) → Boolean</code></div>
-      <p><code>color</code> is RGB (each component 0..1). <code>place_text</code> draws the baseline at (<code>x</code>, <code>y</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor (match the page rotation to follow a rotated page), and <code>align:</code> (a <code>RustPdf::Align</code> value) shifts the start point along the baseline by the text width so <code>RIGHT</code>/<code>CENTER</code> anchor at (<code>x</code>, <code>y</code>). <code>masked_text</code> is the masking idiom in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bg_color</code> (default white), then writes <code>text</code> in <code>text_color</code> (default black) horizontally aligned per <code>align:</code> and vertically centered within the box — no hand-computed baseline. <code>draw_image</code> takes raw JPEG/PNG image bytes (a binary <code>String</code>) and places the image with its lower-left corner at (<code>x</code>, <code>y</code>) scaled to <code>width × height</code> points.</p>
+      <div class="api"><code>place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0, align: RustPdf::Align::LEFT, font_id: -1, anchor: RustPdf::VerticalAnchor::BASELINE) → Boolean</code></div>
+      <div class="api"><code>masked_text(page_index, x, y, width, height, text, size = 12.0, text_color = [0.0, 0.0, 0.0], bg_color = [1.0, 1.0, 1.0], align: RustPdf::Align::LEFT, font_id: -1, valign: RustPdf::VerticalAlign::MIDDLE, padding: nil) → Boolean</code></div>
+      <div class="api"><code>draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0, anchor: RustPdf::ImageAnchor::CORNER) → Boolean</code></div>
+      <p><code>color</code> is RGB (each component 0..1). <code>place_text</code> draws the baseline at (<code>x</code>, <code>y</code>); <code>rotation_deg</code> rotates the text counter-clockwise about its anchor (match the page rotation to follow a rotated page), and <code>align:</code> (a <code>RustPdf::Align</code> value) shifts the start point along the baseline by the text width so <code>RIGHT</code>/<code>CENTER</code> anchor at (<code>x</code>, <code>y</code>). <code>masked_text</code> is the masking idiom in one call: it fills the box <code>[x, y, x+width, y+height]</code> in <code>bg_color</code> (default white), then writes <code>text</code> in <code>text_color</code> (default black) horizontally aligned per <code>align:</code>. <code>draw_image</code> takes raw JPEG/PNG image bytes (a binary <code>String</code>) and places the image with its lower-left corner at (<code>x</code>, <code>y</code>) scaled to <code>width × height</code> points.</p>
       <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("form.pdf")
 geom = RustPdf.measure_page(File.binread("form.pdf"), 0)
 puts "page is #{geom.width}×#{geom.height} pt"
@@ -578,6 +578,60 @@ ed.masked_text(0, 100, 100, 200, 40, "APPROVED", 14,
                [0, 0, 1], [1, 1, 1], align: RustPdf::Align::CENTER)
 ed.save("filled.pdf")
 ed.close</code></pre></div>
+
+      <h3>Stamping fonts</h3>
+      <p>By default the stamping primitives draw with the built-in Helvetica (WinAnsi / Latin-1 only). Register a TrueType/OpenType font on the <code>EditableDoc</code> and pass its id as <code>font_id:</code> to stamp with real embedded glyphs and metrics: full Unicode, subset-embedded exactly like <code>Document#add_font_file</code> + <code>show_text</code>.</p>
+      <div class="api"><code>add_font_file(path) → Integer</code> &nbsp; <code>add_font(data) → Integer</code></div>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed = RustPdf::EditableDoc.load_file("form.pdf")
+roboto = ed.add_font_file("Roboto-Regular.ttf")
+ed.place_text(0, 72, 700, "Şărbătoare — Unicode ✓", 14, font_id: roboto)</code></pre></div>
+
+      <h3>Vertical anchors</h3>
+      <p><code>place_text</code>'s <code>anchor:</code> keyword (a <code>RustPdf::VerticalAnchor</code>) says what <code>y</code> means: <code>BASELINE</code> (default, the historical behavior), <code>TOP</code> hangs the text from <code>y</code> (the baseline lands <code>ascent × size</code> below it, matching legacy fixed-position layout), <code>BOTTOM</code> rests the descender line on <code>y</code>. <code>LINE_TOP</code> / <code>LINE_BOTTOM</code> anchor via the <b>layout line box</b>; its height is also the leading basis, so a single anchored line and a wrapped paragraph agree vertically. Ascent/descent come from the selected font's metrics.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code># y = 700 is the TOP of the text, not the baseline (legacy layout semantics)
+ed.place_text(0, 72, 700, "Hangs from y", 12,
+              anchor: RustPdf::VerticalAnchor::TOP)
+# layout line-box bottom at y = 640
+ed.place_text(0, 72, 640, "Line box bottom", 12,
+              anchor: RustPdf::VerticalAnchor::LINE_BOTTOM)</code></pre></div>
+
+      <h3>masked_text vertical alignment &amp; padding</h3>
+      <p><code>valign:</code> (a <code>RustPdf::VerticalAlign</code>) controls where the line sits inside the box: <code>MIDDLE</code> (default, the historical cap-height centering), <code>TOP</code> hangs the line from the top edge (top line-alignment in rectangle-based text APIs semantics), <code>BOTTOM</code> rests the descender line on the bottom edge. <code>padding:</code> is the horizontal edge inset in points for <code>LEFT</code>/<code>RIGHT</code> alignment: text starts at <code>x + padding</code> (or ends at <code>x + width − padding</code>). <code>nil</code> keeps the historical <code>min(0.15 × size, width / 4)</code>; <code>0</code> starts flush with the box edge like rectangle-based DrawString APIs.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed.masked_text(0, 100, 100, 200, 40, "TOP-LEFT, flush", 12,
+               valign: RustPdf::VerticalAlign::TOP, padding: 0)</code></pre></div>
+
+      <h3>Paragraphs with word wrapping</h3>
+      <div class="api"><code>place_paragraph(page_index, x, y, width, text, size: 12.0, color: [0.0, 0.0, 0.0], align: RustPdf::Align::LEFT, font_id: -1, max_height: nil, line_height: 1.0, anchor: RustPdf::VerticalAnchor::TOP, rotation_deg: 0.0) → Boolean</code></div>
+      <div class="api"><code>place_paragraph_measured(...) → { lines: Integer, height: Float }</code></div>
+      <p><code>place_paragraph</code> breaks <code>text</code> into lines that fit <code>width</code> points (greedy, by word; <code>"\n"</code> forces a break) and draws them downward from (<code>x</code>, <code>y</code>). With the default <code>anchor: TOP</code>, (<code>x</code>, <code>y</code>) is the block's <b>top-left corner</b>: the first baseline lands <code>ascent × size</code> below <code>y</code>, like legacy fixed-position layout. <code>BOTTOM</code> / <code>LINE_BOTTOM</code> <b>bottom-pin</b> the block: its bottom rests on <code>y</code> and it grows upward by its real content height. <code>max_height:</code> is a <b>ceiling</b>: overflowing lines are cut (from the bottom when top-anchored, from the top when bottom-pinned, so the last lines stay pinned). <code>line_height:</code> scales the default <code>1.2 × size</code> leading. <code>align: RustPdf::Align::JUSTIFY</code> stretches the word gaps of every line but the last of each paragraph. <code>place_paragraph_measured</code> takes the same arguments and returns how many lines were drawn and the consumed block height in points, so you can stack blocks without re-measuring.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>terms = "The parties agree that the deliverables described herein " \
+        "shall be provided in accordance with the schedule…"
+
+# wrap into a 300 pt column whose TOP is at y = 700
+res = ed.place_paragraph_measured(0, 72, 700, 300, terms,
+                                  size: 10, font_id: roboto,
+                                  max_height: 120)         # truncate past 120 pt
+puts "drew #{res[:lines]} lines, #{res[:height]} pt tall"
+
+# next block starts right below the previous one
+ed.place_paragraph(0, 72, 700 - res[:height] - 12, 300, "Next clause…",
+                   size: 10, font_id: roboto)
+
+# bottom-pinned: the block's bottom rests on y = 60 and grows upward
+ed.place_paragraph(0, 72, 60, 300, "Footer note that may wrap",
+                   size: 8, anchor: RustPdf::VerticalAnchor::BOTTOM)</code></pre></div>
+
+      <h3>Coordinate space: visible vs media</h3>
+      <div class="api"><code>stamp_space = RustPdf::StampSpace::VISIBLE | MEDIA</code> &nbsp; <code>set_stamp_space(space)</code> (chainable)</div>
+      <p>Chooses the coordinate space of all the positioned stamping primitives for subsequent calls. <code>VISIBLE</code> (default) keeps the historical behavior: coordinates in the page's displayed space, compensating <code>/Rotate</code> so a <code>rotation_deg = 0</code> stamp reads upright on screen. <code>MEDIA</code> interprets coordinates and <code>rotation_deg</code> in the <b>raw PDF user space</b> (the raw-coordinate semantics of legacy layout engines), never composing with the page's <code>/Rotate</code> or crop offset; use it to reproduce legacy-engine placement on rotated/scanned pages. Watermarks and redaction are unaffected.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed.stamp_space = RustPdf::StampSpace::MEDIA   # legacy raw-space coordinates from here on
+ed.place_text(0, 72, 60, "Same numbers as the legacy layout engines code")
+ed.set_stamp_space(RustPdf::StampSpace::VISIBLE)  # back to the default</code></pre></div>
+
+      <h3>Image rotation anchor</h3>
+      <p><code>draw_image</code>'s <code>anchor:</code> keyword (a <code>RustPdf::ImageAnchor</code>) controls how a rotated image is anchored: <code>CORNER</code> (default) rotates the image about its own lower-left corner at (<code>x</code>, <code>y</code>), so the image sweeps around the point. <code>BOUNDING_BOX</code> lands the <b>rotated image's bounding box</b> with its lower-left at (<code>x</code>, <code>y</code>), bounding-box layout semantics: a 90° image occupies <code>[x, x+height] × [y, y+width]</code>, and the drawn pixels always sit at/above/right of the anchor.</p>
+      <div class="code has-label"><span class="lbl">ruby</span><pre><code>ed.draw_image(0, File.binread("logo.png"), 300, 100, 120, 48, 90.0,
+              anchor: RustPdf::ImageAnchor::BOUNDING_BOX)</code></pre></div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -844,6 +898,34 @@ File.binwrite("page1.png", RustPdf.render_page_to_png(data, 0, 150.0))</code></p
         <tr><td><code>RustPdf::Align::RIGHT</code></td><td>Right-aligned</td></tr>
         <tr><td><code>RustPdf::Align::CENTER</code></td><td>Centered</td></tr>
         <tr><td><code>RustPdf::Align::JUSTIFY</code></td><td>Justified (space distributed between words)</td></tr>
+      </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning of <code>y</code> (place_text / place_paragraph)</th></tr>
+        <tr><td><code>RustPdf::VerticalAnchor::BASELINE</code></td><td>Text baseline (place_text default)</td></tr>
+        <tr><td><code>RustPdf::VerticalAnchor::TOP</code></td><td>Top of the text/block, legacy fixed-position layout (place_paragraph default)</td></tr>
+        <tr><td><code>RustPdf::VerticalAnchor::BOTTOM</code></td><td>Descender line / block bottom rests on <code>y</code></td></tr>
+        <tr><td><code>RustPdf::VerticalAnchor::LINE_TOP</code></td><td>Top of the layout line box</td></tr>
+        <tr><td><code>RustPdf::VerticalAnchor::LINE_BOTTOM</code></td><td>Bottom of the layout line box</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Line position inside a <code>masked_text</code> box</th></tr>
+        <tr><td><code>RustPdf::VerticalAlign::TOP</code></td><td>Hangs from the top edge (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>RustPdf::VerticalAlign::MIDDLE</code></td><td>Cap-height centered (default)</td></tr>
+        <tr><td><code>RustPdf::VerticalAlign::BOTTOM</code></td><td>Descender line on the bottom edge</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Coordinate space of the stamping primitives</th></tr>
+        <tr><td><code>RustPdf::StampSpace::VISIBLE</code></td><td>Displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>RustPdf::StampSpace::MEDIA</code></td><td>Raw PDF user space (legacy layout semantics)</td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Rotated <code>draw_image</code> anchoring</th></tr>
+        <tr><td><code>RustPdf::ImageAnchor::CORNER</code></td><td>Rotate about the image's lower-left corner (default)</td></tr>
+        <tr><td><code>RustPdf::ImageAnchor::BOUNDING_BOX</code></td><td>Rotated bounding box lands at (<code>x</code>, <code>y</code>) (legacy layout engines)</td></tr>
       </table>
       <h3>Relationship</h3>
       <table>

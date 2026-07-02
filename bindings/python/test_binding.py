@@ -242,6 +242,43 @@ def exercise_full_surface() -> None:
     page0 = rustpdf.extract_page_text(stamped, 0)
     assert "STAMPED-45" in page0, "extract_page_text missing placed text"
 
+    # 8f. Anchored stamping: embedded fonts, vertical anchors, masked_text
+    # valign/padding, paragraph wrapping, stamp space and image anchors.
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        fid = ed.add_font_file(_FONT)
+        assert fid >= 0, f"add_font_file returned {fid}"
+        # place_text with an embedded font, hung from the layout line box bottom.
+        assert ed.place_text(0, 72, 500, "ANCHORED-FONT", size=14, font_id=fid,
+                             anchor=rustpdf.VerticalAnchor.LINE_BOTTOM) is True
+        # masked_text hanging from the top edge, flush with the box (padding=0).
+        assert ed.masked_text(0, 72, 440, 220, 30, "VALIGN-TOP", size=12,
+                              valign=rustpdf.VerticalAlign.TOP, padding=0) is True
+        # place_paragraph: wrap a long text into a narrow column; the measured
+        # variant reports lines + consumed height.
+        para = "wrapme " * 30
+        assert ed.place_paragraph(0, 72, 420, 120, para, size=10) is True
+        lines, height = ed.place_paragraph_measured(0, 300, 420, 120, para, size=10)
+        assert lines > 1, f"paragraph did not wrap: {lines} line(s)"
+        assert height > 0, f"paragraph consumed no height: {height}"
+        # stamp_space: switch to raw media space (legacy layout semantics) and stamp.
+        assert ed.stamp_space is rustpdf.StampSpace.VISIBLE
+        ed.stamp_space = rustpdf.StampSpace.MEDIA
+        assert ed.stamp_space is rustpdf.StampSpace.MEDIA
+        assert ed.place_text(0, 72, 60, "MEDIA-SPACE", size=10) is True
+        ed.set_stamp_space(rustpdf.StampSpace.VISIBLE)
+        # draw_image anchored by the rotated bounding box (bounding-box layout).
+        assert ed.draw_image(0, _tiny_png(), 400, 60, 40, 20, rotation_deg=90.0,
+                             anchor=rustpdf.ImageAnchor.BOUNDING_BOX) is True
+        anchored = ed.to_bytes()
+    anchored_text = rustpdf.extract_text(anchored)
+    for marker in ("ANCHORED-FONT", "VALIGN-TOP", "MEDIA-SPACE", "wrapme"):
+        assert marker in anchored_text, f"anchored stamp {marker!r} not extractable"
+    # add_font (bytes) mirrors add_font_file.
+    with rustpdf.EditableDoc.load(pdfa) as ed:
+        fid2 = ed.add_font(_FONT.read_bytes())
+        assert fid2 >= 0, f"add_font returned {fid2}"
+        assert ed.place_text(0, 72, 40, "FONT-BYTES", font_id=fid2) is True
+
     # 9. Deferred / external (HSM) signing — issue #41 P0. The private key never
     # reaches the library: it asks our remote signer for the raw RSA signature.
     fixtures = (

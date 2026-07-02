@@ -437,15 +437,24 @@ fn form_xobject(
     doc.add(Stream::with_dict(dict, content.into_bytes()))
 }
 
+/// Escape a field value for a content-stream literal, transcoding to the
+/// appearance font's WinAnsi encoding. The `/AP` stream draws with a WinAnsi
+/// Helvetica (`/Helv`), so a naive UTF-8 push would render "São" as "SÃ£o":
+/// each non-ASCII char must become its single WinAnsi byte (as an octal escape
+/// for the high range), matching the value stored in `/V`. Mirrors
+/// `edit.rs::escape_pdf_literal`.
 fn escape_literal(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
-        match c {
-            '(' | ')' | '\\' => {
+        let b = crate::helvetica::unicode_to_winansi(c).unwrap_or(b'?');
+        match b {
+            b'(' | b')' | b'\\' => {
                 out.push('\\');
-                out.push(c);
+                out.push(b as char);
             }
-            _ => out.push(c),
+            0x20..=0x7E => out.push(b as char),
+            // Non-printable or high (>= 0x80) WinAnsi byte → octal escape.
+            _ => out.push_str(&format!("\\{b:03o}")),
         }
     }
     out

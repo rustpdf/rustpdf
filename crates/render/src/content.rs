@@ -30,10 +30,18 @@ pub fn render(
         pixmap,
         base,
         font_cache: HashMap::new(),
+        op_budget: MAX_TOTAL_OPS,
     };
     let gs = GState::default();
     r.run(&content, &resources, gs, 0);
 }
+
+/// Global ceiling on operators executed for one page render, across all nested
+/// Form XObjects and Type 3 glyphs. The per-`run` depth cap (12) bounds nesting
+/// but not *breadth*: a Form whose stream is `/A Do /A Do …` self-referencing k
+/// times does k¹² invocations. This budget converts that into a bounded, empty
+/// result instead of a multi-minute (or effectively infinite) hang.
+const MAX_TOTAL_OPS: u64 = 20_000_000;
 
 struct Renderer<'a> {
     reader: &'a PdfReader,
@@ -41,6 +49,8 @@ struct Renderer<'a> {
     base: Transform,
     /// Cache loaded fonts by the font dict's identity (object bytes hash).
     font_cache: HashMap<usize, Option<Rc<LoadedFont>>>,
+    /// Remaining operator budget for this page (see [`MAX_TOTAL_OPS`]).
+    op_budget: u64,
 }
 
 /// Per-stream text positioning matrices.
@@ -80,6 +90,10 @@ impl<'a> Renderer<'a> {
 
         let mut lex = Lexer::new(content);
         while let Some(tok) = lex.next_token() {
+            if self.op_budget == 0 {
+                return; // global operator budget exhausted (DoS guard)
+            }
+            self.op_budget -= 1;
             match tok {
                 Token::Integer(n) => ops.push(Object::Integer(n)),
                 Token::Real(r) => ops.push(Object::Real(r)),

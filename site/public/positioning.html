@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Text Positioning, Anchors and Rotation, Interactive | rust-pdf</title>
+  <meta name="description" content="An interactive guide to positioning stamped text and images in a PDF: coordinate spaces, vertical anchors (baseline, top, bottom, layout line box), rotation pivots, paragraph bottom-pinning and image anchors." />
+  <link rel="canonical" href="https://rustpdf.dev/positioning" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#0a0e16" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="rust-pdf" />
+  <meta property="og:url" content="https://rustpdf.dev/positioning" />
+  <meta property="og:title" content="PDF Text Positioning, Anchors and Rotation, Interactive" />
+  <meta property="og:description" content="Play with vertical anchors, coordinate spaces, rotation pivots, paragraph bottom-pinning and image anchors. Every control updates real API code in Python, C#, Go and Node." />
+  <meta property="og:image" content="https://rustpdf.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PDF Text Positioning, Anchors and Rotation, Interactive" />
+  <meta name="twitter:description" content="Interactive playground for PDF stamping coordinates: anchors, rotation pivots, StampSpace, paragraph bottom-pinning, image anchors." />
+  <meta property="og:image:alt" content="Interactive PDF positioning guide" />
+  <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
+  <meta name="twitter:image:alt" content="Interactive PDF positioning guide" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rustpdf.dev/" },
+        { "@type": "ListItem", "position": 2, "name": "PDF Positioning, Interactive", "item": "https://rustpdf.dev/positioning" }
+      ]
+    },
+    {
+      "@type": "TechArticle",
+      "headline": "PDF Text Positioning, Anchors and Rotation, Interactive",
+      "description": "An interactive explanation of how positioned stamping works in a PDF: points and the bottom-left origin, vertical anchors including the layout line-box pair, rotation about the anchor, coordinate spaces on rotated scans, paragraph bottom-pinning with a max-height ceiling, and image anchors.",
+      "url": "https://rustpdf.dev/positioning",
+      "inLanguage": "en",
+      "about": {
+        "@type": "Thing",
+        "name": "PDF coordinate system",
+        "description": "Placing text and images on PDF pages with predictable anchors and rotation."
+      },
+      "datePublished": "2026-07-02",
+      "dateModified": "2026-07-02",
+      "author": { "@type": "Organization", "name": "rust-pdf", "url": "https://rustpdf.dev/" },
+      "publisher": { "@type": "Organization", "name": "CaseFy Inc.", "url": "https://casefy.io" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does the y coordinate mean when I place text on a PDF?",
+          "acceptedAnswer": { "@type": "Answer", "text": "By default it is the text baseline, the invisible line letters sit on. rust-pdf also lets you anchor by the geometric top (ascender line), the geometric bottom (descender line), or the top and bottom of the layout line box, which is what you want when matching output from legacy fixed-position layout engines." }
+        },
+        {
+          "@type": "Question",
+          "name": "Around which point does rotated text pivot?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Always around the anchor point (x, y) of the call. Alignment shifts and vertical-anchor offsets rotate together with the text, so the anchor stays the same physical point of the text box at any angle. Images pivot around their lower-left corner by default, or you can anchor the rotated image's bounding box instead." }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does my stamp land in the wrong place on scanned (rotated) pages?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Scans often carry a /Rotate entry. In the default Visible space, coordinates follow what you see on screen and the library compensates the rotation. If your coordinates were computed for legacy PDF libraries or another library that works in the raw PDF user space, switch StampSpace to Media and nothing is composed on top of your math." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I bottom-align a paragraph block like legacy fixed-position layout?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use the Bottom or LineBottom anchor on PlaceParagraph: the block's bottom rests on y and grows upward by its real content height. maxHeight acts as a ceiling that cuts overflowing lines from the top, keeping the last lines pinned, and the call reports the consumed height so you can stack blocks." }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=3" />
+  <style>
+    .pos-demo { background: #0d1320; border: 1px solid #1e2a3f; border-radius: 14px; padding: 18px; margin-top: 18px; }
+    .pos-demo svg { width: 100%; height: auto; display: block; background: #0a0e16; border: 1px solid #16203270; border-radius: 10px; }
+    .pos-controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 14px 0 4px; font-size: .85rem; }
+    .pos-controls .pos-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .pos-controls label.pos-pill { border: 1px solid #26344d; border-radius: 999px; padding: 4px 11px; cursor: pointer; color: #b8c4d9; user-select: none; }
+    .pos-controls label.pos-pill:has(input:checked) { border-color: #4f7cff; color: #eaf0ff; background: #16203a; }
+    .pos-controls input[type="radio"], .pos-controls input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
+    .pos-controls input[type="range"] { accent-color: #4f7cff; width: 150px; }
+    .pos-readout { color: #7fd1b9; font-variant-numeric: tabular-nums; }
+    .pos-code { margin-top: 12px; background: #0a0e16; border: 1px solid #16203270; border-radius: 10px; padding: 10px 14px; overflow-x: auto; }
+    .pos-code code { font-size: .85rem; white-space: pre; color: #cfe0f5; }
+    .pos-code .pos-hl { color: #7fd1b9; }
+    .pos-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: .85rem; color: #8fa0ba; }
+    .pos-legend b { font-weight: 600; }
+    .pos-h { font-size: 1.1rem; font-weight: 650; color: #eaf0ff; margin: 0 0 4px; }
+    .pos-note { font-size: .85rem; color: #8fa0ba; margin-top: 8px; }
+    .pos-note a { color: #9db8ff; }
+    .pos-langtabs { display: flex; gap: 6px; margin-bottom: 8px; font-size: .85rem; }
+    .pos-langtabs button { border: 1px solid #26344d; background: none; border-radius: 8px; color: #b8c4d9; padding: 3px 10px; cursor: pointer; font-size: .85rem; }
+    .pos-langtabs button.active { border-color: #4f7cff; color: #eaf0ff; background: #16203a; }
+    @media (prefers-reduced-motion: reduce) { .pos-anim { display: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">rust<span>·</span>pdf</a>
+      <nav class="nav-links">
+        <a href="/#features">Features</a>
+        <a href="/#languages">Languages</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Guide &middot; Coordinates &amp; anchors</p>
+        <h1>PDF <span class="grad">Positioning</span>, hands on</h1>
+        <p class="muted" style="font-size:.85rem;margin-top:10px">Last updated: 2026-07-02</p>
+        <p class="lede">
+          Where exactly does a stamp land when you say <code>(x, y)</code>? This page is the
+          coordinate contract of rust-pdf, live: drag the sliders, flip the anchors, and watch
+          both the page and the API call update. Everything here maps 1:1 to
+          <code>PlaceText</code>, <code>PlaceParagraph</code>, <code>MaskedText</code> and
+          <code>DrawImage</code> in all ten languages.
+        </p>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <p>
+          The contract in one line: units are <strong>points</strong> (1 pt = 1/72"), the origin is the
+          <strong>bottom-left</strong>, y grows <strong>up</strong>, rotation is counter-clockwise
+          <strong>about the anchor</strong>, and what <code>y</code> means is an explicit,
+          documented choice (the <code>VerticalAnchor</code>).
+        </p>
+      </div>
+    </section>
+
+    <!-- 1. VERTICAL ANCHORS -->
+    <section class="section">
+      <div class="wrap">
+        <h2>1. Vertical anchors: what <code>y</code> means</h2>
+        <p>
+          Libraries disagree about the vertical meaning of <code>y</code>: a raw PDF text matrix anchors
+          the <em>baseline</em>, the legacy engine's <code>fixed-position layout</code> lays text down from the top of its
+          layout box, legacy PDF libraries hangs it from a rectangle edge. rust-pdf makes the choice explicit.
+          Pick an anchor and watch the text move while the anchor point <span class="pos-readout">&#9679;</span> stays put.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Anchor playground</p>
+          <svg id="anchor-svg" viewBox="0 0 640 240" role="img" aria-label="Diagram showing a line of text with metric guides and the selected vertical anchor"></svg>
+          <div class="pos-controls">
+            <span class="pos-group" role="radiogroup" aria-label="Vertical anchor">
+              <label class="pos-pill"><input type="radio" name="anchor" value="baseline" checked />Baseline</label>
+              <label class="pos-pill"><input type="radio" name="anchor" value="top" />Top</label>
+              <label class="pos-pill"><input type="radio" name="anchor" value="bottom" />Bottom</label>
+              <label class="pos-pill"><input type="radio" name="anchor" value="lineTop" />LineTop</label>
+              <label class="pos-pill"><input type="radio" name="anchor" value="lineBottom" />LineBottom</label>
+            </span>
+          </div>
+          <div class="pos-legend">
+            <span><b style="color:#7fd1b9">&#9679;</b> anchor (x, y)</span>
+            <span><b style="color:#9db8ff">&mdash;</b> baseline</span>
+            <span><b style="color:#e0b45c">&mdash;</b> ascender / descender (font geometry)</span>
+            <span><b style="color:#c584f0">&mdash;</b> layout line box (win metrics + half-leading)</span>
+          </div>
+          <div class="pos-code"><code id="anchor-code"></code></div>
+          <p class="pos-note">
+            <code>Top</code>/<code>Bottom</code> are clean font geometry (ascender and descender lines).
+            <code>LineTop</code>/<code>LineBottom</code> reproduce the legacy engine's layout box (OS/2 win metrics
+            plus a 0.21 em half-leading each side), calibrated to match <code>fixed-position layout</code> within
+            a tenth of a point. The legacy layout engines model never leaks into the defaults.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ROTATION PIVOT -->
+    <section class="section">
+      <div class="wrap">
+        <h2>2. Rotation pivots at the anchor</h2>
+        <p>
+          <code>rotationDeg</code> rotates counter-clockwise <strong>about the anchor</strong>. Offsets from
+          alignment or vertical anchors rotate together with the text, so the anchor remains the same
+          physical point of the text box at every angle. Spin it.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Pivot playground</p>
+          <svg id="rot-svg" viewBox="0 0 640 260" role="img" aria-label="Diagram of text rotating around its anchor point"></svg>
+          <div class="pos-controls">
+            <span class="pos-group">
+              <label for="rot-slider">rotation</label>
+              <input id="rot-slider" type="range" min="0" max="360" step="1" value="30" />
+              <span class="pos-readout" id="rot-val">30&deg;</span>
+            </span>
+            <span class="pos-group" role="radiogroup" aria-label="Anchor for rotation demo">
+              <label class="pos-pill"><input type="radio" name="rotanchor" value="baseline" checked />Baseline</label>
+              <label class="pos-pill"><input type="radio" name="rotanchor" value="lineBottom" />LineBottom</label>
+            </span>
+          </div>
+          <div class="pos-code"><code id="rot-code"></code></div>
+          <p class="pos-note">
+            Note how with <code>LineBottom</code> the box-bottom point is the thing pinned to the dot:
+            the baseline offset swings with the text instead of being pre-added to <code>y</code>.
+            That is exactly how legacy layout engines composes it, so ports line up at every angle.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. STAMP SPACE -->
+    <section class="section">
+      <div class="wrap">
+        <h2>3. Rotated scans: <code>StampSpace</code></h2>
+        <p>
+          Scanned documents usually carry <code>/Rotate 90</code>. There are two honest ways to interpret
+          your coordinates on such a page, and rust-pdf lets you pick per document instead of guessing.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Same call, two spaces (page has /Rotate 90)</p>
+          <svg id="space-svg" viewBox="0 0 640 260" role="img" aria-label="Two page previews comparing Visible and Media coordinate spaces on a rotated page"></svg>
+          <div class="pos-controls">
+            <span class="pos-group" role="radiogroup" aria-label="Stamp space">
+              <label class="pos-pill"><input type="radio" name="space" value="visible" checked />StampSpace.Visible (default)</label>
+              <label class="pos-pill"><input type="radio" name="space" value="media" />StampSpace.Media</label>
+            </span>
+          </div>
+          <div class="pos-code"><code id="space-code"></code></div>
+          <p class="pos-note">
+            <code>Visible</code>: coordinates in the page as displayed, the library compensates
+            <code>/Rotate</code>, a 0&deg; stamp reads upright on screen. <code>Media</code>: the raw PDF
+            user space, nothing composed, which is what legacy raw-space drawing and
+            <code>fixed-position layout</code> use. Porting coordinates computed for legacy PDF libraries? Use <code>Media</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. PARAGRAPH ANCHORS -->
+    <section class="section">
+      <div class="wrap">
+        <h2>4. Paragraphs: wrapping, bottom-pinning and the ceiling</h2>
+        <p>
+          <code>PlaceParagraph</code> wraps by word inside a width. With the <code>Bottom</code> anchors the
+          block is <strong>bottom-pinned</strong>: its bottom rests on <code>y</code> and it grows upward by
+          the real content height. <code>maxHeight</code> is a ceiling, not a box to fill: overflowing lines
+          are cut from the top and the last lines stay pinned. The call reports the consumed height.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Block anchor playground</p>
+          <svg id="para-svg" viewBox="0 0 640 280" role="img" aria-label="Diagram of a wrapped paragraph anchored by its top or bottom with a max-height ceiling"></svg>
+          <div class="pos-controls">
+            <span class="pos-group" role="radiogroup" aria-label="Paragraph anchor">
+              <label class="pos-pill"><input type="radio" name="panchor" value="top" checked />Top</label>
+              <label class="pos-pill"><input type="radio" name="panchor" value="lineBottom" />LineBottom (bottom-pin)</label>
+            </span>
+            <span class="pos-group">
+              <label for="para-lines">lines</label>
+              <input id="para-lines" type="range" min="1" max="6" step="1" value="4" />
+            </span>
+            <span class="pos-group">
+              <label for="para-mh">maxHeight</label>
+              <input id="para-mh" type="range" min="20" max="140" step="2" value="140" />
+              <span class="pos-readout" id="para-mh-val">none</span>
+            </span>
+            <span class="pos-group">consumed: <span class="pos-readout" id="para-height">0 pt</span></span>
+          </div>
+          <div class="pos-code"><code id="para-code"></code></div>
+          <p class="pos-note">
+            Watch the cut direction: with the bottom-pin, a too-small ceiling removes the <em>first</em>
+            lines and keeps the last ones on <code>y</code> (footers, signature blocks). With
+            <code>Top</code>, the cut removes the last lines below <code>y &minus; maxHeight</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. MASKED TEXT -->
+    <section class="section">
+      <div class="wrap">
+        <h2>5. MaskedText: a box, a mask, aligned text</h2>
+        <p>
+          <code>MaskedText</code> paints an opaque box and writes a value over it, the classic
+          "cover the placeholder" move. The vertical alignment and the horizontal inset are explicit.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Box alignment playground</p>
+          <svg id="mask-svg" viewBox="0 0 640 200" role="img" aria-label="Diagram of text vertically aligned inside a masking box with adjustable padding"></svg>
+          <div class="pos-controls">
+            <span class="pos-group" role="radiogroup" aria-label="Vertical alignment">
+              <label class="pos-pill"><input type="radio" name="valign" value="top" />Top</label>
+              <label class="pos-pill"><input type="radio" name="valign" value="middle" checked />Middle (default)</label>
+              <label class="pos-pill"><input type="radio" name="valign" value="bottom" />Bottom</label>
+            </span>
+            <span class="pos-group">
+              <label for="mask-pad">padding</label>
+              <input id="mask-pad" type="range" min="0" max="12" step="0.5" value="1.8" />
+              <span class="pos-readout" id="mask-pad-val">1.8 pt</span>
+            </span>
+          </div>
+          <div class="pos-code"><code id="mask-code"></code></div>
+          <p class="pos-note">
+            <code>Top</code> matches the top line-alignment of rectangle-based text APIs; <code>padding: 0</code>
+            starts flush at the box edge like rectangle-based DrawString APIs. The default keeps a small inset
+            of <code>0.15 &times; size</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. IMAGE ANCHOR -->
+    <section class="section">
+      <div class="wrap">
+        <h2>6. Images: corner pivot or bounding box</h2>
+        <p>
+          A rotated image can be anchored two ways: <code>Corner</code> (default) keeps
+          <code>(x, y)</code> as the image's own lower-left corner and the image sweeps around it;
+          <code>BoundingBox</code> lands the rotated image's bounding box at <code>(x, y)</code>,
+          which is how legacy layout engines lays out rotated images.
+        </p>
+        <div class="pos-demo">
+          <p class="pos-h">Image anchor playground</p>
+          <svg id="img-svg" viewBox="0 0 640 260" role="img" aria-label="Diagram of an image rotating about its corner or anchored by its bounding box"></svg>
+          <div class="pos-controls">
+            <span class="pos-group">
+              <label for="img-rot">rotation</label>
+              <input id="img-rot" type="range" min="0" max="360" step="1" value="35" />
+              <span class="pos-readout" id="img-rot-val">35&deg;</span>
+            </span>
+            <span class="pos-group" role="radiogroup" aria-label="Image anchor">
+              <label class="pos-pill"><input type="radio" name="imganchor" value="corner" checked />Corner (default)</label>
+              <label class="pos-pill"><input type="radio" name="imganchor" value="bbox" />BoundingBox (legacy layout engines)</label>
+            </span>
+          </div>
+          <div class="pos-code"><code id="img-code"></code></div>
+          <p class="pos-note">
+            With <code>BoundingBox</code> the pixels always land at or above and to the right of the
+            anchor: a 90&deg; image occupies <code>[x, x+height] &times; [y, y+width]</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW / CODE -->
+    <section class="section" id="how">
+      <div class="wrap">
+        <h2>The same contract in every language</h2>
+        <p>
+          One Rust core, ten bindings, identical semantics. A signature block stamped at the bottom
+          of a scanned page looks like this:
+        </p>
+        <div class="tabs" id="code-tabs">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="python">Python</button>
+            <button class="tab" data-tab="csharp">C#</button>
+            <button class="tab" data-tab="go">Go</button>
+            <button class="tab" data-tab="node">Node</button>
+          </div>
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
+import rustpdf
+from rustpdf import EditableDoc, StampSpace, VerticalAnchor, Align
+
+doc = EditableDoc.load(open("scan.pdf", "rb").read())
+doc.set_stamp_space(StampSpace.MEDIA)      # legacy-style raw coordinates
+times = doc.add_font_file("Times New Roman.ttf")
+
+# Bottom-pinned signature block: the block bottom rests on y = 96.
+doc.place_paragraph(0, 72, 96, 220,
+    "Digitally signed by Maria Silva\nReason: Approval\n2026-07-02 14:31 UTC",
+    size=10, font_id=times, max_height=64,
+    anchor=VerticalAnchor.LINE_BOTTOM)
+open("signed-stamped.pdf", "wb").write(doc.to_bytes())</code></pre>
+<pre class="tab-pane" data-pane="csharp"><code>// dotnet add package RustPdf
+using RustPdf;
+
+using var doc = EditableDoc.Load(File.ReadAllBytes("scan.pdf"));
+doc.StampSpace = StampSpace.Media;         // legacy-style raw coordinates
+int times = doc.AddFontFile("Times New Roman.ttf");
+
+// Bottom-pinned signature block: the block bottom rests on y = 96.
+doc.PlaceParagraph(0, 72, 96, 220,
+    "Digitally signed by Maria Silva\nReason: Approval\n2026-07-02 14:31 UTC",
+    size: 10, fontId: times, maxHeight: 64,
+    anchor: VerticalAnchor.LineBottom);
+File.WriteAllBytes("signed-stamped.pdf", doc.ToBytes());</code></pre>
+<pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
+doc, _ := rustpdf.Load(data)
+defer doc.Close()
+doc.SetStampSpace(rustpdf.StampMedia)      // legacy-style raw coordinates
+times, _ := doc.AddFontFile("Times New Roman.ttf")
+
+// Bottom-pinned signature block: the block bottom rests on y = 96.
+doc.PlaceParagraph(0, 72, 96, 220,
+    "Digitally signed by Maria Silva\nReason: Approval\n2026-07-02 14:31 UTC",
+    10, 0, 0, 0, rustpdf.AlignLeft, times,
+    64, 1.0, rustpdf.AnchorLineBottom, 0)
+out, _ := doc.Bytes()</code></pre>
+<pre class="tab-pane" data-pane="node"><code>// npm install rustpdf
+const { EditableDoc, StampSpace, VerticalAnchor } = require("rustpdf");
+
+const doc = EditableDoc.load(fs.readFileSync("scan.pdf"));
+doc.setStampSpace(StampSpace.Media);       // legacy-style raw coordinates
+const times = doc.addFontFile("Times New Roman.ttf");
+
+// Bottom-pinned signature block: the block bottom rests on y = 96.
+doc.placeParagraph(0, 72, 96, 220,
+  "Digitally signed by Maria Silva\nReason: Approval\n2026-07-02 14:31 UTC",
+  { size: 10, fontId: times, maxHeight: 64,
+    anchor: VerticalAnchor.LineBottom });
+fs.writeFileSync("signed-stamped.pdf", doc.toBytes());</code></pre>
+        </div>
+        <p class="pos-note">
+          Full API reference per language:
+          <a href="/docs/python.html">Python</a>, <a href="/docs/csharp.html">C#</a>,
+          <a href="/docs/go.html">Go</a>, <a href="/docs/node.html">Node</a>,
+          <a href="/docs/java.html">Java</a>, <a href="/docs/php.html">PHP</a>,
+          <a href="/docs/ruby.html">Ruby</a>, <a href="/docs/swift.html">Swift</a>,
+          <a href="/docs/delphi.html">Delphi</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section" id="faq">
+      <div class="wrap">
+        <h2>Positioning FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>What does the <code>y</code> coordinate mean when I place text?</summary>
+            <p>
+              By default it is the text <strong>baseline</strong>. You can also anchor by the geometric
+              top (ascender line), the geometric bottom (descender line), or the top and bottom of the
+              layout line box (<code>LineTop</code>/<code>LineBottom</code>), which is the right pair
+              when matching output from legacy layout engines's <code>fixed-position layout</code>.
+            </p>
+          </details>
+          <details>
+            <summary>Around which point does rotated content pivot?</summary>
+            <p>
+              Always the anchor <code>(x, y)</code>. Alignment shifts and vertical-anchor offsets rotate
+              with the text, so the anchor stays the same physical point of the box at any angle.
+              Images pivot at their lower-left corner by default, or anchor the rotated bounding box
+              with <code>ImageAnchor.BoundingBox</code>.
+            </p>
+          </details>
+          <details>
+            <summary>Why does my stamp land wrong on scanned pages?</summary>
+            <p>
+              Scans carry <code>/Rotate</code>. The default <code>Visible</code> space compensates it so
+              coordinates match what you see. Code ported from legacy layout engines computes coordinates in the raw
+              user space instead: set <code>StampSpace.Media</code> and your math is used untouched.
+            </p>
+          </details>
+          <details>
+            <summary>How do I bottom-align a block like legacy PDF engines's <code>fixed-position layout</code>?</summary>
+            <p>
+              <code>PlaceParagraph</code> with <code>anchor: LineBottom</code>: the block's bottom rests
+              on <code>y</code>, <code>maxHeight</code> is a ceiling that cuts from the top, and the call
+              returns the consumed height so you can stack blocks without re-measuring.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section cta">
+      <div class="wrap">
+        <h2>Positioning you can reason about</h2>
+        <p>
+          Basic generation and stamping are free. PDF/A, encryption, signatures, redaction and
+          rendering are licensed features on the same core.
+        </p>
+        <p><a class="btn" href="/#pricing">See pricing</a> <a class="btn btn-ghost" href="/docs/">Read the docs</a></p>
+        <p class="sibling-langs">
+          Related guides:
+          <a href="/render-pdf">Render PDF to image</a> &middot;
+          <a href="/watermark-pdf">Watermark a PDF</a> &middot;
+          <a href="/pades">PAdES signatures</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand">rust<span>·</span>pdf</span>
+      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
+      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <nav class="footer-links">
+        <a href="/docs/">Docs</a>
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
+        <a href="mailto:sales@casefy.io">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/highlight.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/consent.js" defer></script>
+  <script>
+  (function () {
+    "use strict";
+    var NS = "http://www.w3.org/2000/svg";
+    function el(tag, attrs, text) {
+      var e = document.createElementNS(NS, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      if (text != null) e.textContent = text;
+      return e;
+    }
+    function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+    function radio(name) {
+      var r = document.querySelector('input[name="' + name + '"]:checked');
+      return r ? r.value : null;
+    }
+    var C = {
+      anchor: "#7fd1b9", baseline: "#9db8ff", geom: "#e0b45c", line: "#c584f0",
+      text: "#eaf0ff", dim: "#8fa0ba", page: "#101828", box: "#16203a", accent: "#4f7cff"
+    };
+    // Metric model (em fractions), Times-like win metrics + layout line box.
+    var M = { asc: 0.891, desc: 0.216, lineAsc: 1.126, lineDesc: 0.451 };
+
+    // ---------- 1. anchors ----------
+    var anchorSvg = document.getElementById("anchor-svg");
+    var anchorCode = document.getElementById("anchor-code");
+    var ANCHOR_OFF = { // baseline offset ABOVE the anchor point, in em
+      baseline: 0, top: -M.asc, bottom: M.desc, lineTop: -M.lineAsc, lineBottom: M.lineDesc
+    };
+    var ANCHOR_API = { baseline: "Baseline", top: "Top", bottom: "Bottom", lineTop: "LineTop", lineBottom: "LineBottom" };
+    function drawAnchors() {
+      var a = radio("anchor");
+      var size = 46; // px per em for the diagram
+      var ax = 150, ay = 130;
+      var base = ay - ANCHOR_OFF[a] * size * -1; // baseline y in svg coords (svg y down)
+      base = ay + ANCHOR_OFF[a] * -size;
+      clear(anchorSvg);
+      anchorSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 240, fill: C.page, rx: 10 }));
+      function guide(y, color, label) {
+        anchorSvg.appendChild(el("line", { x1: 90, y1: y, x2: 560, y2: y, stroke: color, "stroke-width": 1, "stroke-dasharray": "4 4", opacity: .85 }));
+        anchorSvg.appendChild(el("text", { x: 566, y: y + 4, fill: color, "font-size": 11 }, label));
+      }
+      guide(base - M.lineAsc * size, C.line, "line top");
+      guide(base - M.asc * size, C.geom, "ascender");
+      guide(base, C.baseline, "baseline");
+      guide(base + M.desc * size, C.geom, "descender");
+      guide(base + M.lineDesc * size, C.line, "line bottom");
+      var t = el("text", { x: 110, y: base, fill: C.text, "font-family": "Georgia, 'Times New Roman', serif", "font-size": size }, "Anchored justly");
+      anchorSvg.appendChild(t);
+      anchorSvg.appendChild(el("circle", { cx: ax - 40, cy: ay, r: 6, fill: C.anchor }));
+      anchorSvg.appendChild(el("text", { x: ax - 68, y: ay + 22, fill: C.anchor, "font-size": 12 }, "(x, y)"));
+      anchorCode.innerHTML = 'doc.PlaceText(0, x, y, "Anchored justly", size: 12,\n              anchor: <span class="pos-hl">VerticalAnchor.' + ANCHOR_API[a] + "</span>);";
+    }
+    document.querySelectorAll('input[name="anchor"]').forEach(function (r) { r.addEventListener("change", drawAnchors); });
+
+    // ---------- 2. rotation pivot ----------
+    var rotSvg = document.getElementById("rot-svg");
+    var rotSlider = document.getElementById("rot-slider");
+    var rotVal = document.getElementById("rot-val");
+    var rotCode = document.getElementById("rot-code");
+    function drawRot() {
+      var deg = +rotSlider.value;
+      var a = radio("rotanchor");
+      var dy = a === "lineBottom" ? M.lineDesc * 34 : 0; // px offset of baseline above anchor
+      rotVal.textContent = deg + "°";
+      clear(rotSvg);
+      rotSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 260, fill: C.page, rx: 10 }));
+      var ax = 260, ay = 150;
+      // ghost at 0 deg
+      var g0 = el("g", { transform: "translate(" + ax + " " + (ay - dy) + ")", opacity: .22 });
+      g0.appendChild(el("text", { x: 0, y: 0, fill: C.text, "font-size": 30, "font-family": "Georgia, serif" }, "Rotates about the dot"));
+      rotSvg.appendChild(g0);
+      var g = el("g", { transform: "rotate(" + (-deg) + " " + ax + " " + ay + ")" });
+      g.appendChild(el("text", { x: ax, y: ay - dy, fill: C.text, "font-size": 30, "font-family": "Georgia, serif" }, "Rotates about the dot"));
+      if (a === "lineBottom") {
+        g.appendChild(el("line", { x1: ax, y1: ay, x2: ax + 330, y2: ay, stroke: C.line, "stroke-width": 1, "stroke-dasharray": "4 4" }));
+      }
+      rotSvg.appendChild(g);
+      rotSvg.appendChild(el("circle", { cx: ax, cy: ay, r: 6, fill: C.anchor }));
+      rotCode.innerHTML = 'doc.PlaceText(0, x, y, "Rotates about the dot", size: 12,\n              rotationDeg: <span class="pos-hl">' + deg + "</span>, anchor: VerticalAnchor." + (a === "lineBottom" ? "LineBottom" : "Baseline") + ");";
+    }
+    rotSlider.addEventListener("input", drawRot);
+    document.querySelectorAll('input[name="rotanchor"]').forEach(function (r) { r.addEventListener("change", drawRot); });
+
+    // ---------- 3. stamp space ----------
+    var spaceSvg = document.getElementById("space-svg");
+    var spaceCode = document.getElementById("space-code");
+    function drawSpace() {
+      var mode = radio("space");
+      clear(spaceSvg);
+      spaceSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 260, fill: C.page, rx: 10 }));
+      // The displayed page (landscape because /Rotate 90).
+      spaceSvg.appendChild(el("rect", { x: 150, y: 40, width: 340, height: 190, fill: C.box, stroke: "#26344d", rx: 6 }));
+      spaceSvg.appendChild(el("text", { x: 160, y: 58, fill: C.dim, "font-size": 11 }, "scanned page as displayed (/Rotate 90)"));
+      // faint scan lines
+      for (var i = 0; i < 5; i++) {
+        spaceSvg.appendChild(el("line", { x1: 170, y1: 90 + i * 26, x2: 470, y2: 90 + i * 26, stroke: "#22304a", "stroke-width": 6, opacity: .5 }));
+      }
+      if (mode === "visible") {
+        spaceSvg.appendChild(el("text", { x: 190, y: 160, fill: C.anchor, "font-size": 20, "font-family": "Georgia, serif" }, "APPROVED"));
+        spaceSvg.appendChild(el("circle", { cx: 185, cy: 160, r: 5, fill: C.anchor }));
+      } else {
+        var g = el("g", { transform: "rotate(-90 220 200)" });
+        g.appendChild(el("text", { x: 220, y: 200, fill: C.anchor, "font-size": 20, "font-family": "Georgia, serif" }, "APPROVED"));
+        spaceSvg.appendChild(g);
+        spaceSvg.appendChild(el("circle", { cx: 220, cy: 200, r: 5, fill: C.anchor }));
+      }
+      spaceCode.innerHTML = mode === "visible"
+        ? 'doc.StampSpace = <span class="pos-hl">StampSpace.Visible</span>;  // default: draw where you see it\ndoc.PlaceText(0, x, y, "APPROVED", size: 20);   // reads upright on screen'
+        : 'doc.StampSpace = <span class="pos-hl">StampSpace.Media</span>;    // raw user space, legacy layout semantics\ndoc.PlaceText(0, x, y, "APPROVED", size: 20);   // follows the scan orientation';
+    }
+    document.querySelectorAll('input[name="space"]').forEach(function (r) { r.addEventListener("change", drawSpace); });
+
+    // ---------- 4. paragraph ----------
+    var paraSvg = document.getElementById("para-svg");
+    var paraLines = document.getElementById("para-lines");
+    var paraMh = document.getElementById("para-mh");
+    var paraMhVal = document.getElementById("para-mh-val");
+    var paraHeight = document.getElementById("para-height");
+    var paraCode = document.getElementById("para-code");
+    function drawPara() {
+      var n = +paraLines.value;
+      var mh = +paraMh.value;
+      var mhOn = mh < 140;
+      var anchor = radio("panchor");
+      var lineH = 22, boxAsc = 16, boxDesc = 7; // px model
+      var single = boxAsc + boxDesc;
+      clear(paraSvg);
+      paraSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 280, fill: C.page, rx: 10 }));
+      var ax = 130, ay = anchor === "top" ? 60 : 236;
+      var takeAll = n, skip = 0;
+      if (mhOn) {
+        var fit = Math.max(0, Math.floor((mh * 1.4 - single) / lineH) + 1);
+        if (anchor === "top") { takeAll = Math.min(n, fit); }
+        else { takeAll = Math.min(n, fit); skip = n - takeAll; }
+      }
+      var drawn = takeAll;
+      var consumed = drawn === 0 ? 0 : single + (drawn - 1) * lineH;
+      // ceiling indicator
+      if (mhOn) {
+        var cy = anchor === "top" ? ay + mh * 1.4 : ay - mh * 1.4;
+        paraSvg.appendChild(el("line", { x1: 100, y1: cy, x2: 560, y2: cy, stroke: "#e0645c", "stroke-width": 1, "stroke-dasharray": "6 4" }));
+        paraSvg.appendChild(el("text", { x: 566, y: cy + 4, fill: "#e0645c", "font-size": 11 }, "maxHeight"));
+      }
+      var words = ["Signed", "by", "Maria", "Silva,", "approval", "granted,", "stored", "with", "audit", "trail", "and", "timestamp"];
+      for (var i = 0; i < n; i++) {
+        var visible = anchor === "top" ? i < takeAll : i >= skip;
+        var yy = anchor === "top"
+          ? ay + boxAsc + i * lineH
+          : ay - boxDesc - (n - 1 - i) * lineH;
+        var label = words.slice((i * 3) % 9, (i * 3) % 9 + 3).join(" ");
+        paraSvg.appendChild(el("text", {
+          x: ax, y: yy, fill: visible ? C.text : "#3a465e", "font-size": 17,
+          "font-family": "Georgia, serif", "text-decoration": visible ? "none" : "line-through"
+        }, label + " (" + (i + 1) + ")"));
+      }
+      paraSvg.appendChild(el("circle", { cx: ax - 24, cy: ay, r: 6, fill: C.anchor }));
+      paraSvg.appendChild(el("text", { x: ax - 58, y: ay + 20, fill: C.anchor, "font-size": 12 }, "(x, y)"));
+      paraMhVal.textContent = mhOn ? mh + " pt" : "none";
+      paraHeight.textContent = Math.round(consumed / 1.4) + " pt";
+      paraCode.innerHTML = 'var (lines, height) = doc.PlaceParagraphMeasured(0, x, y, width, text,\n    maxHeight: <span class="pos-hl">' + (mhOn ? mh : "null") + '</span>, anchor: <span class="pos-hl">VerticalAnchor.' + (anchor === "top" ? "Top" : "LineBottom") + "</span>);";
+    }
+    paraLines.addEventListener("input", drawPara);
+    paraMh.addEventListener("input", drawPara);
+    document.querySelectorAll('input[name="panchor"]').forEach(function (r) { r.addEventListener("change", drawPara); });
+
+    // ---------- 5. masked text ----------
+    var maskSvg = document.getElementById("mask-svg");
+    var maskPad = document.getElementById("mask-pad");
+    var maskPadVal = document.getElementById("mask-pad-val");
+    var maskCode = document.getElementById("mask-code");
+    function drawMask() {
+      var v = radio("valign");
+      var pad = +maskPad.value;
+      clear(maskSvg);
+      maskSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 200, fill: C.page, rx: 10 }));
+      maskSvg.appendChild(el("text", { x: 120, y: 118, fill: "#3a465e", "font-size": 20, "font-family": "Georgia, serif" }, "OLD-PLACEHOLDER-VALUE-9999"));
+      var bx = 110, by = 60, bw = 330, bh = 84;
+      maskSvg.appendChild(el("rect", { x: bx, y: by, width: bw, height: bh, fill: "#f5f7fb" }));
+      var ty = v === "top" ? by + 26 : v === "bottom" ? by + bh - 8 : by + bh / 2 + 8;
+      maskSvg.appendChild(el("text", { x: bx + pad * 3.4, y: ty, fill: "#101828", "font-size": 21, "font-family": "Georgia, serif" }, "R$ 1.234,56"));
+      maskPadVal.textContent = pad + " pt";
+      var vApi = v.charAt(0).toUpperCase() + v.slice(1);
+      maskCode.innerHTML = 'doc.MaskedText(0, x, y, w, h, "R$ 1.234,56", size: 12,\n               valign: <span class="pos-hl">VerticalAlign.' + vApi + '</span>, padding: <span class="pos-hl">' + pad + "</span>);";
+    }
+    maskPad.addEventListener("input", drawMask);
+    document.querySelectorAll('input[name="valign"]').forEach(function (r) { r.addEventListener("change", drawMask); });
+
+    // ---------- 6. image anchor ----------
+    var imgSvg = document.getElementById("img-svg");
+    var imgRot = document.getElementById("img-rot");
+    var imgRotVal = document.getElementById("img-rot-val");
+    var imgCode = document.getElementById("img-code");
+    function drawImg() {
+      var deg = +imgRot.value, mode = radio("imganchor");
+      imgRotVal.textContent = deg + "°";
+      clear(imgSvg);
+      imgSvg.appendChild(el("rect", { x: 0, y: 0, width: 640, height: 260, fill: C.page, rx: 10 }));
+      var ax = 250, ay = 190, w = 170, h = 90;
+      var rad = deg * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+      // rotated corners about origin (svg y is down; PDF CCW = svg negative angle)
+      var pts = [[0, 0], [w, 0], [w, -h], [0, -h]].map(function (p) {
+        return [p[0] * c - p[1] * s, p[0] * s + p[1] * c];
+      });
+      var minX = Math.min.apply(null, pts.map(function (p) { return p[0]; }));
+      var maxY = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
+      var dx = mode === "bbox" ? -minX : 0;
+      var dy = mode === "bbox" ? -maxY : 0; // svg: down is +, pdf up is -
+      var poly = pts.map(function (p) { return (ax + p[0] + dx) + "," + (ay + p[1] + dy * 1) ; }).join(" ");
+      // bbox outline
+      if (mode === "bbox") {
+        var xs = pts.map(function (p) { return p[0] + dx; }), ys = pts.map(function (p) { return p[1] + dy; });
+        var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs);
+        var by0 = Math.min.apply(null, ys), by1 = Math.max.apply(null, ys);
+        imgSvg.appendChild(el("rect", { x: ax + bx0, y: ay + by0, width: bx1 - bx0, height: by1 - by0, fill: "none", stroke: C.line, "stroke-dasharray": "5 4" }));
+      }
+      var g = el("polygon", { points: poly, fill: "#1d3a5f", stroke: C.accent, "stroke-width": 1.5, opacity: .92 });
+      imgSvg.appendChild(g);
+      // photo glyph inside: small sun+mountain drawn at the first corner
+      imgSvg.appendChild(el("circle", { cx: ax, cy: ay, r: 6, fill: C.anchor }));
+      imgSvg.appendChild(el("text", { x: ax - 28, y: ay + 22, fill: C.anchor, "font-size": 12 }, "(x, y)"));
+      imgCode.innerHTML = 'doc.DrawImage(0, jpeg, x, y, w, h, rotationDeg: <span class="pos-hl">' + deg + '</span>,\n              anchor: <span class="pos-hl">ImageAnchor.' + (mode === "bbox" ? "BoundingBox" : "Corner") + "</span>);";
+    }
+    imgRot.addEventListener("input", drawImg);
+    document.querySelectorAll('input[name="imganchor"]').forEach(function (r) { r.addEventListener("change", drawImg); });
+
+    drawAnchors(); drawRot(); drawSpace(); drawPara(); drawMask(); drawImg();
+  })();
+  </script>
+</body>
+</html>

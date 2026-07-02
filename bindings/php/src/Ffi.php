@@ -241,6 +241,13 @@ int pdf_editable_place_text(PdfEditable *ed, int index, double x, double y, cons
 int pdf_editable_place_text_aligned(PdfEditable *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, int *out_found);
 int pdf_editable_masked_text(PdfEditable *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, int *out_found);
 int pdf_editable_draw_image(PdfEditable *ed, int index, const uint8_t *data, uintptr_t len, double x, double y, double width, double height, double rotation_deg, int *out_found);
+int pdf_editable_add_font_file(PdfEditable *ed, const char *path, int *out_id);
+int pdf_editable_add_font(PdfEditable *ed, const uint8_t *data, uintptr_t len, int *out_id);
+int pdf_editable_place_text_anchored(PdfEditable *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, int anchor, int font_id, int *out_found);
+int pdf_editable_masked_text_pad(PdfEditable *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, int valign, double pad, int font_id, int *out_found);
+int pdf_editable_place_paragraph_anchored(PdfEditable *ed, int index, double x, double y, double width, const char *text, double size, double r, double g, double b, int align, int anchor, int font_id, double max_height, double line_height, double rotation_deg, double *out_height, int *out_lines, int *out_found);
+int pdf_editable_set_stamp_space(PdfEditable *ed, int space);
+int pdf_editable_draw_image_anchored(PdfEditable *ed, int index, const uint8_t *data, uintptr_t len, double x, double y, double width, double height, double rotation_deg, int anchor, int *out_found);
 int pdf_editable_convert_to_pdfa(PdfEditable *ed, int level);
 int pdf_verify_signatures_json(const uint8_t *data, uintptr_t len, uint8_t **out_ptr, uintptr_t *out_len);
 int pdf_find_text_json(const uint8_t *data, uintptr_t len, const char *query, int case_sensitive, uint8_t **out_ptr, uintptr_t *out_len);

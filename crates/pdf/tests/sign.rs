@@ -198,20 +198,41 @@ fn multiple_signatures_each_get_a_field() {
         .contains("Documento para assinar"));
 }
 
+/// Decode a full hex string to bytes (the `/Contents` reservation is even
+/// length), then trim to exactly the length declared by the leading DER
+/// SEQUENCE header. This is how a conforming reader locates the CMS inside the
+/// zero-padded placeholder — robust against the CMS legitimately ending in a
+/// `0x00` byte, unlike a naive `trim_end_matches('0')`.
+fn cms_from_hex(hex: &[u8]) -> Vec<u8> {
+    let s = std::str::from_utf8(hex).unwrap();
+    let bytes: Vec<u8> = (0..s.len() - (s.len() % 2))
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect();
+    let total = der_len(&bytes);
+    bytes[..total.min(bytes.len())].to_vec()
+}
+
+/// Total length (header + content) of the DER TLV starting at `b[0]`.
+fn der_len(b: &[u8]) -> usize {
+    assert!(b.len() >= 2 && b[0] == 0x30, "expected a DER SEQUENCE");
+    let first = b[1];
+    if first < 0x80 {
+        2 + first as usize
+    } else {
+        let n = (first & 0x7f) as usize;
+        let mut len = 0usize;
+        for &byte in &b[2..2 + n] {
+            len = (len << 8) | byte as usize;
+        }
+        2 + n + len
+    }
+}
+
 /// Extract the CMS DER from a signed PDF's `/Contents`.
 fn contents_der(signed: &[u8]) -> Vec<u8> {
     let [_, l0, s1, _] = parse_byte_range(signed);
-    let hex = &signed[l0 + 1..s1 - 1];
-    let hex_str = std::str::from_utf8(hex).unwrap().trim_end_matches('0');
-    let hex_str = if hex_str.len() % 2 == 1 {
-        &hex_str[..hex_str.len() - 1]
-    } else {
-        hex_str
-    };
-    (0..hex_str.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex_str[i..i + 2], 16).unwrap())
-        .collect()
+    cms_from_hex(&signed[l0 + 1..s1 - 1])
 }
 
 #[test]
@@ -248,18 +269,7 @@ fn last_contents_der(signed: &[u8]) -> Vec<u8> {
         .unwrap();
     let lt = p + b"/Contents ".len();
     let gt = signed[lt..].iter().position(|&b| b == b'>').unwrap() + lt;
-    let hex = std::str::from_utf8(&signed[lt + 1..gt])
-        .unwrap()
-        .trim_end_matches('0');
-    let hex = if hex.len() % 2 == 1 {
-        &hex[..hex.len() - 1]
-    } else {
-        hex
-    };
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
+    cms_from_hex(&signed[lt + 1..gt])
 }
 
 #[test]

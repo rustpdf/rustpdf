@@ -48,6 +48,11 @@ typedef enum {
      * License activation failed (bad signature, expired, or malformed).
      */
     PDF_STATUS_LICENSE = 12,
+    /**
+     * The operation cannot be performed safely on this input (e.g. redaction
+     * of a page whose content cannot be rewritten) — see the last error.
+     */
+    PDF_STATUS_UNSUPPORTED = 13,
 } PdfStatus;
 
 /**
@@ -826,7 +831,7 @@ int pdf_editable_place_text(PdfEditable *ed,
                                   int *out_found);
 
 /**
- * Like `pdf_editable_place_text` but with horizontal `align` (0=Left, 1=Right,
+ * Like [`pdf_editable_place_text`] but with horizontal `align` (0=Left, 1=Right,
  * 2=Center, 3=Justify) relative to the anchor `(x, y)`. `out_found` receives `1`
  * if the page existed, else `0`.
  *
@@ -834,17 +839,17 @@ int pdf_editable_place_text(PdfEditable *ed,
  * `ed`, `text` valid; `out_found` writable or NULL.
  */
 int pdf_editable_place_text_aligned(PdfEditable *ed,
-                                  int index,
-                                  double x,
-                                  double y,
-                                  const char *text,
-                                  double size,
-                                  double r,
-                                  double g,
-                                  double b,
-                                  double rotation_deg,
-                                  int align,
-                                  int *out_found);
+                                          int index,
+                                          double x,
+                                          double y,
+                                          const char *text,
+                                          double size,
+                                          double r,
+                                          double g,
+                                          double b,
+                                          double rotation_deg,
+                                          int align,
+                                          int *out_found);
 
 /**
  * Draw `text` over an opaque background box `[x, y, x+width, y+height]`: fills
@@ -858,21 +863,292 @@ int pdf_editable_place_text_aligned(PdfEditable *ed,
  * `ed`, `text` valid; `out_found` writable or NULL.
  */
 int pdf_editable_masked_text(PdfEditable *ed,
-                                  int index,
-                                  double x,
-                                  double y,
-                                  double width,
-                                  double height,
-                                  const char *text,
-                                  double size,
-                                  double text_r,
-                                  double text_g,
-                                  double text_b,
-                                  double bg_r,
-                                  double bg_g,
-                                  double bg_b,
-                                  int align,
-                                  int *out_found);
+                                   int index,
+                                   double x,
+                                   double y,
+                                   double width,
+                                   double height,
+                                   const char *text,
+                                   double size,
+                                   double text_r,
+                                   double text_g,
+                                   double text_b,
+                                   double bg_r,
+                                   double bg_g,
+                                   double bg_b,
+                                   int align,
+                                   int *out_found);
+
+/**
+ * Register a TrueType/OpenType font (from a file path) for text stamping;
+ * writes its `font_id` to `out_id`. Use the id with
+ * [`pdf_editable_place_text_font`] / [`pdf_editable_masked_text_font`].
+ *
+ * # Safety
+ * `ed`, `path`, `out_id` valid.
+ */
+int pdf_editable_add_font_file(PdfEditable *ed, const char *path, int *out_id);
+
+/**
+ * Register a stamping font from raw TrueType/OpenType bytes; writes its
+ * `font_id` to `out_id`.
+ *
+ * # Safety
+ * `ed`, `data` (`len` bytes) and `out_id` valid.
+ */
+int pdf_editable_add_font(PdfEditable *ed, const uint8_t *data, uintptr_t len, int *out_id);
+
+/**
+ * Like [`pdf_editable_place_text_aligned`] but draws with the embedded font
+ * `font_id` (from [`pdf_editable_add_font_file`]/[`pdf_editable_add_font`])
+ * instead of the built-in Helvetica. `out_found` receives `1` if the page and
+ * font existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_place_text_font(PdfEditable *ed,
+                                       int index,
+                                       double x,
+                                       double y,
+                                       const char *text,
+                                       double size,
+                                       double r,
+                                       double g,
+                                       double b,
+                                       double rotation_deg,
+                                       int align,
+                                       int font_id,
+                                       int *out_found);
+
+/**
+ * Like [`pdf_editable_masked_text`] but draws the text with the embedded font
+ * `font_id`. `out_found` receives `1` if the page and font existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_masked_text_font(PdfEditable *ed,
+                                        int index,
+                                        double x,
+                                        double y,
+                                        double width,
+                                        double height,
+                                        const char *text,
+                                        double size,
+                                        double text_r,
+                                        double text_g,
+                                        double text_b,
+                                        double bg_r,
+                                        double bg_g,
+                                        double bg_b,
+                                        int align,
+                                        int font_id,
+                                        int *out_found);
+
+/**
+ * Like [`pdf_editable_place_text_aligned`] but with an explicit **vertical
+ * anchor** (`0`=Baseline, `1`=Top, `2`=Bottom) saying what `y` means, and an
+ * optional embedded font: `font_id >= 0` (from [`pdf_editable_add_font_file`]/
+ * [`pdf_editable_add_font`]) stamps with that font, `-1` uses the built-in
+ * Helvetica. `Top` hangs the text from `y` (baseline at `y − ascent × size`,
+ * legacy fixed-position layout semantics); `Bottom` rests the descender line on
+ * `y`. Ascent/descent come from the selected font's metrics. `out_found`
+ * receives `1` if the page (and font) existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_place_text_anchored(PdfEditable *ed,
+                                           int index,
+                                           double x,
+                                           double y,
+                                           const char *text,
+                                           double size,
+                                           double r,
+                                           double g,
+                                           double b,
+                                           double rotation_deg,
+                                           int align,
+                                           int anchor,
+                                           int font_id,
+                                           int *out_found);
+
+/**
+ * Like [`pdf_editable_masked_text`] but with an explicit **vertical
+ * alignment** of the line inside the box (`0`=Top, `1`=Middle, `2`=Bottom)
+ * and an optional embedded font (`font_id >= 0`; `-1` = built-in Helvetica).
+ * `Top` hangs the line from the top edge (baseline at
+ * `y + height − ascent × size`, top line-alignment semantics of rectangle-based text APIs);
+ * `Middle` keeps the historical cap-height centering; `Bottom` rests the
+ * descender line on the bottom edge. `out_found` receives `1` if the page
+ * (and font) existed, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_masked_text_valign(PdfEditable *ed,
+                                          int index,
+                                          double x,
+                                          double y,
+                                          double width,
+                                          double height,
+                                          const char *text,
+                                          double size,
+                                          double text_r,
+                                          double text_g,
+                                          double text_b,
+                                          double bg_r,
+                                          double bg_g,
+                                          double bg_b,
+                                          int align,
+                                          int valign,
+                                          int font_id,
+                                          int *out_found);
+
+/**
+ * Choose the **coordinate space** of the positioned stamping primitives
+ * (`pdf_editable_fill_rect`, `place_text*`, `masked_text*`,
+ * `place_paragraph`, `draw_image`) for subsequent calls (FINDING-004).
+ * `space`: `0` = **visible** (historical default — coordinates in the page's
+ * displayed space, compensating `/Rotate` so a `rotation_deg = 0` stamp reads
+ * upright on screen); `1` = **media** (raw PDF user space, legacy layout engines
+ * `fixed-position layout`/rotation semantics — no composition with the
+ * page's `/Rotate` or crop offset; `rotation_deg` is the baseline angle in
+ * media space). Watermarks and redaction are unaffected.
+ *
+ * # Safety
+ * `ed` valid.
+ */
+int pdf_editable_set_stamp_space(PdfEditable *ed, int space);
+
+/**
+ * Stamp a **paragraph with automatic word wrapping** on page `index`
+ * (FINDING-003): break `text` into lines that fit `width` points and draw
+ * them from the **top-left corner** `(x, y)` downward (first baseline at
+ * `y − ascent × size`, legacy fixed-position layout semantics; `'\n'` forces a
+ * break). `align` is 0=Left, 1=Right, 2=Center, 3=Justify (gaps of every
+ * line but the last of each paragraph are stretched). `font_id >= 0` (from
+ * [`pdf_editable_add_font_file`]/[`pdf_editable_add_font`]) wraps and draws
+ * with that embedded font; `-1` uses the built-in Helvetica. `max_height`
+ * `> 0` truncates lines whose descender would cross `y − max_height`
+ * (`<= 0` = unlimited). `line_height` scales the default `1.2 × size`
+ * baseline-to-baseline leading (`<= 0` = `1.0`). `out_lines` (optional)
+ * receives the number of lines drawn; `out_found` receives `1` if the page
+ * (and font) existed and `width`/`size` were valid, else `0`.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_lines`/`out_found` writable or NULL.
+ */
+int pdf_editable_place_paragraph(PdfEditable *ed,
+                                       int index,
+                                       double x,
+                                       double y,
+                                       double width,
+                                       const char *text,
+                                       double size,
+                                       double r,
+                                       double g,
+                                       double b,
+                                       int align,
+                                       int font_id,
+                                       double max_height,
+                                       double line_height,
+                                       int *out_lines,
+                                       int *out_found);
+
+/**
+ * Like [`pdf_editable_draw_image`] but with an explicit **rotation anchor**
+ * (`anchor`: `0` = Corner — `(x, y)` is the image's own lower-left corner,
+ * the image sweeps around it when rotated (the `pdf_editable_draw_image`
+ * default); `1` = BoundingBox — the **rotated image's bounding box** lands
+ * with its lower-left at `(x, y)`, bounding-box layout semantics: the drawn pixels
+ * always sit at/above/right of the anchor).
+ *
+ * # Safety
+ * `ed` valid; `data` points to `len` readable bytes; `out_found` writable or NULL.
+ */
+int pdf_editable_draw_image_anchored(PdfEditable *ed,
+                                           int index,
+                                           const uint8_t *data,
+                                           uintptr_t len,
+                                           double x,
+                                           double y,
+                                           double width,
+                                           double height,
+                                           double rotation_deg,
+                                           int anchor,
+                                           int *out_found);
+
+/**
+ * Like [`pdf_editable_place_paragraph`] but with an explicit **block
+ * anchor**, a **rotation about the anchor**, and a measured result.
+ * `anchor`: 0=Baseline — `y` is the first line's baseline; 1=Top — the
+ * default of the non-anchored export; 2=Bottom / 4=LineBottom —
+ * **bottom-pinned**: the block's bottom rests on `y` and grows upward by its
+ * real content height; `max_height > 0` is a **ceiling** that cuts
+ * overflowing lines from the top (the last lines stay pinned) and never
+ * inflates the position; 3=LineTop — top-anchored via the layout line box.
+ * The `Line*` anchors also use the line-box height as the leading basis (a
+ * single line and a wrapped block agree vertically); the geometric anchors
+ * keep the plain `1.2 em` leading. `rotation_deg` rotates the laid-out block
+ * counter-clockwise about the anchor `(x, y)` (the pivot is the anchor —
+ * invariant under rotation). `out_height` (optional) receives the consumed
+ * block height in points; `out_lines` the number of lines drawn.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_height`/`out_lines`/`out_found` writable or NULL.
+ */
+int pdf_editable_place_paragraph_anchored(PdfEditable *ed,
+                                                int index,
+                                                double x,
+                                                double y,
+                                                double width,
+                                                const char *text,
+                                                double size,
+                                                double r,
+                                                double g,
+                                                double b,
+                                                int align,
+                                                int anchor,
+                                                int font_id,
+                                                double max_height,
+                                                double line_height,
+                                                double rotation_deg,
+                                                double *out_height,
+                                                int *out_lines,
+                                                int *out_found);
+
+/**
+ * Like [`pdf_editable_masked_text_valign`] but with an explicit horizontal
+ * edge inset `pad` (points) for Left/Right alignment: the text starts at
+ * `x + pad` (or ends at `x + width − pad`). `pad < 0` keeps the historical
+ * default `min(0.15 × size, width / 4)`; `0` starts flush with the box edge
+ * (rectangle-based DrawString semantics). `font_id >= 0` draws with that
+ * embedded font, `-1` = built-in Helvetica.
+ *
+ * # Safety
+ * `ed`, `text` valid; `out_found` writable or NULL.
+ */
+int pdf_editable_masked_text_pad(PdfEditable *ed,
+                                       int index,
+                                       double x,
+                                       double y,
+                                       double width,
+                                       double height,
+                                       const char *text,
+                                       double size,
+                                       double text_r,
+                                       double text_g,
+                                       double text_b,
+                                       double bg_r,
+                                       double bg_g,
+                                       double bg_b,
+                                       int align,
+                                       int valign,
+                                       double pad,
+                                       int font_id,
+                                       int *out_found);
 
 /**
  * Draw an image (from in-memory JPEG/PNG bytes `data`/`len`, dispatched on the
@@ -1023,10 +1299,10 @@ int pdf_extract_text(const uint8_t *data,
  * `data`/`len` readable; `out_ptr`/`out_len` writable.
  */
 int pdf_extract_page_text(const uint8_t *data,
-                           uintptr_t len,
-                           uintptr_t page_index,
-                           unsigned char **out_ptr,
-                           uintptr_t *out_len);
+                                uintptr_t len,
+                                uintptr_t page_index,
+                                unsigned char **out_ptr,
+                                uintptr_t *out_len);
 
 /**
  * Find every occurrence of `query` in `data`/`len` and write a JSON array of

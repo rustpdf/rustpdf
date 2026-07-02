@@ -162,7 +162,11 @@ pub(crate) fn build_font(
         .with("CIDSystemInfo", Object::Dict(cid_system_info))
         .with("FontDescriptor", descriptor_ref)
         .with("CIDToGIDMap", Object::name("Identity"))
-        .with("DW", 0)
+        // Spec default width is 1000, not 0: a CID present in the embedded
+        // program but absent from /W (e.g. a component glyph) must fall back to
+        // 1000, not collapse to zero advance. /W densely covers the subset today
+        // so this is defensive, but /DW 0 would be an incorrect default.
+        .with("DW", 1000)
         .with("W", w_array);
     let cid_font_ref = doc.add(cid_font);
 

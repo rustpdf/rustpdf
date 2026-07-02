@@ -307,8 +307,16 @@ final class EditableDoc
      * the text is left/right/center aligned about `($x, $y)`. `$color` is RGB
      * in 0..1.
      *
+     * Pass `$fontId` from addFontFile()/addFont() to stamp with an embedded
+     * TrueType/OpenType font; leave it at `-1` for the built-in Helvetica.
+     * `$anchor` says what `$y` means: `VerticalAnchor::Baseline` (default,
+     * historical behavior), `Top` (text hangs from `$y` — the baseline lands
+     * `ascent x size` below it, matching legacy fixed-position layout), `Bottom`
+     * (the descender line rests on `$y`), or `LineTop`/`LineBottom` (the legacy layout engines
+     * line box). Ascent/descent come from the selected font's metrics.
+     *
      * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
-     * @return bool whether the page existed
+     * @return bool whether the page (and font) existed
      */
     public function placeText(
         int $pageIndex,
@@ -319,9 +327,11 @@ final class EditableDoc
         array $color = [0.0, 0.0, 0.0],
         float $rotationDeg = 0.0,
         Align $align = Align::Left,
+        int $fontId = -1,
+        VerticalAnchor $anchor = VerticalAnchor::Baseline,
     ): bool {
         $found = $this->ffi->new('int');
-        Ffi::check($this->ffi->pdf_editable_place_text_aligned(
+        Ffi::check($this->ffi->pdf_editable_place_text_anchored(
             $this->h(),
             $pageIndex,
             $x,
@@ -333,9 +343,160 @@ final class EditableDoc
             $color[2],
             $rotationDeg,
             $align->value,
+            $anchor->value,
+            $fontId,
             \FFI::addr($found),
         ));
         return $found->cdata !== 0;
+    }
+
+    /**
+     * Register a TrueType/OpenType font (from a file path) for text stamping;
+     * returns a `fontId` usable with the `$fontId` parameter of placeText() /
+     * maskedText() / placeParagraph(). The font is embedded as a subset —
+     * stamped text renders with the real font's glyphs and metrics, exactly
+     * like Document::addFontFile() + showText().
+     */
+    public function addFontFile(string $path): int
+    {
+        $id = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_add_font_file($this->h(), $path, \FFI::addr($id)));
+        return $id->cdata;
+    }
+
+    /** Register a stamping font from raw TrueType/OpenType bytes. See addFontFile(). */
+    public function addFont(string $data): int
+    {
+        [$buf, $len] = Ffi::bytes($data);
+        $id = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_add_font($this->h(), $buf, $len, \FFI::addr($id)));
+        return $id->cdata;
+    }
+
+    /**
+     * Choose the coordinate space of the positioned stamping primitives
+     * (fillRect, placeText, maskedText, placeParagraph, drawImage) for
+     * subsequent calls. `StampSpace::Visible` (default) keeps the historical
+     * behavior — coordinates in the page's displayed space, compensating
+     * `/Rotate`. `StampSpace::Media` interprets coordinates and `rotationDeg`
+     * in the raw PDF user space (legacy layout semantics), never composing with the
+     * page's `/Rotate` — use it to reproduce legacy-engine placement on
+     * rotated/scanned pages. Watermarks and redaction are unaffected.
+     */
+    public function setStampSpace(StampSpace $space): self
+    {
+        Ffi::check($this->ffi->pdf_editable_set_stamp_space($this->h(), $space->value));
+        return $this;
+    }
+
+    /**
+     * Stamp a paragraph with automatic word wrapping: `$text` is broken into
+     * lines that fit `$width` points (greedy, by word; `"\n"` forces a break)
+     * and drawn downward from `($x, $y)`. `$anchor` says what `$y` means for
+     * the block: `VerticalAnchor::Top` (default) — top of the box, the first
+     * baseline lands `ascent x size` below `$y` (legacy fixed-position layout);
+     * `Baseline` — the first line's baseline; `Bottom`/`LineBottom` —
+     * bottom-pinned: the block's bottom rests on `$y` and grows upward (with
+     * `$maxHeight` the box is `[y, y+maxHeight]` and overflowing lines are cut
+     * from the top). `$maxHeight` truncates lines whose descender would cross
+     * the limit (`null` = unlimited); `$lineHeight` scales the default
+     * `1.2 x size` leading. Pass `$fontId` from addFontFile()/addFont() to
+     * wrap and draw with an embedded font (its real metrics drive the break
+     * points); `-1` uses the built-in Helvetica. `$rotationDeg` rotates the
+     * laid-out block counter-clockwise about the anchor.
+     *
+     * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
+     * @return bool whether the page (and font) existed and the box was valid
+     */
+    public function placeParagraph(
+        int $pageIndex,
+        float $x,
+        float $y,
+        float $width,
+        string $text,
+        float $size = 12.0,
+        array $color = [0.0, 0.0, 0.0],
+        Align $align = Align::Left,
+        int $fontId = -1,
+        ?float $maxHeight = null,
+        float $lineHeight = 1.0,
+        VerticalAnchor $anchor = VerticalAnchor::Top,
+        float $rotationDeg = 0.0,
+    ): bool {
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_place_paragraph_anchored(
+            $this->h(),
+            $pageIndex,
+            $x,
+            $y,
+            $width,
+            $text,
+            $size,
+            $color[0],
+            $color[1],
+            $color[2],
+            $align->value,
+            $anchor->value,
+            $fontId,
+            $maxHeight ?? 0.0,
+            $lineHeight,
+            $rotationDeg,
+            null,
+            null,
+            \FFI::addr($found),
+        ));
+        return $found->cdata !== 0;
+    }
+
+    /**
+     * Like placeParagraph() but returns both the number of lines drawn and the
+     * consumed block height in points (top of the first drawn line's box to
+     * the bottom of the last one's; 0 when nothing fit) — stack blocks without
+     * re-measuring.
+     *
+     * @param array{0: float, 1: float, 2: float} $color RGB in 0..1
+     * @return array{lines: int, height: float}
+     */
+    public function placeParagraphMeasured(
+        int $pageIndex,
+        float $x,
+        float $y,
+        float $width,
+        string $text,
+        float $size = 12.0,
+        array $color = [0.0, 0.0, 0.0],
+        Align $align = Align::Left,
+        int $fontId = -1,
+        ?float $maxHeight = null,
+        float $lineHeight = 1.0,
+        VerticalAnchor $anchor = VerticalAnchor::Top,
+        float $rotationDeg = 0.0,
+    ): array {
+        $height = $this->ffi->new('double');
+        $lines = $this->ffi->new('int');
+        $found = $this->ffi->new('int');
+        Ffi::check($this->ffi->pdf_editable_place_paragraph_anchored(
+            $this->h(),
+            $pageIndex,
+            $x,
+            $y,
+            $width,
+            $text,
+            $size,
+            $color[0],
+            $color[1],
+            $color[2],
+            $align->value,
+            $anchor->value,
+            $fontId,
+            $maxHeight ?? 0.0,
+            $lineHeight,
+            $rotationDeg,
+            \FFI::addr($height),
+            \FFI::addr($lines),
+            \FFI::addr($found),
+        ));
+        return ['lines' => $lines->cdata, 'height' => $height->cdata];
     }
 
     /**
@@ -347,9 +508,21 @@ final class EditableDoc
      * hand-computing the baseline. Coordinates are in the page's VISIBLE space
      * (origin lower-left, y up).
      *
+     * Pass `$fontId` from addFontFile()/addFont() to stamp with an embedded
+     * font; `-1` uses the built-in Helvetica. `$valign` controls the vertical
+     * alignment of the line inside the box: `VerticalAlign::Middle` (default,
+     * historical cap-height centering), `Top` (line hangs from the top edge —
+     * baseline at `y + height - ascent x size`, legacy PDF libraries
+     * top line-alignment in rectangle-based text APIs), or `Bottom` (descender line rests on the bottom
+     * edge). `$padding` is the horizontal edge inset (points) for Left/Right
+     * alignment: text starts at `x + padding` (or ends at
+     * `x + width - padding`). `null` keeps the historical
+     * `min(0.15 x size, width / 4)`; pass `0.0` to start flush with the box
+     * edge like rectangle-based DrawString APIs.
+     *
      * @param array{0: float, 1: float, 2: float} $textColor RGB in 0..1 (default black)
      * @param array{0: float, 1: float, 2: float} $bgColor   RGB in 0..1 (default white)
-     * @return bool whether the page existed
+     * @return bool whether the page (and font) existed
      */
     public function maskedText(
         int $pageIndex,
@@ -362,9 +535,12 @@ final class EditableDoc
         array $textColor = [0.0, 0.0, 0.0],
         array $bgColor = [1.0, 1.0, 1.0],
         Align $align = Align::Left,
+        int $fontId = -1,
+        VerticalAlign $valign = VerticalAlign::Middle,
+        ?float $padding = null,
     ): bool {
         $found = $this->ffi->new('int');
-        Ffi::check($this->ffi->pdf_editable_masked_text(
+        Ffi::check($this->ffi->pdf_editable_masked_text_pad(
             $this->h(),
             $pageIndex,
             $x,
@@ -380,6 +556,9 @@ final class EditableDoc
             $bgColor[1],
             $bgColor[2],
             $align->value,
+            $valign->value,
+            $padding ?? -1.0,
+            $fontId,
             \FFI::addr($found),
         ));
         return $found->cdata !== 0;
@@ -390,8 +569,15 @@ final class EditableDoc
      * its lower-left corner at `($x, $y)`, scaled to `$width`x`$height` points.
      * Coordinates are in the page's VISIBLE space (origin lower-left, y up),
      * regardless of any `/Rotate`. `$rotationDeg` rotates the image
-     * counter-clockwise about the corner `($x, $y)`. `$image` is a binary
+     * counter-clockwise about the anchor `($x, $y)`. `$image` is a binary
      * string (the core dispatches on the signature).
+     *
+     * `$anchor` controls how a rotated image is anchored:
+     * `ImageAnchor::Corner` (default) rotates the image about its own
+     * lower-left corner at `($x, $y)`; `ImageAnchor::BoundingBox` lands the
+     * rotated image's bounding box with its lower-left at `($x, $y)` (legacy layout engines
+     * layout semantics — e.g. a 90 degree image occupies
+     * `[x, x+height] x [y, y+width]`).
      *
      * @return bool whether the page existed
      */
@@ -403,10 +589,11 @@ final class EditableDoc
         float $width,
         float $height,
         float $rotationDeg = 0.0,
+        ImageAnchor $anchor = ImageAnchor::Corner,
     ): bool {
         [$buf, $len] = Ffi::bytes($image);
         $found = $this->ffi->new('int');
-        Ffi::check($this->ffi->pdf_editable_draw_image(
+        Ffi::check($this->ffi->pdf_editable_draw_image_anchored(
             $this->h(),
             $pageIndex,
             $buf,
@@ -416,6 +603,7 @@ final class EditableDoc
             $width,
             $height,
             $rotationDeg,
+            $anchor->value,
             \FFI::addr($found),
         ));
         return $found->cdata !== 0;

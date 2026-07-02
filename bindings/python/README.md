@@ -1,18 +1,15 @@
-# rustpdf (Python binding)
+# RustPdf for Python
 
-Idiomatic Python over the `rust-pdf` C ABI (`libpdf_ffi`). It mirrors the full
-product surface: vector graphics, embedded/subsetted fonts and text, wrapping
-paragraphs, images, **PDF/A** (levels 1b–3a), **tagged/accessible** output,
-embedded file attachments, **AcroForm** fields, manipulation
-(merge/split/rotate/optimize/incremental update), **text extraction**,
-**page rendering** (page to PNG image), **encryption** (RC4 / AES-128 /
-AES-256) and **digital signatures** (PKCS#7 / PAdES).
+Generate, edit, sign and process PDFs from Python: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Pure Python package, no compiler needed.
 
-Two layers, per the project's porting strategy:
+## Documentation
 
-* a raw `ctypes` surface bound 1:1 against `include/pdf.h`;
-* `Document` / `EditableDoc` wrappers that hide opaque handles, raise
-  `PdfError` on non-zero status codes, and act as context managers.
+- **Full API reference:** https://rustpdf.dev/docs/python
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
+
+The public API is `Document` (create PDFs) and `EditableDoc` (load and edit
+existing PDFs), both usable as context managers; errors raise `PdfError`.
 
 ## Install
 

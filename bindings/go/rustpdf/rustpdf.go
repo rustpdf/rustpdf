@@ -53,6 +53,67 @@ const (
 	AlignJustify Align = 3
 )
 
+// VerticalAnchor says what the y coordinate of a positioned text stamp means
+// (EditableDoc.PlaceTextAnchored, and the block anchor of
+// EditableDoc.PlaceParagraph). AnchorBaseline is the historical default;
+// AnchorTop hangs the text from y (baseline at y − ascent × size, legacy layout engines
+// fixed-position layout semantics); AnchorBottom rests the descender line on y.
+// AnchorLineTop / AnchorLineBottom use the layout line box (OS/2 win metrics —
+// or typo × 1.2 — plus a fixed half-leading of 0.21 em), matching
+// legacy fixed-position line placement exactly. Ascent/descent come from the
+// selected font (embedded font metrics, or Helvetica AFM).
+type VerticalAnchor int
+
+const (
+	AnchorBaseline   VerticalAnchor = 0
+	AnchorTop        VerticalAnchor = 1
+	AnchorBottom     VerticalAnchor = 2
+	AnchorLineTop    VerticalAnchor = 3
+	AnchorLineBottom VerticalAnchor = 4
+)
+
+// VerticalAlign is the vertical alignment of the text line inside an
+// EditableDoc.MaskedTextPadded box. VAlignMiddle is the historical cap-height
+// centering; VAlignTop hangs the line from the top edge (baseline at
+// y + height − ascent × size, top line-alignment in rectangle-based text APIs semantics);
+// VAlignBottom rests the descender line on the bottom edge.
+type VerticalAlign int
+
+const (
+	VAlignTop    VerticalAlign = 0
+	VAlignMiddle VerticalAlign = 1
+	VAlignBottom VerticalAlign = 2
+)
+
+// StampSpace is the coordinate space of the positioned stamping primitives
+// (FillRect, PlaceText*, MaskedText*, PlaceParagraph, DrawImage*) — set via
+// EditableDoc.SetStampSpace. StampVisible (the default) keeps the historical
+// behavior: coordinates in the page's displayed space, compensating /Rotate so
+// a rotationDeg = 0 stamp reads upright on screen. StampMedia interprets
+// coordinates and rotationDeg in the raw PDF user space (legacy layout engines
+// fixed-position layout/rotation semantics), never composing with the
+// page's /Rotate or crop offset — use it to reproduce coordinates computed for
+// legacy layout engines on rotated (scanned) pages. Watermarks and redaction are unaffected.
+type StampSpace int
+
+const (
+	StampVisible StampSpace = 0
+	StampMedia   StampSpace = 1
+)
+
+// ImageAnchor is how a rotated image is anchored at (x, y) in
+// EditableDoc.DrawImageAnchored. ImageAnchorCorner (the DrawImage default):
+// (x, y) is the image's own lower-left corner and the image sweeps around it
+// when rotated. ImageAnchorBoundingBox: the rotated image's bounding box lands
+// with its lower-left at (x, y) (bounding-box layout semantics — the drawn pixels
+// always sit at/above/right of the anchor).
+type ImageAnchor int
+
+const (
+	ImageAnchorCorner      ImageAnchor = 0
+	ImageAnchorBoundingBox ImageAnchor = 1
+)
+
 // AFRelationship is an embedded-file relationship (PDF/A-3 /AFRelationship).
 type AFRelationship int
 

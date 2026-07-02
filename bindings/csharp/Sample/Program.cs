@@ -253,6 +253,39 @@ using (var ed = EditableDoc.Load(pdfa))
 Assert(stamped.Length > 0, "watermark + redact bytes");
 Console.WriteLine("watermark + redaction ok");
 
+// 12b. FINDING-006: redaction must REMOVE the data, not just paint over it —
+// a word in the middle of a run must vanish from extraction while its
+// neighbors survive.
+using (var doc6 = new Document())
+{
+    int f6 = doc6.AddFontFile(font);
+    doc6.AddPage();
+    doc6.ShowText(f6, 20, 72, 700, "PUBLICO SEGREDOXYZ FIM");
+    var leakPdf = doc6.ToBytes();
+    var hit = Pdf.FindText(leakPdf, "SEGREDOXYZ")[0];
+    using var ed6 = EditableDoc.Load(leakPdf);
+    Assert(ed6.Redact(0, new[] {
+        (hit.X - 1, hit.Y - 3, hit.X + hit.Width + 1, hit.Y + hit.Height + 3) }),
+        "glyph redact page existed");
+    var redacted = Pdf.ExtractText(ed6.ToBytes());
+    Assert(!redacted.Contains("SEGREDO"), $"redacted text must be GONE: {redacted}");
+    Assert(redacted.Contains("PUBLICO") && redacted.Contains("FIM"),
+        "neighboring text must survive redaction");
+}
+Console.WriteLine("true glyph-level redaction ok");
+
+// 12c. FINDING-007: CMYK JPEG (Adobe APP14) must render cyan-ish, not black.
+{
+    var cmykJpg = File.ReadAllBytes(Path.Combine(root, "crates", "pdf", "tests", "fixtures", "cmyk_adobe.jpg"));
+    using var doc7 = new Document();
+    int imgId = doc7.AddImageJpeg(cmykJpg);
+    doc7.AddPage((400, 300));
+    doc7.DrawImage(imgId, 100, 100, 200, 130);
+    var cmykPng = Pdf.RenderPageToPng(doc7.ToBytes(), 0, 72.0);
+    Assert(cmykPng.Length > 100, "CMYK page rendered");
+}
+Console.WriteLine("cmyk jpeg render ok");
+
 // 13. Convert an existing PDF to PDF/A (license-gated).
 byte[] converted;
 using (var ed = EditableDoc.Load(plain))
@@ -349,12 +382,40 @@ using (var ed = EditableDoc.Load(pdfa))
         "place_text aligned page existed");
     Assert(ed.MaskedText(0, 100, 200, 200, 24, "R$ 1.234,56", size: 12,
         textColor: (0, 0, 0), bgColor: (1, 1, 1), align: Align.Center), "masked_text page existed");
+    // FINDING-002/003: top-anchored stamp + word-wrapped paragraph.
+    Assert(ed.PlaceText(0, 300, 380, "TOPO", size: 12, anchor: VerticalAnchor.Top),
+        "place_text top anchor page existed");
+    Assert(ed.MaskedText(0, 100, 240, 200, 42, "ALINHADO TOPO", size: 12,
+        valign: VerticalAlign.Top), "masked_text valign page existed");
+    int wrapped = ed.PlaceParagraphCounted(0, 100, 340, 90,
+        "linha um dois tres quatro cinco seis sete", size: 12);
+    Assert(wrapped > 1, $"place_paragraph must wrap (got {wrapped} lines)");
+    Assert(!ed.PlaceParagraph(99, 0, 0, 100, "x"), "place_paragraph missing page");
+    // FINDING-004: media-space stamping (legacy raw-space coordinates, no /Rotate composition).
+    ed.StampSpace = StampSpace.Media;
+    Assert(ed.PlaceText(0, 200, 300, "MEDIA", size: 10), "media-space stamp page existed");
+    ed.StampSpace = StampSpace.Visible;
+    // FINDING-004 follow-ups: layout line-box anchor, block-bottom paragraph, flush mask.
+    Assert(ed.PlaceText(0, 300, 420, "LINEBOX", size: 10, anchor: VerticalAnchor.LineBottom),
+        "line-box anchor page existed");
+    var (blockLines, blockHeight) = ed.PlaceParagraphMeasured(0, 200, 100, 90,
+        "bloco ancorado pelo fundo com quebra",
+        size: 10, maxHeight: 40, anchor: VerticalAnchor.LineBottom);
+    Assert(blockLines > 0 && blockHeight > 0 && blockHeight <= 40.0 + 0.01,
+        $"bottom-pinned paragraph measured ({blockLines} lines, {blockHeight:F1}pt)");
+    Assert(ed.PlaceParagraph(0, 320, 200, 80, "bloco girado", size: 10,
+        anchor: VerticalAnchor.Baseline, rotationDeg: 90), "rotated paragraph page existed");
+    Assert(ed.MaskedText(0, 100, 160, 200, 24, "SEM RECUO", size: 12, padding: 0),
+        "masked_text zero padding page existed");
+    Assert(ed.DrawImage(0, png, 260, 60, 80, 30, rotationDeg: 90,
+        anchor: ImageAnchor.BoundingBox), "bbox-anchored rotated image page existed");
     drawn = ed.ToBytes();
 }
 Assert(Pdf.ExtractText(drawn).Contains("STAMPED"), "placed text is extractable");
 Assert(Pdf.ExtractText(drawn).Contains("CENTERED"), "aligned text is extractable");
 Assert(Pdf.ExtractText(drawn).Contains("R$ 1.234,56"), "masked text is extractable");
-Console.WriteLine("fill_rect + place_text(+align) + masked_text + draw_image ok");
+Assert(Pdf.ExtractText(drawn).Contains("quatro"), "wrapped paragraph is extractable");
+Console.WriteLine("fill_rect + place_text(+align/anchor) + masked_text(+valign) + place_paragraph + draw_image ok");
 
 // 19a. ForSign gap #3: per-page text extraction (no one-page-doc workaround).
 Assert(Pdf.ExtractPageText(drawn, 0).Contains("STAMPED"), "page-0 text extracted");

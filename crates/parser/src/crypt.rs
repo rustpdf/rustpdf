@@ -291,6 +291,11 @@ fn recover_user_password(owner_pw: &[u8], o: &[u8], n: usize, revision: i64) -> 
 
 /// RC4 stream cipher (used both for decryption and key setup).
 fn rc4(key: &[u8], data: &[u8]) -> Vec<u8> {
+    // A zero-length key would panic on `key[i % 0]`. Callers always derive a
+    // 5–16 byte key today, but guard defensively so a future path can't crash.
+    if key.is_empty() {
+        return data.to_vec();
+    }
     let mut s: [u8; 256] = std::array::from_fn(|i| i as u8);
     let mut j = 0u8;
     for i in 0..256 {

@@ -265,9 +265,19 @@ fn decrypt_object(obj: &mut Object, num: u32, gen: u16, dec: &Decryptor) {
 }
 
 fn decrypt_dict(dict: &mut Dict, num: u32, gen: u16, dec: &Decryptor) {
+    // A signature / document-timestamp dictionary's `/Contents` (the CMS
+    // container) is excluded from encryption even in an encrypted file
+    // (ISO 32000 §7.6.2). Decrypting it would corrupt the DER so every
+    // signature reports invalid. Such dicts are identified by their
+    // `/ByteRange` entry.
+    let is_signature = dict.get("ByteRange").is_some();
     // Rebuild the dict with decrypted values (Dict has no get_mut).
     let mut rebuilt = Dict::new();
     for (k, v) in dict.iter() {
+        if is_signature && k.as_str() == "Contents" {
+            rebuilt.set(k.clone(), v.clone()); // leave the CMS bytes untouched
+            continue;
+        }
         let mut v = v.clone();
         decrypt_object(&mut v, num, gen, dec);
         rebuilt.set(k.clone(), v);
@@ -283,9 +293,13 @@ fn objstm_objects(stream: &Stream) -> Result<Vec<(u32, Object)>> {
     let n = stream.dict.get("N").and_then(int).unwrap_or(0).max(0) as usize;
     let first = stream.dict.get("First").and_then(int).unwrap_or(0).max(0) as usize;
 
-    // Header: N pairs of (object number, offset relative to First).
+    // Header: N pairs of (object number, offset relative to First). `/N` is
+    // attacker-controlled — a lie like `/N 1e18` would blow `with_capacity` with
+    // a `capacity overflow` panic. Each header entry costs at least a couple of
+    // bytes, so the raw length is a safe upper bound for the pre-reservation;
+    // the loop still stops early when tokens run out.
     let mut header = Lexer::new(&raw);
-    let mut entries = Vec::with_capacity(n);
+    let mut entries = Vec::with_capacity(n.min(raw.len()));
     for _ in 0..n {
         let num = match header.next_token() {
             Some(crate::lexer::Token::Integer(v)) if v >= 0 => v as u32,

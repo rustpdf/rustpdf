@@ -152,6 +152,108 @@ impl Certify {
     }
 }
 
+/// Vertical anchor of positioned stamping text. Passed to
+/// [`crate::EditableDoc::place_text_anchored`] and
+/// [`crate::EditableDoc::place_paragraph`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VerticalAnchor {
+    /// `y` is the text baseline (historical [`crate::EditableDoc::place_text`]
+    /// behavior). For paragraphs: the first line's baseline.
+    #[default]
+    Baseline,
+    /// The text hangs from `y` (baseline at `y − ascent × size`, legacy layout engines
+    /// `fixed-position layout` semantics). For paragraphs: top of the block.
+    Top,
+    /// The descender line rests on `y`. For paragraphs: bottom-pinned — the
+    /// block grows upward from `y` by its real content height.
+    Bottom,
+    /// Top-anchored via the layout line box.
+    LineTop,
+    /// Bottom-anchored via the layout line box.
+    LineBottom,
+}
+
+impl VerticalAnchor {
+    pub(crate) fn code(self) -> i32 {
+        match self {
+            Self::Baseline => 0,
+            Self::Top => 1,
+            Self::Bottom => 2,
+            Self::LineTop => 3,
+            Self::LineBottom => 4,
+        }
+    }
+}
+
+/// Vertical alignment of the text line inside a masked-text box. Passed to
+/// [`crate::EditableDoc::masked_text_padded`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VerticalAlign {
+    /// The line hangs from the top edge (baseline at
+    /// `y + height − ascent × size`, top line-alignment in rectangle-based text APIs).
+    Top,
+    /// Cap-height centering inside the box (historical
+    /// [`crate::EditableDoc::masked_text`] behavior).
+    #[default]
+    Middle,
+    /// The descender line rests on the bottom edge.
+    Bottom,
+}
+
+impl VerticalAlign {
+    pub(crate) fn code(self) -> i32 {
+        match self {
+            Self::Top => 0,
+            Self::Middle => 1,
+            Self::Bottom => 2,
+        }
+    }
+}
+
+/// Coordinate space of the positioned stamping primitives. Passed to
+/// [`crate::EditableDoc::set_stamp_space`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StampSpace {
+    /// The page's **displayed** space (historical default): coordinates
+    /// compensate `/Rotate` so a `rotation_deg = 0` stamp reads upright.
+    #[default]
+    Visible,
+    /// Raw PDF user space (legacy fixed-position layout/rotation
+    /// semantics): no composition with the page's `/Rotate` or crop offset.
+    Media,
+}
+
+impl StampSpace {
+    pub(crate) fn code(self) -> i32 {
+        match self {
+            Self::Visible => 0,
+            Self::Media => 1,
+        }
+    }
+}
+
+/// How a rotated stamped image is anchored. Passed to
+/// [`crate::EditableDoc::draw_image_anchored`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ImageAnchor {
+    /// Rotate the image about its lower-left corner at `(x, y)` (historical
+    /// [`crate::EditableDoc::draw_image`] behavior).
+    #[default]
+    Corner,
+    /// Land the rotated image's axis-aligned bounding box's lower-left corner
+    /// at `(x, y)`.
+    BoundingBox,
+}
+
+impl ImageAnchor {
+    pub(crate) fn code(self) -> i32 {
+        match self {
+            Self::Corner => 0,
+            Self::BoundingBox => 1,
+        }
+    }
+}
+
 /// PDF header version. Passed to [`crate::Document::set_version`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PdfVersion {

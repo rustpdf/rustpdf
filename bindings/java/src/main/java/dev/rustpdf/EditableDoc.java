@@ -1,6 +1,7 @@
 package dev.rustpdf;
 
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 
@@ -234,10 +235,7 @@ public final class EditableDoc implements AutoCloseable {
      */
     public boolean placeText(int pageIndex, double x, double y, String text, double size,
                              double r, double g, double b, double rotationDeg) {
-        IntByReference found = new IntByReference();
-        Pdf.check(FFI.C.pdf_editable_place_text(
-                h(), pageIndex, x, y, text, size, r, g, b, rotationDeg, found));
-        return found.getValue() != 0;
+        return placeText(pageIndex, x, y, text, size, r, g, b, rotationDeg, Align.LEFT);
     }
 
     /**
@@ -250,9 +248,41 @@ public final class EditableDoc implements AutoCloseable {
      */
     public boolean placeText(int pageIndex, double x, double y, String text, double size,
                              double r, double g, double b, double rotationDeg, Align align) {
+        return placeText(pageIndex, x, y, text, size, r, g, b, rotationDeg, align, -1);
+    }
+
+    /**
+     * Like {@link #placeText(int, double, double, String, double, double, double, double, double, Align)}
+     * but stamped with an embedded TrueType/OpenType font: pass {@code fontId}
+     * from {@link #addFontFile(String)}/{@link #addFont(byte[])} (e.g. Times New
+     * Roman), or {@code -1} for the built-in Helvetica. Alignment uses the
+     * selected font's real metrics. Returns whether the page (and font) existed.
+     */
+    public boolean placeText(int pageIndex, double x, double y, String text, double size,
+                             double r, double g, double b, double rotationDeg, Align align,
+                             int fontId) {
+        return placeText(pageIndex, x, y, text, size, r, g, b, rotationDeg, align, fontId,
+                VerticalAnchor.BASELINE);
+    }
+
+    /**
+     * Like {@link #placeText(int, double, double, String, double, double, double, double, double, Align, int)}
+     * but with an explicit vertical {@code anchor} saying what {@code y} means:
+     * {@link VerticalAnchor#BASELINE} (the historical default),
+     * {@link VerticalAnchor#TOP} (text hangs from {@code y} — the baseline lands
+     * {@code ascent * size} below it, matching legacy fixed-position layout),
+     * {@link VerticalAnchor#BOTTOM} (the descender line rests on {@code y}), or
+     * the layout line-box variants {@link VerticalAnchor#LINE_TOP}/
+     * {@link VerticalAnchor#LINE_BOTTOM}. Ascent/descent come from the selected
+     * font's metrics. Returns whether the page (and font) existed.
+     */
+    public boolean placeText(int pageIndex, double x, double y, String text, double size,
+                             double r, double g, double b, double rotationDeg, Align align,
+                             int fontId, VerticalAnchor anchor) {
         IntByReference found = new IntByReference();
-        Pdf.check(FFI.C.pdf_editable_place_text_aligned(
-                h(), pageIndex, x, y, text, size, r, g, b, rotationDeg, align.code, found));
+        Pdf.check(FFI.C.pdf_editable_place_text_anchored(
+                h(), pageIndex, x, y, text, size, r, g, b, rotationDeg,
+                align.code, anchor.code, fontId, found));
         return found.getValue() != 0;
     }
 
@@ -269,13 +299,8 @@ public final class EditableDoc implements AutoCloseable {
     public boolean maskedText(int pageIndex, double x, double y, double width, double height,
                               String text, double size,
                               double[] textColor, double[] bgColor, Align align) {
-        double[] tc = textColor == null ? new double[] {0.0, 0.0, 0.0} : textColor;
-        double[] bc = bgColor == null ? new double[] {1.0, 1.0, 1.0} : bgColor;
-        IntByReference found = new IntByReference();
-        Pdf.check(FFI.C.pdf_editable_masked_text(
-                h(), pageIndex, x, y, width, height, text, size,
-                tc[0], tc[1], tc[2], bc[0], bc[1], bc[2], align.code, found));
-        return found.getValue() != 0;
+        return maskedText(pageIndex, x, y, width, height, text, size, textColor, bgColor,
+                align, -1, VerticalAlign.MIDDLE);
     }
 
     /**
@@ -289,6 +314,157 @@ public final class EditableDoc implements AutoCloseable {
     }
 
     /**
+     * Like {@link #maskedText(int, double, double, double, double, String, double, double[], double[], Align)}
+     * but with an embedded font ({@code fontId} from
+     * {@link #addFontFile(String)}/{@link #addFont(byte[])}; {@code -1} = built-in
+     * Helvetica) and an explicit vertical alignment of the line inside the box:
+     * {@link VerticalAlign#MIDDLE} (the historical cap-height centering),
+     * {@link VerticalAlign#TOP} (line hangs from the top edge — baseline at
+     * {@code y + height - ascent * size}, top line-alignment in rectangle-based text APIs
+     * semantics), or {@link VerticalAlign#BOTTOM} (descender line rests on the
+     * bottom edge). Returns whether the page (and font) existed.
+     */
+    public boolean maskedText(int pageIndex, double x, double y, double width, double height,
+                              String text, double size,
+                              double[] textColor, double[] bgColor, Align align,
+                              int fontId, VerticalAlign valign) {
+        return maskedText(pageIndex, x, y, width, height, text, size, textColor, bgColor,
+                align, fontId, valign, -1.0);
+    }
+
+    /**
+     * Like {@link #maskedText(int, double, double, double, double, String, double, double[], double[], Align, int, VerticalAlign)}
+     * but with an explicit horizontal edge inset {@code padding} (points) for
+     * {@link Align#LEFT}/{@link Align#RIGHT}: text starts at {@code x + padding}
+     * (or ends at {@code x + width - padding}). Pass a negative value to keep the
+     * historical default {@code min(0.15 * size, width / 4)}; {@code 0} starts
+     * flush with the box edge like rectangle-based DrawString APIs.
+     */
+    public boolean maskedText(int pageIndex, double x, double y, double width, double height,
+                              String text, double size,
+                              double[] textColor, double[] bgColor, Align align,
+                              int fontId, VerticalAlign valign, double padding) {
+        double[] tc = textColor == null ? new double[] {0.0, 0.0, 0.0} : textColor;
+        double[] bc = bgColor == null ? new double[] {1.0, 1.0, 1.0} : bgColor;
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_masked_text_pad(
+                h(), pageIndex, x, y, width, height, text, size,
+                tc[0], tc[1], tc[2], bc[0], bc[1], bc[2],
+                align.code, valign.code, padding, fontId, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Register a TrueType/OpenType font (from a file path) for text stamping;
+     * returns a {@code fontId} usable with the {@code fontId} parameter of
+     * {@link #placeText}, {@link #maskedText} and {@link #placeParagraph}. The
+     * font is embedded as a subset — stamped text renders with the real font's
+     * glyphs and metrics, exactly like {@link Document#addFontFile} +
+     * {@code showText}.
+     */
+    public int addFontFile(String path) {
+        IntByReference id = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_add_font_file(h(), path, id));
+        return id.getValue();
+    }
+
+    /**
+     * Register a stamping font from raw TrueType/OpenType bytes — see
+     * {@link #addFontFile(String)}.
+     */
+    public int addFont(byte[] data) {
+        IntByReference id = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_add_font(h(), data, data.length, id));
+        return id.getValue();
+    }
+
+    /**
+     * Choose the coordinate space of the positioned stamping primitives
+     * ({@link #fillRect}, {@link #placeText}, {@link #maskedText},
+     * {@link #placeParagraph}, {@link #drawImage}) for subsequent calls.
+     * {@link StampSpace#VISIBLE} (the default) keeps the historical behavior —
+     * coordinates in the page's displayed space, compensating {@code /Rotate}.
+     * {@link StampSpace#MEDIA} interprets coordinates and {@code rotationDeg} in
+     * the raw PDF user space (legacy layout semantics), never composing with the page's
+     * {@code /Rotate} — use it to reproduce legacy-engine placement on rotated/scanned
+     * pages. Watermarks and redaction are unaffected.
+     */
+    public EditableDoc setStampSpace(StampSpace space) {
+        Pdf.check(FFI.C.pdf_editable_set_stamp_space(h(), space.code));
+        return this;
+    }
+
+    /**
+     * Stamp a <b>paragraph with automatic word wrapping</b> on page
+     * {@code pageIndex}: {@code text} is broken into lines that fit {@code width}
+     * points and drawn from the top-left corner {@code (x, y)} downward (first
+     * baseline at {@code y - ascent * size}, legacy fixed-position layout
+     * semantics; {@code '\n'} forces a break), 12&nbsp;pt black Helvetica,
+     * left-aligned. Returns whether the page existed and the box was valid.
+     */
+    public boolean placeParagraph(int pageIndex, double x, double y, double width, String text) {
+        return placeParagraph(pageIndex, x, y, width, text, 12.0, 0.0, 0.0, 0.0,
+                Align.LEFT, -1, 0.0, 1.0, VerticalAnchor.TOP, 0.0);
+    }
+
+    /**
+     * Stamp a <b>paragraph with automatic word wrapping</b> on page
+     * {@code pageIndex} (0-based): {@code text} is broken into lines that fit
+     * {@code width} points (greedy, by word; {@code '\n'} forces a break) at
+     * {@code size} points in RGB ({@code r}/{@code g}/{@code b}, each 0..=1).
+     * {@code align} lays lines out inside {@code [x, x+width]}
+     * ({@link Align#JUSTIFY} stretches the word gaps of every line but the last
+     * of each paragraph). Pass {@code fontId} from
+     * {@link #addFontFile(String)}/{@link #addFont(byte[])} to wrap and draw with
+     * an embedded font (its real metrics drive the break points); {@code -1}
+     * uses the built-in Helvetica. {@code maxHeight > 0} is a ceiling that cuts
+     * overflowing lines ({@code <= 0} = unlimited); {@code lineHeight} scales the
+     * default {@code 1.2 * size} baseline-to-baseline leading ({@code <= 0} =
+     * {@code 1.0}). The {@code anchor} says what {@code y} means for the block:
+     * {@link VerticalAnchor#TOP} (default) — top of the box;
+     * {@link VerticalAnchor#BASELINE} — the first line's baseline;
+     * {@link VerticalAnchor#BOTTOM}/{@link VerticalAnchor#LINE_BOTTOM} — legacy layout engines
+     * {@code fixed-position layout}: {@code y} is the element's <em>bottom</em> (with
+     * {@code maxHeight} the box is {@code [y, y+maxHeight]}, text flows from its
+     * top and lines crossing below {@code y} are cut; without it the wrapped
+     * block's bottom rests on {@code y}). {@code rotationDeg} rotates the
+     * laid-out block counter-clockwise about the anchor {@code (x, y)}. Returns
+     * whether the page (and font) existed and the box was valid.
+     */
+    public boolean placeParagraph(int pageIndex, double x, double y, double width, String text,
+                                  double size, double r, double g, double b, Align align,
+                                  int fontId, double maxHeight, double lineHeight,
+                                  VerticalAnchor anchor, double rotationDeg) {
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_place_paragraph_anchored(
+                h(), pageIndex, x, y, width, text, size, r, g, b,
+                align.code, anchor.code, fontId, maxHeight, lineHeight, rotationDeg,
+                null, null, found));
+        return found.getValue() != 0;
+    }
+
+    /**
+     * Like {@link #placeParagraph(int, double, double, double, String, double, double, double, double, Align, int, double, double, VerticalAnchor, double)}
+     * but returns a {@link PlaceParagraphResult} with the number of lines
+     * actually drawn (detect {@code maxHeight} truncation) and the consumed
+     * block height in points (stack blocks without re-measuring).
+     */
+    public PlaceParagraphResult placeParagraphMeasured(
+            int pageIndex, double x, double y, double width, String text,
+            double size, double r, double g, double b, Align align,
+            int fontId, double maxHeight, double lineHeight,
+            VerticalAnchor anchor, double rotationDeg) {
+        DoubleByReference height = new DoubleByReference();
+        IntByReference lines = new IntByReference();
+        IntByReference found = new IntByReference();
+        Pdf.check(FFI.C.pdf_editable_place_paragraph_anchored(
+                h(), pageIndex, x, y, width, text, size, r, g, b,
+                align.code, anchor.code, fontId, maxHeight, lineHeight, rotationDeg,
+                height, lines, found));
+        return new PlaceParagraphResult(lines.getValue(), height.getValue());
+    }
+
+    /**
      * Stamp an image (PNG or JPEG bytes — the format is detected from the data
      * signature) onto page {@code pageIndex} (0-based), with the image's lower-left
      * corner at {@code (x, y)}, scaled to {@code width}×{@code height} points.
@@ -297,9 +473,25 @@ public final class EditableDoc implements AutoCloseable {
      */
     public boolean drawImage(int pageIndex, byte[] image, double x, double y,
                              double width, double height, double rotationDeg) {
+        return drawImage(pageIndex, image, x, y, width, height, rotationDeg, ImageAnchor.CORNER);
+    }
+
+    /**
+     * Like {@link #drawImage(int, byte[], double, double, double, double, double)}
+     * but with an explicit rotation {@code anchor}: {@link ImageAnchor#CORNER}
+     * (the default) rotates the image about its own lower-left corner at
+     * {@code (x, y)}; {@link ImageAnchor#BOUNDING_BOX} lands the <em>rotated
+     * image's bounding box</em> with its lower-left at {@code (x, y)} (legacy layout engines
+     * layout semantics — e.g. a 90° image occupies
+     * {@code [x, x+height] x [y, y+width]}).
+     */
+    public boolean drawImage(int pageIndex, byte[] image, double x, double y,
+                             double width, double height, double rotationDeg,
+                             ImageAnchor anchor) {
         IntByReference found = new IntByReference();
-        Pdf.check(FFI.C.pdf_editable_draw_image(
-                h(), pageIndex, image, image.length, x, y, width, height, rotationDeg, found));
+        Pdf.check(FFI.C.pdf_editable_draw_image_anchored(
+                h(), pageIndex, image, image.length, x, y, width, height,
+                rotationDeg, anchor.code, found));
         return found.getValue() != 0;
     }
 

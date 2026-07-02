@@ -163,41 +163,130 @@ module RustPdf
       found != 0
     end
 
-    # Draw a line of positioned +text+ with baseline at (+x+, +y+) on page
-    # +page_index+ (0-based), using standard Helvetica at +size+ points in RGB
+    # Register a TrueType/OpenType font (from a file path) for text stamping;
+    # returns a font id usable with the +font_id+ keyword of #place_text /
+    # #masked_text / #place_paragraph. The font is embedded as a subset —
+    # stamped text renders with the real font's glyphs and metrics.
+    def add_font_file(path)
+      RustPdf.out_int { |buf| Native.call("pdf_editable_add_font_file", ptr, path, buf) }
+    end
+
+    # Register a stamping font from raw TrueType/OpenType bytes. See
+    # #add_font_file.
+    def add_font(data)
+      RustPdf.out_int { |buf| Native.call("pdf_editable_add_font", ptr, data, data.bytesize, buf) }
+    end
+
+    # Draw a line of positioned +text+ anchored at (+x+, +y+) on page
+    # +page_index+ (0-based), using standard Helvetica (or an embedded font —
+    # pass +font_id+ from #add_font_file / #add_font) at +size+ points in RGB
     # +color+ (each 0..1, default black). +rotation_deg+ rotates the text
     # counter-clockwise about its anchor (match the page rotation to follow a
     # rotated page). +align+ (RustPdf::Align, default LEFT) shifts the start
     # point along the baseline direction by the text width for RIGHT/CENTER
-    # alignment. Coordinates are in the page's VISIBLE space (origin lower-left,
-    # y up), regardless of the page's /Rotate. Returns whether the page existed.
+    # alignment. +anchor+ (RustPdf::VerticalAnchor) says what +y+ means:
+    # BASELINE (default, historical behavior), TOP (text hangs from +y+ —
+    # baseline lands ascent x size below it, legacy fixed-position layout), BOTTOM
+    # (descender line rests on +y+), or LINE_TOP / LINE_BOTTOM (legacy layout engines line
+    # box). Coordinates are in the page's VISIBLE space (origin lower-left,
+    # y up) unless #stamp_space= chose MEDIA. Returns whether the page (and
+    # font) existed.
     def place_text(page_index, x, y, text, size = 12.0, color = [0.0, 0.0, 0.0], rotation_deg = 0.0,
-                   align: Align::LEFT)
+                   align: Align::LEFT, font_id: -1, anchor: VerticalAnchor::BASELINE)
       r, g, b = color
       found = RustPdf.out_int do |buf|
-        Native.call("pdf_editable_place_text_aligned", ptr, page_index, x.to_f, y.to_f, text,
-                    size.to_f, r.to_f, g.to_f, b.to_f, rotation_deg.to_f, align, buf)
+        Native.call("pdf_editable_place_text_anchored", ptr, page_index, x.to_f, y.to_f, text,
+                    size.to_f, r.to_f, g.to_f, b.to_f, rotation_deg.to_f, align, anchor, font_id, buf)
       end
       found != 0
     end
 
+    # Choose the coordinate space of the positioned stamping primitives
+    # (#fill_rect, #place_text, #masked_text, #place_paragraph, #draw_image)
+    # for subsequent calls. StampSpace::VISIBLE (default) keeps the historical
+    # behavior — coordinates in the page's displayed space, compensating
+    # /Rotate. StampSpace::MEDIA interprets coordinates and +rotation_deg+ in
+    # the raw PDF user space (legacy layout semantics), never composing with the
+    # page's /Rotate — use it to reproduce legacy-engine placement on rotated/scanned
+    # pages. Watermarks and redaction are unaffected.
+    def stamp_space=(space)
+      RustPdf.check(Native.call("pdf_editable_set_stamp_space", ptr, space))
+      @stamp_space = space
+    end
+
+    # The current stamping coordinate space (see #stamp_space=).
+    def stamp_space
+      @stamp_space || StampSpace::VISIBLE
+    end
+
+    # Chainable form of #stamp_space=.
+    def set_stamp_space(space)
+      self.stamp_space = space
+      self
+    end
+
+    # Stamp a paragraph with automatic word wrapping on page +page_index+:
+    # +text+ is broken into lines that fit +width+ points (greedy, by word;
+    # "\n" forces a break) and drawn downward from (+x+, +y+). +anchor+
+    # (RustPdf::VerticalAnchor) says what +y+ means for the block: TOP
+    # (default) — top of the box, first baseline ascent x size below +y+
+    # (legacy fixed-position layout); BASELINE — the first line's baseline; BOTTOM /
+    # LINE_BOTTOM — bottom-pinned: the block's bottom rests on +y+ and grows
+    # upward by its real content height. +align+ lays lines out inside
+    # +[x, x+width]+ (JUSTIFY stretches the word gaps of every line but the
+    # last of each paragraph). +max_height+ (points, nil = unlimited) truncates
+    # overflowing lines (a ceiling for the bottom-pinned anchors — the last
+    # lines stay pinned). +line_height+ scales the default 1.2 x size leading.
+    # Pass +font_id+ from #add_font_file / #add_font to wrap and draw with an
+    # embedded font (its real metrics drive the break points); -1 uses the
+    # built-in Helvetica. +rotation_deg+ rotates the laid-out block
+    # counter-clockwise about the anchor. Returns whether the page (and font)
+    # existed and the box was valid.
+    def place_paragraph(page_index, x, y, width, text, size: 12.0, color: [0.0, 0.0, 0.0],
+                        align: Align::LEFT, font_id: -1, max_height: nil, line_height: 1.0,
+                        anchor: VerticalAnchor::TOP, rotation_deg: 0.0)
+      found, = paragraph_anchored(page_index, x, y, width, text, size, color, align,
+                                  font_id, max_height, line_height, anchor, rotation_deg)
+      found
+    end
+
+    # Like #place_paragraph but returns a Hash with the number of +:lines+
+    # drawn and the consumed block +:height+ in points (top of the first drawn
+    # line's box to the bottom of the last one's; 0 when nothing fit) — stack
+    # blocks without re-measuring.
+    def place_paragraph_measured(page_index, x, y, width, text, size: 12.0, color: [0.0, 0.0, 0.0],
+                                 align: Align::LEFT, font_id: -1, max_height: nil, line_height: 1.0,
+                                 anchor: VerticalAnchor::TOP, rotation_deg: 0.0)
+      _, lines, height = paragraph_anchored(page_index, x, y, width, text, size, color, align,
+                                            font_id, max_height, line_height, anchor, rotation_deg)
+      { lines: lines, height: height }
+    end
+
     # Mask a placeholder: fill an opaque background box +[x, y, x+width,
     # y+height]+ in +bg_color+ (each 0..1, default white), then write +text+
-    # over it using standard Helvetica at +size+ points in +text_color+ (each
+    # over it using standard Helvetica (or an embedded font — pass +font_id+
+    # from #add_font_file / #add_font) at +size+ points in +text_color+ (each
     # 0..1, default black), horizontally aligned per +align+ (RustPdf::Align,
-    # default LEFT) and vertically centered within the box. Saves hand-computing
-    # the baseline when stamping a real value over a placeholder. Coordinates are
-    # in the page's VISIBLE space (origin lower-left, y up). Returns whether the
-    # page existed.
+    # default LEFT). +valign+ (RustPdf::VerticalAlign) controls the vertical
+    # alignment of the line inside the box: MIDDLE (default, historical
+    # cap-height centering), TOP (line hangs from the top edge — legacy PDF libraries
+    # top line-alignment semantics) or BOTTOM (descender line rests on the
+    # bottom edge). +padding+ is the horizontal edge inset (points) for
+    # LEFT/RIGHT alignment: text starts at +x + padding+ (or ends at
+    # +x + width - padding+); nil keeps the historical
+    # min(0.15 x size, width / 4), 0 starts flush with the box edge like
+    # rectangle-based DrawString APIs. Coordinates are in the page's VISIBLE space
+    # (origin lower-left, y up). Returns whether the page (and font) existed.
     def masked_text(page_index, x, y, width, height, text, size = 12.0,
                     text_color = [0.0, 0.0, 0.0], bg_color = [1.0, 1.0, 1.0],
-                    align: Align::LEFT)
+                    align: Align::LEFT, font_id: -1, valign: VerticalAlign::MIDDLE, padding: nil)
       tr, tg, tb = text_color
       br, bg, bb = bg_color
       found = RustPdf.out_int do |buf|
-        Native.call("pdf_editable_masked_text", ptr, page_index, x.to_f, y.to_f,
+        Native.call("pdf_editable_masked_text_pad", ptr, page_index, x.to_f, y.to_f,
                     width.to_f, height.to_f, text, size.to_f,
-                    tr.to_f, tg.to_f, tb.to_f, br.to_f, bg.to_f, bb.to_f, align, buf)
+                    tr.to_f, tg.to_f, tb.to_f, br.to_f, bg.to_f, bb.to_f, align, valign,
+                    (padding || -1.0).to_f, font_id, buf)
       end
       found != 0
     end
@@ -205,13 +294,18 @@ module RustPdf
     # Stamp an +image+ (PNG or JPEG bytes; the core dispatches on the signature)
     # onto page +page_index+ (0-based), with its lower-left corner at (+x+, +y+),
     # scaled to +width+ x +height+ points and rotated +rotation_deg+ degrees
-    # counter-clockwise about that corner. Coordinates are in the page's VISIBLE
-    # space (origin lower-left, y up), regardless of the page's /Rotate. Returns
-    # whether the page existed.
-    def draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0)
+    # counter-clockwise. +anchor+ (RustPdf::ImageAnchor) controls how a rotated
+    # image is anchored: CORNER (default) rotates the image about its own
+    # lower-left corner at (x, y); BOUNDING_BOX lands the rotated image's
+    # bounding box with its lower-left at (x, y) (bounding-box layout semantics —
+    # e.g. a 90-degree image occupies [x, x+height] x [y, y+width]).
+    # Coordinates are in the page's VISIBLE space (origin lower-left, y up),
+    # regardless of the page's /Rotate. Returns whether the page existed.
+    def draw_image(page_index, image, x, y, width, height, rotation_deg = 0.0,
+                   anchor: ImageAnchor::CORNER)
       found = RustPdf.out_int do |buf|
-        Native.call("pdf_editable_draw_image", ptr, page_index, image, image.bytesize,
-                    x.to_f, y.to_f, width.to_f, height.to_f, rotation_deg.to_f, buf)
+        Native.call("pdf_editable_draw_image_anchored", ptr, page_index, image, image.bytesize,
+                    x.to_f, y.to_f, width.to_f, height.to_f, rotation_deg.to_f, anchor, buf)
       end
       found != 0
     end
@@ -288,6 +382,24 @@ module RustPdf
     end
 
     private
+
+    # Shared core of #place_paragraph / #place_paragraph_measured. Returns
+    # [found (bool), lines (Integer), height (Float)].
+    def paragraph_anchored(page_index, x, y, width, text, size, color, align,
+                           font_id, max_height, line_height, anchor, rotation_deg)
+      r, g, b = color
+      height_buf = Fiddle::Pointer.malloc(Fiddle::SIZEOF_DOUBLE, Fiddle::RUBY_FREE)
+      lines_buf = Fiddle::Pointer.malloc(Native::SIZEOF_INT, Fiddle::RUBY_FREE)
+      found_buf = Fiddle::Pointer.malloc(Native::SIZEOF_INT, Fiddle::RUBY_FREE)
+      RustPdf.check(Native.call("pdf_editable_place_paragraph_anchored", ptr, page_index,
+                                x.to_f, y.to_f, width.to_f, text, size.to_f,
+                                r.to_f, g.to_f, b.to_f, align, anchor, font_id,
+                                (max_height || 0.0).to_f, line_height.to_f, rotation_deg.to_f,
+                                height_buf, lines_buf, found_buf))
+      [found_buf[0, Native::SIZEOF_INT].unpack1("i!") != 0,
+       lines_buf[0, Native::SIZEOF_INT].unpack1("i!"),
+       height_buf[0, Fiddle::SIZEOF_DOUBLE].unpack1("d")]
+    end
 
     def ptr
       raise Error, "operation on a closed EditableDoc" if @ptr.nil? || @ptr.null?

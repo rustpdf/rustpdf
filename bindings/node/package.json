@@ -1,9 +1,9 @@
 {
   "name": "rustpdf",
-  "version": "0.4.6",
-  "description": "Node.js binding for the rust-pdf core (generate, manipulate, sign and validate PDFs) via Koffi FFI.",
+  "version": "0.4.7",
+  "description": "Generate, edit, sign and process PDFs in Node.js: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/node",
   "license": "SEE LICENSE IN LICENSE",
-  "homepage": "https://rustpdf.dev",
+  "homepage": "https://rustpdf.dev/docs/node",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rustpdf/rustpdf.git",
@@ -35,10 +35,10 @@
     "koffi": "^2.8.0"
   },
   "optionalDependencies": {
-    "@rustpdf/darwin-arm64": "0.4.6",
-    "@rustpdf/linux-arm64-gnu": "0.4.6",
-    "@rustpdf/linux-x64-gnu": "0.4.6",
-    "@rustpdf/win32-x64-msvc": "0.4.6"
+    "@rustpdf/darwin-arm64": "0.4.7",
+    "@rustpdf/linux-arm64-gnu": "0.4.7",
+    "@rustpdf/linux-x64-gnu": "0.4.7",
+    "@rustpdf/win32-x64-msvc": "0.4.7"
   },
   "scripts": {
     "test": "node test/run.js",

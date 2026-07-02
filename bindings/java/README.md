@@ -1,12 +1,12 @@
-# rustpdf — Java binding
+# RustPdf for Java
 
-Idiomatic Java wrapper over the rust-pdf C ABI (`libpdf_ffi`) using
-[JNA](https://github.com/java-native-access/jna) — pure Java, **no native build
-step**. Covers the whole product surface: vector graphics, embedded/subset fonts
-and Unicode text, paragraphs, images, PDF/A (1b–3a), tagged/accessible output,
-attachments, AcroForm fields, manipulation (merge/split/rotate/optimize/
-incremental update), text extraction, page rendering (page to PNG image),
-encryption and digital signatures.
+Generate, edit, sign and process PDFs from Java: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Pure Java (JNA), no native build step.
+
+## Documentation
+
+- **Full API reference:** https://rustpdf.dev/docs/java
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
 
 Requires Java 17+. The published artifact is a **fat JAR** — it bundles the
 native library for every supported platform, so there is nothing else to install.

@@ -193,14 +193,140 @@ public sealed class EditableDoc : IDisposable
     /// counter-clockwise about its anchor (match the page rotation to follow a
     /// rotated page). Coordinates are in the page's visible space. Returns whether
     /// the page existed.</summary>
+    /// <summary>Pass <c>fontId</c> from <see cref="AddFontFile"/>/<see cref="AddFont"/>
+    /// to stamp with an embedded TrueType/OpenType font (e.g. Times New Roman);
+    /// leave it at <c>-1</c> to use the built-in Helvetica.
+    /// <paramref name="anchor"/> says what <paramref name="y"/> means:
+    /// <see cref="VerticalAnchor.Baseline"/> (default, historical behavior),
+    /// <see cref="VerticalAnchor.Top"/> (text hangs from <c>y</c> — the baseline
+    /// lands <c>ascent × size</c> below it, matching legacy layout engines
+    /// <c>fixed-position layout</c>), or <see cref="VerticalAnchor.Bottom"/> (the
+    /// descender line rests on <c>y</c>). Ascent/descent come from the selected
+    /// font's metrics.</summary>
     public bool PlaceText(int pageIndex, double x, double y, string text, double size = 12.0,
         (double R, double G, double B)? color = null, double rotationDeg = 0.0,
-        Align align = Align.Left)
+        Align align = Align.Left, int fontId = -1,
+        VerticalAnchor anchor = VerticalAnchor.Baseline)
     {
         var (r, g, b) = color ?? (0.0, 0.0, 0.0);
-        Pdf.Check(Native.pdf_editable_place_text_aligned(
-            H, pageIndex, x, y, text, size, r, g, b, rotationDeg, (int)align, out int found));
+        Pdf.Check(Native.pdf_editable_place_text_anchored(
+            H, pageIndex, x, y, text, size, r, g, b, rotationDeg,
+            (int)align, (int)anchor, fontId, out int found));
         return found != 0;
+    }
+
+    private StampSpace _stampSpace = StampSpace.Visible;
+
+    /// <summary>Coordinate space of the positioned stamping primitives
+    /// (<see cref="FillRect"/>, <see cref="PlaceText"/>, <see cref="MaskedText"/>,
+    /// <see cref="PlaceParagraph"/>, <see cref="DrawImage"/>) for subsequent
+    /// calls. <see cref="RustPdf.StampSpace.Visible"/> (default) keeps the
+    /// historical behavior — coordinates in the page's displayed space,
+    /// compensating <c>/Rotate</c>. <see cref="RustPdf.StampSpace.Media"/>
+    /// interprets coordinates and <c>rotationDeg</c> in the raw PDF user space
+    /// (legacy layout semantics), never composing with the page's <c>/Rotate</c> —
+    /// use it to reproduce legacy-engine placement on rotated/scanned pages.
+    /// Watermarks and redaction are unaffected.</summary>
+    public StampSpace StampSpace
+    {
+        get => _stampSpace;
+        set
+        {
+            Pdf.Check(Native.pdf_editable_set_stamp_space(H, (int)value));
+            _stampSpace = value;
+        }
+    }
+
+    /// <summary>Stamp a <b>paragraph with automatic word wrapping</b>:
+    /// <paramref name="text"/> is broken into lines that fit
+    /// <paramref name="width"/> points (greedy, by word — the same break points
+    /// as <see cref="Document.Paragraph"/>; <c>\n</c> forces a break) and drawn
+    /// from the <b>top-left corner</b> <paramref name="x"/>,<paramref name="y"/>
+    /// downward — the first baseline lands <c>ascent × size</c> below
+    /// <paramref name="y"/>, like legacy fixed-position layout. Each further
+    /// line steps down by <c>size × 1.2 × lineHeight</c>.
+    /// <paramref name="align"/> lays lines out inside <c>[x, x+width]</c>
+    /// (<see cref="Align.Justify"/> stretches the word gaps of every line but
+    /// the last of each paragraph). <paramref name="maxHeight"/> truncates lines
+    /// whose descender would cross <c>y − maxHeight</c> (legacy layout engines
+    /// <c>a height ceiling</c>). Pass <paramref name="fontId"/> from
+    /// <see cref="AddFontFile"/>/<see cref="AddFont"/> to wrap and draw with an
+    /// embedded font (its real metrics drive the break points); <c>-1</c> uses
+    /// the built-in Helvetica. Returns whether the page (and font) existed and
+    /// the box was valid.</summary>
+    /// <summary><paramref name="anchor"/> says what <paramref name="y"/> means
+    /// for the block: <see cref="VerticalAnchor.Top"/> (default) — top of the
+    /// box; <see cref="VerticalAnchor.Baseline"/> — the first line's baseline;
+    /// <see cref="VerticalAnchor.Bottom"/>/<see cref="VerticalAnchor.LineBottom"/>
+    /// — legacy fixed-position layout: <c>y</c> is the element's bottom (with
+    /// <paramref name="maxHeight"/> the box is <c>[y, y+maxHeight]</c>, text
+    /// flows from its top and lines crossing below <c>y</c> are cut; without it
+    /// the wrapped block's bottom rests on <c>y</c>).</summary>
+    public bool PlaceParagraph(int pageIndex, double x, double y, double width, string text,
+        double size = 12.0, (double R, double G, double B)? color = null,
+        Align align = Align.Left, int fontId = -1, double? maxHeight = null,
+        double lineHeight = 1.0, VerticalAnchor anchor = VerticalAnchor.Top,
+        double rotationDeg = 0.0)
+    {
+        var (r, g, b) = color ?? (0.0, 0.0, 0.0);
+        Pdf.Check(Native.pdf_editable_place_paragraph_anchored(
+            H, pageIndex, x, y, width, text, size, r, g, b, (int)align, (int)anchor,
+            fontId, maxHeight ?? 0.0, lineHeight, rotationDeg, out _, out _, out int found));
+        return found != 0;
+    }
+
+    /// <summary>Like <see cref="PlaceParagraph"/> but also reports how many
+    /// lines were actually drawn (useful to detect <paramref name="maxHeight"/>
+    /// truncation). Returns 0 if the page/font was invalid.</summary>
+    public int PlaceParagraphCounted(int pageIndex, double x, double y, double width, string text,
+        double size = 12.0, (double R, double G, double B)? color = null,
+        Align align = Align.Left, int fontId = -1, double? maxHeight = null,
+        double lineHeight = 1.0, VerticalAnchor anchor = VerticalAnchor.Top,
+        double rotationDeg = 0.0)
+    {
+        var (r, g, b) = color ?? (0.0, 0.0, 0.0);
+        Pdf.Check(Native.pdf_editable_place_paragraph_anchored(
+            H, pageIndex, x, y, width, text, size, r, g, b, (int)align, (int)anchor,
+            fontId, maxHeight ?? 0.0, lineHeight, rotationDeg, out _, out int lines, out _));
+        return lines;
+    }
+
+    /// <summary>Like <see cref="PlaceParagraph"/> but returns both the number
+    /// of lines drawn and the <b>consumed height</b> in points (top of the
+    /// first drawn line's box to the bottom of the last one's; 0 when nothing
+    /// fit) — stack blocks without re-measuring.</summary>
+    public (int Lines, double Height) PlaceParagraphMeasured(
+        int pageIndex, double x, double y, double width, string text,
+        double size = 12.0, (double R, double G, double B)? color = null,
+        Align align = Align.Left, int fontId = -1, double? maxHeight = null,
+        double lineHeight = 1.0, VerticalAnchor anchor = VerticalAnchor.Top,
+        double rotationDeg = 0.0)
+    {
+        var (r, g, b) = color ?? (0.0, 0.0, 0.0);
+        Pdf.Check(Native.pdf_editable_place_paragraph_anchored(
+            H, pageIndex, x, y, width, text, size, r, g, b, (int)align, (int)anchor,
+            fontId, maxHeight ?? 0.0, lineHeight, rotationDeg,
+            out double height, out int lines, out _));
+        return (lines, height);
+    }
+
+    /// <summary>Register a TrueType/OpenType font (from a file path) for text
+    /// stamping; returns a <c>fontId</c> usable with the <c>fontId</c> parameter
+    /// of <see cref="PlaceText"/> / <see cref="MaskedText"/>. The font is embedded
+    /// as a subset — stamped text renders with the real font's glyphs and metrics,
+    /// exactly like <see cref="Document.AddFontFile"/> + <c>ShowText</c>.</summary>
+    public int AddFontFile(string path)
+    {
+        Pdf.Check(Native.pdf_editable_add_font_file(H, path, out int id));
+        return id;
+    }
+
+    /// <summary>Register a stamping font from raw TrueType/OpenType bytes. See
+    /// <see cref="AddFontFile"/>.</summary>
+    public int AddFont(byte[] data)
+    {
+        Pdf.Check(Native.pdf_editable_add_font(H, data, (nuint)data.Length, out int id));
+        return id;
     }
 
     /// <summary>Draw <paramref name="text"/> over an opaque background box
@@ -211,17 +337,33 @@ public sealed class EditableDoc : IDisposable
     /// placeholder and stamping the real value over it without hand-computing the
     /// baseline. Coordinates are in the page's visible space (origin lower-left, y up).
     /// Returns whether the page existed.</summary>
+    /// <summary>Pass <c>fontId</c> from <see cref="AddFontFile"/>/<see cref="AddFont"/>
+    /// to stamp with an embedded font; <c>-1</c> uses the built-in Helvetica.
+    /// <paramref name="valign"/> controls the vertical alignment of the line
+    /// inside the box: <see cref="VerticalAlign.Middle"/> (default, historical
+    /// cap-height centering), <see cref="VerticalAlign.Top"/> (line hangs from
+    /// the top edge — baseline at <c>y + height − ascent × size</c>, matching
+    /// top line-alignment in rectangle-based text APIs), or
+    /// <see cref="VerticalAlign.Bottom"/> (descender line rests on the bottom
+    /// edge). Ascent/descent come from the selected font's metrics.</summary>
+    /// <summary><paramref name="padding"/> is the horizontal edge inset (points)
+    /// for <see cref="Align.Left"/>/<see cref="Align.Right"/>: text starts at
+    /// <c>x + padding</c> (or ends at <c>x + width − padding</c>). <c>null</c>
+    /// keeps the historical <c>min(0.15 × size, width / 4)</c>; pass <c>0</c>
+    /// to start flush with the box edge like rectangle-based DrawString APIs.</summary>
     public bool MaskedText(int pageIndex, double x, double y, double width, double height,
         string text, double size = 12.0,
         (double R, double G, double B)? textColor = null,
         (double R, double G, double B)? bgColor = null,
-        Align align = Align.Left)
+        Align align = Align.Left, int fontId = -1,
+        VerticalAlign valign = VerticalAlign.Middle, double? padding = null)
     {
         var (tr, tg, tb) = textColor ?? (0.0, 0.0, 0.0);
         var (br, bg, bb) = bgColor ?? (1.0, 1.0, 1.0);
-        Pdf.Check(Native.pdf_editable_masked_text(
+        Pdf.Check(Native.pdf_editable_masked_text_pad(
             H, pageIndex, x, y, width, height, text, size,
-            tr, tg, tb, br, bg, bb, (int)align, out int found));
+            tr, tg, tb, br, bg, bb, (int)align, (int)valign, padding ?? -1.0,
+            fontId, out int found));
         return found != 0;
     }
 
@@ -232,12 +374,19 @@ public sealed class EditableDoc : IDisposable
     /// <paramref name="rotationDeg"/> degrees counter-clockwise about that corner.
     /// Coordinates are in the page's visible space (origin lower-left, honoring
     /// <c>/Rotate</c>). Returns whether the page existed.</summary>
+    /// <summary><paramref name="anchor"/> controls how a rotated image is
+    /// anchored: <see cref="ImageAnchor.Corner"/> (default) rotates the image
+    /// about its own lower-left corner at <c>(x, y)</c>;
+    /// <see cref="ImageAnchor.BoundingBox"/> lands the rotated image's
+    /// bounding box with its lower-left at <c>(x, y)</c> (legacy layout semantics —
+    /// e.g. a 90° image occupies <c>[x, x+height] × [y, y+width]</c>).</summary>
     public bool DrawImage(int pageIndex, byte[] image, double x, double y,
-        double width, double height, double rotationDeg = 0.0)
+        double width, double height, double rotationDeg = 0.0,
+        ImageAnchor anchor = ImageAnchor.Corner)
     {
-        Pdf.Check(Native.pdf_editable_draw_image(
+        Pdf.Check(Native.pdf_editable_draw_image_anchored(
             H, pageIndex, image, (nuint)image.Length, x, y, width, height,
-            rotationDeg, out int found));
+            rotationDeg, (int)anchor, out int found));
         return found != 0;
     }
 
@@ -265,8 +414,19 @@ public sealed class EditableDoc : IDisposable
         return this;
     }
 
-    /// <summary>Redact rectangular regions on a page; returns whether the page existed.
-    /// Each rect is <c>(x0, y0, x1, y1)</c>.</summary>
+    /// <summary><b>Redact</b> rectangular regions on a page — the covered
+    /// content is <b>permanently removed</b>, not just painted over: every
+    /// shown glyph whose box intersects a rect is deleted from the content
+    /// stream (surviving glyphs keep their positions), images/XObjects
+    /// overlapping a rect are dropped (resource pruned, data removed when
+    /// unreferenced), and intersecting annotations are deleted; only then are
+    /// opaque black boxes drawn. After a successful call the redacted text is
+    /// not extractable and its glyph codes are absent from the file.
+    /// Each rect is <c>(x0, y0, x1, y1)</c> in raw page points. Returns whether
+    /// the page existed; <b>throws</b> (nothing removed or drawn) when the page
+    /// content cannot be safely rewritten (e.g. inline <c>BI</c> images or an
+    /// undecodable stream) — a black box never masks still-present data.
+    /// Conservative: a partially covered image is removed entirely.</summary>
     public bool Redact(int pageIndex, IReadOnlyList<(double, double, double, double)> rects)
     {
         var flat = new double[rects.Count * 4];

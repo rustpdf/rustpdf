@@ -6,12 +6,12 @@
 
   <groupId>dev.rustpdf</groupId>
   <artifactId>rustpdf</artifactId>
-  <version>0.4.6</version>
+  <version>0.4.7</version>
   <packaging>jar</packaging>
 
   <name>rustpdf</name>
-  <description>Java binding for rust-pdf — enterprise PDF (PDF/A, signatures/PAdES, AES-256, accessibility) over the C ABI via JNA.</description>
-  <url>https://rustpdf.dev</url>
+  <description>Generate, edit, sign and process PDFs in Java: PDF/A, digital signatures (PAdES) with HSM support, AES-256 encryption, forms, stamping, redaction, extraction and rendering. Docs: https://rustpdf.dev/docs/java</description>
+  <url>https://rustpdf.dev/docs/java</url>
 
   <!-- Central Portal requires license, scm and developer metadata on every release. -->
   <licenses>

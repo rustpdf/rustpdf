@@ -86,7 +86,11 @@ fn parse_section(
     trailer: &mut Dict,
     visited: &mut Vec<usize>,
 ) -> Result<()> {
-    if offset >= data.len() || visited.contains(&offset) {
+    // `visited` blocks cycles; this cap additionally bounds the *depth* of a
+    // long `/Prev` chain of distinct offsets, which would otherwise recurse
+    // once per section and overflow the native stack on a hostile file.
+    const MAX_XREF_SECTIONS: usize = 4096;
+    if offset >= data.len() || visited.contains(&offset) || visited.len() >= MAX_XREF_SECTIONS {
         return Ok(());
     }
     visited.push(offset);
@@ -144,14 +148,17 @@ fn parse_classic(data: &[u8], offset: usize, entries: &mut BTreeMap<u32, ObjLoc>
                     p += 1;
                 }
                 for k in 0..count {
-                    let rec = data.get(p..p + 18);
-                    if let Some(rec) = rec {
-                        let off: usize = ascii_uint(&rec[0..10]);
-                        let kind = rec[17];
-                        let num = start as u32 + k;
-                        if kind == b'n' {
-                            entries.entry(num).or_insert(ObjLoc::Offset(off));
-                        }
+                    // A lie like "0 4294967295" must not spin for billions of
+                    // no-op iterations: stop as soon as the fixed-width records
+                    // run past the end of the file.
+                    let Some(rec) = data.get(p..p + 18) else {
+                        break;
+                    };
+                    let off: usize = ascii_uint(&rec[0..10]);
+                    let kind = rec[17];
+                    let num = start as u32 + k;
+                    if kind == b'n' {
+                        entries.entry(num).or_insert(ObjLoc::Offset(off));
                     }
                     p += 20;
                 }
@@ -209,6 +216,11 @@ fn parse_xref_stream(
             if pos + row > raw.len() {
                 break;
             }
+            // `start` comes from /Index and is attacker-controlled; guard the
+            // object-number arithmetic against i64 overflow (a debug panic).
+            let Some(num_i) = start.checked_add(k) else {
+                break;
+            };
             let f0 = if w0 == 0 {
                 1
             } else {
@@ -217,7 +229,7 @@ fn parse_xref_stream(
             let f1 = read_be(&raw[pos + w0..pos + w0 + w1]);
             let f2 = read_be(&raw[pos + w0 + w1..pos + row]);
             pos += row;
-            let num = (start + k) as u32;
+            let num = num_i as u32;
             match f0 {
                 1 => {
                     entries.entry(num).or_insert(ObjLoc::Offset(f1 as usize));

@@ -376,6 +376,68 @@ internal static partial class Native
         double textR, double textG, double textB,
         double bgR, double bgG, double bgB, int align, out int outFound);
 
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_add_font_file(IntPtr ed, string path, out int outId);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_add_font(IntPtr ed, byte[] data, nuint len, out int outId);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_place_text_font(
+        IntPtr ed, int index, double x, double y, string text, double size,
+        double r, double g, double b, double rotationDeg, int align, int fontId, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_masked_text_font(
+        IntPtr ed, int index, double x, double y, double width, double height,
+        string text, double size,
+        double textR, double textG, double textB,
+        double bgR, double bgG, double bgB, int align, int fontId, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_place_text_anchored(
+        IntPtr ed, int index, double x, double y, string text, double size,
+        double r, double g, double b, double rotationDeg, int align, int anchor,
+        int fontId, out int outFound);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_set_stamp_space(IntPtr ed, int space);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_place_paragraph(
+        IntPtr ed, int index, double x, double y, double width, string text,
+        double size, double r, double g, double b, int align, int fontId,
+        double maxHeight, double lineHeight, out int outLines, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_place_paragraph_anchored(
+        IntPtr ed, int index, double x, double y, double width, string text,
+        double size, double r, double g, double b, int align, int anchor, int fontId,
+        double maxHeight, double lineHeight, double rotationDeg,
+        out double outHeight, out int outLines, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_masked_text_pad(
+        IntPtr ed, int index, double x, double y, double width, double height,
+        string text, double size,
+        double textR, double textG, double textB,
+        double bgR, double bgG, double bgB, int align, int valign, double pad,
+        int fontId, out int outFound);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int pdf_editable_masked_text_valign(
+        IntPtr ed, int index, double x, double y, double width, double height,
+        string text, double size,
+        double textR, double textG, double textB,
+        double bgR, double bgG, double bgB, int align, int valign,
+        int fontId, out int outFound);
+
+    [LibraryImport(Lib)]
+    internal static partial int pdf_editable_draw_image_anchored(
+        IntPtr ed, int index, byte[] data, nuint len,
+        double x, double y, double width, double height,
+        double rotationDeg, int anchor, out int outFound);
+
     [LibraryImport(Lib)]
     internal static partial int pdf_editable_draw_image(
         IntPtr ed, int index, byte[] data, nuint len,

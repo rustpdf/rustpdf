@@ -2,9 +2,9 @@
 
 Gem::Specification.new do |spec|
   spec.name = "rustpdf"
-  spec.version = "0.4.6"
-  spec.summary = "Ruby binding for the rust-pdf core (generate, manipulate, sign and validate PDFs)."
-  spec.description = "Idiomatic Ruby binding over the rust-pdf C ABI (libpdf_ffi) using the built-in Fiddle stdlib."
+  spec.version = "0.4.7"
+  spec.summary = "Generate, edit, sign and process PDFs in Ruby. Docs: https://rustpdf.dev/docs/ruby"
+  spec.description = "Generate, edit, sign and process PDFs in Ruby: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/ruby"
   spec.authors = ["rust-pdf"]
   spec.license = "Nonstandard"
   spec.required_ruby_version = ">= 2.6"

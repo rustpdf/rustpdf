@@ -37,6 +37,68 @@ public enum Align
     Justify = 3,
 }
 
+/// <summary>What the <c>y</c> coordinate of a positioned text stamp means
+/// (<see cref="EditableDoc.PlaceText"/>). <c>Baseline</c> is the historical
+/// default; <c>Top</c> hangs the text from <c>y</c> (baseline at
+/// <c>y − ascent × size</c>, legacy fixed-position layout semantics);
+/// <c>Bottom</c> rests the descender line on <c>y</c>. Ascent/descent come
+/// from the selected font (embedded font metrics, or Helvetica AFM).</summary>
+public enum VerticalAnchor
+{
+    Baseline = 0,
+    Top = 1,
+    Bottom = 2,
+    /// <summary>Top of the <b>layout line box</b> (OS/2 win metrics — or
+    /// typo × 1.2 — plus a fixed half-leading of 0.21 em): matches
+    /// legacy fixed-position layout line placement exactly.</summary>
+    LineTop = 3,
+    /// <summary>Bottom of the layout line box (same model as
+    /// <see cref="LineTop"/>).</summary>
+    LineBottom = 4,
+}
+
+/// <summary>Vertical alignment of the text line inside a
+/// <see cref="EditableDoc.MaskedText"/> box. <c>Middle</c> (the historical
+/// default) centers the cap-height block; <c>Top</c> hangs the line from the
+/// top edge (baseline at <c>y + height − ascent × size</c>, legacy PDF libraries
+/// top line-alignment semantics); <c>Bottom</c> rests the descender
+/// line on the bottom edge.</summary>
+public enum VerticalAlign
+{
+    Top = 0,
+    Middle = 1,
+    Bottom = 2,
+}
+
+/// <summary>Coordinate space of the positioned stamping primitives
+/// (<see cref="EditableDoc.FillRect"/>, <see cref="EditableDoc.PlaceText"/>,
+/// <see cref="EditableDoc.MaskedText"/>, <see cref="EditableDoc.PlaceParagraph"/>,
+/// <see cref="EditableDoc.DrawImage"/>) — set via
+/// <see cref="EditableDoc.StampSpace"/>. <c>Visible</c> (historical default):
+/// coordinates in the page's displayed space, compensating <c>/Rotate</c> so a
+/// <c>rotationDeg = 0</c> stamp reads upright on screen. <c>Media</c>: raw PDF
+/// user space (legacy fixed-position layout/<c>rotation</c> semantics)
+/// — no composition with the page's <c>/Rotate</c> or crop offset;
+/// <c>rotationDeg</c> is the baseline angle in media space. Use <c>Media</c> to
+/// reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages.</summary>
+public enum StampSpace
+{
+    Visible = 0,
+    Media = 1,
+}
+
+/// <summary>How a rotated image is anchored at <c>(x, y)</c>
+/// (<see cref="EditableDoc.DrawImage"/>). <c>Corner</c> (default): the
+/// image's own lower-left corner — the image sweeps around it when rotated.
+/// <c>BoundingBox</c>: the rotated image's bounding box lands with its
+/// lower-left at <c>(x, y)</c> (bounding-box layout semantics — pixels always
+/// at/above/right of the anchor).</summary>
+public enum ImageAnchor
+{
+    Corner = 0,
+    BoundingBox = 1,
+}
+
 /// <summary>Embedded-file relationship (PDF/A-3 <c>/AFRelationship</c>).</summary>
 public enum AFRelationship
 {
@@ -447,8 +509,8 @@ public static class Pdf
     }
 
     /// <summary>List the signature fields in <paramref name="pdf"/> (detect
-    /// existing signatures before signing — the iText
-    /// <c>SignatureUtil.getSignatureNames</c> equivalent). An empty list means
+    /// existing signatures before signing — the legacy layout engines
+    /// classic pre-sign signature-field inventory). An empty list means
     /// there are no signature fields.</summary>
     public static IReadOnlyList<SignatureField> ListSignatures(byte[] pdf)
     {

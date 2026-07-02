@@ -25,6 +25,16 @@ const Encryption = Object.freeze({ Rc4: 0, Aes128: 1, Aes256: 2 });
 const FacturxProfile = Object.freeze({ Minimum: 0, BasicWL: 1, Basic: 2, EN16931: 3, Extended: 4 });
 // PDF version codes (Document.setVersion / EditableDoc.setVersion / normalize).
 const PdfVersion = Object.freeze({ V1_4: 0, V1_5: 1, V1_7: 2, V2_0: 3 });
+// What `y` means for placeText / placeParagraph. LineTop/LineBottom use the
+// layout line box (OS/2 win metrics — or typo × 1.2 — plus the legacy engine's default
+// half-leading of 0.21 em), matching legacy fixed-position layout line placement.
+const VerticalAnchor = Object.freeze({ Baseline: 0, Top: 1, Bottom: 2, LineTop: 3, LineBottom: 4 });
+// Vertical alignment of the text line inside a maskedText box.
+const VerticalAlign = Object.freeze({ Top: 0, Middle: 1, Bottom: 2 });
+// Coordinate space of the positioned stamping primitives (setStampSpace).
+const StampSpace = Object.freeze({ Visible: 0, Media: 1 });
+// How a rotated image is anchored at (x, y) in drawImage.
+const ImageAnchor = Object.freeze({ Corner: 0, BoundingBox: 1 });
 // DocMDP certification level applied by the first (certifying) signature.
 const Certify = Object.freeze({ None: 0, Locked: 1, Forms: 2, FormsAndAnnotations: 3 });
 
@@ -239,6 +249,16 @@ const f = {
   edDrawImage: lib.func('int pdf_editable_draw_image(void *ed, int index, const uint8_t *data, size_t len, double x, double y, double width, double height, double rotation_deg, _Out_ int *found)'),
   edPlaceTextAligned: lib.func('int pdf_editable_place_text_aligned(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, _Out_ int *found)'),
   edMaskedText: lib.func('int pdf_editable_masked_text(void *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, _Out_ int *found)'),
+
+  // Stamping fonts + anchored/wrapped stamping (embedded TrueType/OpenType,
+  // vertical anchors, paragraph wrapping, stamp space, image anchor).
+  edAddFontFile: lib.func('int pdf_editable_add_font_file(void *ed, const char *path, _Out_ int *id)'),
+  edAddFont: lib.func('int pdf_editable_add_font(void *ed, const uint8_t *data, size_t len, _Out_ int *id)'),
+  edPlaceTextAnchored: lib.func('int pdf_editable_place_text_anchored(void *ed, int index, double x, double y, const char *text, double size, double r, double g, double b, double rotation_deg, int align, int anchor, int font_id, _Out_ int *found)'),
+  edMaskedTextPad: lib.func('int pdf_editable_masked_text_pad(void *ed, int index, double x, double y, double width, double height, const char *text, double size, double text_r, double text_g, double text_b, double bg_r, double bg_g, double bg_b, int align, int valign, double pad, int font_id, _Out_ int *found)'),
+  edPlaceParagraphAnchored: lib.func('int pdf_editable_place_paragraph_anchored(void *ed, int index, double x, double y, double width, const char *text, double size, double r, double g, double b, int align, int anchor, int font_id, double max_height, double line_height, double rotation_deg, _Out_ double *out_height, _Out_ int *out_lines, _Out_ int *found)'),
+  edSetStampSpace: lib.func('int pdf_editable_set_stamp_space(void *ed, int space)'),
+  edDrawImageAnchored: lib.func('int pdf_editable_draw_image_anchored(void *ed, int index, const uint8_t *data, size_t len, double x, double y, double width, double height, double rotation_deg, int anchor, _Out_ int *found)'),
 
   // Tier 2: signature verification (module-level)
   verifySignatures: lib.func('int pdf_verify_signatures_json(const uint8_t *data, size_t len, _Out_ uint8_t **out, _Out_ size_t *len2)'),
@@ -814,35 +834,100 @@ class EditableDoc {
     check(f.edFillRect(this._ptr, pageIndex, x, y, width, height, r, g, b, opacity, found));
     return found[0] !== 0;
   }
+  // Register a TrueType/OpenType font (from a file path) for text stamping;
+  // returns a fontId usable with placeText / maskedText / placeParagraph. The
+  // font is embedded as a subset — stamped text renders with the real font's
+  // glyphs and metrics, exactly like Document.addFontFile + showText.
+  addFontFile(path) { const id = [0]; check(f.edAddFontFile(this._ptr, path, id)); return id[0]; }
+  // Register a stamping font from raw TrueType/OpenType bytes (see addFontFile).
+  addFont(data) { const b = asBuf(data); const id = [0]; check(f.edAddFont(this._ptr, b, b.length, id)); return id[0]; }
+  // Choose the coordinate space of the positioned stamping primitives
+  // (fillRect / placeText / maskedText / placeParagraph / drawImage) for
+  // subsequent calls. StampSpace.Visible (default) keeps the historical
+  // behavior — coordinates in the page's displayed space, compensating
+  // /Rotate. StampSpace.Media interprets coordinates and rotationDeg in the
+  // raw PDF user space (legacy fixed-position layout/rotation semantics),
+  // never composing with the page's /Rotate — use it to reproduce legacy layout engines
+  // placement on rotated/scanned pages. Watermarks and redaction are unaffected.
+  setStampSpace(space) { check(f.edSetStampSpace(this._ptr, space)); return this; }
   // `rotationDeg` rotates the text counter-clockwise about its anchor (x, y).
   // `align` (Align.*) shifts the start point along the baseline so the text is
   // left/right/center aligned about (x, y) (Justify behaves like Left here).
-  placeText(pageIndex, x, y, text, size = 12.0, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left) {
+  // `fontId` (from addFontFile/addFont) stamps with an embedded font; -1 (the
+  // default) uses the built-in Helvetica. `anchor` (VerticalAnchor.*) says what
+  // `y` means: Baseline (default), Top (baseline lands ascent x size below y,
+  // legacy fixed-position layout), Bottom (descender line rests on y), or
+  // LineTop/LineBottom (the layout line box).
+  placeText(pageIndex, x, y, text, size = 12.0, color = [0, 0, 0], rotationDeg = 0.0, align = Align.Left, fontId = -1, anchor = VerticalAnchor.Baseline) {
     const [r, g, b] = color;
     const found = [0];
-    check(f.edPlaceTextAligned(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, align, found));
+    check(f.edPlaceTextAnchored(this._ptr, pageIndex, x, y, text, size, r, g, b, rotationDeg, align, anchor, fontId, found));
     return found[0] !== 0;
   }
   // Draw `text` over an opaque background box [x, y, x+width, y+height]: fills the
-  // box in `bgColor`, then writes the text (standard Helvetica, `size` points,
-  // `textColor`) horizontally aligned per `align` and vertically centered within
-  // the box — the classic "mask a placeholder and stamp the real value over it"
-  // convenience. Coordinates are in the page VISIBLE space (origin lower-left,
-  // y up). Returns false if the page index does not exist.
-  maskedText(pageIndex, x, y, width, height, text, size = 12.0, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left) {
+  // box in `bgColor`, then writes the text (`size` points, `textColor`)
+  // horizontally aligned per `align` and vertically per `valign`
+  // (VerticalAlign.Middle = the historical cap-height centering; Top hangs the
+  // line from the top edge (top line-alignment); Bottom rests the
+  // descender line on the bottom edge) — the classic "mask a placeholder and
+  // stamp the real value over it" convenience. `fontId` (addFontFile/addFont)
+  // uses an embedded font; -1 = built-in Helvetica. `padding` is the horizontal
+  // edge inset (points) for Left/Right alignment; null keeps the historical
+  // min(0.15 x size, width / 4), 0 starts flush with the box edge. Coordinates
+  // are in the page VISIBLE space (origin lower-left, y up). Returns false if
+  // the page index does not exist.
+  maskedText(pageIndex, x, y, width, height, text, size = 12.0, textColor = [0, 0, 0], bgColor = [1, 1, 1], align = Align.Left, fontId = -1, valign = VerticalAlign.Middle, padding = null) {
     const [tr, tg, tb] = textColor;
     const [br, bg, bb] = bgColor;
     const found = [0];
-    check(f.edMaskedText(this._ptr, pageIndex, x, y, width, height, text, size, tr, tg, tb, br, bg, bb, align, found));
+    check(f.edMaskedTextPad(this._ptr, pageIndex, x, y, width, height, text, size, tr, tg, tb, br, bg, bb, align, valign, padding == null ? -1.0 : padding, fontId, found));
     return found[0] !== 0;
   }
-  // Stamp an image (PNG or JPEG bytes) onto an existing page. The image's
-  // lower-left corner lands at (x, y) and is scaled to width x height points;
-  // `rotationDeg` rotates it counter-clockwise about that corner.
-  drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0) {
+  // Stamp a paragraph with automatic word wrapping: `text` is broken into
+  // lines that fit `width` points ('\n' forces a break) and drawn downward
+  // from (x, y). Options: { size = 12, color = [0, 0, 0], align = Align.Left,
+  // fontId = -1, maxHeight = 0 (unlimited; > 0 cuts lines that would cross the
+  // limit), lineHeight = 1.0 (scales the default 1.2 x size leading),
+  // anchor = VerticalAnchor.Top (Top = y is the block's top, legacy layout engines
+  // fixed-position layout; Baseline = the first line's baseline;
+  // Bottom/LineBottom = bottom-pinned — the block's bottom rests on y and
+  // grows upward; with maxHeight the box is [y, y+maxHeight] and overflowing
+  // lines are cut from the top), rotationDeg = 0 (rotates the laid-out block
+  // counter-clockwise about the anchor) }. Returns false if the page (or
+  // fontId) does not exist or the box is invalid.
+  placeParagraph(pageIndex, x, y, width, text, opts = {}) {
+    return this._placeParagraph(pageIndex, x, y, width, text, opts).found;
+  }
+  // Like placeParagraph but returns { lines, height }: the number of lines
+  // drawn and the consumed block height in points (top of the first drawn
+  // line's box to the bottom of the last one's; 0 when nothing fit) — stack
+  // blocks without re-measuring.
+  placeParagraphMeasured(pageIndex, x, y, width, text, opts = {}) {
+    const r = this._placeParagraph(pageIndex, x, y, width, text, opts);
+    return { lines: r.lines, height: r.height };
+  }
+  _placeParagraph(pageIndex, x, y, width, text, opts) {
+    const {
+      size = 12.0, color = [0, 0, 0], align = Align.Left, fontId = -1,
+      maxHeight = 0.0, lineHeight = 1.0, anchor = VerticalAnchor.Top, rotationDeg = 0.0,
+    } = opts || {};
+    const [r, g, b] = color;
+    const height = [0.0], lines = [0], found = [0];
+    check(f.edPlaceParagraphAnchored(this._ptr, pageIndex, x, y, width, text, size, r, g, b,
+      align, anchor, fontId, maxHeight, lineHeight, rotationDeg, height, lines, found));
+    return { height: height[0], lines: lines[0], found: found[0] !== 0 };
+  }
+  // Stamp an image (PNG or JPEG bytes) onto an existing page, scaled to
+  // width x height points; `rotationDeg` rotates it counter-clockwise about
+  // the anchor (x, y). `anchor` (ImageAnchor.*): Corner (default) — (x, y) is
+  // the image's own lower-left corner, which the image sweeps around when
+  // rotated; BoundingBox — the rotated image's bounding box lands with its
+  // lower-left at (x, y) (bounding-box layout semantics — pixels always at/above/
+  // right of the anchor).
+  drawImage(pageIndex, image, x, y, width, height, rotationDeg = 0.0, anchor = ImageAnchor.Corner) {
     const b = asBuf(image);
     const found = [0];
-    check(f.edDrawImage(this._ptr, pageIndex, b, b.length, x, y, width, height, rotationDeg, found));
+    check(f.edDrawImageAnchored(this._ptr, pageIndex, b, b.length, x, y, width, height, rotationDeg, anchor, found));
     return found[0] !== 0;
   }
 
@@ -870,6 +955,10 @@ module.exports = {
   FacturxProfile,
   PdfVersion,
   Certify,
+  VerticalAnchor,
+  VerticalAlign,
+  StampSpace,
+  ImageAnchor,
   Bookmark,
   SigningSession,
   Document,

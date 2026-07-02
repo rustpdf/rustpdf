@@ -1,11 +1,16 @@
-# rustpdf — Rust binding
+# RustPdf for Rust
 
-Safe, idiomatic Rust bindings for the rust-pdf engine.
+Generate, edit, sign and process PDFs from Rust: vector graphics, embedded fonts and Unicode text, wrapping paragraphs, images, **PDF/A** (1b-4f), **tagged/accessible** output, attachments, **AcroForm** fields, page manipulation (merge/split/stamp), watermarks, true **redaction**, **AES-256** encryption, **digital signatures (PAdES)** with HSM/deferred signing, timestamps/LTV, text extraction and search, and page **rendering to PNG**. Loads the precompiled engine at runtime.
 
-Unlike the in-tree `pdf` crate, **this crate does not contain the engine
-source**. It is a thin wrapper over the precompiled `libpdf_ffi` cdylib (the
-same C ABI used by the Python, C#, Go, PHP, Ruby, Node, Java, Delphi and Swift
-bindings). The shared library is located and loaded **at run time** via
+## Documentation
+
+- **Full API reference:** the crate rustdoc (`cargo doc --open`) and https://rustpdf.dev/docs/
+- **Interactive positioning guide** (coordinates, anchors, rotation): https://rustpdf.dev/positioning
+- All product guides (PDF/A, signatures, encryption, redaction, rendering): https://rustpdf.dev/docs/
+
+The PDF engine ships as a precompiled shared library (`libpdf_ffi`); this
+crate is a safe, idiomatic wrapper around it. The library is located and
+loaded **at run time** via
 [`libloading`], so:
 
 - `cargo build` never needs the engine present (no build script, no link step);
@@ -104,7 +109,13 @@ engine auto-activates from there).
   images, PDF/A levels, tagging, attachments, AcroForm fields, `save`/`write`.
 - [`EditableDoc`] — manipulation: load/merge/split/reorder/rotate/delete,
   `/Info` + XMP, overlay, fill fields, optimize/compact, encrypt, incremental
-  save, `to_bytes`.
+  save, `to_bytes`. **Positioned stamping** on existing pages: `fill_rect`,
+  `place_text` / `place_text_aligned` / `place_text_anchored`
+  (`VerticalAnchor`), `masked_text` / `masked_text_padded` (`VerticalAlign` +
+  edge pad), `place_paragraph` (word wrap, measured `(lines, height, found)`),
+  `draw_image` / `draw_image_anchored` (`ImageAnchor`), custom embedded fonts
+  via `add_font` / `add_font_file`, and `set_stamp_space` (`StampSpace`:
+  visible vs raw media coordinates).
 - Module functions: `version`, `ensure_loaded`, `activate_license`,
   `extract_text`, `sign`, `timestamp`, `add_dss`. **Deferred / HSM signing**
   (the private key never reaches the library): `sign_with` (a signer callback)

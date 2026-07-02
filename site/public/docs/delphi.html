@@ -147,6 +147,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -607,10 +608,10 @@ end;</code></pre></div>
       <h2 id="ed-draw">Positioned drawing <span class="badge free">free</span></h2>
       <p>Stamp a single page in place: fill a rectangle and/or drop a line of text at exact coordinates. Coordinates are in the page's <b>visible</b> space (origin lower-left, y up), so content lands where a viewer sees it regardless of the page's <code>/Rotate</code>; <code>RotationDeg</code> rotates the text counter-clockwise about its anchor. Text uses the standard Helvetica font (keep it WinAnsi / Latin-1). Both return whether the page existed.</p>
       <div class="api"><code>function FillRect(PageIndex: Integer; X, Y, Width, Height, R, G, B, Opacity: Double): Boolean;</code></div>
-      <div class="api"><code>function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String; Size, R, G, B, RotationDeg: Double; Align: TPdfAlign = paLeft): Boolean;</code></div>
-      <div class="api"><code>function MaskedText(PageIndex: Integer; X, Y, Width, Height: Double; const Text: UTF8String; Size: Double; TextR, TextG, TextB, BgR, BgG, BgB: Double; Align: TPdfAlign = paLeft): Boolean;</code></div>
-      <div class="api"><code>function DrawImage(PageIndex: Integer; const Image: TBytes; X, Y, Width, Height, RotationDeg: Double): Boolean;</code></div>
-      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. The optional <code>Align</code> (<code>paLeft</code>, <code>paRight</code>, <code>paCenter</code>, <code>paJustify</code>) on <code>PlaceText</code> shifts the start point along the baseline so the text is left/right/center-aligned about <code>(X, Y)</code>. <code>MaskedText</code> does the mask-then-write in one call: it fills the box <code>[X, Y, X+Width, Y+Height]</code> in the background colour (each <code>0..1</code>; defaults to white), then writes the text in the text colour (defaults to black) horizontally aligned per <code>Align</code> and vertically centered in the box. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(X, Y)</code> scaled to <code>Width × Height</code> points.</p>
+      <div class="api"><code>function PlaceText(PageIndex: Integer; X, Y: Double; const Text: UTF8String; Size, R, G, B, RotationDeg: Double; Align: TPdfAlign = paLeft; FontId: Integer = -1; Anchor: TVerticalAnchor = vaBaseline): Boolean;</code></div>
+      <div class="api"><code>function MaskedText(PageIndex: Integer; X, Y, Width, Height: Double; const Text: UTF8String; Size: Double; TextR, TextG, TextB, BgR, BgG, BgB: Double; Align: TPdfAlign = paLeft; FontId: Integer = -1; VAlign: TVerticalAlign = vlMiddle; Padding: Double = -1): Boolean;</code></div>
+      <div class="api"><code>function DrawImage(PageIndex: Integer; const Image: TBytes; X, Y, Width, Height, RotationDeg: Double; Anchor: TImageAnchor = iaCorner): Boolean;</code></div>
+      <p>A typical use is masking a spot with an opaque white box, then writing a value over it. The optional <code>Align</code> (<code>paLeft</code>, <code>paRight</code>, <code>paCenter</code>, <code>paJustify</code>) on <code>PlaceText</code> shifts the start point along the baseline so the text is left/right/center-aligned about <code>(X, Y)</code>. <code>MaskedText</code> does the mask-then-write in one call: it fills the box <code>[X, Y, X+Width, Y+Height]</code> in the background colour (each <code>0..1</code>; defaults to white), then writes the text in the text colour (defaults to black) horizontally aligned per <code>Align</code> and vertically centered in the box. <code>DrawImage</code> takes raw JPEG/PNG image bytes and places the image with its lower-left corner at <code>(X, Y)</code> scaled to <code>Width × Height</code> points. The trailing <code>FontId</code>/<code>Anchor</code>/<code>VAlign</code>/<code>Padding</code> parameters are covered in <a href="#ed-stamp">Stamping fonts, anchors &amp; paragraphs</a> below.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Data: TBytes;
     G: TPageGeometry;
     Ed: TPdfEditable;
@@ -627,6 +628,55 @@ begin
     Ed.Free;
   end;
 end;</code></pre></div>
+
+      <!-- ED STAMP -->
+      <h2 id="ed-stamp">Stamping fonts, anchors &amp; paragraphs <span class="badge free">free</span></h2>
+      <p>The stamping primitives above also accept an <b>embedded font</b>, explicit <b>vertical anchors</b>, and a word-wrapping <b>paragraph</b> variant. See the <a href="/positioning.html">interactive positioning guide</a> for a visual tour of every anchor.</p>
+
+      <h3>Embedded stamping fonts</h3>
+      <p>Register a TrueType/OpenType font on the editable document and pass its id as the <code>FontId</code> parameter of <code>PlaceText</code>, <code>MaskedText</code> or <code>PlaceParagraph</code>. The font is embedded as a subset, so stamped text renders with the real glyphs and metrics (full Unicode, not just WinAnsi). <code>FontId = -1</code> keeps the built-in Helvetica.</p>
+      <div class="api"><code>function AddFontFile(const Path: string): Integer;</code></div>
+      <div class="api"><code>function AddFont(const Data: TBytes): Integer;</code></div>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var FId: Integer;
+…
+FId := Ed.AddFontFile('Roboto-Regular.ttf');
+Ed.PlaceText(0, 72, 700, 'Olá — texto Unicode', 14, 0, 0, 0, 0, paLeft, FId);</code></pre></div>
+
+      <h3>Vertical anchors (TVerticalAnchor)</h3>
+      <p><code>PlaceText</code> and <code>PlaceParagraph</code> take an <code>Anchor</code> saying what <code>Y</code> means. <code>vaBaseline</code> is the historical <code>PlaceText</code> default. <code>vaTop</code> hangs the text from <code>Y</code> (the baseline lands <code>ascent × Size</code> below it, matching legacy fixed-position layout); <code>vaBottom</code> rests the descender line on <code>Y</code>. <code>vaLineTop</code>/<code>vaLineBottom</code> anchor via the legacy <b>line box</b> (ascent + descent), so a single line and a wrapped paragraph agree vertically; for <code>PlaceParagraph</code> they also use the line-box height as the leading basis.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>// Baseline exactly where legacy fixed-position layout would put it:
+Ed.PlaceText(0, 72, 720, 'hung from the top', 12, 0, 0, 0, 0, paLeft, -1, vaTop);
+Ed.PlaceText(0, 72, 640, 'line box bottom', 12, 0, 0, 0, 0, paLeft, -1, vaLineBottom);</code></pre></div>
+
+      <h3>MaskedText: vertical alignment &amp; padding</h3>
+      <p><code>VAlign</code> positions the line inside the box: <code>vlMiddle</code> (default) keeps the historical cap-height centering, <code>vlTop</code> hangs the line from the top edge (top line-alignment in rectangle-based text APIs semantics), <code>vlBottom</code> rests the descender line on the bottom edge. <code>Padding</code> is the horizontal edge inset in points for <code>paLeft</code>/<code>paRight</code>: a negative value keeps the historical <code>min(0.15 × Size, Width / 4)</code>, and <code>0</code> starts flush with the box edge (legacy PDF libraries <code>DrawString</code> semantics).</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>// White box, top-aligned text, flush with the left edge:
+Ed.MaskedText(0, 100, 240, 200, 42, 'ALIGNED TOP', 12,
+              0, 0, 0, 1, 1, 1, paLeft, -1, vlTop, 0);</code></pre></div>
+
+      <h3>Wrapped paragraphs</h3>
+      <div class="api"><code>function PlaceParagraph(PageIndex: Integer; X, Y, Width: Double; const Text: UTF8String; Size: Double = 12; R: Double = 0; G: Double = 0; B: Double = 0; Align: TPdfAlign = paLeft; FontId: Integer = -1; MaxHeight: Double = 0; LineHeight: Double = 1.0; Anchor: TVerticalAnchor = vaTop; RotationDeg: Double = 0): Boolean;</code></div>
+      <div class="api"><code>function PlaceParagraphMeasured(PageIndex: Integer; X, Y, Width: Double; const Text: UTF8String; Size, R, G, B: Double; Align: TPdfAlign; FontId: Integer; MaxHeight, LineHeight: Double; Anchor: TVerticalAnchor; RotationDeg: Double; out Lines: Integer; out Height: Double): Boolean;</code></div>
+      <p><code>PlaceParagraph</code> breaks <code>Text</code> into lines that fit <code>Width</code> points (greedy, by word; <code>#10</code> forces a break) and draws them downward from <code>(X, Y)</code>. With <code>vaBottom</code>/<code>vaLineBottom</code> the block is <b>bottom-pinned</b>: its bottom rests on <code>Y</code> and it grows upward by its real content height. <code>MaxHeight &gt; 0</code> is a height ceiling that truncates overflowing lines (with a bottom anchor the last lines stay pinned and the overflow is cut from the top); <code>0</code> means unlimited. <code>LineHeight</code> scales the default <code>1.2 × Size</code> leading, and <code>RotationDeg</code> rotates the laid-out block counter-clockwise about the anchor. <code>PlaceParagraphMeasured</code> additionally reports the number of lines drawn and the consumed block height in points, so you can stack blocks without re-measuring.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Lines: Integer; Height: Double;
+…
+// Wrap into a 130 pt column from the top-left corner (72, 700):
+Ed.PlaceParagraph(0, 72, 700, 130, 'terms and conditions apply to every order');
+// Bottom-pinned block with a 60 pt ceiling, measured:
+Ed.PlaceParagraphMeasured(0, 300, 120, 130, 'grows upward from its anchor', 10,
+                          0, 0, 0, paLeft, -1, 60, 1.0, vaBottom, 0, Lines, Height);
+Writeln(Format('%d lines, %.1f pt used', [Lines, Height]));</code></pre></div>
+
+      <h3>Stamp space: visible vs media</h3>
+      <div class="api"><code>procedure SetStampSpace(Space: TStampSpace);</code></div>
+      <p><code>ssVisible</code> (the default) interprets coordinates in the page's displayed space, compensating <code>/Rotate</code> so a stamp with <code>RotationDeg = 0</code> reads upright on screen. <code>ssMedia</code> interprets coordinates and <code>RotationDeg</code> in the raw PDF user space, never composing with the page's <code>/Rotate</code> or crop offset (the raw-coordinate semantics of legacy layout engines). Use <code>ssMedia</code> to reproduce legacy-engine placement on rotated or scanned pages; the setting applies to subsequent <code>FillRect</code>/<code>PlaceText</code>/<code>MaskedText</code>/<code>PlaceParagraph</code>/<code>DrawImage</code> calls. Watermarks and redaction are unaffected.</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed.SetStampSpace(ssMedia);      // legacy raw-space coordinates from here on
+Ed.PlaceText(0, 200, 300, 'MEDIA', 10, 0, 0, 0, 0);
+Ed.SetStampSpace(ssVisible);    // back to the default</code></pre></div>
+
+      <h3>Image rotation anchor</h3>
+      <p><code>DrawImage</code> takes a trailing <code>Anchor</code>: <code>iaCorner</code> (default) rotates the image about its own lower-left corner at <code>(X, Y)</code>, so a rotated image sweeps around that point; <code>iaBoundingBox</code> lands the <b>rotated image's bounding box</b> with its lower-left at <code>(X, Y)</code> (bounding-box layout semantics: the drawn pixels always sit at or above/right of the anchor; a 90° image occupies <code>[X, X+Height] × [Y, Y+Width]</code>).</p>
+      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed.DrawImage(0, Logo, 260, 60, 80, 30, 90, iaBoundingBox);</code></pre></div>
 
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
@@ -937,6 +987,34 @@ WriteBytes('page1.png', Png);</code></pre></div>
         <tr><td><code>paCenter</code></td><td>Centered</td></tr>
         <tr><td><code>paJustify</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
+      <h3>TVerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>What Y means (PlaceText / PlaceParagraph)</th></tr>
+        <tr><td><code>vaBaseline</code></td><td>The text baseline (PlaceText default)</td></tr>
+        <tr><td><code>vaTop</code></td><td>The top: baseline lands ascent &times; Size below Y (legacy fixed-position layout; PlaceParagraph default)</td></tr>
+        <tr><td><code>vaBottom</code></td><td>The bottom: descender line rests on Y (PlaceParagraph: bottom-pinned block)</td></tr>
+        <tr><td><code>vaLineTop</code></td><td>Top of the layout line box (ascent + descent)</td></tr>
+        <tr><td><code>vaLineBottom</code></td><td>Bottom of the layout line box (PlaceParagraph: bottom-pinned)</td></tr>
+      </table>
+      <h3>TVerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Line position inside the MaskedText box</th></tr>
+        <tr><td><code>vlTop</code></td><td>Hangs from the top edge (top line-alignment in rectangle-based text APIs)</td></tr>
+        <tr><td><code>vlMiddle</code></td><td>Cap-height centered (default)</td></tr>
+        <tr><td><code>vlBottom</code></td><td>Descender line rests on the bottom edge</td></tr>
+      </table>
+      <h3>TStampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Coordinate space of the stamping primitives</th></tr>
+        <tr><td><code>ssVisible</code></td><td>The page's displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>ssMedia</code></td><td>Raw PDF user space, no <code>/Rotate</code> composition (legacy layout semantics)</td></tr>
+      </table>
+      <h3>TImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Rotation anchor of DrawImage</th></tr>
+        <tr><td><code>iaCorner</code></td><td>The image's own lower-left corner at (X, Y) (default)</td></tr>
+        <tr><td><code>iaBoundingBox</code></td><td>The rotated image's bounding box lands its lower-left at (X, Y) (bounding-box layout)</td></tr>
+      </table>
       <h3>TAFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -1011,6 +1089,7 @@ end;</code></pre></div>
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Stamping fonts &amp; anchors</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

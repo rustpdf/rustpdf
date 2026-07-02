@@ -39,7 +39,8 @@ use std::ptr;
 pub use document::{Bookmark, Document};
 pub use editable::EditableDoc;
 pub use enums::{
-    AFRelationship, Align, Certify, Encryption, FacturxProfile, PdfVersion, PdfaLevel,
+    AFRelationship, Align, Certify, Encryption, FacturxProfile, ImageAnchor, PdfVersion, PdfaLevel,
+    StampSpace, VerticalAlign, VerticalAnchor,
 };
 pub use error::{PdfError, PdfStatus, Result};
 pub use signing::{
@@ -50,7 +51,8 @@ pub use signing::{
 
 use util::{check, cstr, opt_cstr, take_buffer};
 
-/// A registered font handle, returned by [`Document::add_font`].
+/// A registered font handle, returned by [`Document::add_font`] /
+/// [`EditableDoc::add_font`] (and the `*_file` variants).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FontId(pub i32);
 

@@ -159,6 +159,7 @@
       <a href="#ed-forms">Form fill &amp; flatten</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Advanced stamping</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-optimize">Optimize</a>
@@ -645,6 +646,69 @@ logo, _ := os.ReadFile("logo.png")
 ed.DrawImage(0, logo, 435, 720, 120, 48, 0) // stamp a logo, lower-left at (435, 720)
 _ = ed.Save("stamped.pdf")</code></pre></div>
 
+      <!-- ED STAMP V2 -->
+      <h2 id="ed-stamp">Advanced stamping: fonts, anchors &amp; paragraphs <span class="badge free">free</span></h2>
+      <p>The anchored variants extend the positioned-drawing primitives with embedded fonts, explicit vertical anchoring, padded masked text, wrapped paragraphs, an alternate coordinate space and an image rotation anchor. See the <a href="/positioning.html">interactive positioning guide</a> for a visual tour of the anchor and space semantics.</p>
+
+      <h3>Embedded stamping fonts</h3>
+      <p><code>AddFontFile</code>/<code>AddFont</code> register a TrueType/OpenType font on a loaded document and return a <code>fontID</code> for the stamping calls below. The font is embedded as a subset, so stamped text renders with the real glyphs and metrics (full Unicode, no WinAnsi limit). Pass <code>fontID = -1</code> anywhere to keep the built-in Helvetica.</p>
+      <div class="api"><code>AddFontFile(path string) (int, error)</code></div>
+      <div class="api"><code>AddFont(data []byte) (int, error)</code></div>
+
+      <h3>Vertical anchors</h3>
+      <p><code>PlaceTextAnchored</code> is <code>PlaceTextAligned</code> plus a <code>VerticalAnchor</code> saying what <code>y</code> means: <code>AnchorBaseline</code> (the historical behavior), <code>AnchorTop</code> (the text hangs from <code>y</code>: baseline at <code>y − ascent × size</code>, legacy fixed-position layout semantics), <code>AnchorBottom</code> (the descender line rests on <code>y</code>), and <code>AnchorLineTop</code>/<code>AnchorLineBottom</code>, which anchor the <b>layout line box</b> (OS/2 win metrics plus a fixed half-leading); use the line-box anchors to match legacy layout engines line placement exactly. Ascent/descent come from the selected font's metrics.</p>
+      <div class="api"><code>PlaceTextAnchored(pageIndex int, x, y float64, text string, size, r, g, b, rotationDeg float64, align Align, anchor VerticalAnchor, fontID int) bool</code></div>
+
+      <h3>Masked text: vertical alignment &amp; padding</h3>
+      <p><code>MaskedTextPadded</code> is <code>MaskedText</code> plus a <code>VerticalAlign</code> for the line inside the box (<code>VAlignMiddle</code> keeps the historical cap-height centering; <code>VAlignTop</code> hangs the line from the top edge, top line-alignment in rectangle-based text APIs semantics; <code>VAlignBottom</code> rests the descender line on the bottom edge), a horizontal edge inset <code>padding</code> in points for left/right alignment (text starts at <code>x + padding</code> or ends at <code>x + width − padding</code>; a <b>negative</b> value keeps the historical default <code>min(0.15 × size, width / 4)</code>, <code>0</code> starts flush with the box edge) and an optional embedded <code>fontID</code>.</p>
+      <div class="api"><code>MaskedTextPadded(pageIndex int, x, y, width, height float64, text string, size float64, textColor, bgColor [3]float64, align Align, valign VerticalAlign, padding float64, fontID int) bool</code></div>
+
+      <h3>Paragraphs with word wrapping</h3>
+      <p><code>PlaceParagraph</code> breaks <code>text</code> into lines that fit <code>width</code> points (greedy, by word; <code>\n</code> forces a break) and draws them downward from the anchor <code>(x, y)</code>. <code>anchor</code> positions the block: <code>AnchorTop</code> is the top of the box (first baseline <code>ascent × size</code> below <code>y</code>); <code>AnchorBaseline</code> is the first line's baseline; <code>AnchorBottom</code>/<code>AnchorLineBottom</code> are <b>bottom-pinned</b>: the block's bottom rests on <code>y</code> and grows upward by its real content height. <code>maxHeight &gt; 0</code> is a ceiling that truncates overflowing lines (with a bottom anchor they are cut from the <b>top</b> and the last lines stay pinned); <code>&lt;= 0</code> means unlimited. <code>lineHeight</code> scales the default <code>1.2 × size</code> leading (<code>&lt;= 0</code> = <code>1.0</code>); <code>rotationDeg</code> rotates the laid-out block about the anchor. It returns the number of lines drawn and the <b>measured block height</b> in points, so you can stack blocks without re-measuring.</p>
+      <div class="api"><code>PlaceParagraph(pageIndex int, x, y, width float64, text string, size, r, g, b float64, align Align, fontID int, maxHeight, lineHeight float64, anchor VerticalAnchor, rotationDeg float64) (lines int, height float64, found bool)</code></div>
+
+      <h3>Coordinate space</h3>
+      <p><code>SetStampSpace</code> chooses the coordinate space of all positioned stamping calls that follow it. <code>StampVisible</code> (the default) keeps the historical behavior: coordinates in the page's displayed space, compensating <code>/Rotate</code> so a <code>rotationDeg = 0</code> stamp reads upright on screen. <code>StampMedia</code> interprets coordinates and rotations in the <b>raw PDF user space</b> (the raw-coordinate semantics of legacy layout engines), never composing with the page's <code>/Rotate</code> or crop offset; use it to reproduce coordinates computed for legacy PDF libraries on rotated (scanned) pages. Watermarks and redaction are unaffected.</p>
+      <div class="api"><code>SetStampSpace(space StampSpace) error</code></div>
+
+      <h3>Image rotation anchor</h3>
+      <p><code>DrawImageAnchored</code> is <code>DrawImage</code> plus an <code>ImageAnchor</code>: <code>ImageAnchorCorner</code> (the <code>DrawImage</code> behavior) rotates the image about its own lower-left corner at <code>(x, y)</code>, so it sweeps around the anchor; <code>ImageAnchorBoundingBox</code> lands the <b>rotated image's bounding box</b> with its lower-left at <code>(x, y)</code> (bounding-box layout semantics: a 90° image occupies <code>[x, x+height] × [y, y+width]</code> and the pixels always sit at/above/right of the anchor).</p>
+      <div class="api"><code>DrawImageAnchored(pageIndex int, image []byte, x, y, width, height, rotationDeg float64, anchor ImageAnchor) bool</code></div>
+
+      <div class="code has-label"><span class="lbl">go</span><pre><code>data, _ := os.ReadFile("form.pdf")
+ed, _ := rustpdf.Load(data)
+defer ed.Close()
+
+// stamp with a real font (embedded as a subset)
+roboto, _ := ed.AddFontFile("Roboto-Regular.ttf")
+
+// hang a label from y = 700 using the layout line box
+ed.PlaceTextAnchored(0, 72, 700, "Cláusula 4 — Confidencialidade", 12,
+	0, 0, 0, 0, rustpdf.AlignLeft, rustpdf.AnchorLineTop, roboto)
+
+// mask a placeholder: line hangs from the box top, flush with the left edge
+ed.MaskedTextPadded(0, 430, 640, 110, 18, "R$ 1.240,00", 12,
+	[3]float64{0, 0, 0}, [3]float64{1, 1, 1},
+	rustpdf.AlignLeft, rustpdf.VAlignTop, 0, roboto)
+
+// wrapped paragraph pinned to a bottom edge, capped at 80 pt
+lines, height, _ := ed.PlaceParagraph(0, 72, 120, 300,
+	"Long disclaimer text that wraps across several lines…", 9,
+	0.3, 0.3, 0.3, rustpdf.AlignJustify, roboto,
+	80, 1.0, rustpdf.AnchorBottom, 0)
+fmt.Printf("drew %d lines, %0.1f pt tall\n", lines, height)
+
+// reproduce legacy raw-space coordinates on a rotated scan
+ed.SetStampSpace(rustpdf.StampMedia)
+ed.PlaceTextAnchored(0, 100, 250, "legacy-style position", 10,
+	0, 0, 0, 90, rustpdf.AlignLeft, rustpdf.AnchorBaseline, -1)
+ed.SetStampSpace(rustpdf.StampVisible)
+
+// rotated logo whose bounding box lands at (400, 300)
+logo, _ := os.ReadFile("logo.png")
+ed.DrawImageAnchored(0, logo, 400, 300, 120, 48, 90, rustpdf.ImageAnchorBoundingBox)
+_ = ed.Save("stamped.pdf")</code></pre></div>
+
       <!-- ED REDACT -->
       <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions. Returns whether the target page existed.</p>
@@ -950,6 +1014,34 @@ os.WriteFile("page1.png", png, 0o644)</code></pre></div>
         <tr><td><code>rustpdf.AlignCenter</code></td><td>Centered</td></tr>
         <tr><td><code>rustpdf.AlignJustify</code></td><td>Justified (space distributed between words)</td></tr>
       </table>
+      <h3>VerticalAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>rustpdf.AnchorBaseline</code></td><td><code>y</code> is the text baseline (historical default)</td></tr>
+        <tr><td><code>rustpdf.AnchorTop</code></td><td>Text hangs from <code>y</code> (baseline at <code>y − ascent × size</code>)</td></tr>
+        <tr><td><code>rustpdf.AnchorBottom</code></td><td>Descender line rests on <code>y</code></td></tr>
+        <tr><td><code>rustpdf.AnchorLineTop</code></td><td>Top of the layout line box (matches legacy fixed-position layout)</td></tr>
+        <tr><td><code>rustpdf.AnchorLineBottom</code></td><td>Bottom of the layout line box</td></tr>
+      </table>
+      <h3>VerticalAlign</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>rustpdf.VAlignTop</code></td><td>Line hangs from the top edge of the box</td></tr>
+        <tr><td><code>rustpdf.VAlignMiddle</code></td><td>Cap-height centering (historical default)</td></tr>
+        <tr><td><code>rustpdf.VAlignBottom</code></td><td>Descender line rests on the bottom edge</td></tr>
+      </table>
+      <h3>StampSpace</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>rustpdf.StampVisible</code></td><td>Page's displayed space, compensating <code>/Rotate</code> (default)</td></tr>
+        <tr><td><code>rustpdf.StampMedia</code></td><td>Raw PDF user space, legacy layout semantics (no <code>/Rotate</code> composition)</td></tr>
+      </table>
+      <h3>ImageAnchor</h3>
+      <table>
+        <tr><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>rustpdf.ImageAnchorCorner</code></td><td>Rotate about the image's own lower-left corner at <code>(x, y)</code> (default)</td></tr>
+        <tr><td><code>rustpdf.ImageAnchorBoundingBox</code></td><td>Rotated image's bounding box lands with its lower-left at <code>(x, y)</code></td></tr>
+      </table>
       <h3>AFRelationship</h3>
       <table>
         <tr><th>Value</th><th>Meaning</th></tr>
@@ -1031,6 +1123,7 @@ if err := doc.Save("out.pdf"); err != nil {
       <a href="#ed-forms">Form fill</a>
       <a href="#ed-watermark">Watermarks</a>
       <a href="#ed-draw">Positioned drawing</a>
+      <a href="#ed-stamp">Advanced stamping</a>
       <a href="#ed-redact">Redaction</a>
       <a href="#ed-pdfa">Convert to PDF/A</a>
       <a href="#ed-encrypt">Encryption</a>

@@ -135,6 +135,17 @@ module RustPdf
       # Issue #50: stamp a PNG/JPEG image onto an existing page. The image bytes
       # cross as the (uint8_t* data, uintptr_t len) pair, like pdf_editable_load.
       "pdf_editable_draw_image"      => [[VP, I, VP, SZ, D, D, D, D, D, VP], I],
+
+      # Stamping fonts + anchored stamping primitives. font_id -1 = built-in
+      # Helvetica; anchors/valign/space/image-anchor cross as small ints.
+      "pdf_editable_add_font_file"   => [[VP, VP, VP], I],
+      "pdf_editable_add_font"        => [[VP, VP, SZ, VP], I],
+      "pdf_editable_place_text_anchored" => [[VP, I, D, D, VP, D, D, D, D, D, I, I, I, VP], I],
+      "pdf_editable_masked_text_pad" => [[VP, I, D, D, D, D, VP, D, D, D, D, D, D, D, I, I, D, I, VP], I],
+      "pdf_editable_place_paragraph_anchored" =>
+        [[VP, I, D, D, D, VP, D, D, D, D, I, I, I, D, D, D, VP, VP, VP], I],
+      "pdf_editable_set_stamp_space" => [[VP, I], I],
+      "pdf_editable_draw_image_anchored" => [[VP, I, VP, SZ, D, D, D, D, D, I, VP], I],
     }.freeze
 
     def lib
