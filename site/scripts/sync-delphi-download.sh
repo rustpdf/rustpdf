@@ -27,6 +27,23 @@ REPO="${RUSTPDF_REPO:-$(git -C "$ROOT" config --get remote.origin.url 2>/dev/nul
 mkdir -p "$DEST"
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
+# The Cargo workspace version (0.2.0) is shared, but each binding is released on
+# its own cadence — a delphi-v$VERSION tag may not exist yet. The site serves
+# whatever zip is baked into /downloads (its single source of truth), so when the
+# exact tag is missing, fall back to the latest published delphi-v* release
+# instead of hard-failing the deploy. A real delphi-v$VERSION is picked up
+# automatically once published.
+if command -v gh >/dev/null 2>&1 && ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+  latest="$(gh release list --repo "$REPO" --json tagName,createdAt \
+    -q 'map(select(.tagName|startswith("delphi-v"))) | sort_by(.createdAt) | last | .tagName' 2>/dev/null || true)"
+  if [ -n "$latest" ] && [ "$latest" != "null" ]; then
+    printf '\033[1;33m   aviso: release %s não existe; usando o último publicado: %s\033[0m\n' "$TAG" "$latest"
+    VERSION="${latest#delphi-v}"
+    TAG="$latest"
+    ZIP="rustpdf-delphi-${VERSION}.zip"
+  fi
+fi
+
 say "fetching $ZIP (+.sha256) from release $TAG of $REPO"
 if command -v gh >/dev/null 2>&1; then
   gh release download "$TAG" --repo "$REPO" --dir "$DEST" --clobber \
