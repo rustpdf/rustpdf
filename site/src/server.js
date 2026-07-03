@@ -122,7 +122,7 @@ app.post("/api/checkout", async (req, res) => {
       console.log(`[test] simulated ${row.tier} purchase ${row.ref} → ${row.email}`);
       return res.json({ url: `/success?session_id=${row.ref}`, test: true });
     }
-    const session = await createCheckoutSession(tier);
+    const session = await createCheckoutSession(tier, { gclid: req.body?.gclid });
     res.json({ url: session.url });
   } catch (err) {
     console.error("Checkout creation failed:", err);
@@ -137,12 +137,16 @@ app.get("/api/license", async (req, res) => {
   if (!sessionId.startsWith("cs_")) return res.status(400).json({ error: "bad_session" });
 
   // In test mode, serve straight from the store (no real Stripe session exists).
+  let amountTotal = null;
+  let currency = null;
   if (!config.testCheckout) {
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (session.payment_status !== "paid" && config.stripe.mode === "payment") {
         return res.json({ status: "pending" });
       }
+      amountTotal = session.amount_total ?? null;
+      currency = session.currency ?? null;
     } catch {
       return res.status(404).json({ error: "not_found" });
     }
@@ -159,6 +163,8 @@ app.get("/api/license", async (req, res) => {
     expires_at: row.expires_at,
     tier: row.tier,
     features: row.features,
+    amount_total: amountTotal, // in minor units (cents); null in test mode
+    currency,
   });
 });
 

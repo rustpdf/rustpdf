@@ -104,6 +104,7 @@ document.querySelectorAll(".tabs").forEach((tabs, ti) => {
     const res = await fetch("/api/pricing");
     if (!res.ok) return;
     const pricing = await res.json(); // { pro: {...}, enterprise: {...} }
+    window.__rustpdfPricing = pricing; // reused by the begin_checkout event
     for (const tier of Object.keys(pricing)) {
       const p = pricing[tier];
       if (!p) continue;
@@ -119,6 +120,13 @@ document.querySelectorAll(".tabs").forEach((tabs, ti) => {
   }
 })();
 
+// Reads the Google Ads click id captured by consent.js — sent at checkout so the
+// server can attribute the sale back to the ad click (offline conversion).
+function readGclid() {
+  var m = document.cookie.match(/(?:^|;\s*)gclid=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
 // Buy → create a tier-specific Checkout Session → redirect to Stripe.
 document.querySelectorAll(".buy-btn").forEach((btn) => {
   const tier = btn.dataset.tier;
@@ -128,11 +136,21 @@ document.querySelectorAll(".buy-btn").forEach((btn) => {
     btn.disabled = true;
     btn.textContent = "Redirecting to checkout…";
     if (err) err.hidden = true;
+    // Conversion signal: user started checkout for a paid tier.
+    // gtag only exists once the visitor accepted analytics cookies (consent.js).
+    const price = (window.__rustpdfPricing || {})[tier] || {};
+    if (window.gtag) {
+      window.gtag("event", "begin_checkout", {
+        currency: price.currency || "USD",
+        value: price.amount || undefined,
+        items: [{ item_id: tier, item_name: "rust-pdf " + tier }],
+      });
+    }
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({ tier, gclid: readGclid() }),
       });
       if (!res.ok) throw new Error("checkout_failed");
       const { url } = await res.json();
