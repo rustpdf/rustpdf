@@ -129,7 +129,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="/styles.css?v=4" />
+  <link rel="stylesheet" href="/styles.css?v=5" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -513,11 +513,28 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
           Generate a document, then check it with the same independent validator we
           gate every release on. No account, no upload: it all runs on your
           machine, against the bytes rust-pdf produced. PDF/A and accessibility
-          are licensed features, so this demo needs an active
-          <a href="#pricing">Pro / Enterprise</a> token.
+          are licensed features. Grab a <b>free 5-day trial token</b> below and
+          run the whole demo, no card required.
         </p>
-        <pre class="verify-code"><code><span class="c"># 0 · PDF/A &amp; accessibility need a license (Pro / Enterprise):</span>
-<span class="c">#     export RUSTPDF_LICENSE="…the token we email you…"</span>
+        <form id="trial-form" class="trial-form" novalidate>
+          <label class="trial-field">
+            <span class="sr-only">Work email</span>
+            <input id="trial-email" type="email" name="email" required
+                   autocomplete="email" placeholder="you@company.com" />
+          </label>
+          <!-- Honeypot: hidden from humans, tempting to bots. Real users leave it blank. -->
+          <input type="text" name="website" id="trial-website" tabindex="-1"
+                 autocomplete="off" aria-hidden="true"
+                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <button type="submit" class="btn" id="trial-submit">Email me a free trial token</button>
+          <label class="trial-consent">
+            <input type="checkbox" name="consent" id="trial-consent" />
+            <span>Send me occasional product updates. No spam; unsubscribe anytime.</span>
+          </label>
+          <p id="trial-msg" class="trial-msg" role="status" aria-live="polite" hidden></p>
+        </form>
+        <pre class="verify-code"><code><span class="c"># 0 · PDF/A &amp; accessibility need a license — activate the trial we emailed you:</span>
+<span class="c">#     export RUSTPDF_LICENSE="…the trial token from your inbox…"</span>
 
 <span class="c"># 1 · author an archival, accessible PDF/A-2a (report.py)</span>
 <span class="c">#     pip install rustpdf</span>
@@ -702,7 +719,7 @@ verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules<
   </footer>
 
   <script src="/highlight.js" defer></script>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=5" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

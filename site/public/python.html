@@ -78,7 +78,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="/styles.css?v=3" />
+  <link rel="stylesheet" href="/styles.css?v=5" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -191,6 +191,32 @@
         </div>
       </div>
     </section>
+
+    <!-- FREE TRIAL -->
+    <section class="band">
+      <div class="wrap narrow center">
+        <h2>Try every licensed feature free for 5 days.</h2>
+        <p class="muted">
+          Get a trial token by email and unlock PDF/A, digital signatures,
+          encryption and accessibility in Python. No account, no card required.
+        </p>
+        <form class="trial-form" novalidate>
+          <label class="trial-field">
+            <span class="sr-only">Work email</span>
+            <input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />
+          </label>
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <button type="submit" class="btn">Email me a free trial token</button>
+          <label class="trial-consent">
+            <input type="checkbox" name="consent" />
+            <span>Send me occasional product updates. No spam; unsubscribe anytime.</span>
+          </label>
+          <p class="trial-msg" role="status" aria-live="polite" hidden></p>
+        </form>
+      </div>
+    </section>
+
 
     <!-- CODE -->
     <section class="band">
@@ -331,7 +357,7 @@ def invoice():
   </footer>
 
   <script src="/highlight.js" defer></script>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=5" defer></script>
   <script src="/consent.js" defer></script>
 </body>
 </html>

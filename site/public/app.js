@@ -120,6 +120,67 @@ document.querySelectorAll(".tabs").forEach((tabs, ti) => {
   }
 })();
 
+// Free-trial forms: email → server mints a short-lived token and emails it. The
+// token is never returned to the page (lead quality + anti-farming), so success
+// just tells the user to check their inbox. Class-based + per-form so the same
+// widget works on the home #verify block and on every language docs page.
+document.querySelectorAll(".trial-form").forEach((form) => {
+  const email = form.querySelector('input[type="email"]');
+  const honeypot = form.querySelector('input[name="website"]');
+  const consent = form.querySelector('input[name="consent"]');
+  const btn = form.querySelector('button[type="submit"]');
+  const msg = form.querySelector(".trial-msg");
+  if (!email || !btn || !msg) return;
+  const original = btn.textContent;
+
+  const show = (text, ok) => {
+    msg.textContent = text;
+    msg.classList.toggle("ok", !!ok);
+    msg.classList.toggle("err", !ok);
+    msg.hidden = false;
+  };
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (honeypot && honeypot.value.trim()) return; // bot
+    const addr = (email.value || "").trim();
+    if (!addr || !email.checkValidity()) {
+      show("Please enter a valid email address.", false);
+      email.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    msg.hidden = true;
+    try {
+      const res = await fetch("/api/trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: addr,
+          consent: !!(consent && consent.checked),
+          website: honeypot ? honeypot.value : "",
+        }),
+      });
+      if (res.status === 429) {
+        show("Too many requests from your network. Please try again later.", false);
+        return;
+      }
+      if (!res.ok) throw new Error("trial_failed");
+      show("Check your inbox — your free 5-day trial token is on its way.", true);
+      form.reset();
+      if (window.gtag) {
+        window.gtag("event", "generate_lead", { currency: "USD", value: 0 });
+      }
+    } catch (_e) {
+      show("Could not send the trial token. Please try again or email sales@casefy.io.", false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+});
+
 // Reads the Google Ads click id captured by consent.js — sent at checkout so the
 // server can attribute the sale back to the ad click (offline conversion).
 function readGclid() {

@@ -199,6 +199,20 @@ a.lang:hover small { color: #cbd5e1; }
 .verify-code .c { color: #7f8da6; font-style: italic; }
 .verify-code .ok { color: var(--green); }
 
+/* free-trial form (inside #verify) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.trial-form { max-width: 480px; margin: 22px auto 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.trial-field { flex: 1 1 240px; min-width: 0; }
+.trial-form input[type="email"] { width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 11px 14px; font-size: 0.95rem; }
+.trial-form input[type="email"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.trial-form input::placeholder { color: var(--muted); }
+.trial-form .btn { flex: 0 0 auto; }
+.trial-consent { flex: 1 1 100%; display: flex; align-items: flex-start; gap: 8px; color: var(--muted); font-size: 0.82rem; text-align: left; margin-top: 2px; }
+.trial-consent input { margin-top: 2px; accent-color: var(--accent); }
+.trial-msg { flex: 1 1 100%; margin: 4px 0 0; font-size: 0.88rem; }
+.trial-msg.ok { color: var(--green); }
+.trial-msg.err { color: #fca5a5; }
+
 /* pricing */
 .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 40px; align-items: start; }
 .price-card { position: relative; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 30px; }

@@ -13,6 +13,7 @@ import {
   stripe,
 } from "./stripe.js";
 import { getLicenseByRef } from "./db.js";
+import { requestTrial } from "./trial.js";
 
 assertRuntime();
 
@@ -127,6 +128,30 @@ app.post("/api/checkout", async (req, res) => {
   } catch (err) {
     console.error("Checkout creation failed:", err);
     res.status(500).json({ error: "checkout_failed" });
+  }
+});
+
+// --- Free trial: email-gated, short-lived token, delivered by email ----------
+// The token is NEVER returned to the browser (so every trial is a deliverable
+// lead and can't be farmed by scripting the page) — the prospect gets it in
+// their inbox. `website` is a honeypot: a real user leaves it blank.
+app.post("/api/trial", async (req, res) => {
+  // Honeypot tripped → pretend success, do nothing (don't tip off the bot).
+  if (req.body && typeof req.body.website === "string" && req.body.website.trim()) {
+    return res.json({ status: "sent" });
+  }
+  try {
+    await requestTrial({
+      email: req.body?.email,
+      consent: !!req.body?.consent,
+      ip: req.ip,
+    });
+    res.json({ status: "sent" });
+  } catch (err) {
+    if (err.code === "bad_email") return res.status(400).json({ error: "bad_email" });
+    if (err.code === "rate_limited") return res.status(429).json({ error: "rate_limited" });
+    console.error("Trial request failed:", err);
+    res.status(500).json({ error: "trial_failed" });
   }
 });
 
