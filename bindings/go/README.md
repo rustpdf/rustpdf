@@ -10,7 +10,7 @@ Generate, edit, sign and process PDFs from Go: vector graphics, embedded fonts a
 
 The public API is the `Document` type (create PDFs), the `EditableDoc` type
 (load and edit existing PDFs) and package-level functions (`Version`,
-`ActivateLicense`, `ExtractText`, `Sign`, `Timestamp`, `AddDss`).
+`ExtractText`, `Sign`, `Timestamp`, `AddDss`).
 
 ## Installing (consumers)
 
@@ -42,8 +42,8 @@ Go has no upload registry — publishing is a git tag. Because the module lives 
 a subdirectory, the consumer tag is **prefixed** `bindings/go/vX.Y.Z`.
 
 The `.github/workflows/release-go.yml` pipeline does it: push a `go-v0.1.0` tag
-(this trigger tag only kicks off CI) and it builds the five `libpdf_ffi.a` slices
-(with the production `RUSTPDF_LICENSE_PUBKEY`), statically smoke-tests each, then
+(this trigger tag only kicks off CI) and it builds the five `libpdf_ffi.a` slices,
+statically smoke-tests each, then
 force-adds them into a single commit and pushes the `bindings/go/v0.1.0` tag —
 the dev branch never carries the binaries. `go get …@v0.1.0` then resolves it.
 
@@ -70,9 +70,6 @@ import (
 )
 
 func main() {
-	// A token in RUSTPDF_LICENSE is auto-activated; or call ActivateLicense.
-	_ = rustpdf.ActivateLicense(token)
-
 	d, _ := rustpdf.New()
 	defer d.Close()
 	_ = d.PdfaLevel(rustpdf.A2a)
@@ -148,6 +145,5 @@ List existing signature fields before signing with
 `/Contents` bytes; `0` = default, raise it for large cloud CMS containers) and a
 PAdES-EPES `Policy` (`SignaturePolicy{OID, Hash, HashAlgorithmOID, URI}`).
 
-Corporate features (PDF/A, signing, encryption, accessibility, page rendering
-— a **Pro** feature) require a license;
-without one they return an `*Error`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Every feature is free — PDF/A, digital signatures/PAdES, encryption,
+accessibility/tagging, redaction and page rendering are all included.

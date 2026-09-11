@@ -149,7 +149,7 @@ public final class EditableDoc {
         try check(Native.shared.pdf_editable_compact(handle, on ? 1 : 0)); return self
     }
 
-    /// Enable encryption on save. Requires a license. `user`/`owner` are the
+    /// Enable encryption on save. `user`/`owner` are the
     /// user and owner passwords (either may be empty); `readOnly` applies the
     /// read-only permission set.
     @discardableResult
@@ -466,7 +466,7 @@ public final class EditableDoc {
     }
 
     /// Convert the loaded document to PDF/A at `level` (B-levels only: A-1b,
-    /// A-2b, A-3b). Requires a license.
+    /// A-2b, A-3b).
     @discardableResult
     public func convertToPdfa(_ level: PdfaLevel = .a2b) throws -> EditableDoc {
         try check(Native.shared.pdf_editable_convert_to_pdfa(handle, level.rawValue)); return self

@@ -36,7 +36,7 @@ runtime. No per-OS classifier, no native build step on the consumer side.
 | File | Role |
 |------|------|
 | `FFI.java` | Raw JNA mapping of all 78 C exports + library locator |
-| `Pdf.java` | `version` / `activateLicense` / `extractText` / `sign` / `timestamp` / `addDss` + helpers |
+| `Pdf.java` | `version` / `extractText` / `sign` / `timestamp` / `addDss` + helpers |
 | `Document.java` | Authoring (graphics, fonts, text, images, PDF/A, tagging, forms) |
 | `EditableDoc.java` | Manipulation (merge, split, encrypt, incremental update) |
 | `PdfaLevel` / `Align` / `AFRelationship` / `Encryption` | Enums |
@@ -58,13 +58,12 @@ Published to Maven Central via the Sonatype **Central Portal**. The release is
 automated in `.github/workflows/release-java.yml`: push a tag `java-v<version>`
 (matching the `<version>` in `pom.xml`). The workflow builds `libpdf_ffi` for
 each target (Linux inside `manylinux_2_28` for old-glibc compat, mac/win
-natively, all with the **production** license pubkey), lays them out under
-`src/main/resources/<prefix>/`, runs a free-surface smoke against the bundled
+natively), lays them out under
+`src/main/resources/<prefix>/`, runs a smoke test against the bundled
 native, then `mvn -Prelease deploy` packages the fat JAR + `-sources` + `-javadoc`,
 GPG-signs everything, and uploads.
 
-Required repository secrets: `RUSTPDF_LICENSE_PUBKEY` (prod Ed25519 pubkey),
-`MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` (Central Portal token),
+Required repository secrets: `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` (Central Portal token),
 `MAVEN_GPG_PRIVATE_KEY` / `MAVEN_GPG_PASSPHRASE` (signing key). The `release`
 Maven profile is off by default, so local `make java-test` needs no GPG key.
 
@@ -85,9 +84,7 @@ try (Document doc = new Document()) {
     System.out.println(Pdf.extractText(bytes));
 }
 
-// Corporate features need a license (env var RUSTPDF_LICENSE auto-activates,
-// or call activateLicense once):
-Pdf.activateLicense(token);
+// Every feature is free — PDF/A, tagging, encryption, signatures and more:
 try (Document doc = new Document()) {
     doc.pdfa(PdfaLevel.A2A).tagged().setTitle("Report");
     int f = doc.addFontFile("Roboto-Regular.ttf");
@@ -137,7 +134,7 @@ cd bindings/java && mvn -q test-compile exec:java
 ```
 
 The smoke test (`src/test/java/dev/rustpdf/SmokeTest.java`) exercises the whole
-surface, including the license gate, and exits non-zero on any failure.
+surface and exits non-zero on any failure.
 
 ## Notes
 
@@ -145,5 +142,5 @@ surface, including the license gate, and exits non-zero on any failure.
   the core's UTF-8 expectation.
 - Pointer-sized integers (`uintptr_t`) map to Java `long`; the binding targets
   64-bit platforms, like the other language bindings.
-- Licensing, gating and behavior are identical across every binding because the
-  checks live in the Rust core.
+- Behavior is identical across every binding because the implementation lives
+  in the Rust core.

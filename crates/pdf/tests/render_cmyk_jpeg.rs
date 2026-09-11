@@ -16,17 +16,6 @@ use pdf::Document;
 
 const JPG: &[u8] = include_bytes!("fixtures/cmyk_adobe.jpg");
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn render_center() -> (u8, u8, u8) {
     let mut doc = Document::new();
     let id = doc.add_image_jpeg(JPG.to_vec()).unwrap();
@@ -42,7 +31,6 @@ fn render_center() -> (u8, u8, u8) {
 
 #[test]
 fn cmyk_jpeg_renders_cyan_not_black() {
-    lic();
     let (r, g, b) = render_center();
     assert!(
         r < 100 && g > 150 && b > 150,

@@ -9,17 +9,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn signer() -> Signer {
     let key = std::fs::read(format!("{FX}/signer_key.pk8")).unwrap();
     let cert = std::fs::read(format!("{FX}/signer_cert.der")).unwrap();
@@ -33,7 +22,6 @@ fn tsa() -> Signer {
 }
 
 fn signed_pdf() -> Vec<u8> {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()
@@ -46,7 +34,6 @@ fn signed_pdf() -> Vec<u8> {
 
 #[test]
 fn unsigned_pdf_has_no_reports() {
-    lic(); // validation is a licensed (Enterprise) feature
     let mut doc = Document::new();
     doc.add_page();
     let reports = verify_signatures(doc.to_bytes().unwrap()).unwrap();
@@ -117,7 +104,6 @@ fn tampering_breaks_the_digest() {
 
 #[test]
 fn pades_signature_verifies() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page().text(f, 18.0).at(72.0, 700.0).show("PAdES");

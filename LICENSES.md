@@ -1,8 +1,13 @@
 # Dependency licenses
 
-This is a **paid product**, so every dependency must carry a permissive license
-(`project.md` §1.3). The allow-list is enforced in CI by `cargo deny`
-(see `deny.toml`). Regenerate the table below with `cargo metadata`.
+rust-pdf itself is **MIT** licensed (see [`LICENSE`](LICENSE)). For that to be
+meaningful, every dependency must carry a permissive license too — a single
+copyleft crate in the runtime graph would restrict what downstream users can do.
+The allow-list is enforced in CI by `cargo deny` (see `deny.toml`). Regenerate
+the table below with `cargo metadata`.
+
+Bundled non-code assets (the Roboto fonts, the sRGB ICC profile) carry their own
+licenses and are attributed in [`NOTICE`](NOTICE).
 
 ## Runtime core dependencies
 
@@ -33,18 +38,6 @@ well-known, permissively-licensed font crates:
 
 The layout engine (7.6) is pure `pdf`; encryption (7.3) reuses the vetted
 `aes`/`cbc`/`md-5`. RC4 is hand-written. All confirmed permissive on 2026-06-25.
-
-### Licensing crate (`license`) — all permissive
-
-| Crate | License | Role |
-|-------|---------|------|
-| `ed25519-dalek` | BSD-3-Clause | sign/verify license tokens |
-| transitive: `curve25519-dalek`, `ed25519`, `signature` | BSD-3-Clause / MIT OR Apache-2.0 | EdDSA support |
-| `zeroize`, `subtle`, `sha2`, `getrandom` | MIT OR Apache-2.0 | key zeroing / constant-time / hashing / CSPRNG |
-
-BSD-3-Clause is permitted by `deny.toml`. The Ed25519 **private** key never ships
-in the library; only the **public** key is embedded (overridable at build time
-via `RUSTPDF_LICENSE_PUBKEY`). See [`docs/LICENSING.md`](docs/LICENSING.md).
 
 ### Parser crates (Fase 5) — all permissive
 

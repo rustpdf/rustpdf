@@ -31,11 +31,7 @@ permissions:
   contents: read
 
 # Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
-# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
 # token. Same secret the Python/Node/Go/Delphi release pipelines use.
-env:
-  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
-
 defaults:
   run:
     shell: bash
@@ -59,13 +55,6 @@ jobs:
     container: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
-      - name: require production license pubkey on release
-        if: startsWith(github.ref, 'refs/tags/csharp-v')
-        run: |
-          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
-            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
-            exit 1
-          }
       - name: install rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -121,13 +110,6 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v4
-      - name: require production license pubkey on release
-        if: startsWith(github.ref, 'refs/tags/csharp-v')
-        run: |
-          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
-            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
-            exit 1
-          }
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}

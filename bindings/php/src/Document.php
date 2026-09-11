@@ -317,7 +317,7 @@ final class Document
         return $this;
     }
 
-    /** Embed a ZUGFeRD / Factur-X invoice XML (requires a license). */
+    /** Embed a ZUGFeRD / Factur-X invoice XML. */
     public function facturx(string $xml, FacturxProfile $profile = FacturxProfile::EN16931): self
     {
         [$buf, $len] = Ffi::bytes($xml);

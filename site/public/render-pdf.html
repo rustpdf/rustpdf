@@ -97,7 +97,7 @@
           "name": "How do I render a PDF page to an image?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Call render_page_to_png (Python), Pdf.RenderPageToPng (C#), rustpdf.RenderPageToPng (Go), or renderPageToPng (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is a Pro feature, so a valid license must be active."
+            "text": "Call render_page_to_png (Python), Pdf.RenderPageToPng (C#), rustpdf.RenderPageToPng (Go), or renderPageToPng (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is free, like every feature."
           }
         },
         {
@@ -129,7 +129,7 @@
           "name": "Is page rendering free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Basic PDF generation is free. Page rendering is a Pro feature, bundled with PDF/A and encryption in the self-serve Pro tier, and also included in Enterprise. Without an active license the call returns a license error and produces no image."
+            "text": "Basic PDF generation and page rendering are free, like every feature; the call returns the PNG image "
           }
         }
       ]
@@ -301,10 +301,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -511,7 +511,7 @@
         <h2 class="center">How to render a PDF page with rust-pdf</h2>
         <p class="center muted narrow">
           Pass the PDF bytes, a zero-based page index and a DPI; get PNG bytes
-          back. Page rendering is a Pro feature, so a license must be active.
+          back. Page rendering is free, like every feature.
         </p>
         <div class="tabs" id="code-tabs">
           <div class="tab-bar">
@@ -520,7 +520,7 @@
             <button class="tab" data-tab="go">Go</button>
             <button class="tab" data-tab="node">Node</button>
           </div>
-<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf  (set RUSTPDF_LICENSE to your Pro token)
+<pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
 import rustpdf
 
 data = open("document.pdf", "rb").read()
@@ -550,14 +550,11 @@ fs.writeFileSync("page1.png", png);</code></pre>
         </p>
 
         <div class="rp-pro reveal">
-          <span class="tag">Pro feature</span>
+          <span class="tag">Free</span>
           <p>
-            Page rendering is licensed in the <strong>Pro</strong> tier, alongside
-            PDF/A archival output and encryption, and is also included in
-            Enterprise. Basic PDF generation stays free. Set your token in the
-            <code>RUSTPDF_LICENSE</code> environment variable and every binding
-            picks it up automatically. See <a href="/#pricing">pricing</a> for the
-            tiers.
+            Page rendering is free, like every feature &mdash; PDF/A archival output,
+            encryption and the rest of the library. See
+            <a href="/docs/">documentation</a> for the full API.
           </p>
         </div>
       </div>
@@ -568,7 +565,7 @@ fs.writeFileSync("page1.png", png);</code></pre>
       <div class="wrap narrow">
         <h2 class="center">PDF rendering FAQ</h2>
         <details><summary>How do I render a PDF page to an image?</summary>
-          <p>Call <code>render_page_to_png</code> (Python), <code>Pdf.RenderPageToPng</code> (C#), <code>rustpdf.RenderPageToPng</code> (Go), or <code>renderPageToPng</code> (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is a Pro feature, so a valid license must be active.</p>
+          <p>Call <code>render_page_to_png</code> (Python), <code>Pdf.RenderPageToPng</code> (C#), <code>rustpdf.RenderPageToPng</code> (Go), or <code>renderPageToPng</code> (Node) with the PDF bytes, a zero-based page index and a DPI. The library parses the document, interprets the page content stream, paints it onto a bitmap and returns PNG bytes. Page rendering is free, like every feature.</p>
         </details>
         <details><summary>Does it need a headless browser or external tool?</summary>
           <p>No. The rasterizer is written in pure Rust on top of <code>tiny-skia</code>. There is no Chromium, no Ghostscript, no PDFium and no C dependency. It ships inside the same single library as the rest of the bindings, so deployment stays a single artifact.</p>
@@ -580,7 +577,7 @@ fs.writeFileSync("page1.png", png);</code></pre>
           <p>You choose. The DPI argument scales the output: 72 DPI gives one pixel per point (the PDF's natural size), 150 DPI is good for previews, 300 DPI for print-quality rasters. The bitmap dimensions are the page size in points multiplied by DPI divided by 72.</p>
         </details>
         <details><summary>Is page rendering free?</summary>
-          <p>Basic PDF generation is free. Page rendering is a Pro feature, bundled with PDF/A and encryption in the self-serve Pro tier, and also included in Enterprise. Without an active license the call returns a license error and produces no image.</p>
+          <p>Basic PDF generation and page rendering are free, like every feature; the call returns the PNG image </p>
         </details>
       </div>
     </section>
@@ -591,11 +588,11 @@ fs.writeFileSync("page1.png", png);</code></pre>
         <h2>Render PDFs to images in your language</h2>
         <p class="muted">
           One Rust core, the same native rasterizer across eight languages.
-          Prototype for free, license Pro when you ship.
+          Every feature is free.
         </p>
         <div class="cta-row">
           <a href="/docs/" class="btn btn-lg">Read the docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/extract-images">Extract images</a>
@@ -611,13 +608,13 @@ fs.writeFileSync("page1.png", png);</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

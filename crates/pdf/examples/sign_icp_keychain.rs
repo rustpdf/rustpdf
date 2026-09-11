@@ -18,11 +18,6 @@ const FONT: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
-const DEV_LICENSE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../license/fixtures/dev_license.txt"
-));
-
 fn env(key: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| panic!("missing env var {key}"))
 }
@@ -51,8 +46,6 @@ fn policy_from_env() -> Option<pdf::SignaturePolicy> {
 }
 
 fn main() {
-    pdf::activate_license(DEV_LICENSE.trim()).expect("activate dev license");
-
     let cert = std::fs::read(env("RUSTPDF_ICP_CERT")).expect("read cert");
     let chain: Vec<Vec<u8>> = std::env::var("RUSTPDF_ICP_CHAIN")
         .unwrap_or_default()

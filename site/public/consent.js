@@ -18,19 +18,6 @@
     "GB","CH", // UK + Switzerland
   ];
 
-  // --- Capture the Google Ads click id for offline conversion attribution. ---
-  // First-party, functional cookie (90d) — read at checkout, uploaded server-side
-  // when the sale completes. Also handled by Consent Mode's url_passthrough.
-  try {
-    var gm = location.search.match(/[?&]gclid=([^&]+)/);
-    if (gm) {
-      var exp = new Date(Date.now() + 90 * 864e5).toUTCString();
-      document.cookie =
-        "gclid=" + encodeURIComponent(decodeURIComponent(gm[1])) +
-        ";path=/;expires=" + exp + ";SameSite=Lax";
-    }
-  } catch (_) {}
-
   // --- gtag bootstrap (available immediately, before the script loads). ---
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }

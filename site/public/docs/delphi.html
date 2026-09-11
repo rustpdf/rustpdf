@@ -61,8 +61,8 @@
       },
       "publisher": {
         "@type": "Organization",
-        "name": "CaseFy Inc.",
-        "url": "https://casefy.io",
+        "name": "rust-pdf contributors",
+        "url": "https://github.com/rustpdf/rustpdf",
         "logo": {
           "@type": "ImageObject",
           "url": "https://rustpdf.dev/logo.png",
@@ -98,10 +98,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -121,7 +121,6 @@
       <a href="#download">Download</a>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
-      <a href="#licensing">Licensing &amp; activation</a>
       <a href="#coords">Coordinate system</a>
       <a href="#threading">Threading &amp; concurrency</a>
 
@@ -177,12 +176,12 @@
       <h1>Delphi / Free Pascal</h1>
       <p class="docs-lead">The <code>RustPdf</code> unit wraps the rust-pdf C core with idiomatic, handle-owning classes. It covers the whole product surface: vector graphics, embedded/subset fonts &amp; Unicode text, paragraphs, images, PDF/A (1b–3a + A-4/4e/4f), tagged/accessible output, attachments, AcroForm fields, manipulation, text extraction, encryption and digital signatures. One unit compiles under both <b>Delphi</b> (10.x+, Windows/macOS/Linux) and <b>Free Pascal</b> (3.2+).</p>
 
-      <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle. Free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, licensing, extraction, signing) live on the <code>Pdf</code> record.</p></div>
+      <div class="note"><b>Two classes do almost everything.</b> <code>TPdfDocument</code> authors a new PDF; <code>TPdfEditable</code> loads and manipulates an existing one. Both own a native handle. Free them with <code>.Free</code> (a <code>try…finally</code> is the idiom). Stateless calls (version, extraction, signing) live on the <code>Pdf</code> record.</p></div>
       <div class="note"><b>Free each handle exactly once.</b> Like any Object Pascal object, a handle must not be freed twice or used after <code>.Free</code>. Using a freed handle raises <code>ERustPdf</code>, but calling <code>.Free</code> a <i>second</i> time is undefined behavior that can crash the process (the object memory is already gone). Stick to the <code>try…finally Doc.Free end</code> idiom and do not also free it elsewhere; if a variable may be freed on more than one path, use <code>FreeAndNil(Doc)</code> so a duplicate free becomes a harmless no-op.</div>
 
       <!-- DOWNLOAD -->
       <h2 id="download">Download</h2>
-      <p>The binding ships as one versioned archive: the <code>RustPdf.pas</code> unit, the native library for each platform (<code>lib/&lt;os-arch&gt;/</code>), a sample and an <code>INSTALL.txt</code>. Basic PDF generation works immediately as a free trial; the corporate features unlock with a <a href="#licensing">license token</a>.</p>
+      <p>The binding ships as one versioned archive: the <code>RustPdf.pas</code> unit, the native library for each platform (<code>lib/&lt;os-arch&gt;/</code>), a sample and an <code>INSTALL.txt</code>. Every feature is free and available out of the box.</p>
       <div class="download-card">
         <div class="dl-meta">
           <span class="dl-version">rustpdf-delphi v__DELPHI_VERSION__</span>
@@ -246,16 +245,6 @@ begin
 end;</code></pre></div>
       <div class="note"><b>UTF-8 source.</b> Under Free Pascal, add <code>{$CODEPAGE UTF8}</code> so accented string literals reach the engine as proper UTF-8. Delphi handles UTF-8 source natively.</div>
 
-      <!-- LICENSING -->
-      <h2 id="licensing">Licensing &amp; activation</h2>
-      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls raise <code>ERustPdf</code> and produce no output.</p>
-      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
-      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
-# or point at a file:
-export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
-      <p>Or activate explicitly in code:</p>
-      <div class="code has-label"><span class="lbl">delphi</span><pre><code>Pdf.ActivateLicense(Token);   // raises ERustPdf if forged / expired / malformed</code></pre></div>
-      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
 
       <!-- COORDS -->
       <h2 id="coords">Coordinate system</h2>
@@ -274,7 +263,6 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
         <li><b>Move between threads.</b> A handle may be created on one thread and used on another.</li>
         <li><b>Never share a live handle.</b> Two threads calling into the same <code>TPdfDocument</code> at the same time is unsupported; protect it with a <code>TCriticalSection</code> if you must.</li>
         <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure on one thread never clobbers another's. <code>ERustPdf</code> is always raised on the calling thread.</li>
-        <li><b>License is process-global.</b> <code>Pdf.ActivateLicense</code> (or the env var) applies to every thread; activate once at startup.</li>
       </ul>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>type
   TRenderThread = class(TThread)
@@ -377,18 +365,18 @@ Doc.DrawImage(Logo, 72, 680, 160, 90);
 Doc.SaveToFile('with_image.pdf');</code></pre></div>
 
       <!-- PDF/A -->
-      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="pdfa">PDF/A</h2>
       <p>Produce archival-grade output. <code>Pdfa</code> defaults to A-2b; pass a <a href="#enums"><code>TPdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>Pdfa</code> &nbsp; <code>Pdfa(Level: TPdfaLevel)</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.Pdfa(palA2B).SetInfo('Q3 Report', 'Acme Inc.', '', '', '');
 F := Doc.AddFontFile('Roboto-Regular.ttf');
 Doc.AddPage;
 Doc.ShowText(F, 20, 72, 760, 'Archival report');
-Doc.SaveToFile('report_pdfa.pdf');   // raises ERustPdf without a license granting PDF/A</code></pre></div>
+Doc.SaveToFile('report_pdfa.pdf');   // raises ERustPdf granting PDF/A</code></pre></div>
       <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>SetInfo</code> with a non-empty title.</div>
 
       <!-- TAGGED -->
-      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA)</h2>
       <p><code>Tagged</code> builds a logical structure tree (PDF/UA-1). Combine with <code>Pdfa(palA2A)</code> for archival <i>and</i> accessible output. Use <code>HeadingLevel</code> on <code>ShowText</code> for <code>H1</code>–<code>H6</code>, and <code>Figure(…, Alt)</code> for described images.</p>
       <div class="api"><code>Tagged</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Doc.Pdfa(palA2A).Tagged.SetInfo('Accessible report', '', '', '', '');
@@ -403,7 +391,7 @@ Doc.SaveToFile('accessible.pdf');</code></pre></div>
       <div class="note"><b>Figures need a tagged document.</b> <code>Figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
 
       <!-- ATTACHMENTS -->
-      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <h2 id="attachments">Attachments (PDF/A-3)</h2>
       <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>TAFRelationship</code></a>.</p>
       <div class="api"><code>AttachFile(Name, Mime, Data, Relationship = afSource, Description = '')</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Xml := ...;   // TBytes of invoice.xml
@@ -414,10 +402,10 @@ Doc.ShowText(F, 18, 72, 760, 'Invoice 1024');
 Doc.AttachFile('invoice.xml', 'text/xml', Xml, afSource, 'Structured invoice data');
 Doc.SaveToFile('einvoice.pdf');</code></pre></div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>AttachFile</code> before serializing.</div>
-      <div class="note"><b>The licence gate is on PDF/A, not on <code>AttachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>AttachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
+      <div class="note">Attachments are free, like every feature: attaching a file produces a valid PDF with an <code>/EmbeddedFile</code>, and adding a PDF/A level makes the attachment archival.</div>
 
       <!-- FACTURX -->
-      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices</h2>
       <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 plus Factur-X under veraPDF.</p>
       <div class="api"><code>Facturx(Xml: TBytes; Profile: TFacturxProfile = fxEN16931)</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Xml: TBytes;
@@ -428,7 +416,7 @@ F := Doc.AddFontFile('Roboto-Regular.ttf');
 Doc.AddPage;
 Doc.ShowText(F, 18, 72, 760, 'Invoice INV-2026-001');
 Doc.Facturx(Xml, fxEN16931);
-Doc.SaveToFile('einvoice.pdf');   // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+Doc.SaveToFile('einvoice.pdf');   // PDF/A-3 + Factur-X</code></pre></div>
       <p>See the <a href="#enums"><code>TFacturxProfile</code></a> enum for the conformance levels (fxMinimum to fxExtended).</p>
 
       <!-- FORMS -->
@@ -679,20 +667,20 @@ Ed.SetStampSpace(ssVisible);    // back to the default</code></pre></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed.DrawImage(0, Logo, 260, 60, 80, 30, 90, iaBoundingBox);</code></pre></div>
 
       <!-- ED REDACT -->
-      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-redact">Redaction</h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions. Returns <code>True</code> when the page index was valid.</p>
       <div class="api"><code>Redact(PageIndex: NativeUInt; const Rects: array of TPdfRect): Boolean</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('statement.pdf');
 try
   Ed.Redact(0, [PdfRect(60, 590, 400, 620), PdfRect(60, 540, 400, 570)]);
-  Ed.SaveToFile('redacted.pdf');     // raises ERustPdf without a license granting redaction
+  Ed.SaveToFile('redacted.pdf');     // raises ERustPdf granting redaction
 finally
   Ed.Free;
 end;</code></pre></div>
       <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf.ExtractText</code> on the output no longer returns it.</div>
 
       <!-- ED PDFA -->
-      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-pdfa">Convert to PDF/A</h2>
       <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
       <div class="api"><code>ConvertToPdfa(Level: TPdfaLevel = palA2B): TPdfEditable</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('in.pdf');
@@ -719,13 +707,13 @@ finally
 end;</code></pre></div>
 
       <!-- ED ENCRYPT -->
-      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-encrypt">Encryption</h2>
       <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
       <div class="api"><code>Encrypt(Method = encAES256, User = '', Owner = '', ReadOnlyPerms = False)</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Ed := TPdfEditable.LoadFromFile('in.pdf');
 try
   Ed.Encrypt(encAES256, '', 'owner-secret', True);
-  Ed.SaveToFile('secured.pdf');     // raises ERustPdf without an Encryption license
+  Ed.SaveToFile('secured.pdf');     // raises ERustPdf
 finally
   Ed.Free;
 end;</code></pre></div>
@@ -767,7 +755,7 @@ finally
 end;</code></pre></div>
 
       <!-- SIGN -->
-      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="sign">Digital signatures</h2>
       <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER <code>TBytes</code>. <code>Pades = True</code> switches to PAdES-B-B.</p>
       <div class="api"><code>Pdf.Sign(PdfBytes, KeyDer, CertDer, Reason = '', Location = '', Name = '', Pades = False): TBytes</code></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>PdfBytes := ...;   // TBytes of contract.pdf
@@ -778,7 +766,7 @@ Signed := Pdf.Sign(PdfBytes, KeyDer, CertDer, 'Approved', 'New York', 'Jane Doe'
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
       <!-- DEFERRED -->
-      <h2 id="deferred">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <h2 id="deferred">Deferred / HSM signing</h2>
       <p>Sign without ever handing the library a private key. When the key lives in an HSM, a cloud KMS, a smartcard or a PKI token (any PKI: eIDAS, AATL, a national CA), you supply the raw RSA signature and the binding builds and embeds the CMS / PKCS#7 container. There are two flavours: a synchronous <b>remote signer</b> callback, and a two-phase <b>begin / complete</b> flow for asynchronous or out-of-band signing.</p>
 
       <h3>Model A: remote signer callback</h3>
@@ -854,7 +842,7 @@ for F in Pdf.ListSignatures(PdfBytes) do
       <p>A PAdES-EPES signature-policy identifier. <code>OID</code> is the policy OID (dotted-decimal); <code>Hash</code> is the policy document hash (<code>TBytes</code>); <code>HashAlgorithmOID</code> is the hash algorithm OID (empty means SHA-256); <code>URI</code> is an optional SPURI qualifier pointing to where the policy can be retrieved.</p>
 
       <!-- LTV -->
-      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV)</h2>
       <p>Build long-term-validation signatures offline. <code>AddDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>Timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
       <div class="api"><code>Pdf.AddDss(PdfBytes, Certs, Crls): TBytes</code></div>
       <div class="api"><code>Pdf.Timestamp(PdfBytes, TsaKeyDer, TsaCertDer, Date = ''): TBytes</code></div>
@@ -883,9 +871,9 @@ end;</code></pre></div>
       <p>Free public TSAs work: FreeTSA (<code>https://freetsa.org/tsr</code>) and DigiCert (<code>http://timestamp.digicert.com</code>). The integrator performs the HTTP POST; the binding builds the request and embeds the returned token.</p>
 
       <!-- VERIFY -->
-      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="verify">Validate signatures</h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
-      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned. It is not available on the free tier.</p>
+      <p>Object Pascal ships no bundled JSON parser, so the binding returns the report as the raw JSON array text: <code>VerifySignaturesJson</code> gives back the verbatim JSON string (a <code>UTF8String</code>) for you to parse with your preferred JSON unit. The string <code>'[]'</code> means the document is unsigned. Signature validation is free, like every feature.</p>
       <div class="api"><code>Pdf.VerifySignaturesJson(PdfBytes: TBytes): UTF8String</code></div>
       <p>Each array entry is an object with <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report now also carries the signer-certificate detail: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code> and <code>signer</code> may be empty, and any of the certificate fields may be <code>null</code>, when absent.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>var Json: UTF8String;
@@ -956,9 +944,9 @@ begin
   if O.RequiresPassword then WriteLn('needs a password to open');
 end;</code></pre></div>
 
-      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <h2 id="render">Render a page to an image</h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
-      <div class="api"><code>Pdf.RenderPageToPng(const PdfBytes: TBytes; PageIndex: NativeUInt; Dpi: Double): TBytes</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>Pdf.RenderPageToPng(const PdfBytes: TBytes; PageIndex: NativeUInt; Dpi: Double): TBytes</code></div>
       <div class="api"><code>Pdf.PageCount(const PdfBytes: TBytes): NativeUInt</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>Data := ReadBytes('report.pdf');
 WriteLn(Pdf.PageCount(Data), ' page(s)');
@@ -1043,7 +1031,7 @@ WriteBytes('page1.png', Png);</code></pre></div>
 
       <!-- ERRORS -->
       <h2 id="errors">Error handling</h2>
-      <p>Every failing native call raises <code>ERustPdf</code> (a <code>Exception</code>) carrying the <code>Status</code> (a <code>TPdfStatus</code>) and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation&rsquo;s own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same &ldquo;requires a valid license&rdquo; message.</p>
+      <p>Every failing native call raises <code>ERustPdf</code> (a <code>Exception</code>) carrying the <code>Status</code> (a <code>TPdfStatus</code>) and the library's last-error message. The status code identifies the failed operation &mdash; for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10.</p>
       <div class="code has-label"><span class="lbl">delphi</span><pre><code>try
   Doc.Pdfa.SetInfo('x', '', '', '', '');
   Doc.AddPage;
@@ -1058,7 +1046,6 @@ end;</code></pre></div>
       <table>
         <tr><th>Function</th><th>Description</th></tr>
         <tr><td><code>Pdf.Version: string</code></td><td>Native library version string.</td></tr>
-        <tr><td><code>Pdf.ActivateLicense(Token)</code></td><td>Activate a license token (raises on invalid/expired).</td></tr>
       </table>
 
       <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Swift, C#, Go, PHP, Ruby and Node: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
@@ -1070,7 +1057,6 @@ end;</code></pre></div>
       <a href="#download">Download</a>
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
-      <a href="#licensing">Licensing</a>
       <a href="#threading">Threading</a>
       <a href="#doc-create">Create &amp; save</a>
       <a href="#graphics">Vector graphics</a>

@@ -1,10 +1,8 @@
 'use strict';
 
-// Minimal smoke test for CI release builds. Deliberately exercises ONLY the
-// free (unlicensed) surface — basic vector graphics + serialization — because
-// release binaries are compiled with the PRODUCTION license pubkey, which
-// rejects the committed dev token. Gated features (PDF/A, signing, encryption,
-// accessibility) are covered by test/run.js against a dev-key build, not here.
+// Minimal smoke test for CI release builds. Exercises the surface — basic
+// vector graphics + serialization — against the published-shape package. The
+// full surface is covered by test/run.js, not here.
 //
 // Verifies the published-shape package can locate + load the native library and
 // round-trip a document. Exits non-zero on any failed assertion.

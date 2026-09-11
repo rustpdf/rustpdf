@@ -45,14 +45,10 @@ typedef enum {
      */
     PDF_STATUS_INVALID_ARGUMENT = 11,
     /**
-     * License activation failed (bad signature, expired, or malformed).
-     */
-    PDF_STATUS_LICENSE = 12,
-    /**
      * The operation cannot be performed safely on this input (e.g. redaction
      * of a page whose content cannot be rewritten) — see the last error.
      */
-    PDF_STATUS_UNSUPPORTED = 13,
+    PDF_STATUS_UNSUPPORTED = 12,
 } PdfStatus;
 
 /**
@@ -161,16 +157,6 @@ const char *pdf_version(void);
  * Do not free the returned pointer or use it across other FFI calls.
  */
 const char *pdf_last_error_message(void);
-
-/**
- * Activate a license token for this process, unlocking the corporate features
- * it grants (PDF/A, signatures, encryption, accessibility) until it expires.
- * Returns [`PdfStatus::License`] if the token is forged, expired or malformed.
- *
- * # Safety
- * `token` must be a valid NUL-terminated UTF-8 C string.
- */
-PdfStatus pdf_activate_license(const char *token);
 
 /**
  * Create a new, empty A4 document. Returns NULL on allocation failure.

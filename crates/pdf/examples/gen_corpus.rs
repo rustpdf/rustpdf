@@ -28,13 +28,6 @@ struct Entry {
 type GfxCase = (&'static str, &'static str, fn(&mut Document));
 
 fn main() {
-    // The corpus includes PDF/A and encrypted samples (corporate features), so
-    // activate the committed dev license first.
-    let dev_license =
-        std::fs::read_to_string(workspace_root().join("crates/license/fixtures/dev_license.txt"))
-            .expect("dev license fixture");
-    pdf::activate_license(dev_license.trim()).expect("activate dev license");
-
     let root = workspace_root().join("corpus");
     std::fs::create_dir_all(root.join("generated")).unwrap();
     std::fs::create_dir_all(root.join("corrupted")).unwrap();

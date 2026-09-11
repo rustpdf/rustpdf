@@ -68,7 +68,7 @@ console/VCL/FMX app.
   delete, extract pages, edit `/Info` and XMP, overlay content, fill form
   fields, optimize, compact, encrypt, and serialize (full or incremental).
 - **`Pdf`** (record with static methods) — stateless entry points:
-  `Pdf.Version`, `Pdf.ActivateLicense`, `Pdf.ExtractText`, `Pdf.Sign`,
+  `Pdf.Version`, `Pdf.ExtractText`, `Pdf.Sign`,
   `Pdf.Timestamp`, `Pdf.AddDss`.
 
 Strings cross as UTF-8; byte payloads are `TBytes`; rectangles use `TPdfRect`
@@ -117,13 +117,10 @@ remote signer; build a DER CMS container, then `Session.Complete(Container)`
 already present. `TSigningOptions` also carries `Location` / `Name`, DocMDP
 certification (`TCertify`) and a signature policy (`TSignaturePolicy`).
 
-## Licensing
+## All features included
 
-Corporate features (PDF/A, tagging, encryption, signing, page rendering — a
-**Pro** feature) require a license. Either call `Pdf.ActivateLicense(token)` or
-set the `RUSTPDF_LICENSE` /
-`RUSTPDF_LICENSE_FILE` environment variable — auto-activation lives in the core,
-so the binding gets it for free. See `docs/LICENSING.md`.
+Every feature is free — PDF/A, tagging, encryption, signing/PAdES and page
+rendering are all included.
 
 ## Distribution
 
@@ -189,8 +186,7 @@ The zip is a build artifact (never committed). The full chain it automates:
 
 1. **Bump + tag.** Set the workspace `version` and push a tag `delphi-v<version>`.
 2. **CI builds + releases.** `.github/workflows/release-delphi.yml` compiles the
-   cdylib on native runners (Windows x64+x86, macOS universal, Linux x64+arm64,
-   each with the production license pubkey), runs `package.sh` to assemble the
+   cdylib on native runners (Windows x64+x86, macOS universal, Linux x64+arm64), runs `package.sh` to assemble the
    archive, and attaches `rustpdf-delphi-<version>.zip` + `.sha256` to a GitHub
    Release. The Release is the immutable source of truth.
 3. **Deploy pulls it in.** `site/scripts/deploy.sh` runs
@@ -213,6 +209,6 @@ make delphi-test            # builds the cdylib, then compiles + runs test/run.d
 
 It exercises the whole surface (graphics, PDF/A-2a, tagging, text extraction,
 incremental update, merge/optimize, all form fields, AES-256 encryption,
-PAdES signing, timestamp and DSS) plus licensing gating, and exits non-zero on
+PAdES signing, timestamp and DSS), and exits non-zero on
 any failed assertion. The target skips cleanly when neither `fpc` nor `dcc64`
 is on `PATH`.

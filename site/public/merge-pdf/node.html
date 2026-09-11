@@ -124,7 +124,7 @@
           "name": "Is merging free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Node.js. You only need a license for the corporate features such as PDF/A, signatures and encryption."
+            "text": "Yes. Loading, merging, splitting, reordering and text extraction are free in Node.js, as are PDF/A, signatures and encryption."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -243,7 +243,7 @@ subset.close();
 a.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Merging, splitting and reordering are part of the free tier in Node.js. No license token needed.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The full Node.js manipulation reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
@@ -258,7 +258,7 @@ a.close();</code></pre>
           <p>Yes. On merge every object from the other document is renumbered and its references are deep-remapped, and the real page tree is rebuilt on output, so the result passes qpdf and mutool.</p>
         </details>
         <details><summary>Is merging free?</summary>
-          <p>Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in Node.js. You only need a license for the corporate features such as PDF/A, signatures and encryption.</p>
+          <p>Yes. Loading, merging, splitting, reordering and text extraction are free in Node.js, as are PDF/A, signatures and encryption.</p>
         </details>
         <details><summary>Can I merge uploaded PDFs in an Express route without temp files?</summary>
           <p>Yes. The whole flow stays in process through the Koffi binding, so an Express or NestJS upload handler can load each document, merge, reorder or extract pages, and save the result without spawning a CLI or leaving scratch files on disk.</p>
@@ -269,10 +269,10 @@ a.close();</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Assemble and split documents straight from your API</h2>
-        <p class="muted">One Rust core, the same page operations in every language. Manipulation is free; license PDF/A, signatures or encryption only when you reach for them.</p>
+        <p class="muted">One Rust core, the same page operations in every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/merge-pdf">Merge &amp; split PDF</a>
@@ -294,13 +294,13 @@ a.close();</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

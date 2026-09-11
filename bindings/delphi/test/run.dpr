@@ -1,7 +1,7 @@
 { Smoke test for the RustPdf Object Pascal binding. Exercises the whole surface
   (graphics, fonts/text, PDF/A, tagging, forms, manipulation, extraction,
-  encryption, signing, timestamp, DSS) plus licensing gating. Exits non-zero on
-  any failed assertion. Compiles with Free Pascal (fpc) or Delphi. }
+  encryption, signing, timestamp, DSS). Exits non-zero on any failed assertion.
+  Compiles with Free Pascal (fpc) or Delphi. }
 program run;
 
 {$IFDEF FPC}
@@ -193,7 +193,7 @@ end;
 {$ENDIF}
 
 var
-  Root, Font, DevLicense, Fx: string;
+  Root, Font, Fx: string;
   Doc, Form, Plain: TPdfDocument;
   Ed, A, B, Merged, EncEd: TPdfEditable;
   F, PF: Integer;
@@ -253,32 +253,19 @@ var
 begin
   Root := RepoRoot;
   Font := IncludeTrailingPathDelimiter(Root) + 'assets/fonts/Roboto-Regular.ttf';
-  DevLicense := ReadText(IncludeTrailingPathDelimiter(Root) +
-    'crates/license/fixtures/dev_license.txt');
   Fx := IncludeTrailingPathDelimiter(Root) + 'crates/pdf/tests/fixtures/';
 
   Writeln('rustpdf version: ', Pdf.Version);
 
-  { 1. Corporate features blocked without a license. The test environment must
-    not set RUSTPDF_LICENSE / RUSTPDF_LICENSE_FILE (auto-activation sources). }
-  Blocked := False;
+  { 1. Every feature is free. }
   Doc := TPdfDocument.Create;
   try
-    try
-      Doc.Pdfa;
-      Doc.AddPage;
-      Doc.ToBytes;
-    except
-      on ERustPdf do
-        Blocked := True;
-    end;
+    Doc.Pdfa;
+    Doc.AddPage;
+    Assert(Length(Doc.ToBytes) > 0, 'PDF/A must work');
   finally
     Doc.Free;
   end;
-  Assert(Blocked, 'PDF/A must be blocked without a license');
-
-  Pdf.ActivateLicense(DevLicense);
-  Writeln('license activated');
 
   { 2. Tagged PDF/A-2a with a font, heading and justified paragraph. }
   Doc := TPdfDocument.Create;
@@ -298,7 +285,7 @@ begin
   Assert(TextContains(Pdf.ExtractText(Pdfa), 'Título'), 'extracted text');
   Writeln(Format('built PDF/A-2a (%d bytes); extracted ok', [Length(Pdfa)]));
 
-  { 1c. Page rendering (Pro feature; license already active). }
+  { 1c. Page rendering. }
   Assert(Pdf.PageCount(Pdfa) = 1, 'page count');
   Png := Pdf.RenderPageToPng(Pdfa, 0, 72.0);
   Assert((Length(Png) > 8) and (Png[1] = Ord('P')) and (Png[2] = Ord('N')) and (Png[3] = Ord('G')), 'PNG header');

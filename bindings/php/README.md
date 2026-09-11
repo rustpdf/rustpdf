@@ -10,7 +10,7 @@ Generate, edit, sign and process PDFs from PHP: vector graphics, embedded fonts 
 
 Classes (namespace `RustPdf`, PSR-4 under `src/`):
 
-* `Pdf` — static helpers (`version`, `activateLicense`, `extractText`, `sign`,
+* `Pdf` — static helpers (`version`, `extractText`, `sign`,
   `timestamp`, `addDss`, plus deferred/HSM signing: `signWith`, `beginSigning`,
   `completeSignature`, `listSignatures`);
 * `Document` — fluent authoring API;
@@ -73,9 +73,6 @@ require 'vendor/autoload.php'; // or bindings/php/autoload.php
 
 use RustPdf\{Pdf, Document, EditableDoc, PdfaLevel, Align, Encryption};
 
-// A token in RUSTPDF_LICENSE is auto-activated; or:
-Pdf::activateLicense($token);
-
 $doc = new Document();
 $doc->pdfa(PdfaLevel::A2a)->setInfo(title: 'Report');
 $f = $doc->addFontFile('assets/fonts/Roboto-Regular.ttf');
@@ -92,8 +89,8 @@ $ed->encrypt(Encryption::Aes256, owner: 'owner')->save('secured.pdf');
 $signed = Pdf::sign($data, $keyDer, $certDer, pades: true);
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
-without one they throw `PdfException`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Every feature is free — PDF/A, digital signatures/PAdES, encryption,
+accessibility/tagging, redaction and page rendering are all included.
 
 ## Deferred / HSM signing (key stays out of the library)
 

@@ -99,14 +99,6 @@ pub fn ensure_loaded() -> Result<String> {
     Ok(version())
 }
 
-/// Activate a license token, unlocking corporate features (PDF/A, signatures,
-/// encryption, accessibility) for this process.
-pub fn activate_license(token: &str) -> Result<()> {
-    let a = ffi::api()?;
-    let token = cstr(token)?;
-    check(a, unsafe { (a.pdf_activate_license)(token.as_ptr()) })
-}
-
 /// Extract the document's text into a UTF-8 string.
 pub fn extract_text(data: &[u8]) -> Result<String> {
     let a = ffi::api()?;
@@ -147,8 +139,7 @@ pub fn extract_images_to_dir(data: &[u8], dir: &str) -> Result<usize> {
 }
 
 /// Render page `page` (0-based) of `data` to a PNG image at `dpi`
-/// dots-per-inch. Page rendering is a licensed **Pro** feature: returns an
-/// error (license status) unless a license granting it is active.
+/// dots-per-inch.
 pub fn render_page_to_png(data: &[u8], page: usize, dpi: f64) -> Result<Vec<u8>> {
     let a = ffi::api()?;
     let mut ptr: *mut u8 = ptr::null_mut();
@@ -159,7 +150,7 @@ pub fn render_page_to_png(data: &[u8], page: usize, dpi: f64) -> Result<Vec<u8>>
     Ok(take_buffer(a, ptr, len))
 }
 
-/// Number of pages in `data` (free — no license required).
+/// Number of pages in `data` (free).
 pub fn page_count(data: &[u8]) -> Result<usize> {
     let a = ffi::api()?;
     let mut count: usize = 0;

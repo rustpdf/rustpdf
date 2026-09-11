@@ -59,7 +59,6 @@ __all__ = [
     "PdfOverview",
     "version",
     "library_path",
-    "activate_license",
     "extract_text",
     "extract_page_text",
     "find_text",
@@ -408,7 +407,6 @@ def _bind(name, restype, argtypes):
 # core
 _version = _bind("pdf_version", c_char_p, [])
 _last_error = _bind("pdf_last_error_message", c_char_p, [])
-_activate_license = _bind("pdf_activate_license", c_int, [c_char_p])
 _buffer_free = _bind("pdf_buffer_free", None, [_U8, c_size_t])
 # document lifecycle + graphics
 _new = _bind("pdf_document_new", _DOC, [])
@@ -744,13 +742,6 @@ _list_signatures = _bind("pdf_list_signatures", c_int, [_U8, c_size_t, *_OUTBUF]
 def version() -> str:
     """Native library version string."""
     return _version().decode("utf-8")
-
-
-def activate_license(token: str) -> None:
-    """Activate a license token, unlocking the corporate features it grants
-    (PDF/A, signatures, encryption, accessibility). Raises :class:`PdfError`
-    if the token is forged, expired or malformed."""
-    _check(_activate_license(_enc(token)))
 
 
 def _check(status: int) -> None:
@@ -1534,16 +1525,13 @@ def extract_images_to_dir(data: bytes, out_dir: str) -> int:
 
 def render_page_to_png(data: bytes, page: int = 0, dpi: float = 150.0) -> bytes:
     """Render page ``page`` (0-based) of ``data`` to a PNG image at ``dpi``.
-
-    Page rendering is a licensed **Pro** feature: raises :class:`PdfError`
-    (``PdfStatus.License``) unless a license granting it is active.
     """
     ptr, n, _keep = _as_u8(bytes(data))
     return _take(lambda p, ln: _render_page_to_png(ptr, n, page, float(dpi), p, ln))
 
 
 def page_count(data: bytes) -> int:
-    """Number of pages in ``data`` (free — no license required)."""
+    """Number of pages in ``data`` (free)."""
     ptr, n, _keep = _as_u8(bytes(data))
     count = c_size_t(0)
     _check(_render_page_count(ptr, n, byref(count)))

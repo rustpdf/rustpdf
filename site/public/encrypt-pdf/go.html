@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to encrypt in Go?",
+          "name": "Is encryption free in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Encryption is a corporate feature and needs an active license token. Basic generation in Go is free. The same offline token enables encryption in every language."
+            "text": "Encryption is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Sensitive PDFs (statements, payslips, contracts) usually pass through a Go API before a user ever sees them, yet the standard library has no PDF encryption at all. The archived gofpdf can't help and commercial wrappers are heavy, so teams either shell out to qpdf or skip protection entirely.</p>
             <p class="muted">rust-pdf implements AES-256 (V5/R6) directly, deriving the file key, salts and IVs from the operating system CSPRNG so every output file is unique, with AES-128 and legacy RC4 still on hand for older readers. qpdf validates the result for both the user and the owner password.</p>
-            <p class="muted">Inside a net/http or Gin handler you load the document, call Encrypt, and write the secured bytes straight to the ResponseWriter with Content-Type application/pdf. Every call returns an explicit error rather than panicking, so a missing Encryption license surfaces as a clean 500 instead of crashing the request.</p>
+            <p class="muted">Inside a net/http or Gin handler you load the document, call Encrypt, and write the secured bytes straight to the ResponseWriter with Content-Type application/pdf. Every call returns an explicit error rather than panicking, so any failure surfaces as a clean 500 instead of crashing the request.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -233,12 +233,12 @@
 ed, _ := rustpdf.Load(data)
 defer ed.Close()
 if err := ed.Encrypt(rustpdf.AES256, "", "owner-secret", true); err != nil {
-	log.Fatal(err)   // *Error without an Encryption license
+	log.Fatal(err)   // *Error
 }
 _ = ed.Save("secured.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Go basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
@@ -252,8 +252,8 @@ _ = ed.Save("secured.pdf")</code></pre>
         <details><summary>What is the difference between user and owner passwords?</summary>
           <p>A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode.</p>
         </details>
-        <details><summary>Do I need a license to encrypt in Go?</summary>
-          <p>Encryption is a corporate feature and needs an active license token. Basic generation in Go is free. The same offline token enables encryption in every language.</p>
+        <details><summary>Is encryption free in Go?</summary>
+          <p>Encryption is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>How do I cross-compile this for a Linux Docker image from a Mac?</summary>
           <p>Set CGO_ENABLED=1 with a Linux cross toolchain (for example zig cc or a golang:bookworm builder), compile inside a multi-stage Dockerfile, and copy libpdf_ffi.so next to the binary in the final stage. The Encrypt call is byte-for-byte identical on every target.</p>
@@ -264,10 +264,10 @@ _ = ed.Save("secured.pdf")</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Ship encrypted PDFs from your Go services</h2>
-        <p class="muted">One Rust core, identical encrypted output across every binding. Generation is free in Go; unlock AES-256 with a single offline token when you ship.</p>
+        <p class="muted">One Rust core, identical encrypted output across every binding. Generation and AES-256 encryption are free in Go, </p>
         <div class="cta-row">
           <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/encrypt-pdf">Encrypt PDF</a>
@@ -291,13 +291,13 @@ _ = ed.Save("secured.pdf")</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

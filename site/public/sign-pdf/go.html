@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to sign in Go?",
+          "name": "Is signing free in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Go is free. The same offline Ed25519 token unlocks signing across every language."
+            "text": "Signing is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -244,7 +244,7 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Go basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
@@ -258,8 +258,8 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
         <details><summary>Does it support long-term validation (LTV)?</summary>
           <p>Yes. After signing you can append a Document Security Store with certificates and CRLs (PAdES B-LT) and an RFC 3161 document timestamp (PAdES B-LTA), all offline. A trusted external TSA and live OCSP fetching are the only parts that need network infrastructure.</p>
         </details>
-        <details><summary>Do I need a license to sign in Go?</summary>
-          <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Go is free. The same offline Ed25519 token unlocks signing across every language.</p>
+        <details><summary>Is signing free in Go?</summary>
+          <p>Signing is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Can I sign with a PEM or PKCS#12 key in Go?</summary>
           <p>Yes. Decode a PEM with encoding/pem or open a .p12 with crypto/x509, then marshal the private key to PKCS#8 DER and the certificate to its raw DER bytes. Those are the two inputs Sign expects. The CMS and ByteRange handling then run in the Rust core.</p>
@@ -270,10 +270,10 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
     <section class="section">
       <div class="wrap narrow center">
         <h2>Put verifiable signatures into your Go pipeline</h2>
-        <p class="muted">One Rust core, the same standards-compliant signatures in every language. Build for free in Go; add a license token to sign and timestamp in production.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/sign-pdf">Sign PDF</a>
@@ -297,13 +297,13 @@ _ = os.WriteFile("contract.signed.pdf", signed, 0o644)
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

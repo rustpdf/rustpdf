@@ -2,33 +2,19 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { config, assertRuntime } from "./config.js";
-import {
-  createCheckoutSession,
-  constructEvent,
-  fulfilCheckout,
-  fulfilRenewal,
-  getPricing,
-  simulatePurchase,
-  stripe,
-} from "./stripe.js";
-import { getLicenseByRef } from "./db.js";
-import { requestTrial } from "./trial.js";
-
-assertRuntime();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
+
+const PORT = Number(process.env.PORT || 3000);
+const PRODUCT_NAME = process.env.PRODUCT_NAME || "rust-pdf";
+const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", true);
 
 // --- Security headers + HTTPS enforcement ------------------------------------
-// Cloudflare sits in front, but we set HSTS and the standard security headers at
-// the origin too (defense in depth; Cloudflare passes them through) and redirect
-// any plain-HTTP hit to HTTPS as a safety net. Also enable "Always Use HTTPS" in
-// the Cloudflare dashboard so the edge handles http:// before it reaches origin.
 app.use((req, res, next) => {
   res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -52,9 +38,6 @@ app.use((req, res, next) => {
 });
 
 // --- Canonical URL form: redirect any `.html` URL to its extensionless path ---
-// Every page's <link rel=canonical> is extensionless; the static handler below
-// also serves the bare filename, so `.html` would be a 200 duplicate. 301 it to
-// the clean URL so link equity and crawl budget consolidate on one form.
 app.use((req, res, next) => {
   if (req.method === "GET" && req.path.endsWith(".html")) {
     const clean = req.path.slice(0, -5);
@@ -62,145 +45,6 @@ app.use((req, res, next) => {
     return res.redirect(301, (clean === "/index" ? "/" : clean) + suffix);
   }
   next();
-});
-
-// --- Stripe webhook: MUST receive the raw body, so mount it before json() ----
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  async (req, res) => {
-    let event;
-    try {
-      event = constructEvent(req.body, req.headers["stripe-signature"]);
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    try {
-      switch (event.type) {
-        case "checkout.session.completed":
-        case "checkout.session.async_payment_succeeded": {
-          const license = await fulfilCheckout(event.data.object);
-          console.log(`Fulfilled ${event.data.object.id} → license for ${license.email}`);
-          break;
-        }
-        case "invoice.paid":
-        case "invoice.payment_succeeded": {
-          // Only renewals; the signup invoice is handled by checkout.session.completed.
-          const invoice = event.data.object;
-          if (invoice.billing_reason === "subscription_cycle") {
-            const license = await fulfilRenewal(invoice);
-            console.log(`Renewed ${invoice.id} → fresh license for ${license.email}`);
-          }
-          break;
-        }
-        default:
-          break;
-      }
-      res.json({ received: true });
-    } catch (err) {
-      // Return 500 so Stripe retries; fulfilment is idempotent.
-      console.error("Fulfilment error:", err);
-      res.status(500).json({ error: "fulfilment_failed" });
-    }
-  }
-);
-
-app.use(express.json());
-
-// --- Create a Checkout Session -----------------------------------------------
-app.post("/api/checkout", async (req, res) => {
-  const tier = req.body?.tier;
-  try {
-    if (config.testCheckout) {
-      // Simulate the whole purchase locally — no Stripe needed.
-      const row = await simulatePurchase({
-        email: req.body?.email,
-        licensee: req.body?.licensee,
-        tier,
-      });
-      console.log(`[test] simulated ${row.tier} purchase ${row.ref} → ${row.email}`);
-      return res.json({ url: `/success?session_id=${row.ref}`, test: true });
-    }
-    const session = await createCheckoutSession(tier, { gclid: req.body?.gclid });
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error("Checkout creation failed:", err);
-    res.status(500).json({ error: "checkout_failed" });
-  }
-});
-
-// --- Free trial: email-gated, short-lived token, delivered by email ----------
-// The token is NEVER returned to the browser (so every trial is a deliverable
-// lead and can't be farmed by scripting the page) — the prospect gets it in
-// their inbox. `website` is a honeypot: a real user leaves it blank.
-app.post("/api/trial", async (req, res) => {
-  // Honeypot tripped → pretend success, do nothing (don't tip off the bot).
-  if (req.body && typeof req.body.website === "string" && req.body.website.trim()) {
-    return res.json({ status: "sent" });
-  }
-  try {
-    await requestTrial({
-      email: req.body?.email,
-      consent: !!req.body?.consent,
-      ip: req.ip,
-    });
-    res.json({ status: "sent" });
-  } catch (err) {
-    if (err.code === "bad_email") return res.status(400).json({ error: "bad_email" });
-    if (err.code === "rate_limited") return res.status(429).json({ error: "rate_limited" });
-    console.error("Trial request failed:", err);
-    res.status(500).json({ error: "trial_failed" });
-  }
-});
-
-// --- Look a token up for the success page ------------------------------------
-// Only returns the token once the session is paid AND the webhook has minted it.
-app.get("/api/license", async (req, res) => {
-  const sessionId = String(req.query.session_id || "");
-  if (!sessionId.startsWith("cs_")) return res.status(400).json({ error: "bad_session" });
-
-  // In test mode, serve straight from the store (no real Stripe session exists).
-  let amountTotal = null;
-  let currency = null;
-  if (!config.testCheckout) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (session.payment_status !== "paid" && config.stripe.mode === "payment") {
-        return res.json({ status: "pending" });
-      }
-      amountTotal = session.amount_total ?? null;
-      currency = session.currency ?? null;
-    } catch {
-      return res.status(404).json({ error: "not_found" });
-    }
-  }
-
-  const row = getLicenseByRef(sessionId);
-  if (!row) return res.json({ status: "processing" }); // webhook not in yet
-
-  res.json({
-    status: "ready",
-    token: row.token,
-    licensee: row.licensee,
-    email: row.email,
-    expires_at: row.expires_at,
-    tier: row.tier,
-    features: row.features,
-    amount_total: amountTotal, // in minor units (cents); null in test mode
-    currency,
-  });
-});
-
-// --- Live price for the pricing card (kept in sync with the Stripe Price) ----
-app.get("/api/pricing", async (_req, res) => {
-  try {
-    res.json(await getPricing());
-  } catch (err) {
-    console.error("Pricing fetch failed:", err.message);
-    res.status(502).json({ error: "pricing_unavailable" });
-  }
 });
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -301,13 +145,6 @@ app.get(["/docs/swift.html", "/docs/swift"], (_req, res) => {
 });
 
 // --- Feature hubs that also have a spoke subdirectory ------------------------
-// e.g. both `pdf-a.html` and the `pdf-a/` directory exist. express.static would
-// see the directory first, 301 the canonical extensionless URL `/pdf-a` to
-// `/pdf-a/`, find no index there and return 404 — silently dropping the hub page
-// from the index. Serve the hub .html explicitly (200 at the canonical URL)
-// BEFORE the static handler runs. /pdf-a/<lang> spokes are unaffected.
-// HTML pages served via explicit routes (below) bypass the static handler's
-// setHeaders, so give them the same short-TTL cache policy here.
 const PAGE_CACHE = "public, max-age=300, stale-while-revalidate=86400";
 const sendPage = (res, ...parts) => {
   res.setHeader("Cache-Control", PAGE_CACHE);
@@ -317,18 +154,12 @@ const sendPage = (res, ...parts) => {
 const HUBS_WITH_SUBDIR = [
   "pdf-a", "encrypt-pdf", "merge-pdf", "extract-text", "compress-pdf", "pdf-forms",
 ];
-// One route matches both `/slug` and `/slug/` (Express routing is non-strict, so
-// a separate `/slug/` route would ALSO match `/slug` and 301 it to itself — an
-// infinite loop). Redirect the trailing-slash form to the canonical `/slug`;
-// serve the hub page at the canonical URL.
 for (const slug of HUBS_WITH_SUBDIR) {
   app.get([`/${slug}`, `/${slug}/`], (req, res) => {
     if (req.path.endsWith("/")) return res.redirect(301, `/${slug}`);
     sendPage(res, `${slug}.html`);
   });
 }
-// sign-pdf and generate-pdf have spoke directories but no concept page of their
-// own; serve the dedicated hub index we generate into each directory.
 app.get(["/sign-pdf", "/sign-pdf/"], (req, res) => {
   if (req.path.endsWith("/")) return res.redirect(301, "/sign-pdf");
   sendPage(res, "sign-pdf", "index.html");
@@ -343,24 +174,16 @@ app.use(
   express.static(publicDir, {
     extensions: ["html"],
     setHeaders(res, filePath) {
-      // Fingerprinted/rarely-changing assets: cache hard for a year. Fonts,
-      // images and the favicon never change at a given URL. CSS/JS are not
-      // content-hashed yet, so give them a safe one-day TTL (still 6x the old
-      // 4h) — bump to a year once they carry a ?v= or hashed filename.
       if (/\.(woff2?|ttf|otf|png|jpe?g|gif|webp|svg|ico)$/i.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       } else if (/\.(css|js)$/i.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=86400");
       } else if (/\.html$/i.test(filePath)) {
-        // HTML: short edge/browser TTL with background revalidation so a page
-        // navigation can serve instantly while fetching a fresh copy.
         res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
       }
     },
   }),
 );
-app.get("/success", (_req, res) => sendPage(res, "success.html"));
-app.get("/cancel", (_req, res) => sendPage(res, "cancel.html"));
 // /zugferd is the canonical hybrid-e-invoice page; serve the same page for the
 // French "Factur-X" spelling (the page's <link rel=canonical> points to /zugferd).
 app.get(["/factur-x", "/facturx"], (_req, res) => sendPage(res, "zugferd.html"));
@@ -370,8 +193,7 @@ app.get(["/split-pdf"], (_req, res) => sendPage(res, "merge-pdf.html"));
 
 // Task x language spoke pages live at /<task>/<lang>.html and are served by the
 // static handler above. Map the common alternate language spellings (golang,
-// nodejs, dotnet) to the canonical spoke file; each spoke's <link rel=canonical>
-// points at the primary slug (go / node / csharp).
+// nodejs, dotnet) to the canonical spoke file.
 const SPOKE_TASKS = [
   "sign-pdf", "pdf-a", "encrypt-pdf", "merge-pdf",
   "extract-text", "compress-pdf", "generate-pdf", "pdf-forms",
@@ -391,6 +213,6 @@ app.use((req, res) => {
   res.status(404).sendFile(path.join(publicDir, "404.html"));
 });
 
-app.listen(config.port, () => {
-  console.log(`${config.productName} site on ${config.baseUrl} (port ${config.port})`);
+app.listen(PORT, () => {
+  console.log(`${PRODUCT_NAME} site on ${BASE_URL} (port ${PORT})`);
 });

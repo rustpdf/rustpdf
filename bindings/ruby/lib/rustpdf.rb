@@ -7,7 +7,7 @@ require_relative "rustpdf/native"
 # using the built-in Fiddle stdlib. Covers the whole product surface: vector
 # graphics, fonts/text, paragraphs, images, PDF/A (1b-3a), tagged/accessible
 # output, attachments, AcroForm fields, manipulation, text extraction,
-# encryption and digital signatures, plus feature licensing.
+# encryption and digital signatures. Free and open source (MIT).
 module RustPdf
   # Raised when a native call returns a non-zero PdfStatus.
   class Error < StandardError
@@ -257,13 +257,6 @@ module RustPdf
     Native.call("pdf_version").to_s
   end
 
-  # Activate a license token (unlocks PDF/A, signing, encryption,
-  # accessibility). Tokens may also be supplied via the RUSTPDF_LICENSE /
-  # RUSTPDF_LICENSE_FILE environment variables (auto-activated).
-  def activate_license(token)
-    check(Native.call("pdf_activate_license", token))
-  end
-
   # Extract a document's text (Unicode via ToUnicode).
   def extract_text(pdf)
     take_bytes { |pp, pn| Native.call("pdf_extract_text", pdf, pdf.bytesize, pp, pn) }
@@ -286,13 +279,12 @@ module RustPdf
   end
 
   # Render page +page+ (0-based) of +pdf+ to a PNG image at +dpi+
-  # dots-per-inch. Page rendering is a licensed Pro feature: raises unless a
-  # license granting it is active.
+  # dots-per-inch.
   def render_page_to_png(pdf, page = 0, dpi = 150.0)
     take_bytes { |pp, pn| Native.call("pdf_render_page_to_png", pdf, pdf.bytesize, page, dpi.to_f, pp, pn) }
   end
 
-  # Number of pages in +pdf+ (free — no license required).
+  # Number of pages in +pdf+ (free).
   def page_count(pdf)
     count = Fiddle::Pointer.malloc(Native::SIZEOF_SZ, Fiddle::RUBY_FREE)
     check(Native.call("pdf_page_count", pdf, pdf.bytesize, count))
@@ -366,7 +358,7 @@ module RustPdf
     js.empty? ? [] : JSON.parse(js)
   end
 
-  # Sign a PDF (PKCS#7 detached, incremental update). Requires a license.
+  # Sign a PDF (PKCS#7 detached, incremental update).
   def sign(pdf, key_der, cert_der, reason: nil, location: nil, name: nil, pades: false)
     take_bytes do |pp, pn|
       Native.call("pdf_sign", pdf, pdf.bytesize, key_der, key_der.bytesize,

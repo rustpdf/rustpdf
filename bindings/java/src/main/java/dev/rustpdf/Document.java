@@ -45,19 +45,19 @@ public final class Document implements AutoCloseable {
 
     // ---- configuration ------------------------------------------------------
 
-    /** Emit PDF/A-2b. Requires a license. */
+    /** Emit PDF/A-2b. */
     public Document pdfa() {
         Pdf.check(FFI.C.pdf_document_pdfa(h()));
         return this;
     }
 
-    /** Emit PDF/A at the given level. Requires a license. */
+    /** Emit PDF/A at the given level. */
     public Document pdfa(PdfaLevel level) {
         Pdf.check(FFI.C.pdf_document_pdfa_level(h(), level.code));
         return this;
     }
 
-    /** Enable the tagged/accessible structure tree. Requires a license. */
+    /** Enable the tagged/accessible structure tree. */
     public Document tagged() {
         Pdf.check(FFI.C.pdf_document_tagged(h()));
         return this;
@@ -298,7 +298,7 @@ public final class Document implements AutoCloseable {
 
     // ---- ZUGFeRD / Factur-X (Tier 2) ----------------------------------------
 
-    /** Embed a Factur-X / ZUGFeRD e-invoice XML at the given profile. Requires a license. */
+    /** Embed a Factur-X / ZUGFeRD e-invoice XML at the given profile. */
     public Document facturx(byte[] xml, FacturxProfile profile) {
         Pdf.check(FFI.C.pdf_document_facturx(h(), xml, xml.length, profile.code));
         return this;

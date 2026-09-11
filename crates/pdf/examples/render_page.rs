@@ -9,14 +9,6 @@
 use pdf::{Document, RenderOptions};
 
 fn main() {
-    // Page rendering is a licensed Pro feature. This demo activates the
-    // committed dev license; in production set the `RUSTPDF_LICENSE` env var to
-    // your token (auto-activated) instead.
-    let _ = pdf::activate_license(include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../license/fixtures/dev_license.txt"
-    )));
-
     let mut args = std::env::args().skip(1);
     let input = args.next();
     let output = args.next().unwrap_or_else(|| "page.png".to_string());

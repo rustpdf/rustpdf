@@ -1,5 +1,5 @@
 //! Issue #41 P1 #6: positional text search returns bounding boxes in PDF user
-//! space, anchored where text was drawn. No license required (like extraction).
+//! space, anchored where text was drawn (like extraction).
 
 use pdf::{find_text, Document, FindOptions};
 

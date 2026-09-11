@@ -6,7 +6,7 @@ matching the host `GOOS`/`GOARCH`, so a consumer's `go get` + `go build` needs n
 external native library.
 
 These archives are **not** committed on the development branch — they are built
-by `make go-dist` (in release CI, with the production `RUSTPDF_LICENSE_PUBKEY`)
+by `make go-dist` (in release CI)
 and included in the released tag. During in-repo development the `rustpdf_dev`
 build tag links the dynamic library from the monorepo build tree instead, so the
 test suite (`make go-test`) runs without staging these files.

@@ -24,8 +24,6 @@ Allow: /
 
 User-agent: *
 Allow: /
-Disallow: /success
-Disallow: /cancel
 Disallow: /api/
 
 Sitemap: https://rustpdf.dev/sitemap.xml

@@ -28,11 +28,9 @@ public enum PdfStatus: Int32, Sendable {
     case sign            = 10
     /// An out-of-range index or other invalid argument.
     case invalidArgument = 11
-    /// License activation failed (bad signature, expired, or malformed).
-    case license         = 12
     /// The operation cannot be performed safely on this input — see the
     /// last-error message.
-    case unsupported     = 13
+    case unsupported     = 12
 }
 
 /// An error raised by a native call: the `PdfStatus` plus the library's

@@ -8,8 +8,7 @@
 #
 # Best effort, like bindings/swift|go|delphi/scripts/package.sh — it builds
 # whatever Rust targets can be installed on this host and skips the rest. Run it
-# on Linux/macOS/Windows runners (with the production RUSTPDF_LICENSE_PUBKEY
-# exported) so every slice is populated. dist/ is gitignored (large libs).
+# on Linux/macOS/Windows runners so every slice is populated. dist/ is gitignored (large libs).
 #
 # Usage:  bash bindings/rust/scripts/package.sh
 # Honors $CARGO (defaults to `cargo`).

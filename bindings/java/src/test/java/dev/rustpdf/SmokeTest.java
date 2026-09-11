@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Smoke test / demo for the Java binding. Exercises the whole product surface,
- * including license gating. Exits non-zero on any failed assertion.
+ * Smoke test / demo for the Java binding. Exercises the whole product surface.
+ * Exits non-zero on any failed assertion.
  *
  * <p>Run via {@code make java-test} (or
  * {@code mvn -q test-compile exec:java} from this directory).
@@ -30,23 +30,14 @@ public final class SmokeTest {
     public static void main(String[] args) throws Exception {
         Path root = repoRoot();
         String font = root.resolve("assets/fonts/Roboto-Regular.ttf").toString();
-        String devLicense = Files.readString(
-                root.resolve("crates/license/fixtures/dev_license.txt")).trim();
 
         System.out.println("rustpdf version: " + Pdf.version());
 
-        // 1. Corporate features are blocked until a license is activated.
-        boolean blocked = false;
+        // 1. Every feature is free.
         try (Document d = new Document()) {
             d.pdfa().addPage();
-            d.toBytes();
-        } catch (PdfException e) {
-            blocked = true;
+            assertThat(d.toBytes().length > 0, "PDF/A must work");
         }
-        assertThat(blocked, "PDF/A must be blocked without a license");
-
-        Pdf.activateLicense(devLicense);
-        System.out.println("license activated");
 
         // 2. Build a tagged PDF/A-2a doc with a font, heading and justified paragraph.
         byte[] pdfa;
@@ -63,7 +54,7 @@ public final class SmokeTest {
         assertThat(text.contains("Título"), "extracted text: " + text);
         System.out.println("built PDF/A-2a (" + pdfa.length + " bytes); extracted ok");
 
-        // 2b. Page rendering (Pro feature; license already active).
+        // 2b. Page rendering.
         assertThat(Pdf.pageCount(pdfa) == 1, "page count");
         byte[] png = Pdf.renderPageToPng(pdfa, 0, 72.0);
         assertThat(png.length > 8 && png[1] == 'P' && png[2] == 'N' && png[3] == 'G', "PNG header");
@@ -163,7 +154,7 @@ public final class SmokeTest {
         assertThat(latin1(navDoc).contains("/Outlines"), "outline present");
         System.out.println("links + bookmarks ok (" + navDoc.length + " bytes)");
 
-        // 10. Tier 2: ZUGFeRD / Factur-X e-invoice embedding (license-gated).
+        // 10. Tier 2: ZUGFeRD / Factur-X e-invoice embedding.
         byte[] invoice;
         try (Document doc = new Document()) {
             int f = doc.addFontFile(font);

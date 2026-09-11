@@ -5,9 +5,7 @@
 #   ./site/scripts/deploy.sh --logs     # idem, e segue os logs no fim
 #   SKIP_RSYNC=1 ./site/scripts/deploy.sh   # só rebuild+rollout (sem sincronizar código)
 #
-# NÃO toca em segredos: o ~/site/.env.deploy (TEST_CHECKOUT/Stripe/SendGrid/seed) é
-# excluído do rsync, então a config de produção do VPS é preservada. Para mudar env,
-# edite o .env.deploy no VPS e rode `kubectl create secret ... | apply` (ver INFRA.md).
+# O site é estático + um pequeno servidor Express (sem banco, Stripe ou segredos).
 set -euo pipefail
 
 # ---- Config (sobrescreva por env var se precisar) --------------------------
@@ -61,7 +59,7 @@ if [ "${SKIP_RSYNC:-0}" != "1" ]; then
   say "rsync do código para $VPS:$REMOTE_DIR (segredos preservados)"
   rsync -az --delete \
     --exclude 'target' --exclude 'node_modules' --exclude '.git' \
-    --exclude 'site/data' --exclude 'site/.env' --exclude 'site/.env.deploy' \
+    --exclude 'site/.env' --exclude 'site/.env.deploy' \
     Cargo.toml Cargo.lock crates site \
     "$VPS:$REMOTE_DIR/"
 else
@@ -73,9 +71,6 @@ say "build da imagem + import no containerd do k3s + rollout (no VPS)"
 ssh "$VPS" "NS='$NS' DEPLOY='$DEPLOY' IMAGE='$IMAGE' REMOTE_DIR='$REMOTE_DIR' bash -s" <<'REMOTE'
 set -euo pipefail
 eval REMOTE_DIR="$REMOTE_DIR"   # expande o ~
-
-echo "--- guard: .env.deploy presente?"
-test -f "$REMOTE_DIR/site/.env.deploy" || { echo "ERRO: $REMOTE_DIR/site/.env.deploy sumiu — abortando"; exit 1; }
 
 echo "--- docker build"
 cd "$REMOTE_DIR"
@@ -99,8 +94,8 @@ ssh "$VPS" "NS='$NS' DEPLOY='$DEPLOY' bash -s" <<'REMOTE'
 set -euo pipefail
 POD=$(sudo kubectl -n "$NS" get pod -l app="$DEPLOY" -o jsonpath='{.items[0].metadata.name}')
 echo "pod: $POD ($(sudo kubectl -n "$NS" get pod "$POD" -o jsonpath='{.status.phase} ready={.status.containerStatuses[0].ready}'))"
-echo -n "modo checkout: "
-sudo kubectl -n "$NS" exec "$POD" -- node -e 'fetch("http://127.0.0.1:3000/api/checkout",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tier:"pro"})}).then(r=>r.json()).then(j=>console.log(j.test?"TEST (simulado!)":"produção (cs_live)")).catch(e=>console.log("erro:",e.message))'
+echo -n "healthz: "
+sudo kubectl -n "$NS" exec "$POD" -- node -e 'fetch("http://127.0.0.1:3000/healthz").then(r=>r.text()).then(console.log).catch(e=>console.log("erro:",e.message))'
 REMOTE
 
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$URL" || echo 000)

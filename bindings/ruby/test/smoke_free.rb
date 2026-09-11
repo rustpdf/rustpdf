@@ -1,7 +1,5 @@
-# Free-surface smoke for release CI: the published cdylib is built with the
-# PRODUCTION license pubkey, which rejects the committed dev token, so this
-# exercises only the unlicensed surface (vector graphics → bytes). The full
-# gated surface is covered by test/run.rb against a dev-key build (make ruby-test).
+# Smoke test for release CI: exercises the whole surface (vector graphics
+# → bytes) against the staged cdylib. The full surface is covered by test/run.rb.
 # Exits non-zero on any failed assertion. Set RUSTPDF_LIB to the staged cdylib.
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))

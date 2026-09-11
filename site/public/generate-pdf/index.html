@@ -100,7 +100,7 @@
           "name": "Is generating PDFs with rust-pdf free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language."
+            "text": "Yes. The full authoring foundation &mdash; vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks &mdash; is free to use, as are PDF/A archiving, digital signatures and encryption, in every language."
           }
         },
         {
@@ -186,10 +186,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -228,10 +228,10 @@
         <h2 class="center">A free authoring foundation</h2>
         <p class="muted">
           Many PDF libraries put their best features behind a paywall and leave you with a
-          thin free tier that can barely place text. rust-pdf takes the opposite approach.
+          thin locked-down tier that can barely place text. rust-pdf takes the opposite approach.
           The entire authoring layer is free: you can lay out a full invoice, a styled report
           or a multi-page catalog, embed your brand fonts, draw charts as vector graphics,
-          place photographs, and ship it to production without a license.
+          place photographs, and ship it to production.
         </p>
         <p class="muted">
           The foundation is built for correctness, not just for getting something onto the
@@ -365,8 +365,7 @@
       <div class="wrap">
         <h2 class="center">How to generate a PDF with rust-pdf</h2>
         <p class="center muted narrow">
-          Create a document, add a page, embed a font, draw, and write the bytes. The free
-          core needs no license.
+          Create a document, add a page, embed a font, draw, and write the bytes. Everything is free.
         </p>
         <div class="tabs" id="code-tabs">
           <div class="tab-bar">
@@ -383,7 +382,7 @@ with rustpdf.Document() as doc:
     doc.add_page()
     doc.show_text(f, 22, 72, 760, "Quarterly report")
     doc.show_text(f, 12, 72, 720, "Generated with rust-pdf")
-    doc.save("report.pdf")                         # free, no license needed</code></pre>
+    doc.save("report.pdf")                         # free, </code></pre>
 <pre class="tab-pane" data-pane="go"><code>// go get github.com/rustpdf/rustpdf-go@latest
 doc, _ := rustpdf.New()
 defer doc.Close()
@@ -421,16 +420,14 @@ File.binwrite("report.pdf", doc.to_bytes)</code></pre>
       </div>
     </section>
 
-    <!-- LICENSING -->
+    <!-- FREE -->
     <section class="band">
       <div class="wrap narrow center">
-        <h2>Generation is free; corporate features are licensed</h2>
+        <h2>Every feature is free</h2>
         <p class="muted">
-          Authoring PDFs with rust-pdf costs nothing. Corporate features build on the same
-          core and are licensed: PDF/A archiving, digital signatures and encryption are gated
-          so the rule is identical in every language. Start free, then activate a license
-          when you need those capabilities. See the plans on the
-          <a href="/#pricing">pricing page</a>, or read the full API in the
+          Authoring PDFs with rust-pdf costs nothing, and so does everything else. PDF/A
+          archiving, digital signatures and encryption are MIT licensed and always
+          available, in every language. See the full API in the
           <a href="/docs/">documentation</a>.
         </p>
       </div>
@@ -444,7 +441,7 @@ File.binwrite("report.pdf", doc.to_bytes)</code></pre>
           <p>Create a document, add a page, embed a font, then draw text, vector graphics and images, and write the bytes out. With rust-pdf the same API is available in Go, PHP, Ruby and Node, all driven by one Rust core, so identical input produces identical output in every language.</p>
         </details>
         <details><summary>Is generating PDFs with rust-pdf free?</summary>
-          <p>Yes. The full authoring foundation, including vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks, is free to use. Corporate features such as PDF/A archiving, digital signatures and encryption are licensed, and they are gated in the core so the same rule applies in every language.</p>
+          <p>Yes. The full authoring foundation &mdash; vector graphics, embedded fonts, Unicode shaping, paragraphs, tables, images, links, bookmarks and watermarks &mdash; is free to use, as are PDF/A archiving, digital signatures and encryption, in every language.</p>
         </details>
         <details><summary>Does rust-pdf produce deterministic output?</summary>
           <p>Yes. rust-pdf writes no timestamps and uses no hash-map ordering, so identical input always yields byte-for-byte identical output. This makes generated PDFs auditable and easy to test: you can diff two runs, or pin a checksum in a test, and trust that any difference reflects a real change in your data.</p>
@@ -460,12 +457,11 @@ File.binwrite("report.pdf", doc.to_bytes)</code></pre>
       <div class="wrap narrow center">
         <h2>Generate PDFs in your language</h2>
         <p class="muted">
-          One core, the same authoring output across every language. Free to generate,
-          license the corporate features when you ship.
+          One core, the same authoring output across every language. Every feature is free.
         </p>
         <div class="cta-row">
           <a href="/docs/" class="btn btn-lg">Read the docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <!-- spoke-langs --><p class="center muted narrow" style="margin-top:8px">Generate a PDF in your language: <a href="/generate-pdf/go">Go</a>, <a href="/generate-pdf/php">PHP</a>, <a href="/generate-pdf/ruby">Ruby</a>, <a href="/generate-pdf/node">Node.js</a>.</p><!-- spoke-langs -->
         <div class="sibling-langs">
@@ -482,13 +478,13 @@ File.binwrite("report.pdf", doc.to_bytes)</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

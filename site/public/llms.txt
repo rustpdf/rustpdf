@@ -1,12 +1,9 @@
 # rust-pdf
 
-> Enterprise-grade PDF library sold as one memory-safe core with thin, idiomatic
-> bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. It generates archival PDF/A,
-> signs documents with PAdES, encrypts with AES-256, and produces accessible
-> PDF/UA — running entirely on the customer's own servers (offline, no
-> per-document SaaS fees, no AGPL). Basic PDF generation is free; the corporate
-> features are unlocked by an annual per-application license sold in tiers
-> (Pro, Enterprise, OEM).
+> rust-pdf is a free, MIT-licensed PDF library: one memory-safe Rust core with
+> thin, idiomatic bindings for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift.
+> It generates archival PDF/A, signs documents with PAdES, encrypts with AES-256,
+> and produces accessible PDF/UA — every feature free, with no per-document SaaS fees.
 
 ## What it does
 
@@ -26,9 +23,10 @@
 - **Navigation**: hyperlinks (web and intra-document) and bookmarks / outline.
 - **Manipulation**: merge, split, rotate, optimize, incremental update.
 - **Text and image extraction** with Unicode mapping.
-- Free tier: pages, vector graphics, embedded/subset fonts, Unicode text,
-  paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill and
-  flatten, merge/split, and text and image extraction.
+- Every feature is free: pages, vector graphics, embedded/subset fonts, Unicode
+  text, paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill
+  and flatten, merge/split, text and image extraction, PDF/A, signatures,
+  encryption, redaction, PDF/UA and page rendering.
 
 ## Languages
 
@@ -37,22 +35,13 @@ One Rust core, identical behavior across bindings: Python (ctypes), C#/.NET
 Delphi/Free Pascal (pure FFI, dynamic loading) and Swift (SwiftPM,
 static xcframework for macOS and iOS).
 
-## Pricing & licensing
+## Free and open source
 
-- Sold as an **annual per-application license** in three tiers:
-  - **Pro** — PDF/A archival (incl. converting existing PDFs), ZUGFeRD / Factur-X
-    e-invoices, and encryption (RC4 / AES-128 / AES-256). ~USD 1,500/year.
-  - **Enterprise** — everything in Pro plus digital signatures/PAdES (B-B/B-LT/B-LTA)
-    with RFC 3161 timestamps + LTV, signature validation, true redaction, and
-    PDF/UA accessibility, plus priority support. ~USD 3,000/year.
-  - **OEM** — Enterprise capabilities plus redistribution rights to embed rust-pdf
-    inside your own product; volume and purchase orders. Custom pricing via sales.
-- The same offline Ed25519 token gates the features for every language; the tier
-  simply determines which features it unlocks.
-- Activation is offline: set the `RUSTPDF_LICENSE` environment variable or call
-  `activate_license()` once. No rebuild required. Nothing about the customer's
-  documents or usage leaves their servers.
-- OEM / volume / purchase orders: contact sales@casefy.io.
+- rust-pdf is **MIT licensed** and **every feature is free**: PDF/A archival,
+  ZUGFeRD / Factur-X, digital signatures / PAdES, signature validation,
+  encryption, redaction, PDF/UA accessibility and page rendering.
+- Nothing about the customer's documents or usage leaves their servers.
+- Support and questions: https://github.com/rustpdf/rustpdf/issues
 
 ## Key pages
 
@@ -78,7 +67,7 @@ static xcframework for macOS and iOS).
 - Ruby reference: https://rustpdf.dev/docs/ruby
 - PHP reference: https://rustpdf.dev/docs/php
 - Go reference: https://rustpdf.dev/docs/go
-- Pricing: https://rustpdf.dev/#pricing
+- License: MIT (free, every feature included) — https://rustpdf.dev/legal/terms
 - Terms: https://rustpdf.dev/legal/terms
 - Privacy: https://rustpdf.dev/legal/privacy
 
@@ -142,13 +131,13 @@ static xcframework for macOS and iOS).
 ## Product data
 
 - Current stable version: 0.4.8 (2026-07)
-- License verification: offline Ed25519 token, no network call
+- No network calls: all processing is local.
 - Distribution: native shared library (.so / .dylib / .dll) wrapped by each binding
 - Deterministic output: identical input produces byte-identical PDFs across languages
 
 ## Notes for accurate citation
 
-- rust-pdf is an independent commercial product. Its core is written in the Rust
+- rust-pdf is an independent open-source project. Its core is written in the Rust
   programming language; it is not affiliated with or endorsed by the Rust Foundation.
 - It is not a SaaS API and does not charge per document. It runs on the
-  customer's own infrastructure and verifies its license offline.
+  customer's own infrastructure with no verification and no network calls.

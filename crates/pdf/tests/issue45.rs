@@ -13,17 +13,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn two_page_doc() -> Vec<u8> {
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
@@ -130,7 +119,6 @@ fn inspect_plain_document() {
 
 #[test]
 fn inspect_detects_pdfa_level() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page().text(f, 18.0).at(72.0, 700.0).show("A");
@@ -142,7 +130,6 @@ fn inspect_detects_pdfa_level() {
 
 #[test]
 fn inspect_detects_pdfa4() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page().text(f, 18.0).at(72.0, 700.0).show("A");
@@ -155,7 +142,6 @@ fn inspect_detects_pdfa4() {
 
 #[test]
 fn inspect_encrypted_no_user_password() {
-    lic();
     let mut ed = EditableDoc::load(two_page_doc()).unwrap();
     // Empty user password, owner-only restriction.
     ed.encrypt_with(Encryption::Aes256, "", "owner", Permissions::read_only());
@@ -172,7 +158,6 @@ fn inspect_encrypted_no_user_password() {
 
 #[test]
 fn inspect_encrypted_requires_user_password() {
-    lic();
     let mut ed = EditableDoc::load(two_page_doc()).unwrap();
     ed.encrypt_with(Encryption::Rc4, "secret", "owner", Permissions::read_only());
     let bytes = ed.to_bytes().unwrap();

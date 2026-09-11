@@ -1,7 +1,6 @@
-// Free-surface smoke for the RustPdf .NET binding. Verifies the native
-// libpdf_ffi loads and basic (un-licensed) operations work. Used by the release
-// CI per platform, where the cdylib is built with the production license pubkey
-// (so the licensed Sample cannot run). Exits non-zero on any failure.
+// Lightweight smoke for the RustPdf .NET binding. Verifies the native libpdf_ffi
+// loads and basic operations work. Used by the release CI per platform. Exits
+// non-zero on any failure.
 
 using RustPdf;
 
@@ -14,7 +13,7 @@ static void Assert(bool cond, string msg)
 Console.WriteLine($"rustpdf version: {Pdf.Version()}");
 Assert(!string.IsNullOrWhiteSpace(Pdf.Version()), "version is empty");
 
-// A plain PDF needs no license (only PDF/A, tagging, encryption and signing do).
+// A plain PDF — every feature is free.
 byte[] data;
 using (var doc = new Document())
 {

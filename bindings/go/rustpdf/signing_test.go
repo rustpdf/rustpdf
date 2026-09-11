@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -17,12 +16,6 @@ import (
 // the Model B two-phase BeginSigning flow and ListSignatures.
 func TestDeferredSigning(t *testing.T) {
 	root := repoRoot(t)
-	devLicense := strings.TrimSpace(string(mustRead(t,
-		filepath.Join(root, "crates", "license", "fixtures", "dev_license.txt"))))
-	if err := ActivateLicense(devLicense); err != nil {
-		t.Fatalf("activate: %v", err)
-	}
-
 	font := filepath.Join(root, "assets", "fonts", "Roboto-Regular.ttf")
 	fx := filepath.Join(root, "crates", "pdf", "tests", "fixtures")
 	keyDER := mustRead(t, filepath.Join(fx, "signer_key.pk8"))

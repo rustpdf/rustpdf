@@ -3,7 +3,7 @@
 // Distribution linkage: statically link the prebuilt libpdf_ffi.a vendored under
 // lib/<os>_<arch>/, so a consumer's `go get` + `go build` works with no external
 // native library. The .a files are produced per platform by `make go-dist`
-// (built in release CI with the production RUSTPDF_LICENSE_PUBKEY) and committed
+// (built in release CI) and committed
 // at the released tag — they are NOT present on the development branch, where the
 // `rustpdf_dev` tag (link_dev.go) is used instead.
 //

@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to encrypt in C#?",
+          "name": "Is encryption free in C#?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Encryption is a corporate feature and needs an active license token. Basic generation in C# is free. The same offline token enables encryption in every language."
+            "text": "Encryption is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Run <code>dotnet add package RustPdf</code> and the NuGet package carries the native core next to your managed assemblies. A <code>NativeLibrary.SetDllImportResolver</code> hook locates it under <code>runtimes/&lt;rid&gt;/native</code>, the build output, or a <code>RUSTPDF_LIB</code> override, so an ASP.NET Core app loads it with no MSBuild wiring or native toolchain on the developer machine.</p>
             <p class="muted">Encryption touches the payloads you least want leaking (statements, medical records, signed contracts), so it belongs in a request pipeline that disposes deterministically. <code>EditableDoc.LoadFile</code> wraps an <code>IDisposable</code> native handle; a <code>using</code> block frees the document the instant the response is written, even when the endpoint throws. AES-256 (V5/R6) draws its key, salts and IVs from the OS CSPRNG, with AES-128 and legacy RC4 also available.</p>
-            <p class="muted">The same call deploys unchanged to a <code>mcr.microsoft.com/dotnet/aspnet:8.0</code> container, a <code>dotnet publish --self-contained</code> bundle, or a Worker Service. P/Invoke is source-generated with <code>[LibraryImport]</code>, so it is trim- and NativeAOT-friendly as long as the matching <code>runtimes/&lt;rid&gt;/native</code> payload travels with the publish output; a missing Encryption license surfaces as a catchable <code>PdfException</code>.</p>
+            <p class="muted">The same call deploys unchanged to a <code>mcr.microsoft.com/dotnet/aspnet:8.0</code> container, a <code>dotnet publish --self-contained</code> bundle, or a Worker Service. P/Invoke is source-generated with <code>[LibraryImport]</code>, so it is trim- and NativeAOT-friendly as long as the matching <code>runtimes/&lt;rid&gt;/native</code> payload travels with the publish output; any failure surfaces as a catchable <code>PdfException</code>.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -234,10 +234,10 @@
 using var ed = EditableDoc.LoadFile("in.pdf");
 ed.Encrypt(user: "", owner: "owner-secret",
            method: Encryption.Aes256, readOnly: true);
-ed.Save("secured.pdf");          // throws PdfException without an Encryption license</code></pre>
+ed.Save("secured.pdf");          // throws PdfException</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">C# basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp">documentation</a>.</p>
       </div>
     </section>
@@ -251,8 +251,8 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
         <details><summary>What is the difference between user and owner passwords?</summary>
           <p>A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode.</p>
         </details>
-        <details><summary>Do I need a license to encrypt in C#?</summary>
-          <p>Encryption is a corporate feature and needs an active license token. Basic generation in C# is free. The same offline token enables encryption in every language.</p>
+        <details><summary>Is encryption free in C#?</summary>
+          <p>Encryption is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Does this work with ASP.NET Core and NativeAOT?</summary>
           <p>Yes. The binding reaches the native core through source-generated <code>[LibraryImport]</code> P/Invoke, which is trim- and NativeAOT-safe, and a <code>NativeLibrary.SetDllImportResolver</code> hook finds the library inside the published <code>runtimes/&lt;rid&gt;/native</code> folder. Encrypt from a minimal-API handler or controller and dispose the <code>EditableDoc</code> with a <code>using</code> block so the native handle is released on every request.</p>
@@ -263,10 +263,10 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
     <section class="section">
       <div class="wrap narrow center">
         <h2>Ship password-protected PDFs from your .NET stack</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/csharp" class="btn btn-lg">Read the C# docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/encrypt-pdf">Encrypt PDF</a>
@@ -287,13 +287,13 @@ ed.Save("secured.pdf");          // throws PdfException without an Encryption li
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

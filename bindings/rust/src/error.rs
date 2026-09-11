@@ -18,7 +18,6 @@ pub enum PdfStatus {
     Encrypt,
     Sign,
     InvalidArgument,
-    License,
     /// The operation is not supported for this document (e.g. stamping an
     /// embedded font on a page whose content cannot be rewritten).
     Unsupported,
@@ -43,8 +42,7 @@ impl PdfStatus {
             9 => Self::Encrypt,
             10 => Self::Sign,
             11 => Self::InvalidArgument,
-            12 => Self::License,
-            13 => Self::Unsupported,
+            12 => Self::Unsupported,
             other => Self::Unknown(other),
         }
     }

@@ -18,7 +18,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="C# PDF Library for .NET — PDF/A, PAdES, AES-256 | rust-pdf" />
-  <meta name="twitter:description" content="C# PDF library for PDF/A, PAdES, AES-256 and accessibility. dotnet add package RustPdf. Offline, licensed per feature." />
+  <meta name="twitter:description" content="C# PDF library for PDF/A, PAdES, AES-256 and accessibility. dotnet add package RustPdf. Offline, MIT, every feature free." />
   <meta property="og:image:alt" content="rust-pdf — a C# PDF library for .NET" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf — a C# PDF library for .NET" />
@@ -63,13 +63,9 @@
         "Merge, split, text extraction"
       ],
       "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "USD",
-        "lowPrice": "1500",
-        "highPrice": "3000",
-        "offerCount": "2",
-        "url": "https://rustpdf.dev/#pricing",
-        "priceValidUntil": "2027-12-31"
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
       },
       "@id": "https://rustpdf.dev/#software"
     },
@@ -89,7 +85,7 @@
           "name": "Is the C# PDF library free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility."
+            "text": "Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, as are PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility."
           }
         },
         {
@@ -105,7 +101,7 @@
           "name": "Is it AGPL like iTextSharp / iText?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source."
+            "text": "No. rust-pdf uses MIT licensed, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source."
           }
         },
         {
@@ -163,10 +159,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/csharp">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -189,7 +185,7 @@
         </div>
         <div class="cta-row">
           <a href="/docs/csharp" class="btn btn-lg">Start free &middot; .NET</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="validators">
           Validated by independent tools:
@@ -213,7 +209,7 @@
           <p class="muted">
             rust-pdf is one <code>dotnet add package</code> with source-generated
             P/Invoke, a clean <code>Document</code> / <code>EditableDoc</code> API,
-            and a single offline license that unlocks the corporate features. The
+            with every feature free. The
             native core is <code>Send</code>, so each request renders on its own
             handle with no GC pauses.
           </p>
@@ -221,9 +217,9 @@
         <ul class="check-list">
           <li><b>Native, not headless Chrome</b>: no browser process, no gigabytes of RAM per worker.</li>
           <li><b>Runs on your servers</b>: documents never leave your network and nothing phones home, ideal for LGPD/GDPR, fintech and health.</li>
-          <li><b>No AGPL trap</b>: a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose.</li>
+          <li><b>No AGPL trap</b>: MIT licensed, never the AGPL of iText or the per-server billing of Aspose.</li>
           <li><b>Deterministic output</b>: the same input always produces the same bytes, so you can diff and audit it.</li>
-          <li><b>Free to build with</b>: everyday PDF generation is free forever; you only license the regulated-grade features.</li>
+          <li><b>Free to build with</b>: every feature is free forever.</li>
         </ul>
       </div>
     </section>
@@ -379,7 +375,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
         <p class="center muted narrow">
           The big C# PDF libraries make you choose between a heavyweight browser
           dependency, an open-source license that forces your code open, or a metered
-          bill. rust-pdf is a single native package with a commercial per-app license.
+          bill. rust-pdf is a single native package, MIT licensed and free.
         </p>
         <div class="dn-wrap-x">
         <table class="dn-matrix">
@@ -389,7 +385,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           <tbody>
             <tr class="us"><td><b>Engine</b></td><td>Native Rust core</td><td>Chromium</td><td>Java/.NET</td><td>.NET (SkiaSharp)</td></tr>
             <tr class="us"><td><b>Heavy runtime dependency</b></td><td class="yes">None</td><td class="no">Chromium</td><td class="no">—</td><td class="yes">None</td></tr>
-            <tr class="us"><td><b>License to ship closed source</b></td><td class="yes">Commercial per-app</td><td>Commercial</td><td class="no">AGPL or paid</td><td>Free &lt;$1M, else paid</td></tr>
+            <tr class="us"><td><b>License to ship closed source</b></td><td class="yes">MIT, free</td><td>Commercial</td><td class="no">AGPL or paid</td><td>Free &lt;$1M, else paid</td></tr>
             <tr class="us"><td><b>Per-document / metered fees</b></td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td><td class="yes">No</td></tr>
             <tr class="us"><td><b>Runs fully offline</b></td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
             <tr class="us"><td><b>PDF/A 1b–3a + A-4/4e/4f</b></td><td class="yes">Yes</td><td>Partial</td><td class="yes">Yes</td><td class="no">No</td></tr>
@@ -409,15 +405,15 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
     <!-- FEATURES -->
     <section class="section">
       <div class="wrap">
-        <h2 class="center">Free to build with. Licensed when you ship.</h2>
+        <h2 class="center">Every feature is free.</h2>
         <p class="center muted narrow">
-          Prototype and generate everyday PDFs for free. When you need archival,
-          signatures, encryption or accessibility, one license unlocks them all in
+          Prototype and ship everyday PDFs for free. PDF/A, signatures, encryption
+          and accessibility are all included in
           .NET and every other binding.
         </p>
         <div class="feature-grid">
           <div class="card free reveal">
-            <h3>Community <span class="tag">free</span></h3>
+            <h3>Core <span class="tag">free</span></h3>
             <ul>
               <li>Pages &amp; vector graphics</li>
               <li>Embedded/subset fonts, Unicode shaping</li>
@@ -428,7 +424,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
             </ul>
           </div>
           <div class="card pro reveal">
-            <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
+            <h3>Advanced <span class="tag">free</span></h3>
             <ul>
               <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a archival</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
@@ -444,28 +440,15 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
       </div>
     </section>
 
-    <!-- FREE TRIAL -->
+    <!-- FREE -->
     <section class="band">
       <div class="wrap narrow center">
-        <h2>Try every licensed feature free for 5 days.</h2>
+        <h2>Every feature is free.</h2>
         <p class="muted">
-          Get a trial token by email and unlock PDF/A, digital signatures,
-          encryption and accessibility in C#. No account, no card required.
+          rust-pdf is MIT licensed &mdash; PDF/A, digital signatures, encryption,
+          accessibility and page rendering are all included. No key, no account,
+          no card.
         </p>
-        <form class="trial-form" novalidate>
-          <label class="trial-field">
-            <span class="sr-only">Work email</span>
-            <input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />
-          </label>
-          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
-                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
-          <button type="submit" class="btn">Email me a free trial token</button>
-          <label class="trial-consent">
-            <input type="checkbox" name="consent" />
-            <span>Send me occasional product updates. No spam; unsubscribe anytime.</span>
-          </label>
-          <p class="trial-msg" role="status" aria-live="polite" hidden></p>
-        </form>
       </div>
     </section>
 
@@ -478,7 +461,7 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           The C# package wraps the exact same Rust core as every other binding, so a
           PDF generated from .NET is <b>byte-identical</b> to one generated from
           Python or Go. Standardize one document pipeline across your whole
-          stack and license it once.
+          stack, 
         </p>
         <div class="dn-langs">
           <a href="/python">Python</a>
@@ -497,14 +480,10 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Start building in .NET</h2>
-        <p class="muted">
-          <code>dotnet add package RustPdf</code> and ship your first archival PDF
-          today. Free for everyday generation; license the corporate features when
-          you go to production.
-        </p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/csharp" class="btn btn-lg">Start free &middot; .NET</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
       </div>
     </section>
@@ -517,13 +496,13 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
           <p>No, and that's deliberate. rust-pdf renders PDFs natively from a C# document model instead of driving a headless Chromium browser. That keeps memory use low, output deterministic, and PDF/A and PDF/UA conformance precise, guarantees a browser print path can't make. If your input is HTML, render it server-side first and place the result; if it's structured data, build it directly with the API.</p>
         </details>
         <details><summary>Is the C# PDF library free?</summary>
-          <p>Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, no license. You only license the corporate features: PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility.</p>
+          <p>Everyday PDF generation (pages, text, fonts, images, tables, merge and split) is free forever, as are PDF/A archival, signatures and PAdES, AES-256 encryption and PDF/UA accessibility.</p>
         </details>
         <details><summary>Does it need a browser, JVM or any runtime besides .NET?</summary>
           <p>No. It's a native Rust core shipped per-runtime inside the NuGet package and called through source-generated P/Invoke. There's no Chromium process, no JVM and nothing to compile, just <code>dotnet add package RustPdf</code>.</p>
         </details>
         <details><summary>Is it AGPL like iTextSharp / iText?</summary>
-          <p>No. rust-pdf uses a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source.</p>
+          <p>No. rust-pdf uses MIT licensed, never the AGPL of iText or the per-server billing of Aspose. You can ship it inside a closed-source product without opening your own source.</p>
         </details>
         <details><summary>Which .NET versions are supported?</summary>
           <p>rust-pdf targets .NET 8 and later on Linux, macOS and Windows, including server, container and Native AOT deployments. The native core runs in-process on your own infrastructure.</p>
@@ -538,13 +517,13 @@ ed.Save("secured.pdf");               // qpdf-verified AES-256</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/csharp">.NET docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

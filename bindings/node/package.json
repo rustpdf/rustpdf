@@ -2,7 +2,7 @@
   "name": "rustpdf",
   "version": "0.4.8",
   "description": "Generate, edit, sign and process PDFs in Node.js: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/node",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "homepage": "https://rustpdf.dev/docs/node",
   "repository": {
     "type": "git",

@@ -442,8 +442,7 @@ public sealed class EditableDoc : IDisposable
         return found != 0;
     }
 
-    /// <summary>Convert the loaded document to PDF/A (B-levels only: A1b/A2b/A3b).
-    /// Requires a license.</summary>
+    /// <summary>Convert the loaded document to PDF/A (B-levels only: A1b/A2b/A3b).</summary>
     public EditableDoc ConvertToPdfa(PdfaLevel level = PdfaLevel.A2b)
     {
         Pdf.Check(Native.pdf_editable_convert_to_pdfa(H, (int)level));
@@ -462,7 +461,7 @@ public sealed class EditableDoc : IDisposable
         return this;
     }
 
-    /// <summary>Encrypt on save (requires a license).</summary>
+    /// <summary>Encrypt on save.</summary>
     public EditableDoc Encrypt(string user = "", string owner = "",
         Encryption method = Encryption.Aes256, bool readOnly = false)
     {

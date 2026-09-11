@@ -30,8 +30,7 @@ use x509_cert::Certificate;
 use cos::Object;
 use parser::PdfReader;
 
-use crate::{require, BuildError};
-use license::Feature;
+use crate::BuildError;
 
 /// id-messageDigest (PKCS#9): `1.2.840.113549.1.9.4`.
 const ID_MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
@@ -95,12 +94,7 @@ impl SignatureReport {
 
 /// Validate every signature in `pdf`. Returns one [`SignatureReport`] per
 /// signature, in document order. An empty vector means the file is unsigned.
-///
-/// Signature validation is a licensed (Enterprise) capability gated behind the
-/// **signatures** feature; without a granting license this returns
-/// [`BuildError::License`].
 pub fn verify_signatures(pdf: impl AsRef<[u8]>) -> Result<Vec<SignatureReport>, BuildError> {
-    require(Feature::Signatures)?;
     let pdf = pdf.as_ref();
     let reader = PdfReader::parse(pdf).map_err(|e| BuildError::Parse(e.to_string()))?;
 
@@ -150,8 +144,8 @@ pub struct SignatureField {
 
 /// List the signature fields in `pdf` (the iText `SignatureUtil.getSignatureNames`
 /// / `getBlankSignatureNames` equivalent) so callers can **detect existing
-/// signatures before signing**. Reads document structure only — not a licensed
-/// operation. An empty vector means there are no signature fields.
+/// signatures before signing**. Reads document structure only. An empty vector
+/// means there are no signature fields.
 pub fn list_signatures(pdf: impl AsRef<[u8]>) -> Result<Vec<SignatureField>, BuildError> {
     let reader = PdfReader::parse(pdf.as_ref()).map_err(|e| BuildError::Parse(e.to_string()))?;
     let mut out = Vec::new();

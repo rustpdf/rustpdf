@@ -359,7 +359,7 @@ module RustPdf
       self
     end
 
-    # Encrypt on save (requires a license).
+    # Encrypt on save.
     def encrypt(method: Cipher::AES256, user: "", owner: "", read_only: false)
       RustPdf.check(Native.call("pdf_editable_encrypt", ptr, method, user, owner, read_only ? 1 : 0))
       self

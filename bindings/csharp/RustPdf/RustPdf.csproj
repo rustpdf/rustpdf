@@ -13,13 +13,12 @@
     <Authors>rust-pdf</Authors>
     <Company>rust-pdf</Company>
     <Description>Generate, edit, sign and process PDFs in .NET: PDF/A, AES-256 encryption, digital signatures (PAdES) with HSM support, forms, stamping, redaction, text extraction and page rendering. Works out of the box on macOS, Linux and Windows. Full docs: https://rustpdf.dev/docs/csharp</Description>
-    <Copyright>Copyright (c) rust-pdf</Copyright>
+    <Copyright>Copyright (c) 2026 Edivan Teixeira and rust-pdf contributors</Copyright>
     <PackageProjectUrl>https://rustpdf.dev/docs/csharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/rustpdf/rustpdf</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>pdf;pdfa;signing;pades;acroform;accessibility;encryption</PackageTags>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- A managed assembly carrying native assets: keep it RID-agnostic so the
@@ -34,7 +33,7 @@
 
   <ItemGroup>
     <!-- Packed into the NuGet package root. -->
-    <None Include="LICENSE.txt" Pack="true" PackagePath="" />
+    <None Include="LICENSE" Pack="true" PackagePath="" />
     <None Include="../README.md" Pack="true" PackagePath="" />
 
     <!-- Native libraries, staged by CI into runtimes/<rid>/native/ before pack.

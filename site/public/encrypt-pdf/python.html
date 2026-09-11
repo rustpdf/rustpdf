@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to encrypt in Python?",
+          "name": "Is encryption free in Python?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Encryption is a corporate feature and needs an active license token. Basic generation in Python is free. The same offline token enables encryption in every language."
+            "text": "Encryption is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -210,7 +210,7 @@
         <div class="sp-why">
           <div>
             <p class="muted">Most Python stacks shell out to an external <code>qpdf</code> binary to add AES-256, which means an extra <code>apt-get</code> layer in every <code>python:3.12-slim</code> image. rust-pdf ships the cipher inside the wheel, so a slim or distroless container encrypts with zero system packages. The one caveat is Alpine, where you install the musl wheel rather than the manylinux glibc build.</p>
-            <p class="muted">Encryption runs entirely in-process: <code>EditableDoc.load_file</code> and <code>ed.encrypt(...)</code> execute on the calling thread, so you can wrap them in a FastAPI dependency, a Celery task or a Django management command without spawning a subprocess. A missing or expired Encryption license surfaces as a <code>PdfError</code> you can catch and turn into a 402 response or a retry.</p>
+            <p class="muted">Encryption runs entirely in-process: <code>EditableDoc.load_file</code> and <code>ed.encrypt(...)</code> execute on the calling thread, so you can wrap them in a FastAPI dependency, a Celery task or a Django management command without spawning a subprocess. Any failure surfaces as a <code>PdfError</code> you can catch and turn into a 4xx response or a retry.</p>
             <p class="muted">AES-256 uses the V5/R6 security handler with keys, salts and IVs drawn from the operating-system CSPRNG, so every statement, payslip or contract you protect is byte-unique and recoverable only with the password. Set a user password to gate opening, an owner password to lock printing and copying, or both, and qpdf validates each combination.</p>
           </div>
           <ul class="check-list">
@@ -234,10 +234,10 @@
 with EditableDoc.load_file("in.pdf") as ed:
     ed.encrypt(user="", owner="owner-secret",
                method=Encryption.AES256, read_only=True)
-    ed.save("secured.pdf")          # raises PdfError without an Encryption license</code></pre>
+    ed.save("secured.pdf")          # raises PdfError</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Python basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Python reference in the <a href="/docs/python">documentation</a>.</p>
       </div>
     </section>
@@ -251,8 +251,8 @@ with EditableDoc.load_file("in.pdf") as ed:
         <details><summary>What is the difference between user and owner passwords?</summary>
           <p>A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode.</p>
         </details>
-        <details><summary>Do I need a license to encrypt in Python?</summary>
-          <p>Encryption is a corporate feature and needs an active license token. Basic generation in Python is free. The same offline token enables encryption in every language.</p>
+        <details><summary>Is encryption free in Python?</summary>
+          <p>Encryption is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Can I encrypt inside an async FastAPI route or a Celery task?</summary>
           <p>Yes. The native call is synchronous and each <code>EditableDoc</code> owns its own handle, so concurrent Celery workers or threads encrypt independently with no shared state across the FFI boundary. Inside an async route, run <code>ed.encrypt</code> in a threadpool (<code>await run_in_threadpool(...)</code>) so the AES work does not hold the event loop while the document is sealed.</p>
@@ -263,10 +263,10 @@ with EditableDoc.load_file("in.pdf") as ed:
     <section class="section">
       <div class="wrap narrow center">
         <h2>Start encrypting PDFs in Python</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/python" class="btn btn-lg">Read the Python docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/encrypt-pdf">Encrypt PDF</a>
@@ -287,13 +287,13 @@ with EditableDoc.load_file("in.pdf") as ed:
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

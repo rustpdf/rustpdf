@@ -108,7 +108,7 @@
           "name": "Is generating PDFs free in PHP?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever. You only license corporate features such as PDF/A, signatures and encryption when you ship them."
+            "text": "Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever, as are PDF/A, signatures and encryption."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Most server-side PDF in PHP is built by gluing TCPDF or FPDF to a templating layer, or by shelling out to wkhtmltopdf, each with its own gaps in Unicode shaping, font embedding and reproducibility.</p>
             <p class="muted">rust-pdf gives PHP a single memory-safe core for authoring: vector graphics, JPEG and PNG images, embedded and subset fonts with HarfBuzz-quality shaping and kerning, wrapping and justified paragraphs, tables, links and bookmarks. Identical input yields identical bytes, which makes the output auditable and testable.</p>
-            <p class="muted">Generation is the free tier: composer require rust-pdf/rustpdf, enable ffi in php.ini, and call the API from a controller, a Symfony command or an Artisan job. There is no separate rendering service to deploy and scale. The only constraint is shared hosting that forbids the FFI extension.</p>
+            <p class="muted">Generation is free: composer require rust-pdf/rustpdf, enable ffi in php.ini, and call the API from a controller, a Symfony command or an Artisan job. There is no separate rendering service to deploy and scale. The only constraint is shared hosting that forbids the FFI extension.</p>
           </div>
           <ul class="check-list">
             <li>Vector graphics, embedded and subset fonts, HarfBuzz-quality Unicode shaping and kerning.</li>
@@ -242,7 +242,7 @@ $doc-&gt;addPage()
     -&gt;save('out.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Authoring is part of the free PHP tier. No license token required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The complete authoring API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
@@ -251,7 +251,7 @@ $doc-&gt;addPage()
       <div class="wrap narrow">
         <h2 class="center">Generation in PHP: FAQ</h2>
         <details><summary>Is generating PDFs free in PHP?</summary>
-          <p>Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever. You only license corporate features such as PDF/A, signatures and encryption when you ship them.</p>
+          <p>Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever, as are PDF/A, signatures and encryption.</p>
         </details>
         <details><summary>Does it support Unicode and custom fonts?</summary>
           <p>Yes. Fonts are embedded and subset with HarfBuzz-quality shaping and kerning, using Type0 fonts with ToUnicode, so non-Latin scripts render and extract correctly.</p>
@@ -268,10 +268,10 @@ $doc-&gt;addPage()
     <section class="section">
       <div class="wrap narrow center">
         <h2>Start building documents in your PHP app today</h2>
-        <p class="muted">One Rust core, deterministic output in every language. Authoring is free forever; you license only the corporate features such as PDF/A, signing and encryption.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/generate-pdf">Generate PDF</a>
@@ -293,13 +293,13 @@ $doc-&gt;addPage()
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

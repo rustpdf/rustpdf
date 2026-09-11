@@ -37,20 +37,16 @@ func mustRead(t *testing.T, path string) []byte {
 	return b
 }
 
-// One test exercises the whole surface serially (the license is process-global).
+// One test exercises the whole surface serially.
 func TestFullSurface(t *testing.T) {
 	root := repoRoot(t)
 	font := filepath.Join(root, "assets", "fonts", "Roboto-Regular.ttf")
-	devLicense := strings.TrimSpace(string(mustRead(t,
-		filepath.Join(root, "crates", "license", "fixtures", "dev_license.txt"))))
 
 	if Version() == "" {
 		t.Fatal("empty version")
 	}
 
-	// 1. Corporate features blocked without a license.
-	os.Unsetenv("RUSTPDF_LICENSE")
-	os.Unsetenv("RUSTPDF_LICENSE_FILE")
+	// 1. Every feature works out of the box.
 	{
 		d, err := New()
 		if err != nil {
@@ -63,15 +59,12 @@ func TestFullSurface(t *testing.T) {
 		if err := d.AddPage(); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := d.ToBytes(); err == nil {
-			t.Fatal("PDF/A must be blocked without a license")
+		out, err := d.ToBytes()
+		if err != nil || len(out) == 0 {
+			t.Fatalf("PDF/A must work out of the box: %v", err)
 		}
 	}
 
-	// 2. Activate and build a tagged PDF/A-2a doc.
-	if err := ActivateLicense(devLicense); err != nil {
-		t.Fatalf("activate: %v", err)
-	}
 	var pdfa []byte
 	{
 		d, err := New()
@@ -110,7 +103,7 @@ func TestFullSurface(t *testing.T) {
 		t.Fatalf("extract: %q err=%v", text, err)
 	}
 
-	// 3b. Page rendering (Pro feature; license already active).
+	// 3b. Page rendering.
 	if n, err := PageCount(pdfa); err != nil || n != 1 {
 		t.Fatalf("page count: %d err=%v", n, err)
 	}
@@ -304,7 +297,7 @@ func TestFullSurface(t *testing.T) {
 		}
 	}
 
-	// 12. Tier 2: Factur-X / ZUGFeRD invoice (license-gated).
+	// 12. Tier 2: Factur-X / ZUGFeRD invoice.
 	{
 		d, _ := New()
 		defer d.Close()
@@ -393,7 +386,7 @@ func TestFullSurface(t *testing.T) {
 		}
 	}
 
-	// 14. EditableDoc PDF/A conversion (license-gated; needs embedded fonts).
+	// 14. EditableDoc PDF/A conversion (needs embedded fonts).
 	{
 		d, _ := New()
 		defer d.Close()

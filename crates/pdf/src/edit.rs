@@ -35,9 +35,6 @@ pub struct EditableDoc {
     version: PdfVersion,
     /// A forced trailer `/ID` (set by PDF/A conversion).
     forced_id: Option<[Vec<u8>; 2]>,
-    /// Whether [`redact`](EditableDoc::redact) was called (gates output behind
-    /// the Redaction feature license).
-    redacted: bool,
     /// Pages whose original content has already been wrapped in a balanced
     /// `q…Q` so appended stamps start from the page's initial CTM regardless of
     /// how the original stream left the graphics state.
@@ -114,7 +111,6 @@ impl EditableDoc {
             helv_font: None,
             version: PdfVersion::V1_7,
             forced_id: None,
-            redacted: false,
             isolated_pages: BTreeSet::new(),
             stamp_fonts: Vec::new(),
             stamp_space: StampSpace::Visible,
@@ -273,7 +269,6 @@ impl EditableDoc {
             helv_font: None,
             version: PdfVersion::V1_7,
             forced_id: None,
-            redacted: false,
             isolated_pages: BTreeSet::new(),
             stamp_fonts: Vec::new(),
             stamp_space: StampSpace::Visible,
@@ -2384,10 +2379,6 @@ impl EditableDoc {
         self.remove_intersecting_annots(page, rects);
 
         // Only after removal succeeded: paint opaque black rectangles.
-        // Redaction is a licensed (Enterprise) feature, enforced at output
-        // (`to_bytes`/`save`) so a missing license fails serialization with a
-        // clear error instead of silently dropping the redaction.
-        self.redacted = true;
         let mut boxes = String::from("q\n0 g\n");
         for r in rects {
             let x0 = r[0].min(r[2]);
@@ -2716,9 +2707,8 @@ impl EditableDoc {
     /// Returns an error if any font is **not embedded** (PDF/A requires every
     /// font embedded, and missing programs cannot be synthesized), or if a
     /// level-A (tagged) profile is requested — a structure tree cannot be
-    /// inferred from arbitrary content. Requires the PDF/A feature license.
+    /// inferred from arbitrary content.
     pub fn convert_to_pdfa(&mut self, level: crate::PdfaLevel) -> Result<(), ConvertError> {
-        crate::require(license::Feature::Pdfa)?;
         if level.conformance() == Some('A') {
             return Err(ConvertError::TaggingRequired);
         }
@@ -2899,9 +2889,6 @@ impl EditableDoc {
 
     /// Serialize to PDF bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>, BuildError> {
-        if self.redacted {
-            crate::require(license::Feature::Redaction)?;
-        }
         // A valid PDF must have at least one page; an empty /Pages tree is
         // rejected by qpdf/mutool ("malformed page tree"). This also catches
         // the case where a corrupt/truncated input parsed into zero pages —
@@ -2918,7 +2905,6 @@ impl EditableDoc {
         let mut id = None;
 
         if let Some(cfg) = &self.encryption {
-            crate::require(license::Feature::Encryption)?;
             let id0 = encrypt::derive_id(objects.len());
             let prepared = encrypt::prepare(cfg, id0.clone());
             // Encrypt every object's strings/streams (generation 0).
@@ -2980,9 +2966,6 @@ impl EditableDoc {
     /// so existing signatures over them stay valid. Encryption/object-stream
     /// settings are ignored for the appended section (it is a classic update).
     pub fn to_bytes_incremental(&self, original: &[u8]) -> Result<Vec<u8>, BuildError> {
-        if self.redacted {
-            crate::require(license::Feature::Redaction)?;
-        }
         let prev_startxref = find_last_startxref(original)
             .ok_or_else(|| BuildError::Parse("no startxref".into()))?;
         let reader =
@@ -3189,8 +3172,6 @@ impl EditableDoc {
 /// Error from [`EditableDoc::convert_to_pdfa`].
 #[derive(Debug)]
 pub enum ConvertError {
-    /// The PDF/A feature is not licensed.
-    License(license::LicenseError),
     /// A level-A (tagged) profile was requested; conversion supports only the
     /// basic (level-B) profiles (A-1b/A-2b/A-3b).
     TaggingRequired,
@@ -3202,7 +3183,6 @@ pub enum ConvertError {
 impl std::fmt::Display for ConvertError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConvertError::License(e) => write!(f, "{e}"),
             ConvertError::TaggingRequired => {
                 write!(f, "PDF/A conversion supports only basic (level-B) profiles")
             }
@@ -3218,12 +3198,6 @@ impl std::fmt::Display for ConvertError {
 }
 
 impl std::error::Error for ConvertError {}
-
-impl From<license::LicenseError> for ConvertError {
-    fn from(e: license::LicenseError) -> Self {
-        ConvertError::License(e)
-    }
-}
 
 /// Appearance, color and placement for a text watermark.
 #[derive(Debug, Clone)]

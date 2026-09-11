@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// Smoke test for the RustPdf PHP binding. Exercises the whole surface including
-// licensing gating. Exits non-zero on any failed assertion.
+// Smoke test for the RustPdf PHP binding. Exercises the whole surface.
+// Exits non-zero on any failed assertion.
 
 require __DIR__ . '/../autoload.php';
 
@@ -57,24 +57,13 @@ function check(bool $cond, string $msg): void
 
 $root = repoRoot();
 $font = "$root/assets/fonts/Roboto-Regular.ttf";
-$devLicense = trim((string) file_get_contents("$root/crates/license/fixtures/dev_license.txt"));
 
 echo 'rustpdf version: ' . Pdf::version() . "\n";
 
-// 1. Corporate features blocked without a license.
-putenv('RUSTPDF_LICENSE');
-$blocked = false;
-try {
-    $d = new Document();
-    $d->pdfa()->addPage();
-    $d->toBytes();
-} catch (PdfException) {
-    $blocked = true;
-}
-check($blocked, 'PDF/A must be blocked without a license');
-
-Pdf::activateLicense($devLicense);
-echo "license activated\n";
+// 1. Every feature works out of the box.
+$d = new Document();
+$d->pdfa()->addPage();
+check($d->toBytes() !== '', 'PDF/A must work out of the box');
 
 // 2. Tagged PDF/A-2a with a font, heading and justified paragraph.
 $doc = new Document();
@@ -89,7 +78,7 @@ $text = Pdf::extractText($pdfa);
 check(str_contains($text, 'Título'), "extracted text: $text");
 echo 'built PDF/A-2a (' . strlen($pdfa) . " bytes); extracted ok\n";
 
-// Page rendering (Pro feature; license already active).
+// Page rendering.
 check(Pdf::pageCount($pdfa) === 1, 'page count');
 $png = Pdf::renderPageToPng($pdfa, 0, 72.0);
 check(strlen($png) > 8 && substr($png, 1, 3) === 'PNG', 'PNG header');

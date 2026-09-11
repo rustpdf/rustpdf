@@ -15,11 +15,6 @@ ships on its **own git tag** that triggers its own GitHub Actions workflow.
 - **GitHub Actions must be funded.** If org billing/Actions quota is exhausted,
   *every* job fails instantly with `startup_failure` (`steps=0`, no logs). Fix it
   at: org `rustpdf` → Settings → Billing → Actions. No code change helps.
-- **`RUSTPDF_LICENSE_PUBKEY` repo secret** = the **production** Ed25519 public
-  key. Every release workflow refuses to publish if it is unset, so the shipped
-  `libpdf_ffi` is never built with the committed *dev* key (which would accept
-  the public dev token — a licensing bypass). The published libs therefore
-  reject the dev token; release smokes must test only the **free surface**.
 
 ## 1. Bump the version
 
@@ -61,16 +56,16 @@ exists") *and* points the module tag at a commit without the native libs.
 
 | Lang | Trigger tag | Workflow | Publishes to | Auth / secrets | Notes |
 |------|-------------|----------|--------------|----------------|-------|
-| Python | `py-v*` | `release-python.yml` | **PyPI** `rustpdf` | Trusted Publishing (OIDC, no token) + `RUSTPDF_LICENSE_PUBKEY` | manylinux + macOS + Windows wheels |
-| Node | `node-v*` | `release-node.yml` | **npm** `rustpdf` + 4 platform pkgs (`@rustpdf/{darwin-arm64,linux-arm64-gnu,linux-x64-gnu,win32-x64-msvc}`) | `NPM_TOKEN` + pubkey | main pkg pulls a platform pkg via `optionalDependencies` |
-| C# | `csharp-v*` | `release-csharp.yml` | **NuGet** `RustPdf` | Trusted Publishing (OIDC) + `NUGET_USER` repo var + `nuget` environment + pubkey | single RID-asset `.nupkg` |
-| Ruby | `ruby-v*` | `release-ruby.yml` | **RubyGems** `rustpdf` | `RUBYGEMS_API_KEY` + pubkey | |
-| Swift | `swift-v*` | `release-swift.yml` | **GitHub Release** (xcframework) | pubkey | `Package.swift` `.binaryTarget`; site deploy pulls the asset |
-| Delphi | `delphi-v*` | `release-delphi.yml` | **GitHub Release** (zip + sha) | pubkey | no central registry; site offers the download |
-| Go | `go-v*` | `release-go.yml` | **git tag** `bindings/go/v*` (workflow creates it, with native libs staged) | pubkey | `go get github.com/rustpdf/rustpdf/bindings/go/rustpdf@vX.Y.Z` |
-| PHP | `php-v*` | `release-php.yml` | **Packagist** `rust-pdf/rustpdf` (mirror) + binaries on the mirror's GH Release | `MIRROR_RELEASE_TOKEN` (PAT, `contents:write` on the mirror) + pubkey | see PHP steps below |
-| Java | `java-v*` | `release-java.yml` | **Maven Central** (Sonatype) | `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` / `MAVEN_GPG_PRIVATE_KEY` / `MAVEN_GPG_PASSPHRASE` + pubkey | |
-| Rust | `rust-v*` | `release-rust.yml` | **private cargo registry** | `CARGO_REGISTRY_INDEX` + `CARGO_REGISTRY_TOKEN` + pubkey | crate loads `libpdf_ffi` at runtime (no embedded binary) |
+| Python | `py-v*` | `release-python.yml` | **PyPI** `rustpdf` | Trusted Publishing (OIDC, no token) | manylinux + macOS + Windows wheels |
+| Node | `node-v*` | `release-node.yml` | **npm** `rustpdf` + 4 platform pkgs (`@rustpdf/{darwin-arm64,linux-arm64-gnu,linux-x64-gnu,win32-x64-msvc}`) | `NPM_TOKEN` | main pkg pulls a platform pkg via `optionalDependencies` |
+| C# | `csharp-v*` | `release-csharp.yml` | **NuGet** `RustPdf` | Trusted Publishing (OIDC) + `NUGET_USER` repo var + `nuget` environment | single RID-asset `.nupkg` |
+| Ruby | `ruby-v*` | `release-ruby.yml` | **RubyGems** `rustpdf` | `RUBYGEMS_API_KEY` | |
+| Swift | `swift-v*` | `release-swift.yml` | **GitHub Release** (xcframework) | — | `Package.swift` `.binaryTarget`; site deploy pulls the asset |
+| Delphi | `delphi-v*` | `release-delphi.yml` | **GitHub Release** (zip + sha) | — | no central registry; site offers the download |
+| Go | `go-v*` | `release-go.yml` | **git tag** `bindings/go/v*` (workflow creates it, with native libs staged) | — | `go get github.com/rustpdf/rustpdf/bindings/go/rustpdf@vX.Y.Z` |
+| PHP | `php-v*` | `release-php.yml` | **Packagist** `rust-pdf/rustpdf` (mirror) + binaries on the mirror's GH Release | `MIRROR_RELEASE_TOKEN` (PAT, `contents:write` on the mirror) | see PHP steps below |
+| Java | `java-v*` | `release-java.yml` | **Maven Central** (Sonatype) | `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` / `MAVEN_GPG_PRIVATE_KEY` / `MAVEN_GPG_PASSPHRASE` | |
+| Rust | `rust-v*` | `release-rust.yml` | **private cargo registry** | `CARGO_REGISTRY_INDEX` + `CARGO_REGISTRY_TOKEN` | crate loads `libpdf_ffi` at runtime (no embedded binary) |
 
 ### Go specifics — TWO steps (the second is manual and easy to forget)
 
@@ -80,7 +75,7 @@ tag).** Both are required; doing only step 1 leaves customers stuck on the old
 version even though every other binding shipped (this is exactly what happened to
 0.4.3 — see the 2026-06-29 incident note below).
 
-**Step 1 — build the prod-key native libs (CI, automatic).** Pushing the `go-v*`
+**Step 1 — build the native libs (CI, automatic).** Pushing the `go-v*`
 trigger tag runs `release-go.yml`, which builds `libpdf_ffi.a` for all five
 platforms, makes a commit staging them under
 `bindings/go/rustpdf/lib/<os>_<arch>/libpdf_ffi.a`, and pushes the module tag
@@ -93,13 +88,13 @@ access + `GOPRIVATE`, so **external customers cannot use it**.
 site and all docs tell customers `go get github.com/rustpdf/rustpdf-go`, a
 standalone **public** repo (root layout, plain `v*` tags) carrying the committed
 `.a` per platform. It is NOT updated by any workflow yet — you must push it by
-hand each release, reusing the prod-key `.a` that step 1 already built (no CI
+hand each release, reusing the `.a` that step 1 already built (no CI
 rerun). From the monorepo root, with `<V>` = version (e.g. `0.4.3`):
 
 ```sh
 V=0.4.3
 W=$(mktemp -d)
-# 1. pull the module tag + extract the prod-key .a tree CI just built
+# 1. pull the module tag + extract the .a tree CI just built
 git fetch origin tag "bindings/go/v$V"
 git archive "bindings/go/v$V" bindings/go | tar -x -C "$W"
 # 2. clone the public mirror (currently at the previous version)
@@ -146,12 +141,8 @@ from a **public mirror** `rustpdf/rustpdf-php`, not the monorepo.
 
 ### Java specifics
 
-`mvn exec:java` runs a smoke; the **release** smoke must be `ReleaseSmoke` (free
-surface only — the prod-key lib rejects the dev token). The main class is the
-`exec.mainClass` property (default `SmokeTest` for local dev); the workflow
-overrides it with `-Dexec.mainClass=dev.rustpdf.ReleaseSmoke`. It must be a
-property reference in the pom — a literal `<mainClass>` would win over `-D` and
-wrongly run the full `SmokeTest`.
+`mvn exec:java` runs the full `SmokeTest`, both locally and on release. The main
+class is the `exec.mainClass` property (default `dev.rustpdf.SmokeTest`).
 
 ## 4. Verify each registry is on the new version
 
@@ -178,8 +169,6 @@ batch-push trap bit you again.
 - **Tag pushed, no workflow run** → tags were pushed in a batch (>3). Delete and
   re-push them one at a time, or `gh workflow run release-<lang>.yml` per binding.
 - **All jobs `startup_failure` (`steps=0`)** → Actions billing/quota. Fix billing.
-- **`refusing to publish ... RUSTPDF_LICENSE_PUBKEY not set`** → set the prod
-  pubkey secret.
 - **Go `tag ... already exists`** → you pushed `bindings/go/v*` by hand; delete
   it (`git push origin :refs/tags/bindings/go/v0.4.0`) and rerun `release-go`.
 - **`go get github.com/rustpdf/rustpdf-go@latest` returns the OLD version** → you

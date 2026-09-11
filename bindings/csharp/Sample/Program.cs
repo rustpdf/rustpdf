@@ -1,5 +1,5 @@
-// Smoke test / demo for the RustPdf .NET binding. Exercises the whole surface,
-// including licensing gating. Exits non-zero on any failed assertion.
+// Smoke test / demo for the RustPdf .NET binding. Exercises the whole surface.
+// Exits non-zero on any failed assertion.
 
 using RustPdf;
 
@@ -23,26 +23,15 @@ static void Assert(bool cond, string msg)
 
 var root = RepoRoot();
 var font = Path.Combine(root, "assets", "fonts", "Roboto-Regular.ttf");
-var devLicense = File.ReadAllText(Path.Combine(root, "crates", "license", "fixtures", "dev_license.txt")).Trim();
 
 Console.WriteLine($"rustpdf version: {Pdf.Version()}");
 
-// 1. Corporate features are blocked until a license is activated.
-bool blocked = false;
-try
+// 1. Every feature is free.
+using (var d = new Document())
 {
-    using var d = new Document();
     d.Pdfa().AddPage();
-    d.ToBytes();
+    Assert(d.ToBytes().Length > 0, "PDF/A must work");
 }
-catch (PdfException)
-{
-    blocked = true;
-}
-Assert(blocked, "PDF/A must be blocked without a license");
-
-Pdf.ActivateLicense(devLicense);
-Console.WriteLine("license activated");
 
 // 2. Build a tagged PDF/A-2a doc with a font, heading and justified paragraph.
 byte[] pdfa;
@@ -60,7 +49,7 @@ var text = Pdf.ExtractText(pdfa);
 Assert(text.Contains("Título"), $"extracted text: {text}");
 Console.WriteLine($"built PDF/A-2a ({pdfa.Length} bytes); extracted ok");
 
-// Page rendering (Pro feature; license already active).
+// Page rendering.
 Assert(Pdf.PageCount(pdfa) == 1, "page count");
 var png = Pdf.RenderPageToPng(pdfa, 0, 72.0);
 Assert(png.Length > 8 && png[1] == 0x50 && png[2] == 0x4E && png[3] == 0x47, "PNG header");
@@ -194,7 +183,7 @@ Assert(navStr.Contains("/URI"), "URI action present");
 Assert(navStr.Contains("/Outlines"), "outline dictionary present");
 Console.WriteLine($"links + bookmarks ok ({nav.Length} bytes)");
 
-// 10. Factur-X / ZUGFeRD e-invoice (Tier 2, license-gated).
+// 10. Factur-X / ZUGFeRD e-invoice (Tier 2).
 const string invoiceXml =
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
     "<rsm:CrossIndustryInvoice xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\">" +
@@ -286,7 +275,7 @@ Console.WriteLine("true glyph-level redaction ok");
 }
 Console.WriteLine("cmyk jpeg render ok");
 
-// 13. Convert an existing PDF to PDF/A (license-gated).
+// 13. Convert an existing PDF to PDF/A.
 byte[] converted;
 using (var ed = EditableDoc.Load(plain))
 {

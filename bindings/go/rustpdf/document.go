@@ -77,15 +77,15 @@ func (d *Document) Close() {
 
 // ---- configuration ---------------------------------------------------------
 
-// Pdfa marks the document as PDF/A-2b (requires a license).
+// Pdfa marks the document as PDF/A-2b.
 func (d *Document) Pdfa() error { return check(C.pdf_document_pdfa(d.h)) }
 
-// PdfaLevel marks the document at an explicit PDF/A level (requires a license).
+// PdfaLevel marks the document at an explicit PDF/A level.
 func (d *Document) PdfaLevel(level PdfaLevel) error {
 	return check(C.pdf_document_pdfa_level(d.h, C.int(level)))
 }
 
-// Tagged enables the tagged/accessible structure tree (requires a license).
+// Tagged enables the tagged/accessible structure tree.
 func (d *Document) Tagged() error { return check(C.pdf_document_tagged(d.h)) }
 
 // SetVersion sets the PDF version (0 = 1.4, 1 = 1.5, 2 = 1.7, 3 = 2.0).
@@ -378,8 +378,7 @@ func (d *Document) AddBookmark(bookmark Bookmark) error {
 }
 
 // Facturx makes the document a ZUGFeRD / Factur-X invoice: embeds xml as
-// factur-x.xml, marks it PDF/A-3b and adds the Factur-X XMP (requires a
-// license).
+// factur-x.xml, marks it PDF/A-3b and adds the Factur-X XMP.
 func (d *Document) Facturx(xml []byte, profile FacturxProfile) error {
 	st := C.pdf_document_facturx(d.h, uptr(xml), C.uintptr_t(len(xml)), C.int(profile))
 	runtime.KeepAlive(xml)

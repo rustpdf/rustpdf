@@ -236,14 +236,6 @@ fn rendered_text_advance_is_proportional_not_flat() {
     // Render a placed line of standard Helvetica (no /Widths) and return the
     // inked width in pixels.
     fn ink_width(s: &str) -> u32 {
-        pdf::activate_license(
-            include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../license/fixtures/dev_license.txt"
-            ))
-            .trim(),
-        )
-        .unwrap();
         let mut doc = Document::new();
         doc.add_page_sized(600.0, 60.0);
         let plain = doc.to_bytes().unwrap();

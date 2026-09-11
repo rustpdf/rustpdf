@@ -549,7 +549,7 @@ public final class EditableDoc implements AutoCloseable {
         return found.getValue() != 0;
     }
 
-    /** Convert the loaded document to PDF/A. Only B-levels (A1B/A2B/A3B) are valid. Requires a license. */
+    /** Convert the loaded document to PDF/A. Only B-levels (A1B/A2B/A3B) are valid. */
     public EditableDoc convertToPdfa(PdfaLevel level) {
         Pdf.check(FFI.C.pdf_editable_convert_to_pdfa(h(), level.code));
         return this;
@@ -565,7 +565,7 @@ public final class EditableDoc implements AutoCloseable {
         return this;
     }
 
-    /** Encrypt on save (requires a license). */
+    /** Encrypt on save. */
     public EditableDoc encrypt(String user, String owner, Encryption method, boolean readOnly) {
         Pdf.check(FFI.C.pdf_editable_encrypt(h(), method.code, user, owner, readOnly ? 1 : 0));
         return this;

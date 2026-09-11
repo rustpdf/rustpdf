@@ -2,8 +2,8 @@
 //  SmokeTest.swift
 //  RustPdfTests
 //
-//  One test exercises the whole product surface serially (the license is
-//  process-global). Mirrors the Go/Java/Delphi smoke tests over the same C ABI.
+//  One test exercises the whole product surface serially. Mirrors the
+//  Go/Java/Delphi smoke tests over the same C ABI.
 //
 
 import XCTest
@@ -38,24 +38,17 @@ final class SmokeTest: XCTestCase {
     func testFullSurface() throws {
         let root = try repoRoot()
         let fontURL = root.appendingPathComponent("assets/fonts/Roboto-Regular.ttf")
-        let devLicense = String(decoding: try read(
-            root.appendingPathComponent("crates/license/fixtures/dev_license.txt")),
-            as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
 
         XCTAssertFalse(Pdf.version.isEmpty, "version must be non-empty")
 
-        // 1. Corporate features blocked without a license.
-        unsetenv("RUSTPDF_LICENSE")
-        unsetenv("RUSTPDF_LICENSE_FILE")
+        // 1. Every feature is free.
         do {
             let d = try Document()
             try d.pdfa()
             try d.addPage()
-            XCTAssertThrowsError(try d.toBytes(), "PDF/A must be blocked without a license")
+            XCTAssertFalse(try d.toBytes().isEmpty, "PDF/A must work")
         }
 
-        // 2. Activate and build a tagged PDF/A-2a document.
-        try Pdf.activateLicense(devLicense)
         let font = try read(fontURL)
         var pdfa: [UInt8] = []
         do {
@@ -86,7 +79,7 @@ final class SmokeTest: XCTestCase {
         XCTAssertTrue(try Pdf.findText(pdfa, query: "no-such-string-xyz").isEmpty,
                       "missing query should yield no hits")
 
-        // 3b. Page rendering (Pro feature; license already active).
+        // 3b. Page rendering.
         XCTAssertEqual(try Pdf.pageCount(pdfa), 1)
         let png = try Pdf.renderPageToPng(pdfa, page: 0, dpi: 72.0)
         XCTAssertTrue(png.count > 8 && png[1] == 0x50 && png[2] == 0x4E && png[3] == 0x47,
@@ -192,7 +185,7 @@ final class SmokeTest: XCTestCase {
             XCTAssertTrue(contains(bytes, "/Outlines"), "outline missing")
         }
 
-        // 11. Factur-X / ZUGFeRD (Tier 2; license-gated, PDF/A-3b).
+        // 11. Factur-X / ZUGFeRD (Tier 2, PDF/A-3b).
         do {
             let d = try Document()
             let f = try d.addFont(data: font)
@@ -243,7 +236,7 @@ final class SmokeTest: XCTestCase {
             _ = try ed.toBytes()
         }
 
-        // 14. Convert an existing (font-embedded) document to PDF/A (license-gated).
+        // 14. Convert an existing (font-embedded) document to PDF/A.
         do {
             let ed = try EditableDoc(loading: plain)
             try ed.convertToPdfa(.a2b)

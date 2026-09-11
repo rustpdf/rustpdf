@@ -36,7 +36,7 @@ LANGS = {
                    eco="It installs with pip as a self-contained wheel and exposes a context-manager API, so a Django view, a FastAPI endpoint or a Celery worker can generate documents inline. There is no system PDF toolchain to install in the container image."),
     "csharp": dict(name="C#",     long="C# and .NET",         hub="/dotnet", docs="/docs/csharp.html", hl="csharp",     install="dotnet add package RustPdf", aliases=["dotnet"], pm="NuGet",
                    gap=".NET's mature options (iText, Aspose) are powerful but expensive and carry AGPL or per-server licensing, which is exactly what teams want to avoid.",
-                   eco="It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The flat per-application license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."),
+                   eco="It installs from NuGet and uses source-generated P/Invoke, so an ASP.NET Core service or a worker runs it with no native build step on the developer machine. The MIT license sidesteps the AGPL and per-server terms that make the incumbents expensive at scale."),
 }
 
 # docs section id -> task slug (the first code block of that section is harvested)
@@ -51,7 +51,7 @@ SECTION_FOR_TASK = {
     "extract-text": "extract",
 }
 
-GATED = {"go", "php", "ruby", "node", "python", "csharp"}
+ADVANCED = {"go", "php", "ruby", "node", "python", "csharp"}
 FREE = ["go", "php", "ruby", "node"]
 ALL6 = ["go", "php", "ruby", "node", "python", "csharp"]
 
@@ -63,7 +63,7 @@ TASKS = {
         h1='Digitally sign a <span class="grad">PDF</span> in %L',
         kw="sign a PDF in %l",
         hub_url="/sign-pdf", hub_name="Sign PDF",
-        gated=True,
+        advanced=True,
         validators=["pdfsig", "openssl", "qpdf"],
         lede="Add a cryptographic PKCS#7 or PAdES signature to a PDF from %L. rust-pdf signs through a non-destructive incremental update, so the original bytes are preserved and the signature stays verifiable in Adobe Reader, pdfsig and any PAdES validator.",
         why_p="A real digital signature gives a document legal weight: it proves who signed it and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, supports PAdES B-B, B-LT and B-LTA for long-term validation, and lets you supply your own key and certificate as DER.",
@@ -75,7 +75,7 @@ TASKS = {
         faq=[
             ("Is the signature legally valid?", "rust-pdf produces standards-compliant PKCS#7 and PAdES signatures. Legal validity depends on the certificate you sign with (for example an eIDAS qualified certificate or an ICP-Brasil certificate). The library handles the cryptography and the PDF structure correctly, which is what validators such as pdfsig and Adobe Reader check."),
             ("Does it support long-term validation (LTV)?", "Yes. After signing you can append a Document Security Store with certificates and CRLs (PAdES B-LT) and an RFC 3161 document timestamp (PAdES B-LTA), all offline. A trusted external TSA and live OCSP fetching are the only parts that need network infrastructure."),
-            ("Do I need a license to sign in %L?", "Signing is a corporate feature, so it requires an active license token. Basic PDF generation in %L is free. The same offline Ed25519 token unlocks signing across every language."),
+            ("Is signing free in %L?", "Yes. Signing is free, like every feature in rust-pdf."),
         ],
     ),
     "pdf-a": dict(
@@ -84,7 +84,7 @@ TASKS = {
         h1='Create <span class="grad">PDF/A</span> in %L',
         kw="create PDF/A in %l",
         hub_url="/pdf-a", hub_name="PDF/A",
-        gated=True,
+        advanced=True,
         validators=["veraPDF", "qpdf", "mutool"],
         lede="Generate archival-grade PDF/A from %L with one method call. rust-pdf embeds the sRGB ICC profile, adds the output intent, writes the XMP metadata and document ID, and enforces the rules, so the output validates under veraPDF, the reference validator.",
         why_p="PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.",
@@ -96,7 +96,7 @@ TASKS = {
         faq=[
             ("Which PDF/A levels are supported in %L?", "rust-pdf creates PDF/A-1b, 2b, 2a, 3b, 3a and 4 (the PDF 2.0-based part, including 4e and 4f). Use a basic b-level for visual fidelity, an a-level for an accessible tagged structure, or a 3-level when you need to embed source files such as an e-invoice XML."),
             ("How is conformance verified?", "Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives."),
-            ("Do I need a license to create PDF/A in %L?", "PDF/A is a corporate feature and requires an active license token. Basic generation in %L is free. One offline token unlocks PDF/A in every supported language."),
+            ("Is PDF/A free in %L?", "Yes. PDF/A is free, like every feature in rust-pdf."),
         ],
     ),
     "encrypt-pdf": dict(
@@ -105,7 +105,7 @@ TASKS = {
         h1='Encrypt a <span class="grad">PDF</span> in %L',
         kw="encrypt a PDF in %l",
         hub_url="/encrypt-pdf", hub_name="Encrypt PDF",
-        gated=True,
+        advanced=True,
         validators=["qpdf", "mutool"],
         lede="Password-protect a PDF from %L with strong AES-256 encryption. rust-pdf applies standard-handler encryption at output, deriving keys and IVs from the operating system CSPRNG, and supports user and owner passwords plus permission flags.",
         why_p="Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.",
@@ -117,7 +117,7 @@ TASKS = {
         faq=[
             ("How strong is the encryption?", "rust-pdf uses AES-256 with the modern V5/R6 security handler, the strongest standard PDF encryption. Keys, salts and IVs come from the operating system CSPRNG, so every encrypted file is unique. qpdf validates the output for both user and owner passwords."),
             ("What is the difference between user and owner passwords?", "A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode."),
-            ("Do I need a license to encrypt in %L?", "Encryption is a corporate feature and needs an active license token. Basic generation in %L is free. The same offline token enables encryption in every language."),
+            ("Is encryption free in %L?", "Yes. Encryption is free, like every feature in rust-pdf."),
         ],
     ),
     "merge-pdf": dict(
@@ -126,7 +126,7 @@ TASKS = {
         h1='Merge <span class="grad">PDF</span> files in %L',
         kw="merge PDFs in %l",
         hub_url="/merge-pdf", hub_name="Merge & split PDF",
-        gated=False,
+        advanced=False,
         validators=["qpdf", "mutool"],
         lede="Combine, split, reorder and rotate PDF pages from %L. rust-pdf parses each document into an editable model, renumbers and remaps every object correctly on merge, and rebuilds a clean page tree on output.",
         why_p="Merging and splitting are list operations on a flat page order: append another document, extract a subset, reverse, rotate or delete pages, then save. Because the parser handles classic and cross-reference streams, object streams and encrypted input, it works on real-world files, not just ones it wrote itself.",
@@ -138,7 +138,7 @@ TASKS = {
         faq=[
             ("Can I merge more than two PDFs in %L?", "Yes. Load each document and call merge for each one; pages are appended in order. You can then reorder, rotate or extract any subset before saving."),
             ("Does merging keep the files valid?", "Yes. On merge every object from the other document is renumbered and its references are deep-remapped, and the real page tree is rebuilt on output, so the result passes qpdf and mutool."),
-            ("Is merging free?", "Yes. Loading, merging, splitting, reordering and text extraction are all part of the free tier in %L. You only need a license for the corporate features such as PDF/A, signatures and encryption."),
+            ("Is merging free?", "Yes. Everything in rust-pdf is free and MIT licensed: loading, merging, splitting, reordering and text extraction, as well as PDF/A, signatures and encryption."),
         ],
     ),
     "extract-text": dict(
@@ -147,7 +147,7 @@ TASKS = {
         h1='Extract <span class="grad">text</span> from a PDF in %L',
         kw="extract text from a PDF in %l",
         hub_url="/extract-text", hub_name="Extract text",
-        gated=False,
+        advanced=False,
         validators=["pdftotext"],
         lede="Pull the text out of any PDF from %L. rust-pdf walks the content stream, maps shown glyph codes back to Unicode through each font's ToUnicode map, and infers spaces and line breaks, including two-byte Type0 fonts and CJK.",
         why_p="Reliable extraction is harder than it looks: codes in the stream are font-specific and must be mapped to Unicode, and spacing has to be inferred from positioning. rust-pdf does both, so the text you get back is the text a human reads, ready for search, indexing or data pipelines.",
@@ -159,7 +159,7 @@ TASKS = {
         faq=[
             ("Does it extract Unicode and CJK text in %L?", "Yes. Each shown code is mapped back to Unicode through the font's ToUnicode CMap, including two-byte Type0 fonts, so Japanese, Greek, Arabic and other scripts come back correctly."),
             ("Can it extract scanned PDFs?", "No. Extraction reads the text layer of a PDF. A scanned document is an image with no text layer, which needs OCR first. For PDFs that contain real text, extraction is exact."),
-            ("Is text extraction free?", "Yes. Text and image extraction are part of the free tier in %L. No license token is required."),
+            ("Is text extraction free?", "Yes. Text and image extraction are free, like every feature in %L."),
         ],
     ),
     "compress-pdf": dict(
@@ -168,7 +168,7 @@ TASKS = {
         h1='Compress a <span class="grad">PDF</span> in %L',
         kw="compress a PDF in %l",
         hub_url="/compress-pdf", hub_name="Compress PDF",
-        gated=False,
+        advanced=False,
         validators=["qpdf", "mutool"],
         lede="Shrink PDF file size from %L. rust-pdf drops unreferenced objects, Flate-compresses uncompressed streams, dedupes byte-identical objects, and can pack everything into object streams with a cross-reference stream.",
         why_p="Optimization is lossless structural cleanup: nothing in the rendered page changes, the file just carries less weight. Combine optimize (dedupe and compress) with compact (object and xref streams) for the smallest valid output, ideal before archiving, emailing or serving documents at scale.",
@@ -180,7 +180,7 @@ TASKS = {
         faq=[
             ("How much smaller will my PDF be in %L?", "It depends on the input. Files with uncompressed streams, duplicated objects or no object streams shrink the most. Optimization is lossless, so the savings come from structure, not from degrading content."),
             ("Does compression reduce quality?", "No. This is structural optimization, not image down-sampling. The rendered page is identical; only redundant or uncompressed structure is removed, so the output still validates."),
-            ("Is optimization free?", "Yes. Optimize and compact are part of the free tier in %L. No license is needed."),
+            ("Is optimization free?", "Yes. Optimize and compact are free, like every feature in %L."),
         ],
     ),
     "generate-pdf": dict(
@@ -189,7 +189,7 @@ TASKS = {
         h1='Generate a <span class="grad">PDF</span> in %L',
         kw="generate a PDF in %l",
         hub_url="/generate-pdf", hub_name="Generate PDF",
-        gated=False,
+        advanced=False,
         validators=["qpdf", "mutool"],
         lede="Create PDFs programmatically from %L: pages, vector graphics, embedded and subset fonts with full Unicode shaping, justified paragraphs, tables and images. rust-pdf gives %L a fast, memory-safe core with deterministic output.",
         why_p="Generation is the free foundation. Draw shapes, place shaped and kerned Unicode text, lay out wrapping paragraphs, embed JPEG and PNG images, and add links and bookmarks. Output is deterministic (the same input yields the same bytes), which makes it auditable and testable.",
@@ -199,7 +199,7 @@ TASKS = {
             "Deterministic output: identical bytes for identical input, ideal for audits and tests.",
         ],
         faq=[
-            ("Is generating PDFs free in %L?", "Yes. All basic generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free forever. You only license corporate features such as PDF/A, signatures and encryption when you ship them."),
+            ("Is generating PDFs free in %L?", "Yes. Generation (pages, graphics, fonts, text, paragraphs, images, links, bookmarks, watermarks) is free, like every feature in %L."),
             ("Does it support Unicode and custom fonts?", "Yes. Fonts are embedded and subset with HarfBuzz-quality shaping and kerning, using Type0 fonts with ToUnicode, so non-Latin scripts render and extract correctly."),
             ("Why a Rust core for %L?", "One memory-safe, high-performance Rust core is exposed to %L through a thin idiomatic binding. You get the same engine, the same features and deterministic output, without a heavy runtime."),
         ],
@@ -210,7 +210,7 @@ TASKS = {
         h1='Create and fill <span class="grad">PDF forms</span> in %L',
         kw="create PDF forms in %l",
         hub_url="/pdf-forms", hub_name="PDF forms",
-        gated=False,
+        advanced=False,
         validators=["qpdf", "mutool"],
         lede="Build interactive AcroForm fields from %L (text inputs, checkboxes, radio groups and dropdowns) with generated appearance streams, then fill and flatten them later. No NeedAppearances hack required.",
         why_p="rust-pdf generates a full AcroForm with appearance streams baked in, so fields render correctly everywhere without relying on the viewer. Names support dotted hierarchy for grouped fields, and an existing form can be filled programmatically and flattened into static content.",
@@ -222,12 +222,12 @@ TASKS = {
         faq=[
             ("Do the form fields render without NeedAppearances in %L?", "Yes. rust-pdf generates an appearance stream for every field, so checkboxes, text and choices display correctly in all viewers without the NeedAppearances workaround."),
             ("Can I fill an existing form in %L?", "Yes. Load the PDF, set text fields, checkboxes, radios and dropdowns by name, and optionally flatten the form so the values become permanent static content."),
-            ("Is form authoring free?", "Yes. Creating, filling and flattening AcroForm fields is part of the free tier in %L."),
+            ("Is form authoring free?", "Yes. Creating, filling and flattening AcroForm fields is free, like every feature in %L."),
         ],
     ),
 }
 
-MATRIX = {t: (ALL6 if d["gated"] else FREE) for t, d in TASKS.items()}
+MATRIX = {t: (ALL6 if d["advanced"] else FREE) for t, d in TASKS.items()}
 
 # ---------------------------------------------------------------- code harvest
 def harvest():
@@ -317,10 +317,9 @@ PAGE = """<!doctype html>
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -387,10 +386,10 @@ PAGE = """<!doctype html>
     <section class="section">
       <div class="wrap narrow center">
         <h2>%%CTATITLE%%</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Free and open source (MIT), every feature included.</p>
         <div class="cta-row">
           <a href="%%LANGDOCS%%" class="btn btn-lg">Read the %%LANGNAME%% docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
 %%SIBLINGS%%
@@ -402,13 +401,13 @@ PAGE = """<!doctype html>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms.html">Terms</a>
         <a href="/legal/privacy.html">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>
@@ -485,17 +484,10 @@ def render(task, lang, code):
         f"        <details><summary>{esc(q)}</summary>\n          <p>{esc(a)}</p>\n        </details>"
         for q, a in faq_pairs)
 
-    if t["gated"]:
-        validators = ('        <div class="validators" style="text-align:center">Validated by: '
-                      + "".join(f"<span>{v}</span>" for v in t["validators"]) + "</div>")
-        licnote = ('        <p class="center muted narrow" style="margin-top:18px">'
-                   f"{ln} basic generation is free. {TASKLABEL[task]} is a corporate feature, unlocked by one offline "
-                   'license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>')
-    else:
-        validators = ('        <div class="validators" style="text-align:center">Validated by: '
-                      + "".join(f"<span>{v}</span>" for v in t["validators"]) + "</div>")
-        licnote = ('        <p class="center muted narrow" style="margin-top:18px">'
-                   f"This is part of the free tier in {ln}. No license required.</p>")
+    validators = ('        <div class="validators" style="text-align:center">Validated by: '
+                  + "".join(f"<span>{v}</span>" for v in t["validators"]) + "</div>")
+    licnote = ('        <p class="center muted narrow" style="margin-top:18px">'
+               f"Free and open source (MIT): {TASKLABEL[task]} in {ln} is free.</p>")
 
     # siblings: same task other langs, same lang other tasks, hub, docs
     sib = []

@@ -16,9 +16,8 @@
 | Fase 6 | Manipulação (Tier 2) | ✅ completo (6.1–6.8: **object streams + xref stream**, **dedupe**, **incremental update genérico**, **AcroForm 6.7 com `/AP`**) |
 | Fase 7 | Diferenciadores (Tier 3) | 🟡 7.1–7.6 ✅ (assinatura, PAdES/LTV, cripto **+AES-256 + CSPRNG**, **PDF/A-1b/2b/2a/3b/3a**, **PDF/UA-1 com tags semânticas + listas/caption/Headers**, layout); só 7.7 (HTML→PDF) — fora de escopo |
 
-**Licenciamento (corporativo):** crate `license` (Ed25519) + `pdf::activate_license`
-bloqueia PDF/A, assinatura/PAdES, criptografia e acessibilidade sem licença
-válida/assinada/não-expirada. Ver `docs/LICENSING.md`.
+**Licença:** MIT, todas as features grátis (PDF/A, assinatura/PAdES, criptografia,
+acessibilidade, redação, rendering).
 
 Métricas atuais: 157 testes verdes · clippy `-D warnings` limpo · fmt limpo ·
 **PDF/A-1b/2b/2a/3b/3a e PDF/UA-1 validados pelo veraPDF**; **AES-256/R6, object
@@ -223,8 +222,8 @@ Tier explicitamente "escopo leve, vai mudar" no `project.md`. Entregue o que é
   (vetores posicionados, glifos, imagem RGB, CMYK) + unit tests do avaliador de
   funções + **regressão visual vs mutool** (`tests/visual_regression.rs`:
   testkit `render_to_png` + diff perceptual; corpus even-odd/CTM/Unicode/alpha
-  <0.0003, vetores/texto ~0.001). **Licenciado como feature Pro**
-  (`Feature::Rendering`; gate no wrapper `pdf::render_page_*`). Lacunas conhecidas
+  <0.0003, vetores/texto ~0.001). **Grátis, como todas as features.** Lacunas
+  conhecidas
   (mesh shadings 4–7, tiling patterns, CCITT/JPX/JBIG2, soft mask por
   luminosidade, FontFile Type1) em `PENDING.md`.
 

@@ -16,8 +16,8 @@
   <!-- Central Portal requires license, scm and developer metadata on every release. -->
   <licenses>
     <license>
-      <name>Proprietary — rust-pdf commercial license</name>
-      <url>https://rustpdf.dev/license</url>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
@@ -42,11 +42,9 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jna.version>5.14.0</jna.version>
-    <!-- Default smoke main for local `mvn exec:java` (full surface, dev key).
-         The release job overrides it with -Dexec.mainClass=dev.rustpdf.ReleaseSmoke
-         (free surface only — the prod-key lib rejects the dev token). A literal
-         <mainClass> in the plugin config would win over -D, so it MUST be this
-         property reference. -->
+    <!-- Smoke main for `mvn exec:java`. Every feature is free, so the full
+         surface runs both locally and on release; the property exists so the
+         plugin config can reference it (and so it stays overridable). -->
     <exec.mainClass>dev.rustpdf.SmokeTest</exec.mainClass>
   </properties>
 

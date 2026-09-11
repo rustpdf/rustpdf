@@ -1,7 +1,7 @@
 'use strict';
 
-// Smoke test for the RustPdf Node binding. Exercises the whole surface,
-// including licensing gating. Exits non-zero on any failed assertion.
+// Smoke test for the RustPdf Node binding. Exercises the whole surface.
+// Exits non-zero on any failed assertion.
 
 const fs = require('fs');
 const os = require('os');
@@ -22,24 +22,15 @@ function repoRoot() {
 
 const root = repoRoot();
 const font = path.join(root, 'assets', 'fonts', 'Roboto-Regular.ttf');
-const devLicense = fs.readFileSync(path.join(root, 'crates', 'license', 'fixtures', 'dev_license.txt'), 'utf8').trim();
 
 console.log('rustpdf version:', rp.version());
 
-// 1. Corporate features blocked without a license.
-delete process.env.RUSTPDF_LICENSE;
-let blocked = false;
-try {
+// 1. Every feature works out of the box.
+{
   const d = new rp.Document();
   d.pdfa().addPage();
-  d.toBytes();
-} catch (e) {
-  blocked = e instanceof rp.PdfError;
+  assert.ok(d.toBytes().length > 0, 'PDF/A must work out of the box');
 }
-assert.ok(blocked, 'PDF/A must be blocked without a license');
-
-rp.activateLicense(devLicense);
-console.log('license activated');
 
 // 2. Tagged PDF/A-2a with a font, heading and justified paragraph.
 let pdfa;
@@ -58,7 +49,7 @@ const text = rp.extractText(pdfa);
 assert.ok(text.includes('Título'), `extracted text: ${text}`);
 console.log(`built PDF/A-2a (${pdfa.length} bytes); extracted ok`);
 
-// Page rendering (Pro feature; license already active).
+// Page rendering.
 assert.strictEqual(rp.pageCount(pdfa), 1, 'page count');
 const png = rp.renderPageToPng(pdfa, 0, 72.0);
 assert.ok(png.length > 8 && png[1] === 0x50 && png[2] === 0x4e && png[3] === 0x47, 'PNG header');

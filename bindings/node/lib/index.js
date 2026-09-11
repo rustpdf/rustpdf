@@ -161,7 +161,6 @@ const SignHashFn = koffi.proto(
 const f = {
   version: lib.func('const char *pdf_version()'),
   lastError: lib.func('const char *pdf_last_error_message()'),
-  activateLicense: lib.func('int pdf_activate_license(const char *token)'),
   bufferFree: lib.func('void pdf_buffer_free(uint8_t *ptr, size_t len)'),
 
   newDoc: lib.func('void *pdf_document_new()'),
@@ -331,10 +330,6 @@ function copyAndFree(ptr, n) {
 
 function version() {
   return f.version();
-}
-
-function activateLicense(token) {
-  check(f.activateLicense(token));
 }
 
 function extractText(pdf) {
@@ -964,7 +959,6 @@ module.exports = {
   Document,
   EditableDoc,
   version,
-  activateLicense,
   extractText,
   extractPageText,
   extractImagesToDir,

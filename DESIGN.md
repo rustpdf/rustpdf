@@ -2,7 +2,7 @@
 
 > Visual system for the rust-pdf marketing + docs site (`site/`). Captured from
 > the real implementation in `site/public/styles.css`, `docs/docs.css`,
-> `legal/legal.css`. Strategic intent lives in `PRODUCT.md` (register: brand).
+> `legal/legal.css`.
 
 ## Theme
 
@@ -63,7 +63,7 @@ text.
 - **Buttons** (`.btn`): solid orange, `#1a0e02` ink, radius 10px, weight 700;
   `.btn-ghost` transparent with border; `.btn-lg` / `.btn-sm` sizes. Hover lifts
   1px (suppressed under reduced-motion).
-- **Cards** (`.card`): panel bg, hairline border, radius 14px. The licensed/Pro
+- **Cards** (`.card`): panel bg, hairline border, radius 14px. The featured
   card gets a warm-tinted border + soft orange shadow. No nested cards.
 - **Chips/pills:** rounded `999px`, panel-2 bg, used for validators and feature
   tags. `.tag-pro` is filled orange.

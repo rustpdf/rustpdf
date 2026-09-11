@@ -19,9 +19,8 @@ pip install rustpdf
 
 Platform wheels (macOS arm64, manylinux_2_28 x86_64/aarch64, Windows x64)
 bundle the native `libpdf_ffi` library — no Rust toolchain needed to install.
-Basic PDF generation is free; corporate features (PDF/A, accessibility,
-encryption, signatures, page rendering) unlock with a license token via the
-`RUSTPDF_LICENSE` env var. Page rendering is a **Pro** feature. See
+Every feature is free — PDF/A, accessibility/tagging, encryption, digital
+signatures/PAdES, redaction and page rendering are all included. See
 <https://rustpdf.dev>.
 
 ## Loading the native library
@@ -51,7 +50,7 @@ with rustpdf.Document() as doc:
 
 print(rustpdf.extract_text(data))
 
-# Render a page to a PNG image (Pro feature).
+# Render a page to a PNG image.
 print(f"{rustpdf.page_count(data)} page(s)")
 png = rustpdf.render_page_to_png(data, page=0, dpi=150.0)
 open("page1.png", "wb").write(png)

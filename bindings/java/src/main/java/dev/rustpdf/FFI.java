@@ -81,7 +81,6 @@ final class FFI {
         // ---- core -----------------------------------------------------------
         String pdf_version();
         String pdf_last_error_message();
-        int pdf_activate_license(String token);
         void pdf_buffer_free(Pointer ptr, long len);
 
         // ---- document lifecycle + graphics ----------------------------------

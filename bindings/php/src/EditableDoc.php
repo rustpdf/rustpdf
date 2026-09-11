@@ -609,7 +609,7 @@ final class EditableDoc
         return $found->cdata !== 0;
     }
 
-    /** Convert the document to PDF/A (only B-levels A1b/A2b/A3b; requires a license). */
+    /** Convert the document to PDF/A (only B-levels A1b/A2b/A3b). */
     public function convertToPdfa(PdfaLevel $level = PdfaLevel::A2b): self
     {
         Ffi::check($this->ffi->pdf_editable_convert_to_pdfa($this->h(), $level->value));
@@ -628,7 +628,7 @@ final class EditableDoc
         return $this;
     }
 
-    /** Encrypt on save (requires a license). */
+    /** Encrypt on save. */
     public function encrypt(Encryption $method = Encryption::Aes256, string $user = '', string $owner = '', bool $readOnly = false): self
     {
         Ffi::check($this->ffi->pdf_editable_encrypt($this->h(), $method->value, $user, $owner, $readOnly ? 1 : 0));

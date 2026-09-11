@@ -40,20 +40,6 @@ fn full_surface() {
     let version = rustpdf::ensure_loaded().expect("cdylib should load");
     assert!(!version.is_empty(), "version string should be non-empty");
 
-    // Activate the committed dev license so the gated paths (encryption,
-    // PDF/A) are exercised. The dev cdylib embeds the dev public key, so this
-    // token verifies; a production build would reject it.
-    let token = std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("crates/license/fixtures/dev_license.txt"),
-    )
-    .expect("read dev license");
-    rustpdf::activate_license(token.trim()).expect("activate dev license");
-
     // --- author a document exercising graphics, text and a paragraph ---
     let mut doc = Document::new().expect("new document");
     doc.set_info(
@@ -121,7 +107,7 @@ fn full_surface() {
     let _count =
         rustpdf::extract_images_to_dir(&bytes, img_dir.to_str().unwrap()).expect("extract images");
 
-    // Page rendering (Pro feature; license already active).
+    // Page rendering.
     assert_eq!(rustpdf::page_count(&bytes).expect("page count"), 1);
     let png = rustpdf::render_page_to_png(&bytes, 0, 72.0).expect("render page");
     assert!(
@@ -136,7 +122,7 @@ fn full_surface() {
     let encrypted = enc.to_bytes().expect("encrypt to bytes");
     assert!(encrypted.starts_with(b"%PDF-"));
 
-    // --- PDF/A tagging path on a fresh doc (licensed) ---
+    // --- PDF/A tagging path on a fresh doc ---
     let mut pdfa = Document::new().unwrap();
     pdfa.pdfa_level(PdfaLevel::A2b).unwrap();
     pdfa.add_page().unwrap();
@@ -162,7 +148,7 @@ fn full_surface() {
     let nav_bytes = nav.write().expect("write nav doc");
     assert!(nav_bytes.starts_with(b"%PDF-"));
 
-    // --- Factur-X / ZUGFeRD embedding (licensed, PDF/A-3) ---
+    // --- Factur-X / ZUGFeRD embedding (PDF/A-3) ---
     let mut invoice = Document::new().unwrap();
     invoice.add_page().unwrap();
     let xml = br#"<?xml version="1.0" encoding="UTF-8"?>

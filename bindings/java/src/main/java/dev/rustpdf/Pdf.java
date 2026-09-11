@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-/** Top-level helpers: version, licensing, text extraction and signing. */
+/** Top-level helpers: version, text extraction and signing. */
 public final class Pdf {
     private Pdf() {}
 
@@ -26,17 +26,6 @@ public final class Pdf {
     public static String version() {
         String v = FFI.C.pdf_version();
         return v == null ? "" : v;
-    }
-
-    /**
-     * Activate a license token (unlocks PDF/A, signing, encryption, accessibility).
-     * Tokens may also be supplied via the {@code RUSTPDF_LICENSE} or
-     * {@code RUSTPDF_LICENSE_FILE} environment variables (auto-activated).
-     *
-     * @throws PdfException if the token is forged, expired or malformed.
-     */
-    public static void activateLicense(String token) {
-        check(FFI.C.pdf_activate_license(token));
     }
 
     /** Extract a document's text (Unicode via {@code ToUnicode}). */
@@ -70,15 +59,13 @@ public final class Pdf {
 
     /**
      * Render page {@code pageIndex} (0-based) of {@code pdf} to a PNG image at
-     * {@code dpi} dots-per-inch. Page rendering is a licensed Pro feature: throws
-     * {@link PdfException} (status {@code License}) unless a license granting it
-     * is active.
+     * {@code dpi} dots-per-inch.
      */
     public static byte[] renderPageToPng(byte[] pdf, int pageIndex, double dpi) {
         return takeBuffer((p, n) -> FFI.C.pdf_render_page_to_png(pdf, pdf.length, pageIndex, dpi, p, n));
     }
 
-    /** Number of pages in {@code pdf} (free — no license required). */
+    /** Number of pages in {@code pdf} (free). */
     public static long pageCount(byte[] pdf) {
         LongByReference count = new LongByReference();
         check(FFI.C.pdf_page_count(pdf, pdf.length, count));
@@ -87,7 +74,7 @@ public final class Pdf {
 
     /**
      * Sign {@code pdf} (PKCS#7 detached, incremental update). {@code pades} selects
-     * PAdES-B-B. {@code reason}/{@code location}/{@code name} may be null. Requires a license.
+     * PAdES-B-B. {@code reason}/{@code location}/{@code name} may be null.
      */
     public static byte[] sign(byte[] pdf, byte[] keyDer, byte[] certDer,
                               String reason, String location, String name, boolean pades) {

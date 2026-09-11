@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to create PDF/A in Ruby?",
+          "name": "Is PDF/A free in Ruby?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in Ruby is free. One offline token unlocks PDF/A in every supported language."
+            "text": "PDF/A is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Prawn output is fine for a one-off download, but it is not archival: no embedded ICC profile, no XMP identifier, nothing veraPDF will accept. Ruby teams that owe a regulator long-term files have had to post-process every PDF through Ghostscript.</p>
             <p class="muted">PDF/A seals every font and colour profile inside the file so it renders identically decades from now, which is why e-invoicing, public-sector, legal and healthcare archives mandate it. rust-pdf produces and validates A-1b, 2b, 2a, 3b, 3a and the PDF 2.0-based A-4, subsetting and embedding fonts for you.</p>
-            <p class="muted">The native lib ships inside the platform gem and loads over Fiddle, so an archiving job on Sidekiq can call <code>doc.pdfa</code>, embed a TTF with <code>add_font_file</code> and rescue <code>RustPdf::Error</code> if the PDF/A license is not active, with no Ghostscript pass anywhere in the pipeline.</p>
+            <p class="muted">The native lib ships inside the platform gem and loads over Fiddle, so an archiving job on Sidekiq can call <code>doc.pdfa</code>, embed a TTF with <code>add_font_file</code> and rescue <code>RustPdf::Error</code>, with no Ghostscript pass anywhere in the pipeline.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -233,11 +233,11 @@
 doc.pdfa(RustPdf::Pdfa::A2B).info(title: "Q3 Report", author: "Acme Inc.")
 f = doc.add_font_file("Roboto-Regular.ttf")
 doc.add_page.show_text(f, 20, 72, 760, "Archival report")
-doc.save("report_pdfa.pdf")     # raises RustPdf::Error without a license granting PDF/A
+doc.save("report_pdfa.pdf")     # raises RustPdf::Error
 doc.close</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Ruby basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
@@ -251,8 +251,8 @@ doc.close</code></pre>
         <details><summary>How is conformance verified?</summary>
           <p>Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives.</p>
         </details>
-        <details><summary>Do I need a license to create PDF/A in Ruby?</summary>
-          <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Ruby is free. One offline token unlocks PDF/A in every supported language.</p>
+        <details><summary>Is PDF/A free in Ruby?</summary>
+          <p>PDF/A is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Does the gem install on system Ruby on macOS?</summary>
           <p>Yes. rust-pdf publishes a universal-darwin gem that carries the prebuilt native library, so it installs and loads on the stock macOS Ruby without a Rust toolchain or a compile step, which keeps your archiving jobs deployable.</p>
@@ -263,10 +263,10 @@ doc.close</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Make your Ruby documents last for decades</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/pdf-a">PDF/A</a>
@@ -290,13 +290,13 @@ doc.close</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

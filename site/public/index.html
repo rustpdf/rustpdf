@@ -4,22 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <title>rust-pdf · enterprise PDF for every language</title>
-  <meta name="description" content="Enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers." />
+  <title>rust-pdf · free &amp; open-source PDF for every language</title>
+  <meta name="description" content="Free, MIT-licensed PDF library for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift: PDF/A archival, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility. Runs on your servers, every feature free." />
   <link rel="canonical" href="https://rustpdf.dev/" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/" />
-  <meta property="og:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. Runs on your servers, no per-document fees." />
+  <meta property="og:title" content="rust-pdf · free &amp; open-source PDF for every language" />
+  <meta property="og:description" content="Generate PDF/A, sign with PAdES, encrypt with AES-256 and produce accessible PDF/UA, natively in Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. MIT licensed, every feature free, runs on your servers." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="rust-pdf · enterprise PDF for every language" />
-  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, eight languages, offline, licensed per feature." />
+  <meta name="twitter:title" content="rust-pdf · free &amp; open-source PDF for every language" />
+  <meta name="twitter:description" content="PDF/A, signatures/PAdES, AES-256 and accessibility. One core, ten languages, offline, MIT, every feature free." />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift" />
   <meta name="twitter:image:alt" content="rust-pdf: enterprise PDF for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift" />
@@ -30,7 +30,7 @@
     {
       "@type": "Organization",
       "@id": "https://rustpdf.dev/#org",
-      "name": "CaseFy Inc.",
+      "name": "rust-pdf contributors",
       "url": "https://rustpdf.dev/",
       "logo": {
         "@type": "ImageObject",
@@ -39,8 +39,7 @@
         "height": 512
       },
       "sameAs": [
-        "https://casefy.io",
-        "https://github.com/rustpdf",
+        "https://github.com/rustpdf/rustpdf",
         "https://pypi.org/project/rustpdf/",
         "https://www.npmjs.com/package/rustpdf",
         "https://rubygems.org/gems/rustpdf",
@@ -48,7 +47,7 @@
         "https://www.nuget.org/packages/RustPdf",
         "https://packagist.org/packages/rustpdf/rustpdf"
       ],
-      "description": "CaseFy Inc. is the company behind rust-pdf, an enterprise-grade PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. rust-pdf is an independent commercial product and is not affiliated with or endorsed by the Rust Foundation or the Rust programming language project."
+      "description": "rust-pdf is a free, MIT-licensed PDF library with PDF/A, digital signatures (PAdES), AES-256 encryption and PDF/UA accessibility, for Python, C#, Go, PHP, Ruby, Node, Delphi and Swift. It is an independent open-source project and is not affiliated with or endorsed by the Rust Foundation or the Rust programming language project."
     },
     {
       "@type": "WebSite",
@@ -93,38 +92,7 @@
         "AcroForm fields: create, fill and flatten",
         "Redaction, watermarks, hyperlinks and bookmarks",
         "Merge, split, text and image extraction"
-      ],
-      "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "USD",
-        "lowPrice": "1500",
-        "highPrice": "3000",
-        "offerCount": "2",
-        "priceValidUntil": "2027-12-31",
-        "url": "https://rustpdf.dev/#pricing",
-        "offers": [
-          {
-            "@type": "Offer",
-            "name": "Pro",
-            "price": "1500",
-            "priceCurrency": "USD",
-            "category": "Annual license",
-            "availability": "https://schema.org/InStock",
-            "priceValidUntil": "2027-12-31",
-            "url": "https://rustpdf.dev/#pricing"
-          },
-          {
-            "@type": "Offer",
-            "name": "Enterprise",
-            "price": "3000",
-            "priceCurrency": "USD",
-            "category": "Annual license",
-            "availability": "https://schema.org/InStock",
-            "priceValidUntil": "2027-12-31",
-            "url": "https://rustpdf.dev/#pricing"
-          }
-        ]
-      }
+      ]
     }
   ]
 }
@@ -140,10 +108,10 @@
         <a href="#features">Features</a>
         <a href="#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="#pricing">Pricing</a>
+        
         <a href="#faq">FAQ</a>
       </nav>
-      <a href="#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -151,17 +119,18 @@
     <!-- HERO -->
     <section class="hero">
       <div class="wrap">
-        <p class="eyebrow">Enterprise PDF for Python · C# · Go · PHP · Ruby · Node · Delphi · Swift</p>
-        <h1>The enterprise PDF library<br />the rest of your stack <span class="grad">doesn't have</span>.</h1>
+        <p class="eyebrow">Free &amp; open source (MIT) for Python · C# · Go · PHP · Ruby · Node · Delphi · Swift</p>
+        <h1>The PDF library<br />your whole stack <span class="grad">can share</span>.</h1>
         <p class="lede">
           Generate archival <b>PDF/A</b>, sign documents with <b>PAdES</b>, encrypt
           with <b>AES-256</b>, and produce accessible <b>PDF/UA</b>, natively in the
-          language you already use. It runs entirely on your servers, so there are no
-          per-document SaaS fees, no data leaving your network, and no AGPL strings.
+          language you already use. It runs entirely on your servers, so no data
+          leaves your network — and it is <b>MIT licensed with every feature free</b>,
+          no keys and no AGPL strings.
         </p>
         <div class="cta-row">
           <a href="/docs/" class="btn btn-lg">Get started &middot; install</a>
-          <a href="#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="validators">
           Validated by the independent reference validator you can run yourself:
@@ -264,7 +233,7 @@
           <li><b>Runs on your servers</b>: your documents never leave your network, and nothing phones home.</li>
           <li><b>Auditable output</b>: the same input always produces the same file, so you can diff and verify it.</li>
           <li><b>Dependable</b>: a memory-safe core that won't crash the service generating your documents.</li>
-          <li><b>Predictable pricing</b>: a per-application annual license, never a meter that bills you per document.</li>
+          <li><b>Free and open source</b>: MIT licensed, every feature included, never a meter that bills you per document.</li>
           <li><b>No legal landmines</b>: none of the AGPL or per-server licensing of iText / Aspose.</li>
         </ul>
       </div>
@@ -273,11 +242,11 @@
     <!-- FEATURES -->
     <section id="features" class="section">
       <div class="wrap">
-        <h2 class="center">Free to build with. Licensed when you ship.</h2>
+        <h2 class="center">Free to build with. Free to ship.</h2>
         <p class="center muted narrow">
-          Prototype and generate everyday PDFs for free, forever. When you need the
-          regulated-grade features (archival, signatures, encryption, accessibility),
-          one license unlocks them all, in every language you use.
+          Generate everyday PDFs and ship the regulated-grade features (archival,
+          signatures, encryption, accessibility) too. Everything is free, in every
+          language you use.
         </p>
         <div class="explore narrow">
           <div class="explore-col">
@@ -345,7 +314,7 @@
             </ul>
           </div>
           <div class="card pro reveal">
-            <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
+            <h3>Full-featured</h3>
             <ul>
               <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f, plus convert existing PDFs to basic profiles (1b/2b/3b)</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
@@ -405,7 +374,6 @@
             -->
             <button class="tab" data-tab="delphi">Delphi</button>
             <button class="tab" data-tab="swift">Swift</button>
-            <button class="tab" data-tab="activate">Activate</button>
           </div>
 <pre class="tab-pane active" data-pane="python"><code># pip install rustpdf
 import rustpdf
@@ -492,15 +460,6 @@ let f = try doc.addFont(path: "Roboto-Regular.ttf")
 try doc.addPage()
 try doc.showText(font: f, size: 20, x: 72, y: 760, "Title", headingLevel: 1)
 let bytes = try doc.toBytes()      // archival-grade PDF, links on macOS &amp; iOS</code></pre>
-<pre class="tab-pane" data-pane="activate"><code># No rebuild. One environment variable activates every binding:
-export RUSTPDF_LICENSE="010f0000…"   # the token we email you
-
-# …or point at a file:
-export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
-
-# …or activate in code:
-#   pdf::activate_license(token)?            // Rust
-#   rustpdf.activate_license(token)          # Python</code></pre>
         </div>
       </div>
     </section>
@@ -513,30 +472,9 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt
           Generate a document, then check it with the same independent validator we
           gate every release on. No account, no upload: it all runs on your
           machine, against the bytes rust-pdf produced. PDF/A and accessibility
-          are licensed features. Grab a <b>free 5-day trial token</b> below and
-          run the whole demo, no card required.
+          are free, like every other feature — no key, no card, no sign-up.
         </p>
-        <form id="trial-form" class="trial-form" novalidate>
-          <label class="trial-field">
-            <span class="sr-only">Work email</span>
-            <input id="trial-email" type="email" name="email" required
-                   autocomplete="email" placeholder="you@company.com" />
-          </label>
-          <!-- Honeypot: hidden from humans, tempting to bots. Real users leave it blank. -->
-          <input type="text" name="website" id="trial-website" tabindex="-1"
-                 autocomplete="off" aria-hidden="true"
-                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
-          <button type="submit" class="btn" id="trial-submit">Email me a free trial token</button>
-          <label class="trial-consent">
-            <input type="checkbox" name="consent" id="trial-consent" />
-            <span>Send me occasional product updates. No spam; unsubscribe anytime.</span>
-          </label>
-          <p id="trial-msg" class="trial-msg" role="status" aria-live="polite" hidden></p>
-        </form>
-        <pre class="verify-code"><code><span class="c"># 0 · PDF/A &amp; accessibility need a license — activate the trial we emailed you:</span>
-<span class="c">#     export RUSTPDF_LICENSE="…the trial token from your inbox…"</span>
-
-<span class="c"># 1 · author an archival, accessible PDF/A-2a (report.py)</span>
+        <pre class="verify-code"><code><span class="c"># 1 · author an archival, accessible PDF/A-2a (report.py)</span>
 <span class="c">#     pip install rustpdf</span>
 from rustpdf import Document, PdfaLevel, Align
 
@@ -579,77 +517,28 @@ verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules<
       </div>
     </section>
 
-    <!-- PRICING -->
+    <!-- EVERYTHING IS FREE -->
     <section id="pricing" class="section">
-      <div class="wrap">
-        <h2 class="center">Pick the plan you need.</h2>
-        <p class="center muted narrow">
-          Per-application annual pricing, in every language, with no per-document
-          metering, <b>no per-server fees</b> and no usage caps. Run one application
-          on as many servers as you like. Start with <b>Pro</b> for archival and
-          encryption; move to <b>Enterprise</b> when you need juridically-valid
-          signatures and accessibility. <a href="#faq">What counts as an application?</a>
+      <div class="wrap narrow center">
+        <h2>Everything is free.</h2>
+        <p class="muted">
+          rust-pdf is <b>MIT licensed</b> and every feature is included — no keys, no per-document metering, no per-server fees and no AGPL strings. Use it in commercial and closed-source products.
         </p>
-        <div class="pricing">
-          <!-- PRO -->
-          <div class="price-card reveal">
-            <div class="price-head">
-              <h3>Pro</h3>
-              <p class="price-amount"><span id="price-amount-pro">$1,500</span><span class="per" id="price-interval-pro">/year</span></p>
-              <p class="muted">Per application · renews yearly · offline · all eight languages</p>
-            </div>
-            <ul class="price-features">
-              <li>✓ PDF/A (1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f) + convert existing PDFs (basic 1b/2b/3b)</li>
-              <li>✓ ZUGFeRD / Factur-X electronic invoices</li>
-              <li>✓ Encryption (RC4 / AES-128 / AES-256)</li>
-              <li>✓ Page rendering (PDF page to PNG image)</li>
-              <li>✓ AcroForm fields with appearances</li>
-              <li>✓ All language bindings, no rebuild to activate</li>
-              <li>✓ Token emailed instantly after checkout</li>
-            </ul>
-            <button class="btn btn-lg btn-block buy-btn" data-tier="pro">Buy Pro · <span class="buy-price" data-tier="pro">$1,500/yr</span></button>
-            <p class="fineprint buy-error" data-tier="pro" hidden></p>
-          </div>
-
-          <!-- ENTERPRISE (featured) -->
-          <div class="price-card featured reveal">
-            <span class="popular">Most popular</span>
-            <div class="price-head">
-              <h3>Enterprise</h3>
-              <p class="price-amount"><span id="price-amount-enterprise">$3,000</span><span class="per" id="price-interval-enterprise">/year</span></p>
-              <p class="muted">Everything in Pro, plus signatures &amp; accessibility · priority support</p>
-            </div>
-            <ul class="price-features">
-              <li>✓ <b>Everything in Pro</b></li>
-              <li>✓ Digital signatures &amp; PAdES (B-B / B-LT / B-LTA)</li>
-              <li>✓ RFC 3161 timestamps + LTV (DSS)</li>
-              <li>✓ Signature validation</li>
-              <li>✓ True redaction (remove page content)</li>
-              <li>✓ Accessibility (Tagged PDF / PDF/UA-1)</li>
-              <li>✓ Priority email support</li>
-            </ul>
-            <button class="btn btn-lg btn-block buy-btn" data-tier="enterprise">Buy Enterprise · <span class="buy-price" data-tier="enterprise">$3,000/yr</span></button>
-            <p class="fineprint buy-error" data-tier="enterprise" hidden></p>
-          </div>
-
-          <!-- OEM & SITE (sales-led) -->
-          <div class="price-card reveal">
-            <div class="price-head">
-              <h3>OEM &amp; Site</h3>
-              <p class="price-amount"><span>Custom</span></p>
-              <p class="muted">Unlimited applications org-wide, or redistribute rust-pdf inside your own product</p>
-            </div>
-            <ul class="price-features">
-              <li>✓ <b>Everything in Enterprise</b></li>
-              <li>✓ <b>Site license:</b> unlimited applications across your organization</li>
-              <li>✓ <b>OEM:</b> redistribution rights in the product you ship</li>
-              <li>✓ Volume licensing, purchase orders &amp; invoicing</li>
-              <li>✓ SLA, onboarding &amp; security-review support</li>
-            </ul>
-            <a class="btn btn-lg btn-block btn-ghost" href="mailto:sales@casefy.io?subject=rust-pdf%20OEM%20%26%20Site%20licensing">Talk to sales</a>
-          </div>
-        </div>
-        <p class="center fineprint">Secure checkout by Stripe · cancel anytime · activates offline in seconds. Questions? <a href="mailto:sales@casefy.io">Talk to sales</a>.</p>
+        <ul class="price-features" style="text-align:left;max-width:640px;margin:24px auto 0">
+          <li>&#10003; PDF/A (1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f) + convert existing PDFs</li>
+          <li>&#10003; ZUGFeRD / Factur-X electronic invoices</li>
+          <li>&#10003; Encryption (RC4 / AES-128 / AES-256)</li>
+          <li>&#10003; Digital signatures &amp; PAdES (B-B / B-LT / B-LTA) + validation</li>
+          <li>&#10003; RFC 3161 timestamps + LTV (DSS)</li>
+          <li>&#10003; True redaction (remove page content)</li>
+          <li>&#10003; Accessibility (Tagged PDF / PDF/UA-1)</li>
+          <li>&#10003; Page rendering (PDF page to PNG image)</li>
+          <li>&#10003; All ten language bindings</li>
+        </ul>
+        <p class="cta-row" style="justify-content:center;margin-top:28px">
+          <a href="/docs/" class="btn btn-lg">Get started</a>
+          <a href="https://github.com/rustpdf/rustpdf" class="btn btn-ghost btn-lg" rel="noopener">View source</a>
+        </p>
       </div>
     </section>
 
@@ -657,44 +546,17 @@ verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules<
     <section id="faq" class="band">
       <div class="wrap narrow">
         <h2 class="center">FAQ</h2>
-        <details><summary>How does activation work?</summary>
-          <p>After checkout we email you a license key. Set one environment variable (<code>RUSTPDF_LICENSE</code>) or call <code>activate_license()</code> once. No rebuild, and it works the same in every language.</p>
+        <details><summary>Is it really free?</summary>
+          <p>Yes. rust-pdf is MIT licensed and every feature is included: PDF/A, ZUGFeRD/Factur-X, encryption (RC4/AES-128/AES-256), digital signatures and PAdES (B-B/B-LT/B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, PDF/UA accessibility and page rendering. Use it commercially and in closed-source products.</p>
         </details>
         <details><summary>Is anything sent off my servers?</summary>
-          <p>No. Activation is fully offline, so nothing about your documents or your usage ever leaves your servers. There are no network calls of any kind. Ideal for government, banking and healthcare.</p>
+          <p>No. Everything runs locally and there are no network calls of any kind — ideal for government, banking and healthcare.</p>
         </details>
-        <details><summary>What can the free tier do?</summary>
-          <p>Pages, vector graphics, Unicode text with embedded/subset fonts, paragraphs, tables, images, hyperlinks, bookmarks, watermarks, form fill &amp; flatten, merge/split, text &amp; image extraction and optimization. Forever free, no license.</p>
-        </details>
-        <details><summary>What's the difference between Pro and Enterprise?</summary>
-          <p><b>Pro</b> unlocks PDF/A archival (including converting existing PDFs to basic profiles 1b/2b/3b), ZUGFeRD / Factur-X e-invoices, encryption (RC4 / AES-128 / AES-256), and page rendering (rasterizing a PDF page to a PNG image). <b>Enterprise</b> adds everything you need for juridical and public-sector work: digital signatures and PAdES (B-B / B-LT / B-LTA), RFC 3161 timestamps with LTV, signature validation, true redaction, and PDF/UA accessibility, plus priority support. Embedding rust-pdf inside a product you ship? That's the <b>OEM</b> plan: <a href="mailto:sales@casefy.io">talk to sales</a>.</p>
-        </details>
-        <details><summary>What counts as an application?</summary>
-          <p>An application is one product or system you build and operate, defined by
-          what it does for your business, not by how it's deployed. A few specifics:</p>
-          <ul class="faq-list">
-            <li><b>Microservices count as one.</b> All the services and workers that make up a single product are one application.</li>
-            <li><b>Scaling is free.</b> Run it on as many servers, containers or replicas as you like, with no per-server fees.</li>
-            <li><b>Non-production doesn't count.</b> Development, staging, test and CI environments are free; only production counts.</li>
-            <li><b>A multi-tenant SaaS is one application</b>, no matter how many of your customers use it.</li>
-            <li><b>Separate products are separate applications.</b> A billing system and an HR portal are two, or cover both with one Site license.</li>
-          </ul>
-          <p>Need unlimited applications across your organization? That's a <b>Site license</b>:
-          <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
-        </details>
-        <details><summary>Do you license per server or per developer?</summary>
-          <p>Neither. You license <b>per application, per year</b>, so scaling out
-          across more servers, containers or developers never costs more. There's no
-          per-document metering and no per-server fees, and none of the AGPL strings
-          of iText or Aspose. Need unlimited applications across your whole
-          organization? That's a <b>Site license</b>:
-          <a href="mailto:sales@casefy.io?subject=rust-pdf%20Site%20licensing">talk to sales</a>.</p>
+        <details><summary>Do I need to publish my own source?</summary>
+          <p>No. MIT is permissive: you can embed rust-pdf in commercial and closed-source products. There are no copyleft or AGPL strings.</p>
         </details>
         <details><summary>How is this validated?</summary>
           <p>veraPDF, the independent reference validator, checks every release (PDF/A 1b–3a and A-4 + PDF/UA-1). You can run the same checks yourself.</p>
-        </details>
-        <details><summary>What happens when the license expires?</summary>
-          <p>The corporate features stop producing output and return a clear license error; basic generation keeps working. Renew to receive a fresh token.</p>
         </details>
       </div>
     </section>
@@ -703,14 +565,13 @@ verapdf --policyfile policy.sch out.pdf  <span class="c">→ add your own rules<
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="/legal/refund">Refunds</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
         <a href="/itext-alternative">vs iText</a>
         <a href="/aspose-alternative">vs Aspose</a>
         <a href="/pspdfkit-alternative">vs PSPDFKit</a>

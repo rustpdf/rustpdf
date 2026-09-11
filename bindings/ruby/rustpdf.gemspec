@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Generate, edit, sign and process PDFs in Ruby. Docs: https://rustpdf.dev/docs/ruby"
   spec.description = "Generate, edit, sign and process PDFs in Ruby: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/ruby"
   spec.authors = ["rust-pdf"]
-  spec.license = "Nonstandard"
+  spec.license = "MIT"
   spec.required_ruby_version = ">= 2.6"
 
   # Platform-specific gem: CI sets RUSTPDF_GEM_PLATFORM (e.g. "arm64-darwin",

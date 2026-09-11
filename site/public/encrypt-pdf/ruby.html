@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to encrypt in Ruby?",
+          "name": "Is encryption free in Ruby?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Encryption is a corporate feature and needs an active license token. Basic generation in Ruby is free. The same offline token enables encryption in every language."
+            "text": "Encryption is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -132,7 +132,7 @@
           "name": "Can I encrypt inside a Rails controller or a Sidekiq job?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. The gem loads its native core through Fiddle, so you can encrypt an EditableDoc and stream it back from a controller action or a background worker. Wrap the call in begin/rescue to handle RustPdf::Error when the Encryption license token is not active."
+            "text": "Yes. The gem loads its native core through Fiddle, so you can encrypt an EditableDoc and stream it back from a controller action or a background worker. Wrap the call in begin/rescue to handle any RustPdf::Error."
           }
         }
       ]
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Ruby teams reach for Prawn to draw documents, but Prawn never shipped encryption, so the moment a statement or a payslip has to be password-protected you end up shelling out to a qpdf binary on the server. rust-pdf closes that gap from inside the process.</p>
             <p class="muted">Encryption keeps sensitive documents confidential and helps you meet LGPD, GDPR and HIPAA duties. rust-pdf implements AES-256 (V5/R6) directly, with the file key, salts and IVs drawn from the operating system CSPRNG so every output is unique, plus AES-128 and legacy RC4 for older readers.</p>
-            <p class="muted">Install the universal-darwin gem and it binds through Fiddle in the standard library, so an encrypt action in a Rails controller or a Sidekiq worker can call <code>ed.encrypt</code> and rescue <code>RustPdf::Error</code> when the Encryption license token is missing, with no C toolchain on the box.</p>
+            <p class="muted">Install the universal-darwin gem and it binds through Fiddle in the standard library, so an encrypt action in a Rails controller or a Sidekiq worker can call <code>ed.encrypt</code> and rescue <code>RustPdf::Error</code>, with no C toolchain on the box.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -231,11 +231,11 @@
           <div class="tab-bar"><span class="tab active">Ruby</span></div>
 <pre class="tab-pane active"><code>ed = RustPdf::EditableDoc.load_file("in.pdf")
 ed.encrypt(method: RustPdf::Cipher::AES256, owner: "owner-secret", read_only: true)
-ed.save("secured.pdf")          # raises RustPdf::Error without an Encryption license
+ed.save("secured.pdf")          # raises RustPdf::Error
 ed.close</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Ruby basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
@@ -249,11 +249,11 @@ ed.close</code></pre>
         <details><summary>What is the difference between user and owner passwords?</summary>
           <p>A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode.</p>
         </details>
-        <details><summary>Do I need a license to encrypt in Ruby?</summary>
-          <p>Encryption is a corporate feature and needs an active license token. Basic generation in Ruby is free. The same offline token enables encryption in every language.</p>
+        <details><summary>Is encryption free in Ruby?</summary>
+          <p>Encryption is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Can I encrypt inside a Rails controller or a Sidekiq job?</summary>
-          <p>Yes. The gem loads its native core through Fiddle, so you can encrypt an EditableDoc and stream it back from a controller action or a background worker. Wrap the call in begin/rescue to handle RustPdf::Error when the Encryption license token is not active.</p>
+          <p>Yes. The gem loads its native core through Fiddle, so you can encrypt an EditableDoc and stream it back from a controller action or a background worker. Wrap the call in begin/rescue to handle any RustPdf::Error.</p>
         </details>
       </div>
     </section>
@@ -261,10 +261,10 @@ ed.close</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Ship encrypted PDFs from Ruby with confidence</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/encrypt-pdf">Encrypt PDF</a>
@@ -288,13 +288,13 @@ ed.close</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

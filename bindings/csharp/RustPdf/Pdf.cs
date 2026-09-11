@@ -308,7 +308,7 @@ public sealed class SigningSession
     public byte[] Complete(byte[] container) => Pdf.CompleteSignature(Document, container);
 }
 
-/// <summary>Top-level helpers: version, licensing, extraction and signing.</summary>
+/// <summary>Top-level helpers: version, extraction and signing.</summary>
 public static class Pdf
 {
     internal delegate int OutBuf(out IntPtr ptr, out nuint len);
@@ -318,16 +318,6 @@ public static class Pdf
     {
         Native.Init();
         return Marshal.PtrToStringUTF8(Native.pdf_version()) ?? "";
-    }
-
-    /// <summary>Activate a license token (unlocks PDF/A, signing, encryption,
-    /// accessibility). Tokens may also be supplied via the <c>RUSTPDF_LICENSE</c>
-    /// or <c>RUSTPDF_LICENSE_FILE</c> environment variables (auto-activated).</summary>
-    /// <exception cref="PdfException">if the token is forged, expired or malformed.</exception>
-    public static void ActivateLicense(string token)
-    {
-        Native.Init();
-        Check(Native.pdf_activate_license(token));
     }
 
     /// <summary>Extract a document's text (Unicode via <c>ToUnicode</c>).</summary>
@@ -451,9 +441,7 @@ public static class Pdf
 
     /// <summary>
     /// Render page <paramref name="pageIndex"/> (0-based) of <paramref name="pdf"/>
-    /// to a PNG image at <paramref name="dpi"/> dots-per-inch. Page rendering is a
-    /// licensed Pro feature: throws <see cref="PdfException"/> with
-    /// <c>PdfStatus.License</c> unless a license granting it is active.
+    /// to a PNG image at <paramref name="dpi"/> dots-per-inch.
     /// </summary>
     public static byte[] RenderPageToPng(byte[] pdf, int pageIndex = 0, double dpi = 150.0)
     {
@@ -461,7 +449,7 @@ public static class Pdf
             Native.pdf_render_page_to_png(pdf, (nuint)pdf.Length, (nuint)pageIndex, dpi, out p, out n));
     }
 
-    /// <summary>Number of pages in <paramref name="pdf"/> (free — no license required).</summary>
+    /// <summary>Number of pages in <paramref name="pdf"/> (free).</summary>
     public static int PageCount(byte[] pdf)
     {
         Native.Init();
@@ -470,7 +458,7 @@ public static class Pdf
     }
 
     /// <summary>Sign <paramref name="pdf"/> (PKCS#7 detached, incremental update).
-    /// <paramref name="pades"/> selects PAdES-B-B. Requires a license.</summary>
+    /// <paramref name="pades"/> selects PAdES-B-B.</summary>
     public static byte[] Sign(byte[] pdf, byte[] keyDer, byte[] certDer,
         string? reason = null, string? location = null, string? name = null, bool pades = false)
     {

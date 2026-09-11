@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to create PDF/A in C#?",
+          "name": "Is PDF/A free in C#?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in C# is free. One offline token unlocks PDF/A in every supported language."
+            "text": "PDF/A is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Archival mandates rarely arrive one file at a time: e-invoice batches, end-of-month statement runs, case-file exports. A <code>BackgroundService</code> or hosted Worker is the natural home: each <code>Document</code> is <code>IDisposable</code>, so a <code>using</code> per file releases the native handle and keeps a long-running queue from leaking. <code>Document.Pdfa(PdfaLevel.A2b)</code>, or <code>A2a</code>, <code>A3b</code>, <code>A4</code>, picks the conformance level per job.</p>
             <p class="muted">PDF/A forbids external dependencies, so every glyph must travel inside the file. <code>AddFontFile</code> embeds and subsets your TrueType or OpenType font automatically, while the core seals in the sRGB ICC profile, the output intent, the XMP packet and a document ID; the a-levels additionally build a tagged structure tree for accessibility. Drop in a font missing a needed codepoint and veraPDF will flag it. The conformance claim is checked, not asserted.</p>
-            <p class="muted">The NuGet package carries the native library and a <code>NativeLibrary.SetDllImportResolver</code> hook finds it under <code>runtimes/&lt;rid&gt;/native</code>, so the same archiving service runs on Windows and inside a <code>dotnet/aspnet:8.0</code> container. Wire veraPDF into CI against the service's output; PDF/A is a licensed feature, so <code>Save</code> throws a catchable <code>PdfException</code> when the token is absent.</p>
+            <p class="muted">The NuGet package carries the native library and a <code>NativeLibrary.SetDllImportResolver</code> hook finds it under <code>runtimes/&lt;rid&gt;/native</code>, so the same archiving service runs on Windows and inside a <code>dotnet/aspnet:8.0</code> container. Wire veraPDF into CI against the service's output; PDF/A is free like every feature, so <code>Save</code> just works.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -236,10 +236,10 @@ doc.Pdfa(PdfaLevel.A2b).SetInfo(title: "Q3 Report", author: "Acme Inc.");
 int f = doc.AddFontFile("Roboto-Regular.ttf");
 doc.AddPage();
 doc.ShowText(f, 20, 72, 760, "Archival report");
-doc.Save("report_pdfa.pdf");     // throws PdfException without a license granting PDF/A</code></pre>
+doc.Save("report_pdfa.pdf");     // throws PdfException</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">C# basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full C# reference in the <a href="/docs/csharp">documentation</a>.</p>
       </div>
     </section>
@@ -253,8 +253,8 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
         <details><summary>How is conformance verified?</summary>
           <p>Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives.</p>
         </details>
-        <details><summary>Do I need a license to create PDF/A in C#?</summary>
-          <p>PDF/A is a corporate feature and requires an active license token. Basic generation in C# is free. One offline token unlocks PDF/A in every supported language.</p>
+        <details><summary>Is PDF/A free in C#?</summary>
+          <p>PDF/A is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Which .NET runtimes and operating systems are supported?</summary>
           <p>rust-pdf targets .NET 8 and later and runs anywhere the native core builds: Windows, Linux and macOS, on x64 or arm64. The NuGet package vendors the matching <code>runtimes/&lt;rid&gt;/native</code> payload and a <code>NativeLibrary.SetDllImportResolver</code> hook locates it, so a Linux container and an arm64 Mac both work with no code changes. Validate the archived output with veraPDF in any of those environments.</p>
@@ -265,10 +265,10 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
     <section class="section">
       <div class="wrap narrow center">
         <h2>Generate compliant archives from your .NET services</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/csharp" class="btn btn-lg">Read the C# docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/pdf-a">PDF/A</a>
@@ -289,13 +289,13 @@ doc.Save("report_pdfa.pdf");     // throws PdfException without a license granti
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

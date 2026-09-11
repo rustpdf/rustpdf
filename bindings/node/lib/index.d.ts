@@ -456,18 +456,15 @@ export function completeSignature(document: Bytes, container: Bytes): Buffer;
 export function listSignatures(pdf: Bytes): SignatureField[];
 
 export function version(): string;
-export function activateLicense(token: string): void;
 export function extractText(pdf: Bytes): string;
 /** Extract the text of a single page (0-based) — the fast per-page path. */
 export function extractPageText(pdf: Bytes, pageIndex: number): string;
 export function extractImagesToDir(pdf: Bytes, dir: string): number;
 /**
  * Render page `page` (0-based) of `pdf` to a PNG image at `dpi` dots-per-inch.
- * Page rendering is a licensed Pro feature: throws unless a license granting it
- * is active.
  */
 export function renderPageToPng(pdf: Bytes, page?: number, dpi?: number): Buffer;
-/** Number of pages in `pdf` (free — no license required). */
+/** Number of pages in `pdf` (free). */
 export function pageCount(pdf: Bytes): number;
 export function verifySignatures(pdf: Bytes): SignatureInfo[];
 /** Find every occurrence of `query` in `pdf` (case-insensitive by default). */

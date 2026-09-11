@@ -65,13 +65,8 @@ pub enum SignError {
     Parse(String),
     Key(String),
     Cms(String),
-    SignatureTooLarge {
-        got: usize,
-        reserved: usize,
-    },
+    SignatureTooLarge { got: usize, reserved: usize },
     Structure(String),
-    /// Signing/timestamping/LTV used without a valid license.
-    License(license::LicenseError),
 }
 
 impl std::fmt::Display for SignError {
@@ -84,14 +79,7 @@ impl std::fmt::Display for SignError {
                 write!(f, "signature {got} bytes exceeds reserved {reserved}")
             }
             SignError::Structure(s) => write!(f, "sign structure error: {s}"),
-            SignError::License(e) => write!(f, "{e}"),
         }
-    }
-}
-
-impl From<license::LicenseError> for SignError {
-    fn from(e: license::LicenseError) -> Self {
-        SignError::License(e)
     }
 }
 
@@ -225,7 +213,6 @@ const BYTERANGE_FIELD: usize = 48;
 /// reach this library, use [`sign_with`] (Model A — signature callback) or
 /// [`begin_signing`] + [`SigningSession::complete`] (Model B — two-phase).
 pub fn sign(pdf: &[u8], signer: &Signer, opts: &SignOptions) -> Result<Vec<u8>, SignError> {
-    crate::require(license::Feature::Signatures)?;
     let prepared = begin_signing(pdf, opts)?;
     let der = build_pkcs7(
         signer,
@@ -256,7 +243,6 @@ pub fn sign_with<F>(
 where
     F: Fn(&[u8]) -> Result<Vec<u8>, SignError>,
 {
-    crate::require(license::Feature::Signatures)?;
     let cert =
         Certificate::from_der(cert_der).map_err(|e| SignError::Key(format!("certificate: {e}")))?;
     let chain_certs = chain
@@ -282,7 +268,6 @@ where
 /// PKCS#7 container, call [`SigningSession::complete`] to inject it into the
 /// reserved placeholder (phase 2). The key never touches this library.
 pub fn begin_signing(pdf: &[u8], opts: &SignOptions) -> Result<SigningSession, SignError> {
-    crate::require(license::Feature::Signatures)?;
     let subfilter = if opts.pades {
         "ETSI.CAdES.detached"
     } else {
@@ -322,10 +307,6 @@ pub fn begin_signing(pdf: &[u8], opts: &SignOptions) -> Result<SigningSession, S
 /// and phase 2 (embed) run in different processes and only the prepared bytes
 /// crossed the boundary; otherwise [`SigningSession::complete`] is more direct.
 pub fn complete_signing(document: &[u8], container: &[u8]) -> Result<Vec<u8>, SignError> {
-    // Gate the final embed step like every other signing entry point; without
-    // this, the two-phase flow could finalize a signed PDF on an unlicensed
-    // host (the gate on `begin_signing` alone was asymmetric).
-    crate::require(license::Feature::Signatures)?;
     let a = rfind_sub(document, b"/Contents <")
         .map(|p| p + b"/Contents ".len())
         .ok_or_else(|| SignError::Structure("no /Contents placeholder".into()))?;
@@ -350,7 +331,6 @@ pub fn complete_signing(document: &[u8], container: &[u8]) -> Result<Vec<u8>, Si
 
 /// Append an RFC 3161 document timestamp signed by `tsa` (PAdES-B-LTA block).
 pub fn timestamp(pdf: &[u8], tsa: &Signer, date: Option<&str>) -> Result<Vec<u8>, SignError> {
-    crate::require(license::Feature::Signatures)?;
     let gen_time = date.unwrap_or("20260625000000Z").to_string();
     let prepared = prepare_internal(
         pdf,
@@ -381,7 +361,6 @@ pub fn timestamp(pdf: &[u8], tsa: &Signer, date: Option<&str>) -> Result<Vec<u8>
 /// 4. `let token = timestamp_token_from_response(&reply)?;`
 /// 5. `let out = s.complete(&token)?;`
 pub fn begin_timestamp(pdf: &[u8]) -> Result<SigningSession, SignError> {
-    crate::require(license::Feature::Signatures)?;
     prepare_internal(
         pdf,
         PrepareParams {
@@ -486,7 +465,6 @@ fn der_header(b: &[u8]) -> Option<(u8, usize, usize)> {
 /// Add a Document Security Store (`/DSS`) with validation `certs` and `crls`
 /// (each DER-encoded) — the PAdES-B-LT material for long-term validation.
 pub fn add_dss(pdf: &[u8], certs: &[Vec<u8>], crls: &[Vec<u8>]) -> Result<Vec<u8>, SignError> {
-    crate::require(license::Feature::Signatures)?;
     let reader = PdfReader::parse(pdf).map_err(|e| SignError::Parse(e.to_string()))?;
     let catalog_num = ref_num(reader.trailer().get("Root"))
         .ok_or_else(|| SignError::Structure("no /Root".into()))?;

@@ -10,7 +10,7 @@ Generate, edit, sign and process PDFs from Ruby: vector graphics, embedded fonts
 
 The public API is `RustPdf::Document` (create PDFs), `RustPdf::EditableDoc`
 (load and edit existing PDFs) and module functions (`version`,
-`activate_license`, `extract_text`, `sign`, `timestamp`, `add_dss`).
+`extract_text`, `sign`, `timestamp`, `add_dss`).
 
 ## Loading the native library
 
@@ -22,8 +22,6 @@ The public API is `RustPdf::Document` (create PDFs), `RustPdf::EditableDoc`
 
 ```ruby
 require "rustpdf"
-
-RustPdf.activate_license(token)  # or set RUSTPDF_LICENSE (auto-activated)
 
 doc = RustPdf::Document.new
 doc.pdfa(RustPdf::Pdfa::A2A).info(title: "Report")
@@ -41,8 +39,8 @@ ed.encrypt(method: RustPdf::Cipher::AES256, owner: "owner").save("secured.pdf")
 signed = RustPdf.sign(data, key_der, cert_der, pades: true)
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
-without one they raise `RustPdf::Error`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Every feature is free — PDF/A, digital signatures/PAdES, encryption,
+accessibility/tagging, redaction and page rendering are all included.
 
 ## Deferred / HSM signing
 

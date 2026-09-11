@@ -10,17 +10,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn png_bytes() -> Vec<u8> {
     use image::{ImageFormat, RgbImage};
     let img = RgbImage::from_fn(32, 24, |x, y| image::Rgb([x as u8 * 8, y as u8 * 10, 120]));
@@ -32,7 +21,6 @@ fn png_bytes() -> Vec<u8> {
 /// A tagged PDF/A-2a doc exercising the semantic roles: H1/H2 headings, a
 /// `/Figure` with `/Alt`, and a `Report` table (`Table`/`TR`/`TH`/`TD`).
 fn rich_tagged_doc() -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa_a();
     doc.set_info(Info {
         title: Some("Relatório Acessível".into()),
@@ -66,7 +54,6 @@ fn rich_tagged_doc() -> Vec<u8> {
 }
 
 fn tagged_doc() -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa_a(); // tagged + PDF/A-2a
     doc.set_info(Info {
         title: Some("Documento Acessível".into()),
@@ -164,7 +151,6 @@ fn verapdf(bytes: &[u8], label: &str) {
 /// Finer accessibility: a list (L/LI/LBody), a caption, and a table whose
 /// headers are associated by both `/Scope` and `/Headers`-`/ID`.
 fn finer_tags_doc() -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa_a();
     doc.set_info(Info {
         title: Some("Acessível fino".into()),
@@ -204,7 +190,6 @@ fn finer_tags_emit_list_caption_and_header_ids() {
 
 /// Inline `/Span`: a tagged run nested inside a paragraph's marked content.
 fn inline_span_doc() -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa_a();
     doc.set_info(Info {
         title: Some("Span inline".into()),

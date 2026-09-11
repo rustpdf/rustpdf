@@ -10,19 +10,7 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn pdfa_doc() -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa();
     doc.set_info(Info {
         title: Some("Relatório".into()),
@@ -87,7 +75,6 @@ fn verapdf_confirms_pdfa2b_when_available() {
 }
 
 fn simple_level_doc(level: PdfaLevel, attach: bool) -> Vec<u8> {
-    lic();
     let mut doc = Document::new().pdfa_with(level);
     doc.set_info(Info {
         title: Some("Arquivo PDF/A".into()),
@@ -192,7 +179,6 @@ fn pdfa4f_embeds_file_with_conformance_marker() {
 fn pdfa4f_without_attachment_is_rejected() {
     // ISO 19005-4 requires PDF/A-4f to carry at least one embedded file; emitting
     // one without an attachment would fail veraPDF, so we reject it up front.
-    lic();
     let mut doc = Document::new().pdfa_with(PdfaLevel::A4f);
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()

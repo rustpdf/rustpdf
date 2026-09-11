@@ -94,20 +94,20 @@ public final class Document {
 
     // MARK: - Configuration
 
-    /// Mark the document as PDF/A-2b. Requires a license.
+    /// Mark the document as PDF/A-2b.
     @discardableResult
     public func pdfa() throws -> Document {
         try check(Native.shared.pdf_document_pdfa(handle)); return self
     }
 
     /// Mark the document at an explicit PDF/A level. Level-A variants also
-    /// enable tagging. Requires a license.
+    /// enable tagging.
     @discardableResult
     public func pdfa(_ level: PdfaLevel) throws -> Document {
         try check(Native.shared.pdf_document_pdfa_level(handle, level.rawValue)); return self
     }
 
-    /// Enable the tagged / accessible structure tree. Requires a license.
+    /// Enable the tagged / accessible structure tree.
     @discardableResult
     public func tagged() throws -> Document {
         try check(Native.shared.pdf_document_tagged(handle)); return self
@@ -278,7 +278,7 @@ public final class Document {
 
     // MARK: - Attachments + forms
 
-    /// Embed an associated file (PDF/A-3). Requires a license for PDF/A output.
+    /// Embed an associated file (PDF/A-3).
     @discardableResult
     public func attachFile(name: String, mime: String, data: [UInt8],
                            relationship: AFRelationship, description: String = "") throws -> Document {
@@ -412,8 +412,7 @@ public final class Document {
     }
 
     /// Make this a ZUGFeRD / Factur-X invoice: embed `xml` as `factur-x.xml`,
-    /// mark it PDF/A-3b, and add the Factur-X XMP at `profile`. Requires a
-    /// license.
+    /// mark it PDF/A-3b, and add the Factur-X XMP at `profile`.
     @discardableResult
     public func facturx(_ xml: [UInt8], profile: FacturxProfile = .en16931) throws -> Document {
         try withBytes(xml) { ptr, len in

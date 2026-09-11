@@ -30,11 +30,7 @@ permissions:
   contents: read
 
 # Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
-# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
 # token. Same secret the Python/Node/Delphi release pipelines use.
-env:
-  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
-
 defaults:
   run:
     shell: bash
@@ -58,13 +54,6 @@ jobs:
     container: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
-      - name: require production license pubkey on release
-        if: startsWith(github.ref, 'refs/tags/java-v')
-        run: |
-          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
-            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
-            exit 1
-          }
       - name: install rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -102,13 +91,6 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v4
-      - name: require production license pubkey on release
-        if: startsWith(github.ref, 'refs/tags/java-v')
-        run: |
-          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
-            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
-            exit 1
-          }
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -154,15 +136,14 @@ jobs:
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      - name: free-surface smoke (loads the bundled linux-x86-64 native)
+      - name: smoke (loads the bundled linux-x86-64 native)
         # Validates the fat-jar wiring end-to-end on the host platform: the native
-        # is loaded from the classpath resource (RUSTPDF_LIB unset), and the prod
-        # key gate is confirmed live. The full SmokeTest can't run here — the
-        # prod-key lib rejects the dev license token.
+        # is loaded from the classpath resource (RUSTPDF_LIB unset) and the full
+        # surface runs.
         working-directory: bindings/java
         env:
           RUSTPDF_LIB: ""
-        run: mvn -q -e test-compile exec:java -Dexec.mainClass=dev.rustpdf.ReleaseSmoke
+        run: mvn -q -e test-compile exec:java
       - name: deploy to Maven Central
         if: startsWith(github.ref, 'refs/tags/java-v')
         working-directory: bindings/java

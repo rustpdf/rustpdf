@@ -13,17 +13,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 const TEXT: &str = "Assinado por Fulano";
 const SIZE: f64 = 28.0;
 const X: f64 = 40.0;
@@ -76,8 +65,6 @@ fn ink_coverage(px: &[u8]) -> f64 {
 
 #[test]
 fn stamped_embedded_font_honors_font_selection() {
-    lic();
-
     // Stamp the same string at the same place with (a) the embedded real font
     // and (b) the built-in Helvetica. Both use the plain-Tj stamp path, so the
     // glyph *positions* are identical and any pixel difference is pure glyph
@@ -134,7 +121,6 @@ fn stamped_embedded_font_honors_font_selection() {
 
 #[test]
 fn stamp_output_embeds_the_font_program() {
-    lic();
     let mut ed = EditableDoc::load(blank_base()).unwrap();
     let sfid = ed.add_font_file(FONT).unwrap();
     ed.place_text_with_font(0, X, Y, TEXT, SIZE, (0.0, 0.0, 0.0), 0.0, Align::Left, sfid);

@@ -3,16 +3,15 @@ name = "rustpdf"
 version = "0.4.8"
 edition = "2021"
 rust-version = "1.82"
-license = "LicenseRef-Proprietary"
+license = "MIT"
 description = "Generate, edit, sign and process PDFs in Rust: PDF/A, AES-256, digital signatures (PAdES), forms, stamping, redaction, extraction and rendering. Docs: https://rustpdf.dev/docs/"
 keywords = ["pdf", "pdfa", "signatures", "ffi"]
 categories = ["api-bindings"]
-# Publishing: this crate is distributed through a PRIVATE cargo registry, not
-# crates.io. Restrict accidental `cargo publish` to the configured registry
-# (set the registry name to match your `~/.cargo/config.toml [registries]`).
-# Until that's wired, keep it false to avoid an accidental crates.io push.
+# Not published to crates.io yet: the internal crate names (`pdf`, `parser`,
+# `render`, …) are already taken there, so publishing needs an `rustpdf-*`
+# rename first. Consume it via a git dependency in the meantime.
 publish = false
-repository = ""
+repository = "https://github.com/rustpdf/rustpdf"
 
 [lib]
 name = "rustpdf"

@@ -6,7 +6,7 @@
 #
 # Best effort, like bindings/swift/scripts/package.sh — it builds whatever Rust
 # targets can be installed on this host and skips the rest. Run it in release CI
-# (with the production RUSTPDF_LICENSE_PUBKEY exported) on Linux/macOS/Windows
+# on Linux/macOS/Windows
 # runners so all five slices get populated, then commit + tag the result; the
 # .a files are NOT kept on the development branch.
 #

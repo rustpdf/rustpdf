@@ -42,18 +42,15 @@ Build it from the repo root with `cargo build -p pdf-ffi`.
 Published to NuGet.org as the single package **`RustPdf`** that carries all four
 platforms' cdylibs. CI (`.github/workflows/release-csharp.yml`, trigger
 `csharp-v*`) fans out one build job per RID (Linux in `manylinux_2_28`, macOS
-arm64, Windows x64 — all with the production license pubkey), then a `pack` job
+arm64, Windows x64), then a `pack` job
 stages each lib into `runtimes/<rid>/native/`, runs `dotnet pack`, and pushes via
-NuGet **Trusted Publishing** (OIDC — no long-lived API key). A free-surface
-smoke (`bindings/csharp/Smoke`) verifies each platform's lib loads.
+NuGet **Trusted Publishing** (OIDC — no long-lived API key). A smoke test
+(`bindings/csharp/Smoke`) verifies each platform's lib loads.
 
 ## Quick start
 
 ```csharp
 using RustPdf;
-
-// A token via the RUSTPDF_LICENSE env var is auto-activated; or:
-Pdf.ActivateLicense(token);
 
 using (var doc = new Document())
 {
@@ -75,9 +72,8 @@ using (var doc = new Document())
 }
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility, page rendering)
-require a license; without one they throw `PdfException`. Page rendering is a
-**Pro** feature. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Every feature is free — PDF/A, digital signatures/PAdES, encryption,
+accessibility/tagging, redaction and page rendering are all included.
 
 ## Deferred / HSM signing (key never enters the library)
 

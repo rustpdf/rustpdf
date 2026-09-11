@@ -124,7 +124,7 @@
           "name": "Is optimization free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Optimize and compact are part of the free tier in Go. No license is needed."
+            "text": "Yes. Optimize and compact are free in Go."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -237,7 +237,7 @@ _ = ed.Compact(true)
 _ = ed.Save("small.pdf")</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Go. No license required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
@@ -252,7 +252,7 @@ _ = ed.Save("small.pdf")</code></pre>
           <p>No. This is structural optimization, not image down-sampling. The rendered page is identical; only redundant or uncompressed structure is removed, so the output still validates.</p>
         </details>
         <details><summary>Is optimization free?</summary>
-          <p>Yes. Optimize and compact are part of the free tier in Go. No license is needed.</p>
+          <p>Yes. Optimize and compact are free in Go.</p>
         </details>
         <details><summary>How do I deploy the shared library alongside my Go binary?</summary>
           <p>Ship libpdf_ffi next to the executable: the macOS dylib resolves through its install-name and the Linux .so through an -rpath, or simply drop both into a multi-stage scratch or distroless image. There is no daemon to run, so Optimize and Compact execute in-process inside your service.</p>
@@ -263,10 +263,10 @@ _ = ed.Save("small.pdf")</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Serve leaner PDFs from your Go apps</h2>
-        <p class="muted">One Rust core, the same lossless optimization in every language. Optimize and compact are free in Go — ship smaller files without a token.</p>
+        <p class="muted">One Rust core, the same lossless optimization in every language. Optimize and compact are free in Go.</p>
         <div class="cta-row">
           <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/compress-pdf">Compress PDF</a>
@@ -288,13 +288,13 @@ _ = ed.Save("small.pdf")</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

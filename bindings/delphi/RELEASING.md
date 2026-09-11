@@ -14,7 +14,7 @@ scripts/release-delphi.sh 0.3.0      # or no arg to re-release the current versi
 2. **Tags** `delphi-v<version>` and pushes the branch + tag.
 3. The push triggers **`.github/workflows/release-delphi.yml`**, which builds the
    native cdylib on native runners — Windows x64+x86, macOS universal, Linux
-   x64+arm64, each with the production license pubkey — assembles the archive
+   x64+arm64 — assembles the archive
    with `bindings/delphi/scripts/package.sh`, and attaches
    `rustpdf-delphi-<version>.zip` + `.sha256` to a **GitHub Release**. The script
    waits for that workflow to finish.
@@ -39,8 +39,6 @@ always match the bytes that were baked in.
 - `gh` authenticated (the repo is private, so the Release is authenticated
   storage — `gh` handles both the publish from CI and the pull at deploy time).
 - Deploy access (SSH to the VPS) for step 4 — same as `site/scripts/deploy.sh`.
-- Repo secret **`RUSTPDF_LICENSE_PUBKEY`** set to the production Ed25519 public
-  key, so released libraries reject the dev token (shared with `release-python`).
 
 ## Options & manual fallback
 

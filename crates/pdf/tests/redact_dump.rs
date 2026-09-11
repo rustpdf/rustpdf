@@ -4,14 +4,6 @@ use pdf::{Document, EditableDoc};
 #[test]
 #[ignore]
 fn dump_redacted_for_external_validation() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
     let font = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../assets/fonts/Roboto-Regular.ttf"

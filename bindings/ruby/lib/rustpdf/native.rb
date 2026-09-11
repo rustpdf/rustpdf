@@ -19,7 +19,6 @@ module RustPdf
     SIGS = {
       "pdf_version"                  => [[], VP],
       "pdf_last_error_message"       => [[], VP],
-      "pdf_activate_license"         => [[VP], I],
       "pdf_buffer_free"              => [[VP, SZ], VOID],
 
       "pdf_document_new"             => [[], VP],

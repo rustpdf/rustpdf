@@ -40,8 +40,6 @@ No platform package is installed, so the loader falls back to `target/`.
 ```js
 const rp = require('rustpdf');           // or: import * as rp from 'rustpdf'
 
-rp.activateLicense(token);               // or set RUSTPDF_LICENSE (auto-activated)
-
 const doc = new rp.Document();
 doc.pdfa(rp.PdfaLevel.A2a).setInfo({ title: 'Report' });
 const f = doc.addFontFile('assets/fonts/Roboto-Regular.ttf');
@@ -60,8 +58,8 @@ ed.close();
 const signed = rp.sign(data, keyDer, certDer, { pades: true });
 ```
 
-Corporate features (PDF/A, signing, encryption, accessibility, page rendering — a **Pro** feature) require a license;
-without one they throw `PdfError`. See [`docs/LICENSING.md`](../../docs/LICENSING.md).
+Every feature is free — PDF/A, digital signatures/PAdES, encryption,
+accessibility/tagging, redaction and page rendering are all included.
 
 ## Deferred / HSM signing
 

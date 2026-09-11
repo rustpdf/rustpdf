@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to sign in Ruby?",
+          "name": "Is signing free in Ruby?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Ruby is free. The same offline Ed25519 token unlocks signing across every language."
+            "text": "Signing is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Prawn can lay out a contract beautifully, but it cannot sign one, so Ruby shops have historically driven OpenSSL by hand or shelled out to a Java tool just to attach a PKCS#7 blob to the bytes. rust-pdf assembles the signature itself.</p>
             <p class="muted">A real digital signature proves who approved a document and that nothing changed afterwards. rust-pdf builds the detached CMS by hand to control the ByteRange, signs through a non-destructive incremental update so earlier signatures stay valid, and supports PAdES B-B, B-LT and B-LTA for long-term validation.</p>
-            <p class="muted">Read your PEM or PKCS#12 with Ruby's openssl module, convert it to PKCS#8 and X.509 DER, then call <code>RustPdf.sign</code> from a Rails request or an ActiveJob worker; wrap it in begin/rescue so a missing Signatures license surfaces as a handled <code>RustPdf::Error</code>.</p>
+            <p class="muted">Read your PEM or PKCS#12 with Ruby's openssl module, convert it to PKCS#8 and X.509 DER, then call <code>RustPdf.sign</code> from a Rails request or an ActiveJob worker; wrap it in begin/rescue so a failure surfaces as a handled <code>RustPdf::Error</code>.</p>
           </div>
           <ul class="check-list">
             <li>PKCS#7 detached and PAdES B-B, with B-LT and B-LTA for long-term validation.</li>
@@ -240,7 +240,7 @@ File.binwrite("contract.signed.pdf", signed)
 # Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdfsig</span><span>openssl</span><span>qpdf</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Ruby basic generation is free. Signing is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
@@ -254,8 +254,8 @@ File.binwrite("contract.signed.pdf", signed)
         <details><summary>Does it support long-term validation (LTV)?</summary>
           <p>Yes. After signing you can append a Document Security Store with certificates and CRLs (PAdES B-LT) and an RFC 3161 document timestamp (PAdES B-LTA), all offline. A trusted external TSA and live OCSP fetching are the only parts that need network infrastructure.</p>
         </details>
-        <details><summary>Do I need a license to sign in Ruby?</summary>
-          <p>Signing is a corporate feature, so it requires an active license token. Basic PDF generation in Ruby is free. The same offline Ed25519 token unlocks signing across every language.</p>
+        <details><summary>Is signing free in Ruby?</summary>
+          <p>Signing is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>What key formats does signing accept in Ruby?</summary>
           <p>Pass the private key as PKCS#8 DER and the certificate as X.509 DER. If you hold a PEM file or a PKCS#12 bundle, convert it once with Ruby's openssl module, then call RustPdf.sign from a Rails request or an ActiveJob worker.</p>
@@ -266,10 +266,10 @@ File.binwrite("contract.signed.pdf", signed)
     <section class="section">
       <div class="wrap narrow center">
         <h2>Bring trusted digital signatures to your Ruby stack</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/sign-pdf">Sign PDF</a>
@@ -293,13 +293,13 @@ File.binwrite("contract.signed.pdf", signed)
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

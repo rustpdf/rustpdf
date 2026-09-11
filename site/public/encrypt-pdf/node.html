@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to encrypt in Node.js?",
+          "name": "Is encryption free in Node.js?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Encryption is a corporate feature and needs an active license token. Basic generation in Node.js is free. The same offline token enables encryption in every language."
+            "text": "Encryption is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -132,7 +132,7 @@
           "name": "Does the Koffi binding work in AWS Lambda or Vercel serverless?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Koffi is pure FFI with no node-gyp compile step, so you ship the prebuilt native library alongside your function and load it at cold start. AES-256 encryption behaves the same in a Lambda or Vercel handler as on a long-running Express server, as long as the Encryption license token is present in the environment."
+            "text": "Yes. Koffi is pure FFI with no node-gyp compile step, so you ship the prebuilt native library alongside your function and load it at cold start. AES-256 encryption behaves the same in a Lambda or Vercel handler as on a long-running Express server, "
           }
         }
       ]
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Handling confidential PDFs in Node usually means shelling out to qpdf or another CLI, then babysitting temp files and passwords on disk, awkward inside a request handler and easy to leak.</p>
             <p class="muted">Encryption keeps sensitive documents (statements, records, contracts) confidential and helps meet LGPD, GDPR and HIPAA obligations. rust-pdf implements AES-256 (V5/R6) directly, validated by qpdf for both user and owner passwords, and also supports AES-128 and legacy RC4.</p>
-            <p class="muted">Drop the load–encrypt–save sequence into an Express or NestJS route to protect a document per request. The Koffi binding is pure FFI with no node-gyp build, so it installs cleanly from npm, and a request made without an Encryption license throws a PdfError you handle in a try/catch like any other failure.</p>
+            <p class="muted">Drop the load–encrypt–save sequence into an Express or NestJS route to protect a document per request. The Koffi binding is pure FFI with no node-gyp build, so it installs cleanly from npm, and a request that fails throws a PdfError you handle in a try/catch like any other failure.</p>
           </div>
           <ul class="check-list">
             <li>AES-256 (V5/R6) with keys and IVs from the OS CSPRNG, plus AES-128 and RC4 for legacy needs.</li>
@@ -234,11 +234,11 @@
 const ed = EditableDoc.loadFile("in.pdf");
 ed.encrypt({ user: "", owner: "owner-secret",
              method: Encryption.Aes256, readOnly: true });
-ed.save("secured.pdf");          // throws PdfError without an Encryption license
+ed.save("secured.pdf");          // throws PdfError
 ed.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Node.js basic generation is free. Encryption is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The full Node.js encryption reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
@@ -252,11 +252,11 @@ ed.close();</code></pre>
         <details><summary>What is the difference between user and owner passwords?</summary>
           <p>A user password is required to open the document. An owner password leaves the file openable but restricts actions such as printing or copying. You can set either or both, and enable a read-only permission mode.</p>
         </details>
-        <details><summary>Do I need a license to encrypt in Node.js?</summary>
-          <p>Encryption is a corporate feature and needs an active license token. Basic generation in Node.js is free. The same offline token enables encryption in every language.</p>
+        <details><summary>Is encryption free in Node.js?</summary>
+          <p>Encryption is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Does the Koffi binding work in AWS Lambda or Vercel serverless?</summary>
-          <p>Yes. Koffi is pure FFI with no node-gyp compile step, so you ship the prebuilt native library alongside your function and load it at cold start. AES-256 encryption behaves the same in a Lambda or Vercel handler as on a long-running Express server, as long as the Encryption license token is present in the environment.</p>
+          <p>Yes. Koffi is pure FFI with no node-gyp compile step, so you ship the prebuilt native library alongside your function and load it at cold start. AES-256 encryption behaves the same in a Lambda or Vercel handler as on a long-running Express server, </p>
         </details>
       </div>
     </section>
@@ -264,10 +264,10 @@ ed.close();</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Ship confidential PDFs without bundling a CLI</h2>
-        <p class="muted">One Rust core, identical AES-256 output in every language. Prototype on the free tier, then switch on encryption with a single license token when you ship.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/encrypt-pdf">Encrypt PDF</a>
@@ -291,13 +291,13 @@ ed.close();</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

@@ -154,7 +154,6 @@ typedef struct PdfEditable PdfEditable;
 
 const char *pdf_version(void);
 const char *pdf_last_error_message(void);
-int pdf_activate_license(const char *token);
 void pdf_buffer_free(uint8_t *ptr, uintptr_t len);
 
 PdfDocument *pdf_document_new(void);

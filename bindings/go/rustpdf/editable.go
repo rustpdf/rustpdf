@@ -468,7 +468,7 @@ func (e *EditableDoc) Redact(index int, rects [][4]float64) (bool, error) {
 }
 
 // ConvertToPdfa converts the loaded document to PDF/A at the given level
-// (only B-levels A1b/A2b/A3b are valid). Requires a license.
+// (only B-levels A1b/A2b/A3b are valid).
 func (e *EditableDoc) ConvertToPdfa(level PdfaLevel) error {
 	return check(C.pdf_editable_convert_to_pdfa(e.h, C.int(level)))
 }
@@ -483,7 +483,7 @@ func (e *EditableDoc) Compact(on bool) error {
 	return check(C.pdf_editable_compact(e.h, v))
 }
 
-// Encrypt enables encryption on save (requires a license).
+// Encrypt enables encryption on save.
 func (e *EditableDoc) Encrypt(method Encryption, user, owner string, readOnly bool) error {
 	cu := C.CString(user)
 	co := C.CString(owner)

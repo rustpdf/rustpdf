@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to create PDF/A in Node.js?",
+          "name": "Is PDF/A free in Node.js?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in Node.js is free. One offline token unlocks PDF/A in every supported language."
+            "text": "PDF/A is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -211,7 +211,7 @@
           <div>
             <p class="muted">Generating archival PDF/A is where headless-Chrome pipelines fall down in Node: they cannot seal every font, attach an output intent, or pass veraPDF, so the files fail an archive audit.</p>
             <p class="muted">PDF/A is the version of PDF built to last: every font and color profile is sealed inside the file so it renders identically decades from now. It is mandatory for e-invoicing, public-sector archiving, legal, healthcare and finance. rust-pdf produces and validates PDF/A-1b, 2b, 2a, 3b, 3a and 4.</p>
-            <p class="muted">Because the Koffi binding is pure FFI with no node-gyp, you bundle the prebuilt native library beside an AWS Lambda or Vercel function and it loads at cold start, and PdfaLevel ships fully typed in index.d.ts. addFontFile embeds and subsets each font so the archived file stays self-contained, while save throws a typed PdfError if no license grants PDF/A.</p>
+            <p class="muted">Because the Koffi binding is pure FFI with no node-gyp, you bundle the prebuilt native library beside an AWS Lambda or Vercel function and it loads at cold start, and PdfaLevel ships fully typed in index.d.ts. addFontFile embeds and subsets each font so the archived file stays self-contained, while save throws a typed PdfError on failure.</p>
           </div>
           <ul class="check-list">
             <li>Levels A-1b, A-2b, A-2a, A-3b, A-3a and A-4 (the PDF 2.0 part), with the accessible a-levels building a full tagged structure tree.</li>
@@ -236,11 +236,11 @@ doc.pdfa(PdfaLevel.A2b).setInfo({ title: "Q3 Report", author: "Acme Inc." });
 const f = doc.addFontFile("Roboto-Regular.ttf");
 doc.addPage();
 doc.showText(f, 20, 72, 760, "Archival report");
-doc.save("report_pdfa.pdf");     // throws PdfError without a license granting PDF/A
+doc.save("report_pdfa.pdf");     // throws PdfError
 doc.close();</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Node.js basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The full Node.js PDF/A reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
@@ -254,8 +254,8 @@ doc.close();</code></pre>
         <details><summary>How is conformance verified?</summary>
           <p>Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives.</p>
         </details>
-        <details><summary>Do I need a license to create PDF/A in Node.js?</summary>
-          <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Node.js is free. One offline token unlocks PDF/A in every supported language.</p>
+        <details><summary>Is PDF/A free in Node.js?</summary>
+          <p>PDF/A is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>Are TypeScript type definitions included for the Node binding?</summary>
           <p>Yes. The npm package ships an index.d.ts, so Document, PdfaLevel and every method are fully typed. Your editor autocompletes the level constants and catches a wrong argument before save ever runs, with no separate @types package to install.</p>
@@ -266,10 +266,10 @@ doc.close();</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Archive documents that still open correctly in 2050</h2>
-        <p class="muted">One Rust core, the same veraPDF-clean PDF/A in every language. Prototype on the free tier, then enable archival output with a single license token when you ship.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/pdf-a">PDF/A</a>
@@ -293,13 +293,13 @@ doc.close();</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

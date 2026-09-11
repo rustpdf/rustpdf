@@ -8,21 +8,7 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-/// Activate the committed dev license (grants every corporate feature) so the
-/// gated paths under test are reachable.
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn sample() -> Vec<u8> {
-    lic();
     let mut doc = Document::new();
     let font = doc.add_font_file(FONT).unwrap();
     doc.add_page()

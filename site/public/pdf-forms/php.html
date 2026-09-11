@@ -124,7 +124,7 @@
           "name": "Is form authoring free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Creating, filling and flattening AcroForm fields is part of the free tier in PHP."
+            "text": "Yes. Creating, filling and flattening AcroForm fields is free in PHP."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -242,7 +242,7 @@ $doc-&gt;addPage()
     -&gt;save('form.pdf');</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Form authoring and filling are part of the free PHP tier. No license token required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The complete forms API is in the <a href="/docs/php">PHP documentation</a>.</p>
       </div>
     </section>
@@ -257,7 +257,7 @@ $doc-&gt;addPage()
           <p>Yes. Load the PDF, set text fields, checkboxes, radios and dropdowns by name, and optionally flatten the form so the values become permanent static content.</p>
         </details>
         <details><summary>Is form authoring free?</summary>
-          <p>Yes. Creating, filling and flattening AcroForm fields is part of the free tier in PHP.</p>
+          <p>Yes. Creating, filling and flattening AcroForm fields is free in PHP.</p>
         </details>
         <details><summary>Can I fill an uploaded form in a Laravel controller and flatten it?</summary>
           <p>Yes. Load the PDF with <code>EditableDoc</code>, set each field by its (possibly dotted) name, then flatten so the values become static content before you stream or store the file. It runs in the FPM request or a queued job, with no pdftk fill_form step to shell out to.</p>
@@ -268,10 +268,10 @@ $doc-&gt;addPage()
     <section class="section">
       <div class="wrap narrow center">
         <h2>Automate PDF form workflows from PHP</h2>
-        <p class="muted">One Rust core, the same forms in every language. Authoring, filling and flattening are free. You license only corporate features like PDF/A, signing and encryption.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/php" class="btn btn-lg">Read the PHP docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/pdf-forms">PDF forms</a>
@@ -293,13 +293,13 @@ $doc-&gt;addPage()
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

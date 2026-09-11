@@ -6,8 +6,8 @@ use std::ffi::{c_char, c_double, c_int, c_uchar};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use pdf::{
-    Align, ConvertError, EditableDoc, Encryption, Image, ImageAnchor, PdfaLevel, Permissions,
-    StampSpace, VerticalAlign, VerticalAnchor, WatermarkOptions,
+    Align, EditableDoc, Encryption, Image, ImageAnchor, PdfaLevel, Permissions, StampSpace,
+    VerticalAlign, VerticalAnchor, WatermarkOptions,
 };
 
 /// Map a C-ABI alignment int to [`Align`] (0=Left, 1=Right, 2=Center, 3=Justify;
@@ -1556,10 +1556,6 @@ pub unsafe extern "C" fn pdf_editable_convert_to_pdfa(
                 clear_last_error();
                 PdfStatus::Ok
             }
-            Err(ConvertError::License(e)) => {
-                set_last_error(format!("convert_to_pdfa: {e}"));
-                PdfStatus::License
-            }
             Err(e) => {
                 set_last_error(format!("convert_to_pdfa: {e}"));
                 PdfStatus::InvalidArgument
@@ -1652,13 +1648,9 @@ pub unsafe extern "C" fn pdf_editable_to_bytes(
     })
 }
 
-/// Map a `BuildError` to a status code (license errors are distinguished so the
-/// caller can tell "needs a license" from a generic serialization failure).
-fn build_status(e: &pdf::BuildError) -> PdfStatus {
-    match e {
-        pdf::BuildError::License(_) => PdfStatus::License,
-        _ => PdfStatus::Serialize,
-    }
+/// Map a `BuildError` to a status code.
+fn build_status(_e: &pdf::BuildError) -> PdfStatus {
+    PdfStatus::Serialize
 }
 
 /// Serialize as an incremental update over `original` (preserves it verbatim).
@@ -1972,10 +1964,6 @@ pub unsafe extern "C" fn pdf_render_page_to_png(
     guard(
         || match pdf::render_page_to_png(unsafe { bytes(data, len) }, page_index, dpi as f32) {
             Ok(png) => unsafe { emit_buffer(png, out_ptr, out_len) },
-            Err(pdf::PageRenderError::License(_)) => {
-                set_last_error("render_page_to_png requires a license (Pro feature)");
-                PdfStatus::License
-            }
             Err(e) => {
                 set_last_error(format!("render_page_to_png failed: {e}"));
                 PdfStatus::Parse

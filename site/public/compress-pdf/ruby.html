@@ -124,7 +124,7 @@
           "name": "Is optimization free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Optimize and compact are part of the free tier in Ruby. No license is needed."
+            "text": "Yes. Optimize and compact are free in Ruby."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -235,7 +235,7 @@ ed.save("small.pdf")
 ed.close</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">This is part of the free tier in Ruby. No license required.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Ruby reference in the <a href="/docs/ruby">documentation</a>.</p>
       </div>
     </section>
@@ -250,7 +250,7 @@ ed.close</code></pre>
           <p>No. This is structural optimization, not image down-sampling. The rendered page is identical; only redundant or uncompressed structure is removed, so the output still validates.</p>
         </details>
         <details><summary>Is optimization free?</summary>
-          <p>Yes. Optimize and compact are part of the free tier in Ruby. No license is needed.</p>
+          <p>Yes. Optimize and compact are free in Ruby.</p>
         </details>
         <details><summary>Can I optimize PDFs in a background worker?</summary>
           <p>Yes. Call load_file then optimize.compact(true) from an ActiveJob or Sidekiq worker before you archive or email at scale. It runs in-process over Fiddle with no Ghostscript subprocess, and a corrupt input is a RustPdf::Error you can rescue.</p>
@@ -261,10 +261,10 @@ ed.close</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Ship leaner PDFs from your Ruby services</h2>
-        <p class="muted">One Rust core, the same output across every language. Prototype for free, license the corporate features when you ship.</p>
+        <p class="muted">One Rust core, the same output across every language. Every feature is free.</p>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Read the Ruby docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/compress-pdf">Compress PDF</a>
@@ -286,13 +286,13 @@ ed.close</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

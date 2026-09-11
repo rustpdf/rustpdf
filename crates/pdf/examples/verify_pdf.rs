@@ -1,12 +1,6 @@
 //! Print the signature report for a PDF: `cargo run -p pdf --example verify_pdf -- file.pdf`.
 
-const DEV_LICENSE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../license/fixtures/dev_license.txt"
-));
-
 fn main() {
-    pdf::activate_license(DEV_LICENSE.trim()).expect("activate dev license");
     let path = std::env::args()
         .nth(1)
         .expect("usage: verify_pdf <file.pdf>");

@@ -1,9 +1,7 @@
-// Minimal smoke test for CI release builds. Deliberately exercises ONLY the
-// free (unlicensed) surface — basic vector graphics + serialization — because
-// release binaries are compiled with the PRODUCTION license pubkey, which
-// rejects the committed dev token. Gated features (PDF/A, signing, encryption,
-// accessibility) are covered by the full suite (`make go-test`) against a
-// dev-key build, not here.
+// Minimal smoke test for CI release builds. Exercises the surface — basic
+// vector graphics + serialization — against the vendored per-platform static
+// library. The full surface is covered by the full suite (`make go-test`), not
+// here.
 //
 // Run with default build tags so it statically links the vendored per-platform
 // libpdf_ffi.a — this verifies the published-shape module locates + links the

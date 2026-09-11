@@ -25,8 +25,8 @@ macOS 11+ and iOS 13+ (Swift 5.9+).
 * `Status.swift` — `PdfStatus` and the thrown `PdfError`.
 * `Enums.swift` — `PdfaLevel`, `Align`, `AFRelationship`, `Encryption`, `PdfVersion`.
 * `Helpers.swift` — out-buffer copy/free and C-string helpers.
-* `Pdf.swift` — package-level entry points (`Pdf.version`, `activateLicense`,
-  `extractText`, `sign`, `timestamp`, `addDss`) and `SignOptions`.
+* `Pdf.swift` — package-level entry points (`Pdf.version`, `extractText`,
+  `sign`, `timestamp`, `addDss`) and `SignOptions`.
 * `Document.swift` — the `Document` authoring type.
 * `EditableDoc.swift` — the `EditableDoc` manipulation type.
 
@@ -137,15 +137,12 @@ try Document()
     .save(to: "red.pdf")
 ```
 
-## Corporate features (licensed)
+## All features included
 
-PDF/A, tagging, encryption, signing and page rendering (a **Pro** feature)
-require a license. Activate a token explicitly, or set `RUSTPDF_LICENSE` /
-`RUSTPDF_LICENSE_FILE` in the environment (auto-activated on first use):
+Every feature is free — PDF/A, tagging, encryption, signing/PAdES and page
+rendering are all included:
 
 ```swift
-try Pdf.activateLicense(token)
-
 // Tagged PDF/A-2a.
 let doc = try Document()
 try doc.pdfa(.a2a)
@@ -232,7 +229,7 @@ do {
     try doc.pdfa()
     _ = try doc.toBytes()
 } catch let e as PdfError {
-    print(e.status, e.message)   // e.g. .license, "feature not licensed: ..."
+    print(e.status, e.message)   // e.g. .invalidPage, "page index out of range"
 }
 ```
 

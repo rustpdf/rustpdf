@@ -7,17 +7,6 @@
 
 use pdf::EditableDoc;
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 /// A minimal one-page PDF (100×100) whose content scales everything to 10%
 /// with a bare top-level `cm` — no `q`/`Q`. Anything drawn *after* this in the
 /// same combined stream is shrunk to a tenth unless the state is reset.
@@ -53,7 +42,6 @@ fn polluted_ctm_pdf() -> Vec<u8> {
 
 #[test]
 fn fill_rect_ignores_polluted_page_ctm() {
-    lic();
     let mut ed = EditableDoc::load(polluted_ctm_pdf()).unwrap();
     // Fill the whole page bright red. In the page's *visible* space this covers
     // the entire 100×100 box. If the original 0.1× CTM leaked, the fill would be

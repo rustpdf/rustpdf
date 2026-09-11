@@ -97,10 +97,9 @@ macro_rules! ffi_api {
 }
 
 ffi_api! {
-    // --- core / licensing ---
+    // --- core ---
     fn pdf_version() -> *const c_char;
     fn pdf_last_error_message() -> *const c_char;
-    fn pdf_activate_license(*const c_char) -> c_int;
     fn pdf_buffer_free(*mut u8, usize);
 
     // --- document authoring ---

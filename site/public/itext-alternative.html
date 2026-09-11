@@ -5,7 +5,7 @@
   <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>iText Alternative for PDF/A and Signatures | rust-pdf</title>
-  <meta name="description" content="An honest comparison of rust-pdf and iText: the same PDF/A, PAdES signatures, AES-256 and PDF/UA in eight languages, with no AGPL and flat pricing." />
+  <meta name="description" content="An honest comparison of rust-pdf and iText: the same PDF/A, PAdES signatures, AES-256 and PDF/UA in eight languages, with no AGPL, free and MIT licensed." />
   <link rel="canonical" href="https://rustpdf.dev/itext-alternative" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#0a0e16" />
@@ -13,13 +13,13 @@
   <meta property="og:site_name" content="rust-pdf" />
   <meta property="og:url" content="https://rustpdf.dev/itext-alternative" />
   <meta property="og:title" content="iText Alternative: rust-pdf vs iText" />
-  <meta property="og:description" content="The same PDF/A, PAdES signatures, AES-256 and PDF/UA as iText, in eight languages, with no AGPL and flat per-application pricing. An honest side by side comparison." />
+  <meta property="og:description" content="The same PDF/A, PAdES signatures, AES-256 and PDF/UA as iText, in eight languages, with no AGPL and MIT licensing. An honest side by side comparison." />
   <meta property="og:image" content="https://rustpdf.dev/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="iText Alternative: rust-pdf vs iText" />
-  <meta name="twitter:description" content="The same enterprise PDF compliance as iText, in eight languages, with no AGPL and flat per-application pricing." />
+  <meta name="twitter:description" content="The same enterprise PDF compliance as iText, in eight languages, with no AGPL and MIT licensing." />
   <meta property="og:image:alt" content="rust-pdf as an iText alternative, compared side by side" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf as an iText alternative, compared side by side" />
@@ -105,7 +105,7 @@
           "name": "Does rust-pdf avoid the AGPL licence?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. rust-pdf is not AGPL. Basic generation is free in the Community tier, and corporate features are unlocked by an offline licence token. There is no copyleft obligation on your own source code and no network-use clause forcing you to publish it, which is the main legal concern teams raise about iText Community."
+            "text": "Yes. rust-pdf is MIT licensed, not AGPL. Every feature is free, and there is no copyleft obligation on your own source code and no network-use clause forcing you to publish it, which is the main legal concern teams raise about iText Community."
           }
         },
         {
@@ -129,7 +129,7 @@
           "name": "How does rust-pdf pricing compare to iText?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, and OEM or Site licensing for redistribution and org-wide use. There is no per-document meter. iText commercial pricing is quote-only and has historically been metered by the volume of documents processed."
+            "text": "rust-pdf is MIT licensed and completely free, with every feature included and no per-document meter. iText commercial pricing is quote-only and has historically been metered by the volume of documents processed."
           }
         },
         {
@@ -189,7 +189,7 @@
     .ix-cmp .y { color: #34d399; font-weight: 700; }
     .ix-cmp tr td:last-child { background: rgba(249,115,22,.04); }
 
-    /* two-column contrast (licensing, verdict) */
+    /* two-column contrast (terms, verdict) */
     .ix-split { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 32px; }
     .ix-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
     .ix-card.them { border-color: #3a2a20; }
@@ -217,10 +217,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -235,7 +235,7 @@
           iText is a deep, mature PDF engine for Java and .NET. rust-pdf does the
           same enterprise work, PDF/A archival, PAdES signatures, AES-256 encryption
           and PDF/UA accessibility, but across <b>eight languages</b>, with <b>no
-          AGPL</b> and a <b>flat per-application licence</b> instead of per-document
+          AGPL</b> and <b>MIT licensing</b> with no per-document
           metering. This is an honest, side by side comparison so you can choose the
           right tool.
         </p>
@@ -262,7 +262,7 @@
         </div>
         <div class="cta-row" style="margin-top:34px">
           <a href="#compare" class="btn btn-lg">See the full comparison</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
       </div>
     </section>
@@ -280,7 +280,7 @@
         <p class="muted">
           rust-pdf is the better fit when you work in more than Java and .NET, when
           the AGPL licence on iText Community is a problem for your codebase, when
-          you want predictable flat pricing rather than a per-document meter, or when
+          you want a permissive MIT licence rather than a per-document meter, or when
           you need output that is fully offline and deterministic so it can be
           audited. The rest of this page lays out exactly where each one wins.
         </p>
@@ -304,12 +304,12 @@
           <div class="ix-diff reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></div>
             <h3>No AGPL, no audits</h3>
-            <p>rust-pdf is not copyleft. A free Community tier plus an offline licence token unlock corporate features, with no obligation to publish your own source.</p>
+            <p>rust-pdf is MIT licensed and not copyleft. Every feature is free, with no obligation to publish your own source.</p>
           </div>
           <div class="ix-diff reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-            <h3>Flat pricing, no meter</h3>
-            <p>A published per-application annual licence, free then 1,500 and 3,000 USD per year, never a charge that grows with the number of documents you produce.</p>
+            <h3>MIT, no meter</h3>
+            <p>MIT licensed and completely free, never a charge that grows with the number of documents you produce.</p>
           </div>
           <div class="ix-diff reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
@@ -339,8 +339,8 @@
             <tr><td>PDF/UA accessibility</td><td><b>UA-1 and UA-2</b></td><td>UA-1</td></tr>
             <tr><td>Encryption</td><td>RC4, AES-128, AES-256, certificate</td><td>RC4, AES-128, AES-256</td></tr>
             <tr><td>ZUGFeRD / Factur-X</td><td>Build it yourself on PDF/A-3</td><td><span class="y">First-class, one call</span></td></tr>
-            <tr><td>Licensing</td><td>AGPL v3 or commercial</td><td><span class="y">Flat per-application, offline token, no AGPL</span></td></tr>
-            <tr><td>Pricing model</td><td>Quote-only, historically metered per document</td><td><span class="y">Published: free, 1,500, 3,000 USD, OEM</span></td></tr>
+            <tr><td>Licensing</td><td>AGPL v3 or commercial</td><td><span class="y">MIT, free, no AGPL</span></td></tr>
+            <tr><td>Pricing model</td><td>Quote-only, historically metered per document</td><td><span class="y">Free (MIT)</span></td></tr>
             <tr><td>Deployment</td><td>On-prem library</td><td>On-prem, fully offline, deterministic output</td></tr>
             <tr><td>Independent validation</td><td>Yes</td><td>veraPDF, pdfsig, openssl cms, qpdf, mutool</td></tr>
           </tbody>
@@ -348,13 +348,13 @@
         <p class="center muted narrow" style="margin-top:18px">
           Where iText leads honestly: it reaches <b>PDF/UA-2</b>,
           which rust-pdf does not yet target, and it carries more than two decades of
-          add-ons. Everywhere else the trade favours breadth of language, licensing
+          add-ons. Everywhere else the trade favours breadth of language, terms
           clarity and predictable cost.
         </p>
       </div>
     </section>
 
-    <!-- LICENSING -->
+    <!-- FREE -->
     <section class="section">
       <div class="wrap">
         <h2 class="center">Licensing, side by side</h2>
@@ -374,8 +374,8 @@
             <h3>rust-pdf</h3>
             <ul>
               <li><b>Not AGPL.</b> Your source stays yours, with no copyleft or network-use obligation.</li>
-              <li><b>Flat per-application annual licence</b>, activated by an offline token. No per-document meter, ever.</li>
-              <li><b>Published prices:</b> free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, plus OEM and Site licensing. One licence covers every language and unlimited servers.</li>
+              <li><b>MIT licensed and free</b>, with no per-document meter, ever.</li>
+              <li><b>Free and MIT licensed.</b> Every language and unlimited servers, with no fees.</li>
             </ul>
           </div>
         </div>
@@ -475,7 +475,7 @@ const lta     = timestamp(lt, tsaKey, tsaCert);                           // B-L
           <p>No. rust-pdf has its own idiomatic API in each language, so a migration is feature for feature, not line for line. It covers the same enterprise jobs as iText: PDF/A archival, PAdES signatures with timestamps and LTV, AES-256 encryption and PDF/UA accessibility. If your code uses those capabilities, there is a matching path in rust-pdf.</p>
         </details>
         <details><summary>Does rust-pdf avoid the AGPL licence?</summary>
-          <p>Yes. rust-pdf is not AGPL. Basic generation is free in the Community tier, and corporate features are unlocked by an offline licence token. There is no copyleft obligation on your own source code and no network-use clause forcing you to publish it, which is the main legal concern teams raise about iText Community.</p>
+          <p>Yes. rust-pdf is MIT licensed, not AGPL. Every feature is free, and there is no copyleft obligation on your own source code and no network-use clause forcing you to publish it, which is the main legal concern teams raise about iText Community.</p>
         </details>
         <details><summary>Which languages does rust-pdf support that iText does not?</summary>
           <p>iText ships for Java and .NET. rust-pdf adds Python, Go, PHP, Ruby, Node and TypeScript, Delphi and Swift on top of .NET, eight bindings in total, all over one shared Rust core with identical behaviour.</p>
@@ -484,7 +484,7 @@ const lta     = timestamp(lt, tsaKey, tsaCert);                           // B-L
           <p>Independent open-source tools check the output, not self-declaration. veraPDF validates PDF/A (1b to 4) and PDF/UA-1, pdfsig and openssl cms validate the PAdES signatures, and qpdf and mutool check structure. The same engine produces byte-identical output every run, so files are auditable and diffable.</p>
         </details>
         <details><summary>How does rust-pdf pricing compare to iText?</summary>
-          <p>rust-pdf publishes flat per-application annual pricing: free Community, Pro at 1,500 USD per year, Enterprise at 3,000 USD per year, and OEM or Site licensing for redistribution and org-wide use. There is no per-document meter. iText commercial pricing is quote-only and has historically been metered by the volume of documents processed.</p>
+          <p>rust-pdf is MIT licensed and completely free, with every feature included and no per-document meter. iText commercial pricing is quote-only and has historically been metered by the volume of documents processed.</p>
         </details>
         <details><summary>Where is iText still ahead of rust-pdf?</summary>
           <p>iText reaches PDF/UA-2, while rust-pdf targets PDF/A up to 4 (the latest part) and PDF/UA-1. iText also has more than two decades of add-ons such as HTML to PDF, OCR and redaction tooling. If you only ship Java or .NET and need those exact ceilings today, iText has the deeper standards ceiling.</p>
@@ -497,13 +497,13 @@ const lta     = timestamp(lt, tsaKey, tsaCert);                           // B-L
       <div class="wrap narrow center">
         <h2>Try rust-pdf in your language</h2>
         <p class="muted">
-          Prototype for free, then license the corporate features when you ship. One
+          Every feature is free. One
           core, the same PDF/A, signatures, encryption and accessibility across eight
           languages.
         </p>
         <div class="cta-row">
           <a href="/docs/" class="btn btn-lg">Read the docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/aspose-alternative">Aspose alternative</a>
@@ -519,13 +519,13 @@ const lta     = timestamp(lt, tsaKey, tsaCert);                           // B-L
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

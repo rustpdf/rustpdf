@@ -1,12 +1,8 @@
 # rust-pdf
 
 A PDF library written in Rust, designed from day one for a **single core +
-thin foreign-language bindings** (paid product, portable by design).
-
-> **Business thesis:** sell the enterprise-grade PDF library (PDF/A, digital
-> signatures, encryption, accessibility) that PHP, Ruby, Go, C#, Node and Java
-> lack — one Rust core, many languages, licensed per feature. See
-> [`TESE-DE-NEGOCIO.md`](TESE-DE-NEGOCIO.md).
+thin foreign-language bindings**. It is **free and open source (MIT)** — one
+Rust core, ten language bindings, every feature included.
 
 This repo currently implements **Fase 0 → Fase 6 plus parts of Fase 7** of [`project.md`](project.md):
 tooling, the COS object model, the document writer, vector graphics, the
@@ -46,9 +42,8 @@ never `Rc`/`RefCell` (ADR [0002](docs/adr/0002-concurrency-model.md)).
 | `fonts`    | parsing / embedding / subsetting / shaping / BiDi | ✅ Fase 3 |
 | `images`   | JPEG / PNG / palette / alpha / 16-bit | ✅ Fase 4 |
 | `parser`   | read existing PDFs (xref/streams, filters, crypto) | ✅ Fase 5 |
-| `render`   | rasterize a page to an image (tiny-skia) | ✅ Fase 7.8 (Pro feature) |
+| `render`   | rasterize a page to an image (tiny-skia) | ✅ Fase 7.8 |
 | `ffi`      | C ABI boundary (full surface, ~78 exports) | ✅ + 9 bindings (Python on PyPI, Node on npm) |
-| `license`  | Ed25519-signed feature licensing (gates PDF/A, signing, encryption) | ✅ |
 | `testkit`  | external validators + visual regression | ✅ Fase 0 |
 | `layout`   | high-level flow (tables, pagination) | ⏳ Fase 7 (paragraph done in `pdf`) |
 
@@ -105,7 +100,7 @@ source-generated P/Invoke), **Go** (`bindings/go/rustpdf`, cgo), **PHP**
 **Delphi / Free Pascal** (`bindings/delphi`, dynamic-loading FFI) and **Swift**
 (`bindings/swift`, SwiftPM): fonts/text/paragraphs, images, PDF/A (1b–3a),
 tagging, attachments, AcroForm fields, manipulation, extraction, encryption,
-signatures and licensing. Smoke tests:
+signatures and page rendering. Smoke tests:
 `make {python,csharp,go,php,ruby,node,java,delphi,swift}-test`.
 
 **Published packages:** Python (`pip install rustpdf`) and Node.js
@@ -189,7 +184,7 @@ perceptual diff.
 
 * **Fase 0** — workspace, CI, corpus + catalog, validator harness, visual
   regression, ADRs, FFI rules + PR checklist, `cbindgen` header, Python
-  reference binding, license tracking, platform build matrix.
+  reference binding, dependency-license tracking, platform build matrix.
 * **Fase 1** — COS types, canonical serialization, string/name escaping,
   streams (direct & indirect `/Length`), document/xref/trailer, blank-page
   milestone, FFI dogfood.
@@ -276,27 +271,12 @@ let signed = pdf::sign(&pdf_bytes, &signer, &pdf::SignOptions::default())?;
 let signed = pdf::sign_with(&pdf_bytes, &cert_der, &chain, &opts, |to_sign| hsm.sign(to_sign))?;
 ```
 
-## Licensing (corporate features)
+## License
 
-Basic generation is always available; **PDF/A, digital signatures/PAdES, and
-encryption** require an active, cryptographically-signed license (Ed25519,
-offline-verified, with an expiry date). Without one, those calls return a
-`License` error and produce no output.
-
-The customer **never rebuilds** — they just supply the emailed token, either via
-an env var (auto-activated, no code) or one explicit call:
-
-```sh
-export RUSTPDF_LICENSE="010f0000…"          # the emailed token; auto-activated
-```
-```rust
-pdf::activate_license(token)?;              // …or activate explicitly
-let bytes = doc.pdfa().to_bytes()?;         // now allowed
-```
-
-You (the vendor) embed your **public** key once at build
-(`RUSTPDF_LICENSE_PUBKEY`) and mint per-customer **tokens** with your secret key
-via the `licctl` tool. Full design: [`docs/LICENSING.md`](docs/LICENSING.md).
+**MIT** — see [`LICENSE`](LICENSE). Every feature is free: PDF generation,
+parsing, manipulation, text/image extraction, layout, PDF/A (1b–4f), tagged
+PDF/UA, encryption (RC4/AES-128/AES-256), digital signatures (PAdES B-B/B-LT/
+B-LTA), redaction and page rendering.
 
 Deferred/partial items across all phases: see [`PENDING.md`](PENDING.md)
 (AES-256, signatures, PDF/A, tagged PDF, object streams on write, …).

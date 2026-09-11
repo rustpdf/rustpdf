@@ -1,0 +1,38 @@
+rust-pdf
+Copyright (c) 2026 Edivan Teixeira and rust-pdf contributors
+
+Released under the MIT license — see LICENSE.
+
+--------------------------------------------------------------------------------
+Bundled third-party assets
+--------------------------------------------------------------------------------
+
+The following files are redistributed inside this repository and, where noted,
+compiled into the resulting binaries. They keep their own licenses, which are
+not MIT and whose attribution requirements must be preserved downstream.
+
+1. Roboto (assets/fonts/Roboto-Regular.ttf, assets/fonts/Roboto-Bold.ttf)
+   Copyright the Roboto Project Authors (https://github.com/googlefonts/roboto)
+   Licensed under the Apache License, Version 2.0.
+   Embedded by the `render` crate as the fallback face used to rasterize the
+   standard-14 fonts when a PDF does not embed its own font program.
+   See assets/fonts/LICENSE.txt.
+
+2. sRGB ICC profile (assets/icc/sRGB.icc)
+   sRGB-v2-micro.icc from the Compact ICC Profiles project
+   (https://github.com/saucecontrol/Compact-ICC-Profiles).
+   Released under CC0 1.0 Universal (public domain dedication).
+   Embedded by the `pdf` crate as the PDF/A OutputIntent destination profile.
+   See assets/icc/LICENSE.txt.
+
+3. Schibsted Grotesk (site/public/fonts/schibsted-grotesk-latin.woff2)
+   Licensed under the SIL Open Font License 1.1. Used only by the project
+   website, never compiled into the library.
+
+--------------------------------------------------------------------------------
+Third-party dependencies
+--------------------------------------------------------------------------------
+
+Rust dependencies are fetched from crates.io and are not vendored here. Every
+one of them carries a permissive license; the allow-list is enforced in CI by
+`cargo deny` (see deny.toml) and the inventory is documented in LICENSES.md.

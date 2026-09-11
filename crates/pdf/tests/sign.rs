@@ -25,19 +25,7 @@ fn tsa() -> Signer {
     Signer::from_pkcs8_der(&key, &cert).unwrap()
 }
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn sample() -> Vec<u8> {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()
@@ -385,7 +373,6 @@ fn external_signing_matches_local_signing_byte_for_byte() {
     // Model A: the library never sees the key; it calls back for the raw RSA
     // signature. Delegating to the same key must yield an identical PDF to the
     // in-process signer — proving the CMS assembly is equivalent.
-    lic();
     let pdf = sample();
     let opts = SignOptions {
         reason: Some("HSM".into()),
@@ -406,7 +393,6 @@ fn external_signing_matches_local_signing_byte_for_byte() {
 
 #[test]
 fn external_signing_pades_verifies() {
-    lic();
     let opts = SignOptions {
         pades: true,
         ..Default::default()
@@ -418,7 +404,6 @@ fn external_signing_pades_verifies() {
 
 #[test]
 fn external_signer_error_propagates() {
-    lic();
     let opts = SignOptions::default();
     let err = pdf::sign_with(&sample(), &cert_der(), &[], &opts, |_| {
         Err(pdf::SignError::Key("HSM offline".into()))
@@ -471,7 +456,6 @@ fn integrator_cms(signed_bytes: &[u8]) -> Vec<u8> {
 fn two_phase_prepare_and_embed_roundtrips() {
     // Model B: prepare returns the hash to sign; the integrator builds the CMS
     // container (here, with the cms crate directly) and embeds it.
-    lic();
     let opts = SignOptions::default();
     let prepared = pdf::begin_signing(&sample(), &opts).unwrap();
     // The digest the HSM would sign matches SHA-256 of the covered bytes.
@@ -489,7 +473,6 @@ fn two_phase_prepare_and_embed_roundtrips() {
 
 #[test]
 fn embed_rejects_oversize_container() {
-    lic();
     let opts = SignOptions {
         estimated_size: Some(64), // far too small for any real CMS
         ..Default::default()
@@ -503,7 +486,6 @@ fn embed_rejects_oversize_container() {
 
 #[test]
 fn estimated_size_enlarges_reserved_contents() {
-    lic();
     let small = pdf::begin_signing(&sample(), &SignOptions::default()).unwrap();
     let big = pdf::begin_signing(
         &sample(),
@@ -522,7 +504,6 @@ fn estimated_size_enlarges_reserved_contents() {
 
 #[test]
 fn certification_adds_docmdp_perms() {
-    lic();
     let opts = SignOptions {
         certification: Some(pdf::Certify::FormsAndAnnotations),
         ..Default::default()
@@ -538,7 +519,6 @@ fn certification_adds_docmdp_perms() {
 
 #[test]
 fn signature_policy_identifier_is_embedded() {
-    lic();
     let opts = SignOptions {
         pades: true,
         policy: Some(pdf::SignaturePolicy {
@@ -565,7 +545,6 @@ fn signature_policy_identifier_is_embedded() {
 
 #[test]
 fn list_signatures_detects_existing_signatures() {
-    lic();
     let unsigned = sample();
     assert!(pdf::list_signatures(&unsigned).unwrap().is_empty());
 
@@ -587,7 +566,6 @@ fn signature_with_embedded_chain_verifies() {
     // certificate chain is embedded, the CMS certificate SET is DER-ordered, so
     // the signer's own cert may not be first. verify_signatures must select it
     // by the SignerInfo's issuer+serial, not by position.
-    lic();
     let key = std::fs::read(format!("{FX}/signer_key.pk8")).unwrap();
     let cert = std::fs::read(format!("{FX}/signer_cert.der")).unwrap();
     let ca = std::fs::read(format!("{FX}/signer_ca.der")).unwrap();
@@ -615,7 +593,6 @@ fn signature_with_embedded_chain_verifies() {
 fn external_signing_with_chain_verifies() {
     // Regression: sign_with embedding a chain cert (the CA) must still verify.
     // The Delphi binding exposed that the verifier picked the CA, not the signer.
-    lic();
     let ca = std::fs::read(format!("{FX}/signer_ca.der")).unwrap();
     let opts = SignOptions {
         pades: true,

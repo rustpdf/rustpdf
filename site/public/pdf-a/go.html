@@ -121,10 +121,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I need a license to create PDF/A in Go?",
+          "name": "Is PDF/A free in Go?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "PDF/A is a corporate feature and requires an active license token. Basic generation in Go is free. One offline token unlocks PDF/A in every supported language."
+            "text": "PDF/A is free, like every feature in rust-pdf. "
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -237,11 +237,11 @@ f, _ := doc.AddFontFile("Roboto-Regular.ttf")
 _ = doc.AddPage()
 _ = doc.ShowText(f, 20, 72, 760, "Archival report", 0)
 if err := doc.Save("report_pdfa.pdf"); err != nil {
-	log.Fatal(err)   // *Error without a license granting PDF/A
+	log.Fatal(err)   // *Error
 }</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>veraPDF</span><span>qpdf</span><span>mutool</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Go basic generation is free. PDF/A is a corporate feature, unlocked by one offline license token. See <a href="/#pricing">pricing &amp; licensing</a>.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">Full Go reference in the <a href="/docs/go">documentation</a>.</p>
       </div>
     </section>
@@ -255,8 +255,8 @@ if err := doc.Save("report_pdfa.pdf"); err != nil {
         <details><summary>How is conformance verified?</summary>
           <p>Output is validated with veraPDF, the open-source reference validator for PDF/A, plus qpdf and mutool for structure. The claim is backed by validators, not adjectives.</p>
         </details>
-        <details><summary>Do I need a license to create PDF/A in Go?</summary>
-          <p>PDF/A is a corporate feature and requires an active license token. Basic generation in Go is free. One offline token unlocks PDF/A in every supported language.</p>
+        <details><summary>Is PDF/A free in Go?</summary>
+          <p>PDF/A is free, like every feature in rust-pdf. </p>
         </details>
         <details><summary>How do I gate veraPDF validation in my Go CI?</summary>
           <p>Run go test to emit the PDF/A files, then add a CI step that shells out to veraPDF (for example <code>verapdf -f 2b</code>) and fails the build on any non-conformance. Because output is deterministic, the same input always yields the same validated bytes, so the gate never flaps.</p>
@@ -267,10 +267,10 @@ if err := doc.Save("report_pdfa.pdf"); err != nil {
     <section class="section">
       <div class="wrap narrow center">
         <h2>Make your Go output last for decades</h2>
-        <p class="muted">One Rust core, the same veraPDF-clean PDF/A in every language. Generate for free in Go; license the archival profile when you go live.</p>
+        <p class="muted">One Rust core, the same veraPDF-clean PDF/A in every language. Generate and archive in Go </p>
         <div class="cta-row">
           <a href="/docs/go" class="btn btn-lg">Read the Go docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/pdf-a">PDF/A</a>
@@ -294,13 +294,13 @@ if err := doc.Save("report_pdfa.pdf"); err != nil {
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

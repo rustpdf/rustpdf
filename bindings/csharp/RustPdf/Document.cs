@@ -31,14 +31,14 @@ public sealed class Document : IDisposable
 
     // ---- configuration ------------------------------------------------------
 
-    /// <summary>Emit PDF/A-2b (or the given <paramref name="level"/>). Requires a license.</summary>
+    /// <summary>Emit PDF/A-2b (or the given <paramref name="level"/>).</summary>
     public Document Pdfa(PdfaLevel? level = null)
     {
         Pdf.Check(level is null ? Native.pdf_document_pdfa(H) : Native.pdf_document_pdfa_level(H, (int)level));
         return this;
     }
 
-    /// <summary>Enable the tagged/accessible structure tree. Requires a license.</summary>
+    /// <summary>Enable the tagged/accessible structure tree.</summary>
     public Document Tagged()
     {
         Pdf.Check(Native.pdf_document_tagged(H));
@@ -277,7 +277,7 @@ public sealed class Document : IDisposable
 
     // ---- ZUGFeRD / Factur-X (Tier 2) ----------------------------------------
 
-    /// <summary>Embed a Factur-X/ZUGFeRD invoice XML (PDF/A-3). Requires a license.</summary>
+    /// <summary>Embed a Factur-X/ZUGFeRD invoice XML (PDF/A-3).</summary>
     public Document Facturx(byte[] xml, FacturxProfile profile = FacturxProfile.En16931)
     {
         Pdf.Check(Native.pdf_document_facturx(H, xml, (nuint)xml.Length, (int)profile));

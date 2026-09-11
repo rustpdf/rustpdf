@@ -83,8 +83,7 @@ rustpdf-delphi ${VERSION}
      lib/linux-x64/libpdf_ffi.so
    The exact macOS folder name shipped in this archive is listed below under
    "Bundled native libraries"; …or set RUSTPDF_LIB to the library's full path.
-3. Corporate features (PDF/A, signing, encryption, accessibility) need a license
-   token: set RUSTPDF_LICENSE (or call Pdf.ActivateLicense). Basic output is free.
+3. Every feature (PDF/A, signing, encryption, accessibility) is free.
 
 Bundled native libraries in this archive: $(cd "$STAGE/lib" && ls -1d */ | tr -d '/' | paste -sd', ' -)
 EOF

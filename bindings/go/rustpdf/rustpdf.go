@@ -3,7 +3,7 @@
 // graphics, embedded fonts and text, paragraphs, images, PDF/A (1b–3a),
 // tagged/accessible output, attachments, AcroForm fields, manipulation
 // (merge/split/rotate/optimize/incremental update), text extraction, encryption
-// and digital signatures — plus feature licensing.
+// and digital signatures. Free and open source (MIT).
 //
 // The C header (pdf.h) is vendored alongside these sources, so the module is
 // self-contained for `go get`. The native library is linked per build tag:
@@ -233,15 +233,6 @@ func Version() string {
 	return C.GoString(C.pdf_version())
 }
 
-// ActivateLicense verifies and activates a license token (unlocks PDF/A,
-// signing, encryption, accessibility). Tokens may also be supplied via the
-// RUSTPDF_LICENSE / RUSTPDF_LICENSE_FILE environment variables (auto-activated).
-func ActivateLicense(token string) error {
-	c := C.CString(token)
-	defer C.free(unsafe.Pointer(c))
-	return check(C.pdf_activate_license(c))
-}
-
 // ExtractText extracts a document's text (Unicode via ToUnicode).
 func ExtractText(pdf []byte) (string, error) {
 	b, err := takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
@@ -282,8 +273,7 @@ func ExtractImagesToDir(data []byte, dir string) (int, error) {
 }
 
 // RenderPageToPng renders page pageIndex (0-based) of pdf to a PNG image at dpi
-// dots-per-inch. Page rendering is a licensed Pro feature: it returns an error
-// (PdfStatus license) unless a license granting it is active.
+// dots-per-inch.
 func RenderPageToPng(pdf []byte, pageIndex int, dpi float64) ([]byte, error) {
 	return takeBytes(func(out **C.uchar, n *C.uintptr_t) C.PdfStatus {
 		st := C.pdf_render_page_to_png(
@@ -293,7 +283,7 @@ func RenderPageToPng(pdf []byte, pageIndex int, dpi float64) ([]byte, error) {
 	})
 }
 
-// PageCount returns the number of pages in pdf (free — no license required).
+// PageCount returns the number of pages in pdf (free).
 func PageCount(pdf []byte) (int, error) {
 	var count C.uintptr_t
 	st := C.pdf_page_count(uptr(pdf), C.uintptr_t(len(pdf)), &count)
@@ -521,8 +511,7 @@ type SignOptions struct {
 	PAdES    bool
 }
 
-// Sign produces a signed PDF (PKCS#7 detached, incremental update). Requires a
-// license.
+// Sign produces a signed PDF (PKCS#7 detached, incremental update).
 func Sign(pdf, keyDER, certDER []byte, opts SignOptions) ([]byte, error) {
 	reason, fr := optCStr(opts.Reason)
 	location, fl := optCStr(opts.Location)

@@ -2,7 +2,7 @@
 //  Pdf.swift
 //  RustPdf
 //
-//  Top-level (free-function) surface: library version, licensing, text
+//  Top-level (free-function) surface: library version, text
 //  extraction and the digital-signature pipeline (sign / timestamp / DSS).
 //
 
@@ -274,18 +274,6 @@ public enum Pdf {
         return String(cString: p)
     }
 
-    /// Verify and activate a license token for this process, unlocking the
-    /// corporate features it grants (PDF/A, signatures, encryption,
-    /// accessibility) until it expires. Tokens may also be supplied via the
-    /// `RUSTPDF_LICENSE` / `RUSTPDF_LICENSE_FILE` environment variables, which
-    /// are auto-activated on first use.
-    ///
-    /// - Throws: ``PdfError`` with status ``PdfStatus/license`` if the token is
-    ///   forged, expired or malformed.
-    public static func activateLicense(_ token: String) throws {
-        try token.withCString { try check(Native.shared.pdf_activate_license($0)) }
-    }
-
     /// Extract a document's text (Unicode, via each font's `ToUnicode` map).
     public static func extractText(_ pdf: [UInt8]) throws -> String {
         let bytes = try withBytes(pdf) { ptr, len in
@@ -402,8 +390,7 @@ public enum Pdf {
     }
 
     /// Render page `page` (0-based) of `pdf` to a PNG image at `dpi`
-    /// dots-per-inch. Page rendering is a licensed **Pro** feature: throws
-    /// `PdfError` (status `License`) unless a license granting it is active.
+    /// dots-per-inch.
     public static func renderPageToPng(_ pdf: [UInt8], page: Int = 0, dpi: Double = 150.0) throws -> [UInt8] {
         try withBytes(pdf) { ptr, len in
             try takeBytes { out, outLen in
@@ -412,7 +399,7 @@ public enum Pdf {
         }
     }
 
-    /// Number of pages in `pdf` (free — no license required).
+    /// Number of pages in `pdf` (free).
     public static func pageCount(_ pdf: [UInt8]) throws -> Int {
         var count: UInt = 0
         try withBytes(pdf) { ptr, len in
@@ -422,8 +409,7 @@ public enum Pdf {
     }
 
     /// Sign `pdf` with a PKCS#8 DER private key and a DER certificate,
-    /// producing a new PDF (PKCS#7 detached, incremental update). Requires a
-    /// license granting the signatures feature.
+    /// producing a new PDF (PKCS#7 detached, incremental update).
     public static func sign(pdf: [UInt8], keyDER: [UInt8], certDER: [UInt8],
                             options: SignOptions = SignOptions()) throws -> [UInt8] {
         let reason = dupCString(options.reason)
@@ -447,7 +433,7 @@ public enum Pdf {
 
     /// Append a document timestamp (`/DocTimeStamp`, PAdES-B-LTA) using a TSA
     /// key + certificate. `date` may be `nil` (a fixed, reproducible value is
-    /// used). Requires a license.
+    /// used).
     public static func timestamp(pdf: [UInt8], tsaKeyDER: [UInt8], tsaCertDER: [UInt8],
                                  date: String? = nil) throws -> [UInt8] {
         let d = dupCString(date)
@@ -479,7 +465,7 @@ public enum Pdf {
     }
 
     /// Append a Document Security Store (`/DSS`, PAdES-B-LT) with the given DER
-    /// certificates and CRLs. Requires a license.
+    /// certificates and CRLs.
     public static func addDss(pdf: [UInt8], certs: [[UInt8]], crls: [[UInt8]]) throws -> [UInt8] {
         try withBytes(pdf) { pp, pl in
             try withByteArrays(certs) { certPtrs, certLens in
@@ -503,7 +489,6 @@ public enum Pdf {
     /// RSA PKCS#1 v1.5 signature (over SHA-256 of the bytes it passes), then
     /// assembles and embeds the CMS. `certificate` is the signer certificate;
     /// `chain` are intermediates (DER), supplied independently of the key.
-    /// Requires a license granting the signatures feature.
     public static func signWith(
         _ pdf: [UInt8], certificate certDer: [UInt8],
         chain: [[UInt8]] = [], options: SigningOptions? = nil,

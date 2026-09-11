@@ -140,7 +140,6 @@ final class Native {
     // ---- core ---------------------------------------------------------------
     let pdf_version: CStrFn = CRustPdf.pdf_version
     let pdf_last_error_message: CStrFn = CRustPdf.pdf_last_error_message
-    let pdf_activate_license: CStrArgFn = CRustPdf.pdf_activate_license
     let pdf_buffer_free: BufFreeFn = CRustPdf.pdf_buffer_free
 
     // ---- document lifecycle + graphics --------------------------------------

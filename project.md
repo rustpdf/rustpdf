@@ -1,4 +1,4 @@
-# Escopo — Biblioteca PDF em Rust (produto pago, com porte futuro)
+# Escopo — Biblioteca PDF em Rust (open source MIT, com porte multi-linguagem)
 
 > Documento de planejamento. Cada tarefa tem um **critério de aceite verificável**.
 > Granularidade alta nas Fases 0–5 (onde o projeto começa); progressivamente mais leve no Tier 3.
@@ -7,7 +7,7 @@
 
 ## 0. Princípios que guiam o sequenciamento
 
-1. **Ordem de construção ≠ ordem de valor.** Os tiers comerciais não são a ordem de build. O parser (último item do Tier 1) destrava metade do Tier 2 e quase todo o Tier 3 → sobe na fila.
+1. **Ordem de construção ≠ ordem de valor.** Os grupos de prioridade não são a ordem de build. O parser (último item do Tier 1) destrava metade do Tier 2 e quase todo o Tier 3 → sobe na fila.
 2. **Fonte é o coração — mas não reimplemente o shaper.** Aproveite `rustybuzz`/`allsorts` (shaping), `ttf-parser` (parsing), `fontations`/`klippa`/`allsorts` (subsetting). Seu trabalho é integrar + embutir corretamente no PDF.
 3. **Fatias verticais cedo.** A meta de cada fase inicial é um PDF que abre e valida, não um módulo isolado perfeito. O primeiro milestone integrável (página em branco válida) força o pipeline inteiro a existir.
 4. **Porte = decisão de API agora.** Mantenha a superfície pública FFI-friendly (handles opacos) desde o início se a meta for núcleo único + bindings.
@@ -231,7 +231,7 @@ Confirmar antes de adotar — a maioria é MIT/Apache (ok p/ comercial): `ttf-pa
 
 ---
 
-## 9. Fase 7 — Diferenciadores (Tier 3 — paga caro; escopo leve, vai mudar)
+## 9. Fase 7 — Diferenciadores (Tier 3 — escopo leve, vai mudar)
 
 | # | Tarefa | Critério de aceite |
 |---|---|---|
@@ -268,4 +268,4 @@ Confirmar antes de adotar — a maioria é MIT/Apache (ok p/ comercial): `ttf-pa
 5. Fase 5 (parser) — destrava o Tier 2 inteiro.
 6. Fase 6 priorizando **6.4 (extração de texto)** — maior demanda atual (RAG/IA).
 7. Sub-épico 3E (scripts complexos) em paralelo conforme clientes pedirem.
-8. Tier 3 conforme o vertical do primeiro cliente pagante (jurídico → assinatura; governo → PDF/A + PDF/UA; faturas/relatórios → 7.6 estendendo o 3F).
+8. Tier 3 conforme a demanda real (jurídico → assinatura; governo → PDF/A + PDF/UA; faturas/relatórios → 7.6 estendendo o 3F).

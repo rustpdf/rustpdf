@@ -31,10 +31,7 @@ pub unsafe extern "C" fn pdf_verify_signatures_json(
             }
             Err(e) => {
                 set_last_error(format!("verify_signatures failed: {e}"));
-                match e {
-                    pdf::BuildError::License(_) => PdfStatus::License,
-                    _ => PdfStatus::Parse,
-                }
+                PdfStatus::Parse
             }
         },
     )

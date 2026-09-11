@@ -1,10 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Free-surface smoke: loads libpdf_ffi and exercises only UN-licensed
-       features (version + a plain PDF + text extraction). Release CI builds the
-       cdylib with the PRODUCTION license pubkey, which rejects the committed dev
-       token, so the full Sample (which activates the dev license) cannot run
-       there — this minimal program can. Point RUSTPDF_LIB at the built lib. -->
+  <!-- Smoke test: loads libpdf_ffi and exercises version + a plain PDF + text
+       extraction. Point RUSTPDF_LIB at the built lib. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

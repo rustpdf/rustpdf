@@ -124,7 +124,7 @@
           "name": "Is text extraction free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Text and image extraction are part of the free tier in Node.js. No license token is required."
+            "text": "Yes. Text and image extraction are free in Node.js."
           }
         },
         {
@@ -175,10 +175,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -236,7 +236,7 @@ const n = rustpdf.extractImagesToDir(data, "out_images/");   // returns how many
 console.log(`wrote ${n} image(s)`);</code></pre>
         </div>
         <div class="validators" style="text-align:center">Validated by: <span>pdftotext</span></div>
-        <p class="center muted narrow" style="margin-top:18px">Text and image extraction are part of the free tier in Node.js, no license token needed.</p>
+        <p class="center muted narrow" style="margin-top:18px">Everything is free.</p>
         <p class="center muted narrow" style="margin-top:22px">The full Node.js extraction reference is in the <a href="/docs/node">documentation</a>.</p>
       </div>
     </section>
@@ -251,7 +251,7 @@ console.log(`wrote ${n} image(s)`);</code></pre>
           <p>No. Extraction reads the text layer of a PDF. A scanned document is an image with no text layer, which needs OCR first. For PDFs that contain real text, extraction is exact.</p>
         </details>
         <details><summary>Is text extraction free?</summary>
-          <p>Yes. Text and image extraction are part of the free tier in Node.js. No license token is required.</p>
+          <p>Yes. Text and image extraction are free in Node.js.</p>
         </details>
         <details><summary>Is extractText synchronous, and how do I run it without blocking?</summary>
           <p>extractText runs in process and returns the string directly, so for large batches in an Express or serverless handler you await it inside an async job or hand it to a worker thread. There is no child process to manage, since the Koffi binding calls the native core directly.</p>
@@ -262,10 +262,10 @@ console.log(`wrote ${n} image(s)`);</code></pre>
     <section class="section">
       <div class="wrap narrow center">
         <h2>Turn PDFs into searchable text in your pipeline</h2>
-        <p class="muted">One Rust core, the same Unicode extraction in every language. Extraction is free; license the corporate features only when you ship them.</p>
+        <p class="muted">One Rust core, the same output in every language &mdash; free and MIT licensed.</p>
         <div class="cta-row">
           <a href="/docs/node" class="btn btn-lg">Read the Node.js docs</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/extract-text">Extract text</a>
@@ -287,13 +287,13 @@ console.log(`wrote ${n} image(s)`);</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>&middot;</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

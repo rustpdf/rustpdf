@@ -13,17 +13,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn base_doc() -> Vec<u8> {
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
@@ -52,7 +41,6 @@ fn signer() -> Signer {
 
 #[test]
 fn visible_signature_embeds_image() {
-    lic();
     let opts = SignOptions {
         visible: Some(VisibleSignature {
             page: 0,
@@ -108,7 +96,6 @@ fn opaque_watermark_emits_white_fill() {
 
 #[test]
 fn normalize_downgrades_and_strips_pdfa() {
-    lic();
     // Build a PDF/A-2b document (carries OutputIntents + XMP pdfaid + 2.0? no, A2b is 1.7-era).
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();

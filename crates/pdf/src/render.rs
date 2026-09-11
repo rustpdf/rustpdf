@@ -6,8 +6,6 @@
 //! lifting (content-stream interpretation, glyph outlines, images, shadings)
 //! lives in the `render` crate so the Rust core stays layered.
 
-use crate::{require, Feature};
-use license::LicenseError;
 use parser::PdfReader;
 pub use render::{RenderError, RenderOptions};
 
@@ -27,9 +25,6 @@ pub enum PageRenderError {
     PageOutOfRange(usize),
     /// The underlying renderer failed.
     Render(RenderError),
-    /// Page rendering is a licensed (Pro) feature and no valid license grants
-    /// it. See [`crate::activate_license`].
-    License(LicenseError),
 }
 
 impl std::fmt::Display for PageRenderError {
@@ -37,18 +32,11 @@ impl std::fmt::Display for PageRenderError {
         match self {
             PageRenderError::PageOutOfRange(i) => write!(f, "page index {i} out of range"),
             PageRenderError::Render(e) => write!(f, "{e}"),
-            PageRenderError::License(e) => write!(f, "{e}"),
         }
     }
 }
 
 impl std::error::Error for PageRenderError {}
-
-impl From<LicenseError> for PageRenderError {
-    fn from(e: LicenseError) -> Self {
-        PageRenderError::License(e)
-    }
-}
 
 impl From<RenderError> for PageRenderError {
     fn from(e: RenderError) -> Self {
@@ -72,16 +60,11 @@ pub fn render_page_to_png(
 }
 
 /// Render a page to PNG with full control over [`RenderOptions`].
-///
-/// Page rendering is a licensed **Pro** feature: this returns
-/// [`PageRenderError::License`] unless a license granting
-/// [`Feature::Rendering`] is active.
 pub fn render_page_to_png_with(
     bytes: impl AsRef<[u8]>,
     index: usize,
     opts: &RenderOptions,
 ) -> Result<Vec<u8>, PageRenderError> {
-    require(Feature::Rendering)?;
     let reader = PdfReader::parse(bytes)?;
     let pages = reader.pages();
     let page = pages
@@ -100,16 +83,11 @@ pub fn render_page_rgba(
 }
 
 /// Render a page to raw RGBA8 with full control over [`RenderOptions`].
-///
-/// Page rendering is a licensed **Pro** feature: this returns
-/// [`PageRenderError::License`] unless a license granting
-/// [`Feature::Rendering`] is active.
 pub fn render_page_rgba_with(
     bytes: impl AsRef<[u8]>,
     index: usize,
     opts: &RenderOptions,
 ) -> Result<RenderedPage, PageRenderError> {
-    require(Feature::Rendering)?;
     let reader = PdfReader::parse(bytes)?;
     let pages = reader.pages();
     let page = pages

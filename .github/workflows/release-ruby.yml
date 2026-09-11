@@ -25,11 +25,7 @@ permissions:
   contents: read
 
 # Embedded at compile time into libpdf_ffi (license::public_key, option_env!).
-# MUST be the PRODUCTION Ed25519 public key so published binaries reject the dev
 # token. Same secret the Python/Node/Delphi release pipelines use.
-env:
-  RUSTPDF_LICENSE_PUBKEY: ${{ secrets.RUSTPDF_LICENSE_PUBKEY }}
-
 defaults:
   run:
     shell: bash
@@ -74,13 +70,6 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v4
-      - name: require production license pubkey on release
-        if: startsWith(github.ref, 'refs/tags/ruby-v')
-        run: |
-          test -n "$RUSTPDF_LICENSE_PUBKEY" || {
-            echo "::error::RUSTPDF_LICENSE_PUBKEY secret is not set; refusing to publish binaries built with the dev key"
-            exit 1
-          }
       # In the manylinux container rustup isn't preinstalled; on host runners use
       # the prebuilt toolchain action.
       - name: install rust (container)

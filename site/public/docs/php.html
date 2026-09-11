@@ -110,10 +110,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -134,7 +134,6 @@
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#native">Native library</a>
-      <a href="#licensing">Licensing &amp; activation</a>
       <a href="#coords">Coordinate system</a>
       <a href="#lifetime">Handles &amp; lifetime</a>
 
@@ -248,16 +247,6 @@ file_put_contents('out.pdf', $data);</code></pre></div>
       <div class="note">Set <code>RUSTPDF_NO_DOWNLOAD=1</code> to forbid the network fetch; you must then supply the library through <code>RUSTPDF_LIB</code>. Prebuilt platforms: macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows (x86_64).
       <p style="margin-bottom:0"><b>If the auto-download is unavailable for your version</b> (the prebuilt native-library release for that exact version hasn't been published yet), the reliable path is to build or download <code>libpdf_ffi</code> once and point <code>RUSTPDF_LIB</code> at it. Step 1 always wins.</p></div>
 
-      <!-- LICENSING -->
-      <h2 id="licensing">Licensing &amp; activation</h2>
-      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls throw <code>PdfException</code> and produce no output.</p>
-      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
-      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
-# or point at a file:
-export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
-      <p>Or activate explicitly in code:</p>
-      <div class="code has-label"><span class="lbl">php</span><pre><code>RustPdf\Pdf::activateLicense($token);   // throws PdfException if forged / expired / malformed</code></pre></div>
-      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
 
       <!-- COORDS -->
       <h2 id="coords">Coordinate system</h2>
@@ -274,7 +263,6 @@ export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
       <ul>
         <li>The core is <b>Send but not Sync</b>: never share one live handle across threads/processes. Build independent documents instead; each shares no state.</li>
         <li>Native errors are <b>thread-local</b>, so a failure in one request never clobbers another's.</li>
-        <li>The license is <b>process-global</b>: activate once at startup.</li>
       </ul>
 
       <!-- DOCUMENT CREATE -->
@@ -366,7 +354,7 @@ $doc-&gt;addPage()
     -&gt;save('with_image.pdf');</code></pre></div>
 
       <!-- PDF/A -->
-      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="pdfa">PDF/A</h2>
       <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>pdfa(?PdfaLevel $level = null): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel};
@@ -376,11 +364,11 @@ $doc-&gt;pdfa(PdfaLevel::A2b)-&gt;setInfo(title: 'Q3 Report', author: 'Acme Inc.
 $f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
 $doc-&gt;addPage()
     -&gt;showText($f, 20, 72, 760, 'Archival report')
-    -&gt;save('report_pdfa.pdf');   // throws PdfException without a PDF/A license</code></pre></div>
+    -&gt;save('report_pdfa.pdf');   // throws PdfException</code></pre></div>
       <div class="note">A document title is recommended for valid PDF/A metadata, and required for the accessible “a” levels: call <code>setInfo(title: …)</code>.</div>
 
       <!-- TAGGED -->
-      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA)</h2>
       <p><code>tagged()</code> builds a logical structure tree (PDF/UA-1). Combine with <code>pdfa(PdfaLevel::A2a)</code> for archival <i>and</i> accessible output. Use <code>headingLevel</code> on <code>showText</code> for <code>H1</code>–<code>H6</code>, and <code>figure(..., alt)</code> for described images.</p>
       <div class="api"><code>tagged(): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel};
@@ -398,7 +386,7 @@ $doc-&gt;figure($chart, 72, 520, 300, 150, 'Revenue grew 18% year over year')
       <div class="note"><b>Figures need a tagged document.</b> <code>figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
 
       <!-- ATTACHMENTS -->
-      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <h2 id="attachments">Attachments (PDF/A-3)</h2>
       <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>AFRelationship</code></a>.</p>
       <div class="api"><code>attachFile(name, mime, data, rel = AFRelationship::Source, description = ''): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfaLevel, AFRelationship};
@@ -413,10 +401,10 @@ $doc-&gt;addPage()
                  AFRelationship::Source, 'Structured invoice data')
     -&gt;save('einvoice.pdf');</code></pre></div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>attachFile</code> before serializing.</div>
-      <div class="note"><b>The licence gate is on PDF/A, not on <code>attachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
+      <div class="note">Attachments are free, like every feature: attaching a file produces a valid PDF with an <code>/EmbeddedFile</code>, and adding a PDF/A level makes the attachment archival.</div>
 
       <!-- FACTURX -->
-      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices</h2>
       <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
       <div class="api"><code>facturx(xml: string, profile = FacturxProfile::EN16931): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, FacturxProfile};
@@ -428,7 +416,7 @@ $f = $doc-&gt;addFontFile('Roboto-Regular.ttf');
 $doc-&gt;addPage()
     -&gt;showText($f, 18, 72, 760, 'Invoice INV-2026-001');
 $doc-&gt;facturx($xml, FacturxProfile::EN16931);
-$doc-&gt;save('einvoice.pdf');        // PDF/A-3 + Factur-X; needs a PDF/A license</code></pre></div>
+$doc-&gt;save('einvoice.pdf');        // PDF/A-3 + Factur-X</code></pre></div>
       <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum … Extended).</p>
 
       <!-- FORMS -->
@@ -676,18 +664,18 @@ $stamp = file_get_contents('approved.png');
 $ed-&gt;drawImage(0, $stamp, 300.0, 60.0, 120.0, 60.0, 30.0, ImageAnchor::BoundingBox);</code></pre></div>
 
       <!-- ED REDACT -->
-      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-redact">Redaction</h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
       <div class="api"><code>redact(pageIndex, rects): bool</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>$ed = EditableDoc::loadFile('statement.pdf');
 // rects = array of [x0, y0, x1, y1] on that page
 $ed-&gt;redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]]);
-$ed-&gt;save('redacted.pdf');     // throws PdfException without a redaction license</code></pre></div>
+$ed-&gt;save('redacted.pdf');     // throws PdfException</code></pre></div>
       <div class="note">Content under a rect is deleted before the file is written, so <code>Pdf::extractText</code> on the output no longer returns it. <code>redact</code> returns <code>false</code> if the page index does not exist.</div>
       <div class="note"><b><code>redact()</code> is not chainable.</b> Unlike the other <code>EditableDoc</code> mutators (which return <code>$this</code>), <code>redact</code> returns a <code>bool</code> for whether the page existed. Call it as its own statement: <code>$ed-&gt;redact(...); $ed-&gt;save(...);</code>. Writing <code>$ed-&gt;redact(...)-&gt;save(...)</code> calls <code>save()</code> on a boolean and raises a PHP <code>Error</code>.</div>
 
       <!-- ED PDFA -->
-      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-pdfa">Convert to PDF/A</h2>
       <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
       <div class="api"><code>convertToPdfa(level = PdfaLevel::A2b): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{EditableDoc, PdfaLevel};
@@ -707,14 +695,14 @@ $ed-&gt;convertToPdfa(PdfaLevel::A2b)   // throws PdfException if fonts aren't e
 $ed-&gt;optimize()-&gt;compact(true)-&gt;save('small.pdf');</code></pre></div>
 
       <!-- ED ENCRYPT -->
-      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-encrypt">Encryption</h2>
       <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
       <div class="api"><code>encrypt(method = Encryption::Aes256, user = '', owner = '', readOnly = false): self</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{EditableDoc, Encryption};
 
 $ed = EditableDoc::loadFile('in.pdf');
 $ed-&gt;encrypt(Encryption::Aes256, owner: 'owner-secret', readOnly: true)
-   -&gt;save('secured.pdf');          // throws PdfException without an Encryption license</code></pre></div>
+   -&gt;save('secured.pdf');          // throws PdfException</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
       <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (cross-checked against qpdf for all three ciphers). The read-only permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat read-only as a hint to well-behaved viewers, not as an access control.</div>
 
@@ -749,7 +737,7 @@ $ed-&gt;normalize(2)              // plain PDF 1.7, PDF/A markers removed
 $ed-&gt;stripPdfa()-&gt;setVersion(1);   // PDF 1.5, no PDF/A conformance</code></pre></div>
 
       <!-- SIGN -->
-      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="sign">Digital signatures</h2>
       <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER binary strings. <code>pades: true</code> switches to PAdES-B-B.</p>
       <div class="api"><code>Pdf::sign(pdf, keyDer, certDer, ?reason, ?location, ?name, pades = false): string</code></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
@@ -766,7 +754,7 @@ file_put_contents('contract.signed.pdf', $signed);
       <div class="note"><b>"Signature is Valid" vs. "Certificate isn't Trusted" are two separate checks.</b> The cryptographic check (<code>Pdf::verifySignatures</code> returning <code>is_valid</code>, and pdfsig's "Signature Validation: Signature is Valid.") proves the bytes were not tampered with. The trust check is independent: a self-signed or test certificate makes pdfsig also print "Certificate issuer isn't Trusted." That is expected and does <b>not</b> mean the signature is invalid. To make the trust check pass, sign with a certificate chaining to a CA in the verifier's trust store.</div>
 
       <!-- HSM / DEFERRED -->
-      <h2 id="sign-hsm">Deferred / HSM signing <span class="badge lic">licensed</span></h2>
+      <h2 id="sign-hsm">Deferred / HSM signing</h2>
       <p>When the private key lives in an HSM, a cloud KMS, a smartcard or a PKI authentication token, it must never enter the library. These flows keep the key where it is and work with any PKI (eIDAS, AATL and similar). The signer certificate and any intermediates are passed independently of the key.</p>
 
       <h3>Model A: bring your own signer</h3>
@@ -847,7 +835,7 @@ file_put_contents('contract.signed.pdf', $signed);</code></pre></div>
       <div class="note"><b>The library never holds the private key.</b> In both models the signing key stays inside the HSM, KMS, smartcard or PKI token: Model A calls back to it for the raw RSA signature, and Model B exports only the hash to sign. Use <code>certify</code> (DocMDP) on the first signature only.</div>
 
       <!-- LTV -->
-      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV)</h2>
       <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
       <div class="api"><code>Pdf::addDss(pdf, certs = [], crls = []): string</code></div>
       <div class="api"><code>Pdf::timestamp(pdf, tsaKeyDer, tsaCertDer, ?date = null): string</code></div>
@@ -881,10 +869,10 @@ $lta   = Pdf::completeSignature($document, $token);
 file_put_contents('contract.lta.pdf', $lta);</code></pre></div>
 
       <!-- VERIFY -->
-      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="verify">Validate signatures</h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>Pdf::verifySignatures(data: string): array</code></div>
-      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>, plus certificate detail (any may be null): <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. The <code>field_name</code> and <code>signer</code> may be null when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned. It is not available on the free tier.</p>
+      <p>Each entry is an associative array with keys <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>, plus certificate detail (any may be null): <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. The <code>field_name</code> and <code>signer</code> may be null when absent. An empty array means the document is unsigned. Signature validation is free, like every feature.</p>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\Pdf;
 
 $data = file_get_contents('contract.signed.pdf');
@@ -950,9 +938,9 @@ printf("PDF %s, %d page(s)\n", $o-&gt;version, $o-&gt;pageCount);
 printf("PDF/A: %s, encryption: %s\n", $o-&gt;pdfaLevel ?? 'no', $o-&gt;encryption);
 if ($o-&gt;requiresPassword) echo "needs a password to open\n";</code></pre></div>
 
-      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <h2 id="render">Render a page to an image</h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
-      <div class="api"><code>Pdf::renderPageToPng(string $pdf, int $page = 0, float $dpi = 150.0): string</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>Pdf::renderPageToPng(string $pdf, int $page = 0, float $dpi = 150.0): string</code></div>
       <div class="api"><code>Pdf::pageCount(string $pdf): int</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">php</span><pre><code>$data = file_get_contents("report.pdf");
 echo Pdf::pageCount($data) . " page(s)\n";
@@ -1037,7 +1025,7 @@ file_put_contents("page1.png", Pdf::renderPageToPng($data, 0, 150.0));</code></p
 
       <!-- ERRORS -->
       <h2 id="errors">Error handling</h2>
-      <p>Every failing native call throws <code>PdfException</code> (a <code>RuntimeException</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation&rsquo;s own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same &ldquo;requires a valid license&rdquo; message.</p>
+      <p>Every failing native call throws <code>PdfException</code> (a <code>RuntimeException</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. The status code identifies the failed operation &mdash; for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10.</p>
       <div class="code has-label"><span class="lbl">php</span><pre><code>use RustPdf\{Document, PdfException};
 
 try {
@@ -1045,7 +1033,7 @@ try {
     $doc-&gt;pdfa()-&gt;setInfo(title: 'x')-&gt;addPage()-&gt;save('out.pdf');
 } catch (PdfException $e) {
     fprintf(STDERR, "failed: %d %s\n", $e-&gt;status, $e-&gt;getMessage());
-    // e.g. PdfStatus=4 (Serialize): feature 'pdfa' requires a valid license
+    // e.g. PdfStatus=4 (Serialize)
 }</code></pre></div>
 
       <!-- UTILS -->
@@ -1053,7 +1041,6 @@ try {
       <table>
         <tr><th>Function</th><th>Description</th></tr>
         <tr><td><code>Pdf::version(): string</code></td><td>Native library version string.</td></tr>
-        <tr><td><code>Pdf::activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
       <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Node / TypeScript, Delphi / Free Pascal, Swift, C#, Go and Ruby: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
@@ -1065,7 +1052,6 @@ try {
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#native">Native library</a>
-      <a href="#licensing">Licensing</a>
       <a href="#lifetime">Handles</a>
       <a href="#doc-create">Create &amp; save</a>
       <a href="#graphics">Vector graphics</a>

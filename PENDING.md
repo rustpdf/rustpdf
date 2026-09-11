@@ -226,8 +226,8 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   `rustpdf/lib/<os>_<arch>/`). `make go-dist` (`bindings/go/scripts/package.sh`)
   builda os `.a` por target (best effort, igual swift-dist). Publicação = git tag
   **prefixada** `bindings/go/vX.Y.Z` com os `.a` force-adicionados (mantidos fora
-  da branch por `lib/.gitignore`); CI deve buildar com o `RUSTPDF_LICENSE_PUBKEY`
-  de produção. Falta: rodar go-dist nas 5 plataformas em CI + push da tag.
+  da branch por `lib/.gitignore`). Falta: rodar go-dist nas 5 plataformas em CI +
+  push da tag.
 - ✅ **Binding PHP completo** (`bindings/php`, `ext-ffi`): `RustPdf\{Pdf,Document,
   EditableDoc}` + enums (PSR-4); `php bindings/php/test/run.php` (`make php-test`).
 - ✅ **Binding Ruby completo** (`bindings/ruby`, Fiddle stdlib): `RustPdf::
@@ -272,18 +272,6 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   plataforma), **WASM** para edge/serverless, e `/Span` inline + assinatura
   visível ainda não expostos na borda C.
 
-## Licenciamento (corporativo)
-
-- ✅ **Implementado** (`crates/license`, Ed25519 via `ed25519-dalek`). Token
-  offline assinado (`hex(payload).hex(sig)`) com `expires`; `pdf::activate_license`
-  + `pdf::require(Feature)` bloqueiam **PDF/A, assinatura/PAdES, criptografia,
-  acessibilidade** sem licença válida (→ `BuildError::License`/`SignError::License`/
-  `PdfStatus::License`/Python `PdfError`). Chave pública embutida (override de
-  build `RUSTPDF_LICENSE_PUBKEY`); emissor `licctl`; testes em `licensing.rs`.
-  Refinos futuros: revogação online/CRL de licenças, binding por máquina
-  (node-locking), e ofuscação anti-tamper do binário (defesa em profundidade —
-  a segurança criptográfica de emissão já está garantida). Ver `docs/LICENSING.md`.
-
 ## Tooling
 
 - ✅ **`verapdf` instalado** (brew, v1.30.2, Java 22) — usado para validar PDF/A
@@ -309,10 +297,8 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
   do CMS e verifica **(a)** a assinatura RSA PKCS#1 v1.5 sobre os signedAttrs com
   a chave pública do certificado, **(b)** o atributo `messageDigest` == digest dos
   bytes cobertos, e **(c)** se cobre o documento inteiro (`SignatureReport`). Casa
-  com `pdfsig` ("Signature is Valid") e detecta adulteração. **Licenciada
-  (Enterprise):** gated por `Feature::Signatures`; retorna `BuildError` (mapeado
-  para `PdfStatus::License` no FFI). Pendente: cadeia de confiança/revogação
-  (precisa de infra), ECDSA/RSA-PSS.
+  com `pdfsig` ("Signature is Valid") e detecta adulteração. Pendente: cadeia de
+  confiança/revogação (precisa de infra), ECDSA/RSA-PSS.
   **Ainda pendentes:** validação no **Acrobat** (sem acesso); timestamp/LTV
   (ver 7.2); e o `/M` (data) é fixo por padrão.
 - 🟡 **7.2 PAdES + LTV.** **Feito (offline):** B-B (`ETSI.CAdES.detached` +
@@ -454,10 +440,8 @@ permissões) e **7.6** (engine de layout). Pendentes/parciais:
   dentro de um retângulo — o conteúdo some do arquivo (não é extraível), não é só
   tapado — e pinta retângulos pretos opacos por cima. Decodifica content
   uncompressed e `FlateDecode`; faz bail (só tapa) com imagens inline. Testes
-  confirmam que o texto redigido some de `extract_text`. **Licenciada (Enterprise):**
-  novo `Feature::Redaction` (bit 4), checado no `to_bytes`/`to_bytes_incremental`
-  via flag `redacted`; tokens Enterprise/OEM incluem; o token dev de teste foi
-  re-emitido (`licctl ... all`). Pendente: redação parcial dentro de um run
+  confirmam que o texto redigido some de `extract_text` (grátis, como tudo).
+  Pendente: redação parcial dentro de um run
   (granularidade hoje = operador de show), imagens inline, e remoção em `/Annots`.
 - ✅ **ZUGFeRD / Factur-X (Tier 2).** `Document::facturx(xml, FacturxProfile)`
   marca PDF/A-3b, embute `factur-x.xml` (`/AFRelationship /Alternative`) e injeta

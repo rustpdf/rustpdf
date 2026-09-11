@@ -31,86 +31,9 @@ mod text;
 mod verify;
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::RwLock;
 
 use cos::{Dict, Object, PdfString, Stream};
 use writer::{Document as WriterDoc, PdfVersion};
-
-pub use license::{Feature, License, LicenseError};
-
-/// The process-wide active license (set via [`activate_license`]). Corporate
-/// features ([`Feature`]) are blocked until a valid, unexpired license that
-/// grants them is activated.
-static ACTIVE_LICENSE: RwLock<Option<License>> = RwLock::new(None);
-
-/// Verify `token` and, if valid, make it the active license for this process.
-/// Returns the decoded [`License`] (licensee, expiry, features) on success.
-///
-/// Tokens are Ed25519-signed by the vendor and verified against the public key
-/// embedded at build time — they cannot be forged or edited, and expire on
-/// their `expires` date. Surrounding whitespace is ignored, so a token pasted
-/// from an email works as-is. See the `license` crate.
-///
-/// You usually don't need to call this: a token found in the `RUSTPDF_LICENSE`
-/// environment variable (or a file named by `RUSTPDF_LICENSE_FILE`) is picked
-/// up automatically the first time a corporate feature is used.
-pub fn activate_license(token: &str) -> Result<License, LicenseError> {
-    let lic = license::verify(token.trim())?;
-    *ACTIVE_LICENSE.write().expect("license lock") = Some(lic.clone());
-    Ok(lic)
-}
-
-/// The active license, if any (already signature- and expiry-checked at
-/// activation; expiry is re-checked on each [`require`]).
-pub fn active_license() -> Option<License> {
-    ensure_env_license();
-    ACTIVE_LICENSE.read().expect("license lock").clone()
-}
-
-/// A license token from the environment: `RUSTPDF_LICENSE` (inline) takes
-/// precedence over `RUSTPDF_LICENSE_FILE` (a path to a file holding the token).
-fn env_token() -> Option<String> {
-    if let Ok(t) = std::env::var("RUSTPDF_LICENSE") {
-        if !t.trim().is_empty() {
-            return Some(t);
-        }
-    }
-    if let Ok(path) = std::env::var("RUSTPDF_LICENSE_FILE") {
-        if let Ok(contents) = std::fs::read_to_string(path) {
-            if !contents.trim().is_empty() {
-                return Some(contents);
-            }
-        }
-    }
-    None
-}
-
-/// If no license is currently active, try to pick one up from the environment.
-/// Failures are ignored here — [`require`] reports them. Once a token activates,
-/// it is cached in [`ACTIVE_LICENSE`] and this becomes a cheap no-op.
-fn ensure_env_license() {
-    if ACTIVE_LICENSE.read().expect("license lock").is_some() {
-        return;
-    }
-    if let Some(token) = env_token() {
-        let _ = activate_license(&token);
-    }
-}
-
-/// Error out unless an active license currently grants `feature`. Auto-activates
-/// from the environment on first use if nothing was activated explicitly.
-pub(crate) fn require(feature: Feature) -> Result<(), LicenseError> {
-    ensure_env_license();
-    let guard = ACTIVE_LICENSE.read().expect("license lock");
-    match &*guard {
-        Some(lic) if license::now() > lic.expires => Err(LicenseError::Expired {
-            expired_at: lic.expires,
-            now: license::now(),
-        }),
-        Some(lic) if lic.allows(feature) => Ok(()),
-        _ => Err(LicenseError::FeatureNotLicensed(feature)),
-    }
-}
 
 pub use edit::{
     ConvertError, EditableDoc, ImageAnchor, StampSpace, VerticalAlign, VerticalAnchor,
@@ -169,8 +92,6 @@ pub enum BuildError {
     Write(writer::WriteError),
     /// The original file could not be parsed (incremental update).
     Parse(String),
-    /// A corporate feature was used without a valid license.
-    License(LicenseError),
     /// The document is structurally invalid and cannot be serialized
     /// (e.g. no pages, or a PDF/A-4f profile with no embedded file).
     Invalid(String),
@@ -182,15 +103,8 @@ impl std::fmt::Display for BuildError {
             BuildError::Font(e) => write!(f, "{e}"),
             BuildError::Write(e) => write!(f, "{e}"),
             BuildError::Parse(e) => write!(f, "{e}"),
-            BuildError::License(e) => write!(f, "{e}"),
             BuildError::Invalid(e) => write!(f, "{e}"),
         }
-    }
-}
-
-impl From<LicenseError> for BuildError {
-    fn from(e: LicenseError) -> Self {
-        BuildError::License(e)
     }
 }
 
@@ -829,15 +743,6 @@ impl Document {
 
     /// Serialize the document to PDF bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>, BuildError> {
-        // Corporate features require a valid license (PDF/A archival output and
-        // tagged/accessible output). Basic generation stays unrestricted.
-        if self.pdfa.is_some() {
-            require(Feature::Pdfa)?;
-        }
-        if self.tagged {
-            require(Feature::Accessibility)?;
-        }
-
         // A valid PDF must have at least one page; an empty /Pages tree is
         // rejected by qpdf/mutool ("malformed page tree").
         if self.pages.is_empty() {

@@ -70,21 +70,12 @@ _FONT = (
 
 
 def exercise_full_surface() -> None:
-    """Drive the whole binding: licensing, fonts/text, PDF/A, manipulation,
-    extraction, forms, encryption — proving the expanded FFI is reachable."""
-    # 0. Corporate features are blocked until a valid license is activated.
-    try:
-        with rustpdf.Document() as doc:
-            doc.pdfa().add_page()
-            doc.to_bytes()
-        raise AssertionError("PDF/A must be blocked without a license")
-    except rustpdf.PdfError:
-        pass
-    lic = (
-        Path(__file__).resolve().parents[2]
-        / "crates" / "license" / "fixtures" / "dev_license.txt"
-    ).read_text().strip()
-    rustpdf.activate_license(lic)
+    """Drive the whole binding: fonts/text, PDF/A, manipulation, extraction,
+    forms, encryption — proving the expanded FFI is reachable."""
+    # 0. Every feature works out of the box — no activation, no env var.
+    with rustpdf.Document() as doc:
+        doc.pdfa().add_page()
+        assert doc.to_bytes(), "PDF/A output must be non-empty"
 
     # 1. Tagged PDF/A-2a with an embedded font, heading and justified paragraph.
     with rustpdf.Document() as doc:
@@ -160,7 +151,7 @@ def exercise_full_surface() -> None:
     stamp_dir = tempfile.mkdtemp(prefix="rustpdf_stamp_")
     assert rustpdf.extract_images_to_dir(stamped, stamp_dir) >= 1, "stamped image not embedded"
 
-    # 8. Page rendering (Pro): rasterize a page to PNG (license already active).
+    # 8. Page rendering: rasterize a page to PNG.
     assert rustpdf.page_count(with_img) == 1
     png = rustpdf.render_page_to_png(with_img, page=0, dpi=72.0)
     assert png[:8] == b"\x89PNG\r\n\x1a\n", "render_page_to_png did not return a PNG"

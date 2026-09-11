@@ -2,7 +2,7 @@
   over its C ABI (libpdf_ffi). Covers the whole product surface: vector
   graphics, fonts/text, paragraphs, images, PDF/A (1b-3a), tagged/accessible
   output, attachments, AcroForm fields, manipulation, text extraction,
-  encryption and digital signatures, plus feature licensing.
+  encryption and digital signatures. Free and open source (MIT).
 
   Pure FFI: the cdylib is located at run time (RUSTPDF_LIB or the workspace
   target/debug or target/release) and bound dynamically -- no static link name, so
@@ -38,8 +38,7 @@ type
     psEncrypt         = 9,
     psSign            = 10,
     psInvalidArgument = 11,
-    psLicense         = 12,
-    psUnsupported     = 13
+    psUnsupported     = 12
   );
 
   { PDF/A conformance level (argument to TPdfDocument.Pdfa). }
@@ -464,21 +463,18 @@ type
     property Handle: Pointer read FHandle;
   end;
 
-  { Stateless package-level entry points (version, licensing, extraction,
+  { Stateless package-level entry points (version, extraction,
     signing). A record with class methods, used as `Pdf.Sign(...)`. }
   Pdf = record
     class function Version: string; static;
-    class procedure ActivateLicense(const Token: string); static;
     class function ExtractText(const PdfBytes: TBytes): string; static;
     { Extract the text of a single page (PageIndex, 0-based). Raises ERustPdf
       (psInvalidArgument) if the page is out of range. }
     class function ExtractPageText(const PdfBytes: TBytes; PageIndex: NativeUInt): string; static;
     class function ExtractImagesToDir(const PdfBytes: TBytes; const Dir: string): NativeUInt; static;
-    { Render page PageIndex (0-based) of PdfBytes to a PNG at Dpi dots-per-inch.
-      Page rendering is a licensed Pro feature: raises ERustPdf unless a license
-      granting it is active. }
+    { Render page PageIndex (0-based) of PdfBytes to a PNG at Dpi dots-per-inch. }
     class function RenderPageToPng(const PdfBytes: TBytes; PageIndex: NativeUInt; Dpi: Double): TBytes; static;
-    { Number of pages in PdfBytes (free — no license required). }
+    { Number of pages in PdfBytes (free). }
     class function PageCount(const PdfBytes: TBytes): NativeUInt; static;
     { Validate every signature in PdfBytes and return the raw JSON array string
       (one object per signature with fields field_name, sub_filter, signer,
@@ -626,7 +622,6 @@ end;
 type
   Tpdf_version              = function(): PAnsiChar; cdecl;
   Tpdf_last_error_message   = function(): PAnsiChar; cdecl;
-  Tpdf_activate_license     = function(token: PAnsiChar): Integer; cdecl;
   Tpdf_buffer_free          = procedure(ptr: PByte; len: NativeUInt); cdecl;
 
   Tpdf_document_new         = function(): Pointer; cdecl;
@@ -790,7 +785,6 @@ var
 
   Fpdf_version: Tpdf_version;
   Fpdf_last_error_message: Tpdf_last_error_message;
-  Fpdf_activate_license: Tpdf_activate_license;
   Fpdf_buffer_free: Tpdf_buffer_free;
   Fpdf_document_new: Tpdf_document_new;
   Fpdf_document_free: Tpdf_document_free;
@@ -1000,7 +994,6 @@ begin
 
   Fpdf_version := Tpdf_version(Bind('pdf_version'));
   Fpdf_last_error_message := Tpdf_last_error_message(Bind('pdf_last_error_message'));
-  Fpdf_activate_license := Tpdf_activate_license(Bind('pdf_activate_license'));
   Fpdf_buffer_free := Tpdf_buffer_free(Bind('pdf_buffer_free'));
   Fpdf_document_new := Tpdf_document_new(Bind('pdf_document_new'));
   Fpdf_document_free := Tpdf_document_free(Bind('pdf_document_free'));
@@ -2775,15 +2768,6 @@ class function Pdf.Version: string;
 begin
   EnsureLoaded;
   Result := PAnsiToString(Fpdf_version());
-end;
-
-class procedure Pdf.ActivateLicense(const Token: string);
-var
-  ut: UTF8String;
-begin
-  EnsureLoaded;
-  ut := U8(Token);
-  Check(Fpdf_activate_license(PAnsiChar(ut)));
 end;
 
 class function Pdf.ExtractText(const PdfBytes: TBytes): string;

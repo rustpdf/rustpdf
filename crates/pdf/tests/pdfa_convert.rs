@@ -9,17 +9,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 const INVOICE_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">
   <rsm:ExchangedDocument><ram:ID>INV-2026-001</ram:ID></rsm:ExchangedDocument>
@@ -27,7 +16,6 @@ const INVOICE_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 
 #[test]
 fn facturx_embeds_xml_and_marks_pdfa3() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()
@@ -54,7 +42,6 @@ fn facturx_embeds_xml_and_marks_pdfa3() {
 
 #[test]
 fn convert_existing_pdf_to_pdfa() {
-    lic();
     // A plain document with an embedded subset font.
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
@@ -85,7 +72,6 @@ fn convert_existing_pdf_to_pdfa() {
 
 #[test]
 fn convert_rejects_non_embedded_fonts() {
-    lic();
     // Build a PDF whose only font is the standard-14 Helvetica (NOT embedded),
     // via the form path (AcroForm DR uses Helvetica), then strip pages of fonts.
     // Simpler: hand a doc that references Helvetica through a form field.
@@ -105,7 +91,6 @@ fn convert_rejects_non_embedded_fonts() {
 
 #[test]
 fn convert_rejects_level_a() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page().text(f, 12.0).at(72.0, 700.0).show("hi");

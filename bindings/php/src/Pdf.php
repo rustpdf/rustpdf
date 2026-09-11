@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace RustPdf;
 
-/** Top-level helpers: version, licensing, text extraction and signing. */
+/** Top-level helpers: version, text extraction and signing. */
 final class Pdf
 {
     /** Native library version string. */
@@ -12,18 +12,6 @@ final class Pdf
     {
         // PHP FFI auto-converts a `const char *` return into a PHP string.
         return (string) Ffi::get()->pdf_version();
-    }
-
-    /**
-     * Activate a license token (unlocks PDF/A, signing, encryption,
-     * accessibility). Tokens may also be supplied via the RUSTPDF_LICENSE /
-     * RUSTPDF_LICENSE_FILE environment variables (auto-activated).
-     *
-     * @throws PdfException if the token is forged, expired or malformed.
-     */
-    public static function activateLicense(string $token): void
-    {
-        Ffi::check(Ffi::get()->pdf_activate_license($token));
     }
 
     /** Extract a document's text (Unicode via ToUnicode). */
@@ -170,8 +158,7 @@ final class Pdf
 
     /**
      * Render page `$page` (0-based) of `$pdf` to a PNG image at `$dpi`
-     * dots-per-inch. Page rendering is a licensed Pro feature: throws unless a
-     * license granting it is active.
+     * dots-per-inch.
      */
     public static function renderPageToPng(string $pdf, int $page = 0, float $dpi = 150.0): string
     {
@@ -181,7 +168,7 @@ final class Pdf
         });
     }
 
-    /** Number of pages in `$pdf` (free — no license required). */
+    /** Number of pages in `$pdf` (free). */
     public static function pageCount(string $pdf): int
     {
         $ffi = Ffi::get();
@@ -193,7 +180,7 @@ final class Pdf
 
     /**
      * Sign a PDF (PKCS#7 detached, incremental update). `$pades` selects
-     * PAdES-B-B. Requires a license.
+     * PAdES-B-B.
      */
     public static function sign(
         string $pdf,

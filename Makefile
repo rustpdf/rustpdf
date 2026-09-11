@@ -50,8 +50,8 @@ go-test: ffi
 
 # Build the per-platform static libpdf_ffi.a into bindings/go/rustpdf/lib/<os>_<arch>/
 # so a consumer's `go get` + `go build` works with no external native lib.
-# Best effort per target (like swift-dist); honors $(CARGO). Run in release CI
-# with the production RUSTPDF_LICENSE_PUBKEY, then commit/tag the result.
+# Best effort per target (like swift-dist); honors $(CARGO). Run in release CI,
+# then commit/tag the result.
 go-dist:
 	bash bindings/go/scripts/package.sh
 

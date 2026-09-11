@@ -65,9 +65,6 @@ internal static partial class Native
     [LibraryImport(Lib)]
     internal static partial IntPtr pdf_last_error_message();
 
-    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial int pdf_activate_license(string token);
-
     [LibraryImport(Lib)]
     internal static partial void pdf_buffer_free(IntPtr ptr, nuint len);
 

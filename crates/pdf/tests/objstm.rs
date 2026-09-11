@@ -9,19 +9,7 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 fn sample(n: usize) -> Vec<u8> {
-    lic();
     let mut doc = Document::new();
     let font = doc.add_font_file(FONT).unwrap();
     for i in 0..n {

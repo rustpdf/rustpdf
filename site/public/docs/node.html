@@ -110,10 +110,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -133,7 +133,6 @@
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#typescript">TypeScript</a>
-      <a href="#licensing">Licensing &amp; activation</a>
       <a href="#coords">Coordinate system</a>
       <a href="#threading">Threading &amp; concurrency</a>
 
@@ -234,17 +233,6 @@ doc.addPage().showText(f, 20, 72, 760, "Title", 1);   // headingLevel 1 = H1
 const bytes: Buffer = doc.toBytes();
 doc.close();</code></pre></div>
 
-      <!-- LICENSING -->
-      <h2 id="licensing">Licensing &amp; activation</h2>
-      <p>Basic generation (everything above) is always free. The corporate features (<b>PDF/A</b>, <b>digital signatures/PAdES</b>, <b>encryption</b>, <b>accessibility</b>) require an active license token. Without one, those calls throw <code>PdfError</code> and produce no output.</p>
-      <p>Activation needs no rebuild. Easiest is an environment variable, auto-activated the first time a corporate feature is used:</p>
-      <div class="code has-label"><span class="lbl">shell</span><pre><code>export RUSTPDF_LICENSE="010f0000…"           # the token we email you
-# or point at a file:
-export RUSTPDF_LICENSE_FILE=/etc/rustpdf/license.txt</code></pre></div>
-      <p>Or activate explicitly in code:</p>
-      <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
-rustpdf.activateLicense(token);   // throws PdfError if forged / expired / malformed</code></pre></div>
-      <div class="note pro">Verification is fully <b>offline</b>: signature + expiry checked against a public key embedded in the library. No network callback, no telemetry.</div>
 
       <!-- COORDS -->
       <h2 id="coords">Coordinate system</h2>
@@ -262,7 +250,6 @@ rustpdf.activateLicense(token);   // throws PdfError if forged / expired / malfo
         <li><b>Documents are independent.</b> Each <code>Document</code>/<code>EditableDoc</code> shares no state, so they're safe to build across <a href="https://nodejs.org/api/worker_threads.html" rel="noopener"><code>worker_threads</code></a>, one handle per worker.</li>
         <li><b>Don't share a live handle</b> between workers; give each its own.</li>
         <li><b>Errors are per-thread.</b> The native last-error is thread-local, so a failure in one worker never clobbers another's, and <code>PdfError</code> surfaces on the calling side.</li>
-        <li><b>License is process-global.</b> <code>activateLicense</code> (or the env var) applies to every worker; activate once at startup.</li>
         <li><b>Heavy jobs:</b> generating a large PDF on the main thread will stall other requests, so offload to a worker.</li>
       </ul>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>// worker.js
@@ -368,7 +355,7 @@ doc.save("with_image.pdf");
 doc.close();</code></pre></div>
 
       <!-- PDF/A -->
-      <h2 id="pdfa">PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="pdfa">PDF/A</h2>
       <p>Produce archival-grade output. <code>pdfa()</code> defaults to A-2b; pass a <a href="#enums"><code>PdfaLevel</code></a> for a specific level. An embedded sRGB ICC profile, output intent, XMP metadata and document <code>/ID</code> are added automatically; A-1b also forces PDF 1.4 and emits a <code>/CIDSet</code>, and A-4 (ISO 19005-4) is based on PDF 2.0.</p>
       <div class="api"><code>pdfa(level?)</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, PdfaLevel } = require("rustpdf");
@@ -378,12 +365,12 @@ doc.pdfa(PdfaLevel.A2b).setInfo({ title: "Q3 Report", author: "Acme Inc." });
 const f = doc.addFontFile("Roboto-Regular.ttf");
 doc.addPage();
 doc.showText(f, 20, 72, 760, "Archival report");
-doc.save("report_pdfa.pdf");     // throws PdfError without a license granting PDF/A
+doc.save("report_pdfa.pdf");     // throws PdfError granting PDF/A
 doc.close();</code></pre></div>
       <div class="note">A document title is recommended for valid PDF/A metadata. It is <b>mandatory for PDF/UA-1</b>: a tagged <code>pdfa(PdfaLevel.A2a)</code> document without a title still passes <code>verapdf -f 2a</code> but <b>fails</b> <code>verapdf -f ua1</code> (clause 7.1, missing <code>dc:title</code>), and the library does not warn. Always call <code>setInfo({ title: … })</code> for accessible output.</div>
 
       <!-- TAGGED -->
-      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA) <span class="badge lic">licensed</span></h2>
+      <h2 id="tagged">Accessibility (Tagged PDF / PDF/UA)</h2>
       <p><code>tagged()</code> builds a logical structure tree (PDF/UA-1). Combine with <code>pdfa(PdfaLevel.A2a)</code> for archival <i>and</i> accessible output. Use <code>headingLevel</code> on <code>showText</code> for <code>H1</code>–<code>H6</code>, and <code>figure(..., alt)</code> for described images.</p>
       <div class="note"><b><code>tagged()</code> alone is not PDF/UA-1 conformant.</b> By itself it builds the structure tree but does <i>not</i> emit the XMP <code>/Metadata</code> stream that PDF/UA-1 requires, so veraPDF fails clause 7.1 ("Catalog … shall contain the Metadata key"). For output that validates as PDF/UA-1, pair it with <code>pdfa(PdfaLevel.A2a)</code>: <code>doc.pdfa(PdfaLevel.A2a).tagged()</code> emits the XMP and passes both <code>verapdf -f 2a</code> and <code>verapdf -f ua1</code>.</div>
       <div class="api"><code>tagged()</code></div>
@@ -403,7 +390,7 @@ doc.close();</code></pre></div>
       <div class="note"><b>Figures need a tagged document.</b> <code>figure()</code> only produces an accessible, alt-texted figure inside a tagged/accessible document; on a plain document the alt text has no effect.</div>
 
       <!-- ATTACHMENTS -->
-      <h2 id="attachments">Attachments (PDF/A-3) <span class="badge lic">licensed</span></h2>
+      <h2 id="attachments">Attachments (PDF/A-3)</h2>
       <p>PDF/A-3 allows embedding arbitrary source files (e.g. the XML behind an e-invoice). Each attachment carries a MIME type and an <a href="#enums"><code>AFRelationship</code></a>.</p>
       <div class="api"><code>attachFile(name, mime, data, relationship?, description?)</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
@@ -420,10 +407,10 @@ doc.attachFile("invoice.xml", "text/xml", xml,
 doc.save("einvoice.pdf");
 doc.close();</code></pre></div>
       <div class="note"><b>PDF/A-4f needs an attachment.</b> The A4f profile requires at least one embedded file (ISO 19005-4); the library now rejects A4f output that has no attachment, so call <code>attachFile</code> before serializing.</div>
-      <div class="note"><b>The licence gate is on PDF/A, not on <code>attachFile</code> itself.</b> The licensed badge above reflects the PDF/A-3 workflow shown here. Calling <code>attachFile</code> on a plain (non-PDF/A) document does not require a licence: it succeeds and produces a valid PDF with an <code>/EmbeddedFile</code>. The licence is enforced only when you also request a PDF/A level, which is what makes the attachment archival.</div>
+      <div class="note">Attachments are free, like every feature: attaching a file produces a valid PDF with an <code>/EmbeddedFile</code>, and adding a PDF/A level makes the attachment archival.</div>
 
       <!-- FACTURX -->
-      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices <span class="badge lic">licensed</span></h2>
+      <h2 id="facturx">ZUGFeRD / Factur-X e-invoices</h2>
       <p>Turn the document into a ZUGFeRD / Factur-X electronic invoice: the embedded XML (the Cross-Industry Invoice) is attached as <code>factur-x.xml</code>, the file is marked <b>PDF/A-3</b>, and the Factur-X identification is written into the XMP metadata. The visible PDF is the human-readable invoice; the embedded XML is its machine-readable twin. Validates as PDF/A-3 + Factur-X under veraPDF.</p>
       <div class="api"><code>facturx(xml: Buffer, profile?)</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
@@ -436,7 +423,7 @@ const f = doc.addFontFile("Roboto-Regular.ttf");
 doc.addPage();
 doc.showText(f, 18, 72, 760, "Invoice INV-2026-001");
 doc.facturx(xml, FacturxProfile.EN16931);
-doc.save("einvoice.pdf");        // PDF/A-3 + Factur-X; needs a PDF/A license
+doc.save("einvoice.pdf");        // PDF/A-3 + Factur-X
 doc.close();</code></pre></div>
       <p>See the <a href="#enums"><code>FacturxProfile</code></a> enum for the conformance levels (Minimum to Extended).</p>
 
@@ -678,18 +665,18 @@ ed.drawImage(0, fs.readFileSync("stamp.png"), 400, 600, 80, 40, 90.0,
              ImageAnchor.BoundingBox);</code></pre></div>
 
       <!-- ED REDACT -->
-      <h2 id="ed-redact">Redaction <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-redact">Redaction</h2>
       <p><b>True redaction</b>: the text and graphics whose origin falls inside a rectangle are <b>removed</b> from the content stream (not just covered), so the data is gone from the file and is no longer extractable. Opaque black boxes are then painted over the regions.</p>
       <div class="api"><code>redact(pageIndex, rects) → boolean</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const ed = EditableDoc.loadFile("statement.pdf");
 // rects = array of [x0, y0, x1, y1] on that page
 ed.redact(0, [[60, 590, 400, 620], [60, 540, 400, 570]]);
-ed.save("redacted.pdf");     // throws PdfError without a license granting redaction
+ed.save("redacted.pdf");     // throws PdfError granting redaction
 ed.close();</code></pre></div>
       <div class="note">Content under a rect is deleted before the file is written, so <code>extractText</code> on the output no longer returns it.</div>
 
       <!-- ED PDFA -->
-      <h2 id="ed-pdfa">Convert to PDF/A <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-pdfa">Convert to PDF/A</h2>
       <p>Convert an <b>existing</b> PDF to archival PDF/A (a basic profile: A-1b, A-2b or A-3b). An sRGB output intent, PDF/A XMP metadata (synced with <code>/Info</code>) and a document <code>/ID</code> are added. Fails if any font is not embedded (PDF/A requires every font embedded) or a level-A profile is requested.</p>
       <div class="api"><code>convertToPdfa(level?)</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc, PdfaLevel } = require("rustpdf");
@@ -712,7 +699,7 @@ ed.save("small.pdf");
 ed.close();</code></pre></div>
 
       <!-- ED ENCRYPT -->
-      <h2 id="ed-encrypt">Encryption <span class="badge lic">licensed</span></h2>
+      <h2 id="ed-encrypt">Encryption</h2>
       <p>Apply standard-handler encryption at output. AES-256 (V5/R6) uses OS-CSPRNG keys/IVs.</p>
       <div class="api"><code>encrypt({ method?, user?, owner?, readOnly? })</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { EditableDoc, Encryption } = require("rustpdf");
@@ -720,7 +707,7 @@ ed.close();</code></pre></div>
 const ed = EditableDoc.loadFile("in.pdf");
 ed.encrypt({ user: "", owner: "owner-secret",
              method: Encryption.Aes256, readOnly: true });
-ed.save("secured.pdf");          // throws PdfError without an Encryption license
+ed.save("secured.pdf");          // throws PdfError
 ed.close();</code></pre></div>
       <p>See the <a href="#enums"><code>Encryption</code></a> enum for RC4 / AES-128 / AES-256.</p>
       <div class="note"><b>Passwords protect, permissions only advise.</b> A non-empty user password is real cryptographic protection: opening with the wrong password is rejected (cross-checked against qpdf for all three ciphers). The read-only permission flags, by contrast, are advisory: they are enforced only by the viewer, and a file with an empty user password opens with no prompt, so any tool can strip the restrictions. Treat read-only as a hint to well-behaved viewers, not as an access control.</div>
@@ -760,7 +747,7 @@ fs.writeFileSync("reviewed.pdf", incremental);
 ed.close();</code></pre></div>
 
       <!-- SIGN -->
-      <h2 id="sign">Digital signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="sign">Digital signatures</h2>
       <p>Sign a PDF with a PKCS#7 detached signature via an incremental update (the original bytes are preserved). Keys and certificates are passed as DER <code>Buffer</code>s. <code>pades: true</code> switches to PAdES-B-B.</p>
       <div class="api"><code>rustpdf.sign(pdf, keyDer, certDer, { reason?, location?, name?, pades? }?) → Buffer</code></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const fs = require("fs");
@@ -778,7 +765,7 @@ fs.writeFileSync("contract.signed.pdf", signed);
 // Verify in a shell: pdfsig contract.signed.pdf  →  "Signature is Valid."</code></pre></div>
 
       <!-- HSM / DEFERRED SIGNING -->
-      <h2 id="hsm">HSM / deferred signing <span class="badge lic">licensed</span></h2>
+      <h2 id="hsm">HSM / deferred signing</h2>
       <p>Sign without ever handing this library a private key. The key stays in an HSM, cloud KMS, smartcard or PKI token, and the binding only builds and embeds the CMS. It works with any PKI (eIDAS, AATL and other trust lists). It offers two models, and both expect an RSA PKCS#1 v1.5 signature over SHA-256.</p>
 
       <h3>Model A: bring your own signer</h3>
@@ -840,7 +827,7 @@ fs.writeFileSync("contract.signed.pdf", signed);</code></pre></div>
       <div class="note"><b>The private key never crosses the FFI boundary.</b> Both models build the CMS in-process from the certificate plus the signature your signer returns, so the key can stay in an HSM, cloud KMS, smartcard or PKI token. <code>signHash</code> (Model A) and your CMS builder (Model B) must produce an RSA PKCS#1 v1.5 signature over SHA-256.</div>
 
       <!-- LTV -->
-      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV) <span class="badge lic">licensed</span></h2>
+      <h2 id="ltv">Timestamp &amp; DSS (PAdES LTV)</h2>
       <p>Build long-term-validation signatures offline. <code>addDss</code> appends a Document Security Store (<code>/DSS</code> with certs/CRLs, PAdES-B-LT); <code>timestamp</code> appends an RFC 3161 document timestamp (<code>/DocTimeStamp</code>, PAdES-B-LTA).</p>
       <div class="api"><code>rustpdf.addDss(pdf, certs?, crls?) → Buffer</code></div>
       <div class="api"><code>rustpdf.timestamp(pdf, tsaKeyDer, tsaCertDer, date?) → Buffer</code></div>
@@ -875,10 +862,10 @@ const lta = rustpdf.completeSignature(session.document, token);
 fs.writeFileSync("contract.lta.pdf", lta);</code></pre></div>
 
       <!-- VERIFY -->
-      <h2 id="verify">Validate signatures <span class="badge lic">licensed</span></h2>
+      <h2 id="verify">Validate signatures</h2>
       <p>Validate every signature in a PDF: each report recomputes the <code>/ByteRange</code> digest, parses the CMS, and checks that the cryptographic signature is valid, that the <code>messageDigest</code> matches the covered bytes, and whether the signature covers the whole document.</p>
       <div class="api"><code>rustpdf.verifySignatures(data: Buffer) → object[]</code></div>
-      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report also carries certificate and signature metadata: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code>, <code>signer</code> and any of the certificate fields may be <code>null</code> when absent. An empty array means the document is unsigned. Signature validation is a licensed feature: this call requires an active license (signatures) even when the document is unsigned, so it is not available on the free tier.</p>
+      <p>Each entry has <code>field_name</code>, <code>sub_filter</code>, <code>signer</code>, <code>covers_whole_document</code>, <code>digest_valid</code>, <code>signature_valid</code>, <code>is_valid</code> and <code>byte_range</code>. Each report also carries certificate and signature metadata: <code>issuer</code>, <code>serial_number</code>, <code>valid_from</code>, <code>valid_to</code>, <code>algorithm</code> (e.g. <code>SHA256withRSA</code>), <code>signing_time</code>, <code>cert_count</code> and <code>has_timestamp</code>. <code>field_name</code>, <code>signer</code> and any of the certificate fields may be <code>null</code> when absent. An empty array means the document is unsigned. Signature validation is free, like every feature.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const rustpdf = require("rustpdf");
 
 const data = fs.readFileSync("contract.signed.pdf");
@@ -949,9 +936,9 @@ if (ov.encrypted) {
   console.log(`encryption: ${ov.encryption}, needs password: ${ov.requiresPassword}`);
 }</code></pre></div>
 
-      <h2 id="render">Render a page to an image <span class="badge lic">licensed</span></h2>
+      <h2 id="render">Render a page to an image</h2>
       <p>Rasterize a page to a PNG image. A native Rust renderer (built on <code>tiny-skia</code>, with no headless browser) interprets the page content stream, painting real glyph outlines, vector graphics, images, color and transparency. Page rendering is a <b>Pro</b> feature; <code>page_count</code> is free.</p>
-      <div class="api"><code>renderPageToPng(pdf, page = 0, dpi = 150.0) → Buffer</code> <span class="badge lic">licensed</span></div>
+      <div class="api"><code>renderPageToPng(pdf, page = 0, dpi = 150.0) → Buffer</code></div>
       <div class="api"><code>pageCount(pdf) → number</code> <span class="badge free">free</span></div>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { renderPageToPng, pageCount } = require("rustpdf");
 const fs = require("fs");
@@ -1037,7 +1024,7 @@ fs.writeFileSync("page1.png", renderPageToPng(data, 0, 150.0));</code></pre></di
 
       <!-- ERRORS -->
       <h2 id="errors">Error handling</h2>
-      <p>Every failing native call throws <code>PdfError</code> (an <code>Error</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. License failures (missing/expired/forged token, or a feature the token doesn't grant) surface here too. Token activation failures carry the dedicated license status code (12); a gated build, sign or encrypt call instead reports that operation&rsquo;s own status (for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10) with the same &ldquo;requires a valid license&rdquo; message.</p>
+      <p>Every failing native call throws <code>PdfError</code> (an <code>Error</code>) carrying the <code>status</code> (<code>PdfStatus</code>) code and the library's last-error message. The status code identifies the failed operation &mdash; for example <code>Serialize</code>&nbsp;=&nbsp;4 or <code>Sign</code>&nbsp;=&nbsp;10.</p>
       <div class="code has-label"><span class="lbl">javascript</span><pre><code>const { Document, PdfError } = require("rustpdf");
 
 try {
@@ -1049,7 +1036,7 @@ try {
 } catch (e) {
   if (e instanceof PdfError) {
     console.error("failed:", e.status, e.message);
-    // e.g. PdfStatus=4 (Serialize): feature 'pdfa' requires a valid license
+    // e.g. PdfStatus=4 (Serialize)
   }
 }</code></pre></div>
 
@@ -1058,7 +1045,6 @@ try {
       <table>
         <tr><th>Function</th><th>Description</th></tr>
         <tr><td><code>rustpdf.version() → string</code></td><td>Native library version string.</td></tr>
-        <tr><td><code>rustpdf.activateLicense(token)</code></td><td>Activate a license token (throws on invalid/expired).</td></tr>
       </table>
 
       <div class="note" style="margin-top:40px">Looking for another language? The same API exists in Python, Delphi / Free Pascal, Swift, C#, Go, PHP and Ruby: <a href="/docs/">browse all docs</a>. They share one core, so behavior is identical.</div>
@@ -1070,7 +1056,6 @@ try {
       <a href="#install">Installation</a>
       <a href="#quickstart">Quick start</a>
       <a href="#typescript">TypeScript</a>
-      <a href="#licensing">Licensing</a>
       <a href="#threading">Threading</a>
       <a href="#doc-create">Create &amp; save</a>
       <a href="#graphics">Vector graphics</a>

@@ -8,18 +8,6 @@ const FONT: &str = concat!(
     "/../../assets/fonts/Roboto-Regular.ttf"
 );
 
-/// Redaction is a licensed (Enterprise) feature; activate the dev token.
-fn lic() {
-    pdf::activate_license(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../license/fixtures/dev_license.txt"
-        ))
-        .trim(),
-    )
-    .unwrap();
-}
-
 /// A page with a secret line at y≈600 and a kept line at y≈700.
 fn doc_with_two_lines() -> Vec<u8> {
     let mut doc = Document::new();
@@ -34,7 +22,6 @@ fn doc_with_two_lines() -> Vec<u8> {
 
 #[test]
 fn redaction_removes_text_from_content() {
-    lic();
     let pdf = doc_with_two_lines();
     assert!(pdf::extract_text(&pdf).unwrap().contains("SECRET PASSWORD"));
 
@@ -62,7 +49,6 @@ fn redaction_removes_text_from_content() {
 
 #[test]
 fn redaction_leaves_other_pages_and_lines_intact() {
-    lic();
     let pdf = doc_with_two_lines();
     let mut ed = EditableDoc::load(&pdf).unwrap();
     ed.redact(0, &[[60.0, 590.0, 400.0, 620.0]]).unwrap();
@@ -79,7 +65,6 @@ fn redact_nonexistent_page_returns_false() {
 
 #[test]
 fn redaction_survives_flate_encoded_content() {
-    lic();
     // Optimize first so the content stream becomes FlateDecode, then redact.
     let pdf = doc_with_two_lines();
     let mut ed = EditableDoc::load(&pdf).unwrap();
@@ -104,7 +89,6 @@ fn redaction_survives_flate_encoded_content() {
 /// glyph-level redaction must remove only the covered glyphs.
 #[test]
 fn redacts_word_in_the_middle_of_a_run() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()
@@ -144,7 +128,6 @@ fn redacts_word_in_the_middle_of_a_run() {
 /// displacements, so "FIM" is found at the same place before and after.
 #[test]
 fn kept_text_keeps_its_position() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     doc.add_page()
@@ -183,7 +166,6 @@ fn kept_text_keeps_its_position() {
 /// (the pixel data leaves the file).
 #[test]
 fn redacts_images_under_the_rect() {
-    lic();
     // 1×1 PNG.
     const PNG: &[u8] = &[
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44,
@@ -213,7 +195,6 @@ fn redacts_images_under_the_rect() {
 /// Annotations whose /Rect intersects the redaction are deleted.
 #[test]
 fn redacts_intersecting_annotations() {
-    lic();
     let mut doc = Document::new();
     let f = doc.add_font_file(FONT).unwrap();
     {
@@ -238,7 +219,6 @@ fn redacts_intersecting_annotations() {
 /// draw nothing (never paint a box over still-present data).
 #[test]
 fn inline_image_fails_loudly_and_draws_nothing() {
-    lic();
     let mut doc = Document::new();
     doc.add_page_sized(200.0, 200.0);
     let base = doc.to_bytes().unwrap();

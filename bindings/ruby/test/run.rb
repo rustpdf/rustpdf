@@ -1,5 +1,5 @@
-# Smoke test for the RustPdf Ruby binding. Exercises the whole surface,
-# including licensing gating. Exits non-zero on any failed assertion.
+# Smoke test for the RustPdf Ruby binding. Exercises the whole surface.
+# Exits non-zero on any failed assertion.
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "rustpdf"
@@ -40,25 +40,14 @@ end
 
 root = repo_root
 font = File.join(root, "assets", "fonts", "Roboto-Regular.ttf")
-dev_license = File.read(File.join(root, "crates", "license", "fixtures", "dev_license.txt")).strip
 
 puts "rustpdf version: #{RustPdf.version}"
 
-# 1. Corporate features blocked without a license.
-ENV.delete("RUSTPDF_LICENSE")
-blocked = false
-begin
-  d = RustPdf::Document.new
-  d.pdfa
-  d.add_page
-  d.to_bytes
-rescue RustPdf::Error
-  blocked = true
-end
-check(blocked, "PDF/A must be blocked without a license")
-
-RustPdf.activate_license(dev_license)
-puts "license activated"
+# 1. Every feature works out of the box.
+d = RustPdf::Document.new
+d.pdfa
+d.add_page
+check(!d.to_bytes.empty?, "PDF/A must work out of the box")
 
 # 2. Tagged PDF/A-2a with a font, heading and justified paragraph.
 doc = RustPdf::Document.new
@@ -73,7 +62,7 @@ text = RustPdf.extract_text(pdfa)
 check(text.include?("Título"), "extracted text: #{text}")
 puts "built PDF/A-2a (#{pdfa.bytesize} bytes); extracted ok"
 
-# Page rendering (Pro feature; license already active).
+# Page rendering.
 check(RustPdf.page_count(pdfa) == 1, "page count")
 png = RustPdf.render_page_to_png(pdfa, 0, 72.0)
 check(png.bytesize > 8 && png.byteslice(1, 3) == "PNG", "PNG header")

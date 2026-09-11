@@ -19,7 +19,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Enterprise PDF Library for Ruby | rust-pdf" />
-  <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Ruby. gem install rustpdf. Offline, licensed per feature." />
+  <meta name="twitter:description" content="PDF/A, PAdES, AES-256 and accessibility for Ruby. gem install rustpdf. Offline, MIT, every feature free." />
   <meta property="og:image:alt" content="rust-pdf - enterprise PDF for Ruby" />
   <meta name="twitter:image" content="https://rustpdf.dev/og.png" />
   <meta name="twitter:image:alt" content="rust-pdf - enterprise PDF for Ruby" />
@@ -66,13 +66,9 @@
         "Merge, split, text extraction"
       ],
       "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "USD",
-        "lowPrice": "1500",
-        "highPrice": "3000",
-        "offerCount": "2",
-        "priceValidUntil": "2027-12-31",
-        "url": "https://rustpdf.dev/#pricing"
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
       }
     }
   ]
@@ -89,10 +85,10 @@
         <a href="/#features">Features</a>
         <a href="/#languages">Languages</a>
         <a href="/docs/ruby">Docs</a>
-        <a href="/#pricing">Pricing</a>
+        
         <a href="/#faq">FAQ</a>
       </nav>
-      <a href="/#pricing" class="btn btn-sm">Get a license</a>
+      <a href="/docs/" class="btn btn-sm">Get started</a>
     </div>
   </header>
 
@@ -115,7 +111,7 @@
         </div>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Start free &middot; Ruby</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="validators">
           Validated by independent tools:
@@ -138,16 +134,15 @@
           </p>
           <p class="muted">
             rust-pdf is a gem with the native core bundled in a platform-specific
-            build, loaded through Ruby's Fiddle (no native build step), with a single
-            offline license that unlocks the corporate features.
+            build, loaded through Ruby's Fiddle (no native build step), with every feature free.
           </p>
         </div>
         <ul class="check-list">
           <li><b>Standards-grade, not just pretty</b>: real PDF/A, PAdES and PDF/UA on top of clean drawing.</li>
           <li><b>Runs on your servers</b>: documents never leave your network and nothing phones home, ideal for LGPD/GDPR, fintech and health.</li>
-          <li><b>No AGPL trap</b>: a commercial per-application license, never the AGPL of iText or the per-server billing of Aspose.</li>
+          <li><b>No AGPL trap</b>: MIT licensed, never the AGPL of iText or the per-server billing of Aspose.</li>
           <li><b>Deterministic output</b>: the same input always produces the same bytes, so you can diff and audit it.</li>
-          <li><b>Free to build with</b>: everyday PDF generation is free forever; you only license the regulated-grade features.</li>
+          <li><b>Free to build with</b>: every feature is free forever.</li>
         </ul>
       </div>
     </section>
@@ -155,15 +150,15 @@
     <!-- FEATURES -->
     <section class="section">
       <div class="wrap">
-        <h2 class="center">Free to build with. Licensed when you ship.</h2>
+        <h2 class="center">Every feature is free.</h2>
         <p class="center muted narrow">
-          Prototype and generate everyday PDFs for free. When you need archival,
-          signatures, encryption or accessibility, one license unlocks them all in
+          Prototype and ship everyday PDFs for free. PDF/A, signatures, encryption
+          and accessibility are all included in
           Ruby and every other binding.
         </p>
         <div class="feature-grid">
           <div class="card free reveal">
-            <h3>Community <span class="tag">free</span></h3>
+            <h3>Core <span class="tag">free</span></h3>
             <ul>
               <li>Pages &amp; vector graphics</li>
               <li>Embedded/subset fonts, Unicode shaping</li>
@@ -174,7 +169,7 @@
             </ul>
           </div>
           <div class="card pro reveal">
-            <h3>Corporate <span class="tag tag-pro">licensed</span></h3>
+            <h3>Advanced <span class="tag">free</span></h3>
             <ul>
               <li><b>PDF/A</b>: 1b / 2b / 2a / 3b / 3a / 4 / 4e / 4f archival</li>
               <li><b>Digital signatures</b>: PKCS#7, visible &amp; multiple</li>
@@ -190,28 +185,15 @@
       </div>
     </section>
 
-    <!-- FREE TRIAL -->
+    <!-- FREE -->
     <section class="band">
       <div class="wrap narrow center">
-        <h2>Try every licensed feature free for 5 days.</h2>
+        <h2>Every feature is free.</h2>
         <p class="muted">
-          Get a trial token by email and unlock PDF/A, digital signatures,
-          encryption and accessibility in Ruby. No account, no card required.
+          rust-pdf is MIT licensed &mdash; PDF/A, digital signatures, encryption,
+          accessibility and page rendering are all included. No key, no account,
+          no card.
         </p>
-        <form class="trial-form" novalidate>
-          <label class="trial-field">
-            <span class="sr-only">Work email</span>
-            <input type="email" name="email" required autocomplete="email" placeholder="you@company.com" />
-          </label>
-          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
-                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
-          <button type="submit" class="btn">Email me a free trial token</button>
-          <label class="trial-consent">
-            <input type="checkbox" name="consent" />
-            <span>Send me occasional product updates. No spam; unsubscribe anytime.</span>
-          </label>
-          <p class="trial-msg" role="status" aria-live="polite" hidden></p>
-        </form>
       </div>
     </section>
 
@@ -291,12 +273,11 @@ end</code></pre>
         <h2>Start building in Ruby</h2>
         <p class="muted">
           <code>gem install rustpdf</code> and ship your first archival PDF today.
-          Free for everyday generation; license the corporate features when you go to
-          production.
+          Every feature is free.
         </p>
         <div class="cta-row">
           <a href="/docs/ruby" class="btn btn-lg">Start free &middot; Ruby</a>
-          <a href="/#pricing" class="btn btn-ghost btn-lg">View pricing &amp; licensing</a>
+          <a href="/docs/" class="btn btn-ghost btn-lg">Read the docs</a>
         </div>
         <div class="sibling-langs">
           <a href="/python">Python</a>
@@ -327,13 +308,13 @@ end</code></pre>
   <footer class="footer">
     <div class="wrap footer-inner">
       <span class="brand">rust<span>·</span>pdf</span>
-      <span class="footer-by">by <a href="https://casefy.io" rel="noopener">CaseFy&nbsp;Inc.</a></span>
-      <span class="muted">Enterprise PDF for every language. One Rust core, licensed per feature.</span>
+      <span class="footer-by">by the <a href="https://github.com/rustpdf/rustpdf" rel="noopener">rust-pdf contributors</a></span>
+      <span class="muted">Free &amp; open source (MIT). One Rust core, ten language bindings.</span>
       <nav class="footer-links">
         <a href="/docs/ruby">Ruby docs</a>
         <a href="/legal/terms">Terms</a>
         <a href="/legal/privacy">Privacy</a>
-        <a href="mailto:sales@casefy.io">Contact</a>
+        <a href="https://github.com/rustpdf/rustpdf/issues">Issues</a>
       </nav>
     </div>
   </footer>

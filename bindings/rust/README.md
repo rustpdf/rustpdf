@@ -92,16 +92,8 @@ fn main() -> rustpdf::Result<()> {
 }
 ```
 
-Corporate features (PDF/A, tagged/accessible output, encryption, digital
-signatures, page rendering — a **Pro** feature) are gated behind a license —
-activate it once per process:
-
-```rust
-rustpdf::activate_license(&std::fs::read_to_string("license.txt")?)?;
-```
-
-or set the `RUSTPDF_LICENSE` / `RUSTPDF_LICENSE_FILE` environment variable (the
-engine auto-activates from there).
+Every feature is free — PDF/A, tagged/accessible output, encryption, digital
+signatures/PAdES, redaction and page rendering are all included.
 
 ## API surface
 
@@ -116,7 +108,7 @@ engine auto-activates from there).
   `draw_image` / `draw_image_anchored` (`ImageAnchor`), custom embedded fonts
   via `add_font` / `add_font_file`, and `set_stamp_space` (`StampSpace`:
   visible vs raw media coordinates).
-- Module functions: `version`, `ensure_loaded`, `activate_license`,
+- Module functions: `version`, `ensure_loaded`,
   `extract_text`, `sign`, `timestamp`, `add_dss`. **Deferred / HSM signing**
   (the private key never reaches the library): `sign_with` (a signer callback)
   and `begin_signing` + `SigningSession::complete` (two-phase) for cloud KMS,

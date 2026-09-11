@@ -46,11 +46,9 @@ pub enum PdfStatus {
     Sign = 10,
     /// An out-of-range index or other invalid argument.
     InvalidArgument = 11,
-    /// License activation failed (bad signature, expired, or malformed).
-    License = 12,
     /// The operation cannot be performed safely on this input (e.g. redaction
     /// of a page whose content cannot be rewritten) — see the last error.
-    Unsupported = 13,
+    Unsupported = 12,
 }
 
 thread_local! {
@@ -190,32 +188,6 @@ pub extern "C" fn pdf_last_error_message() -> *const c_char {
     LAST_ERROR.with(|slot| match &*slot.borrow() {
         Some(s) => s.as_ptr(),
         None => ptr::null(),
-    })
-}
-
-/// Activate a license token for this process, unlocking the corporate features
-/// it grants (PDF/A, signatures, encryption, accessibility) until it expires.
-/// Returns [`PdfStatus::License`] if the token is forged, expired or malformed.
-///
-/// # Safety
-/// `token` must be a valid NUL-terminated UTF-8 C string.
-#[no_mangle]
-pub unsafe extern "C" fn pdf_activate_license(token: *const c_char) -> PdfStatus {
-    guard(|| {
-        let token = match unsafe { cstr(token, "pdf_activate_license") } {
-            Ok(t) => t,
-            Err(s) => return s,
-        };
-        match pdf::activate_license(token) {
-            Ok(_) => {
-                clear_last_error();
-                PdfStatus::Ok
-            }
-            Err(e) => {
-                set_last_error(format!("license: {e}"));
-                PdfStatus::License
-            }
-        }
     })
 }
 

@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "crates/cos",
-    "crates/license",
     "crates/parser",
     "crates/writer",
     "crates/graphics",
@@ -23,13 +22,12 @@ exclude = ["bindings/rust"]
 version = "0.4.8"
 edition = "2021"
 rust-version = "1.82"
-license = "LicenseRef-Proprietary"
-repository = ""
+license = "MIT"
+repository = "https://github.com/rustpdf/rustpdf"
 authors = ["rust-pdf contributors"]
 
 [workspace.dependencies]
 cos = { path = "crates/cos" }
-license = { path = "crates/license" }
 parser = { path = "crates/parser" }
 writer = { path = "crates/writer" }
 graphics = { path = "crates/graphics" }
