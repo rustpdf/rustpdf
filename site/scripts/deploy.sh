@@ -5,11 +5,13 @@
 #   ./site/scripts/deploy.sh --logs     # idem, e segue os logs no fim
 #   SKIP_RSYNC=1 ./site/scripts/deploy.sh   # só rebuild+rollout (sem sincronizar código)
 #
+# Requer VPS=usuario@host no ambiente (o host não fica versionado).
+#
 # O site é estático + um pequeno servidor Express (sem banco, Stripe ou segredos).
 set -euo pipefail
 
 # ---- Config (sobrescreva por env var se precisar) --------------------------
-VPS="${VPS:-edivan@VPS_HOST}"      # destino SSH
+VPS="${VPS:?defina VPS=usuario@host do servidor}"  # destino SSH (obrigatório)
 NS="${NS:-rustpdf}"                       # namespace k8s
 DEPLOY="${DEPLOY:-rustpdf-site}"          # nome do Deployment
 IMAGE="${IMAGE:-rustpdf-site:test}"       # tag da imagem (fixa; imagePullPolicy: Never)

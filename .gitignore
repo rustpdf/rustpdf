@@ -36,3 +36,7 @@ bindings/java/src/main/resources/win32-*/
 !site/public/logo.png
 !site/public/og.png
 local-nuget/
+
+# .NET build output
+bindings/csharp/**/bin/
+bindings/csharp/**/obj/
