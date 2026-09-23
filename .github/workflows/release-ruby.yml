@@ -10,7 +10,7 @@ name: release-ruby
 # Two phases (Linux cdylibs must be built in manylinux_2_28 for old-glibc compat,
 # where ruby/setup-ruby can't run): `build` produces each cdylib as an artifact,
 # then `gem` sets up Ruby on a normal runner, stages the cdylib into
-# vendor/<platform>/, smoke-tests the free surface, and `gem build`/`gem push`.
+# vendor/<platform>/, smoke-tests it, and `gem build`/`gem push`.
 #
 # The gem version is the single source of truth in bindings/ruby/rustpdf.gemspec.
 # Trigger by pushing a tag like `ruby-v0.1.0`, or run manually (build/smoke only —
@@ -158,7 +158,7 @@ jobs:
       # Smoke only runs where the host can load the staged cdylib — the
       # x86_64-linux gem's .so. Other platforms' libs can't be dlopen'd on this
       # x86_64 Linux runner, so just verify the gem builds and carries the lib.
-      - name: smoke (free surface)
+      - name: smoke
         if: ${{ matrix.plat == 'x86_64-linux' }}
         working-directory: bindings/ruby
         run: |

@@ -1,6 +1,6 @@
 {
   "name": "rustpdf",
-  "version": "0.4.8",
+  "version": "0.5.0",
   "description": "Generate, edit, sign and process PDFs in Node.js: PDF/A, AES-256 encryption, digital signatures (PAdES), forms, stamping, redaction, text extraction and page rendering. Docs: https://rustpdf.dev/docs/node",
   "license": "MIT",
   "homepage": "https://rustpdf.dev/docs/node",
@@ -35,10 +35,10 @@
     "koffi": "^2.8.0"
   },
   "optionalDependencies": {
-    "@rustpdf/darwin-arm64": "0.4.8",
-    "@rustpdf/linux-arm64-gnu": "0.4.8",
-    "@rustpdf/linux-x64-gnu": "0.4.8",
-    "@rustpdf/win32-x64-msvc": "0.4.8"
+    "@rustpdf/darwin-arm64": "0.5.0",
+    "@rustpdf/linux-arm64-gnu": "0.5.0",
+    "@rustpdf/linux-x64-gnu": "0.5.0",
+    "@rustpdf/win32-x64-msvc": "0.5.0"
   },
   "scripts": {
     "test": "node test/run.js",

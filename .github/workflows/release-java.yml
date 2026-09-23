@@ -11,7 +11,7 @@ name: release-java
 # Matrix jobs build the cdylib (Linux inside manylinux_2_28 for old-glibc compat,
 # mac/win natively) and upload each lib as an artifact named native-<prefix>.
 # The `publish` job downloads them all, lays them out under
-# src/main/resources/<prefix>/, runs a free-surface smoke against the bundled
+# src/main/resources/<prefix>/, runs a smoke against the bundled
 # resource, then `mvn -Prelease deploy` packages + GPG-signs + uploads.
 #
 # Trigger by pushing a tag like `java-v0.1.0`, or run manually (build/smoke only —

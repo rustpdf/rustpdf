@@ -8,7 +8,7 @@ name: release-csharp
 # `dotnet add package RustPdf`.
 #
 # Flow (fan-out / fan-in, like the Go release):
-#   * fan-out — one job per RID builds the cdylib, free-surface smoke-tests it,
+#   * fan-out — one job per RID builds the cdylib, smoke-tests it,
 #     and uploads it as an artifact (osx-arm64, linux-x64, linux-arm64, win-x64);
 #   * fan-in  — the `pack` job downloads all four, lays them out under
 #     bindings/csharp/RustPdf/runtimes/<rid>/native/, runs `dotnet pack`, and
@@ -64,12 +64,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      # Free-surface smoke: proves the .so loads + links on this RID. (The full
-      # Sample activates the dev license, which a production-key build rejects.)
+      # Quick smoke: proves the .so loads + links on this RID.
       # The manylinux_2_28 build container has no ICU, so .NET would FailFast in
       # its globalization cctor — run the smoke in invariant mode (it needs no
       # culture data) to verify the lib loads anyway.
-      - name: smoke (free surface)
+      - name: smoke
         env:
           DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
         run: |
@@ -118,7 +117,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: smoke (free surface)
+      - name: smoke
         if: ${{ !matrix.cross }}
         run: |
           export RUSTPDF_LIB="$PWD/target/${{ matrix.target }}/release/${{ matrix.lib }}"

@@ -130,7 +130,7 @@ static xcframework for macOS and iOS).
 
 ## Product data
 
-- Current stable version: 0.4.8 (2026-07)
+- Current stable version: 0.5.0 (2026-09)
 - No network calls: all processing is local.
 - Distribution: native shared library (.so / .dylib / .dll) wrapped by each binding
 - Deterministic output: identical input produces byte-identical PDFs across languages

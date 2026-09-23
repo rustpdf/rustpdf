@@ -9,7 +9,7 @@ name: release-rust
 #      point RUSTPDF_LIB at it).
 #
 # Matrix jobs build the cdylib (Linux inside manylinux_2_28 for old-glibc compat,
-# mac/win natively), free-surface smoke-test it where host-runnable, and upload
+# mac/win natively), smoke-test it where host-runnable, and upload
 # each lib as an artifact. The `publish` job zips them per platform, creates the
 # GitHub Release, then publishes the crate to the private registry.
 #
@@ -73,8 +73,7 @@ jobs:
         run: |
           mkdir -p out
           cp target/release/libpdf_ffi.so out/libpdf_ffi.so
-      # Free-surface smoke (the production-key lib rejects the dev token the full
-      # test suite activates): just build a plain PDF through the binding.
+      # Quick smoke: build a plain PDF through the binding.
       - name: smoke (runtime load)
         if: matrix.smoke
         working-directory: bindings/rust

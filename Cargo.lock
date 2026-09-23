@@ -264,7 +264,7 @@ dependencies = [
 
 [[package]]
 name = "cos"
-version = "0.4.8"
+version = "0.5.0"
 
 [[package]]
 name = "cpufeatures"
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "fonts"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "rustybuzz",
  "subsetter",
@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "graphics"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "cos",
 ]
@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "images"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "flate2",
  "png 0.18.1",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "layout"
-version = "0.4.8"
+version = "0.5.0"
 
 [[package]]
 name = "lazy_static"
@@ -705,7 +705,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "parser"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "aes",
  "cbc",
@@ -720,7 +720,7 @@ dependencies = [
 
 [[package]]
 name = "pdf"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "aes",
  "cbc",
@@ -748,7 +748,7 @@ dependencies = [
 
 [[package]]
 name = "pdf-ffi"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "cbindgen",
  "pdf",
@@ -919,7 +919,7 @@ dependencies = [
 
 [[package]]
 name = "render"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "cos",
  "fonts",
@@ -1180,7 +1180,7 @@ dependencies = [
 
 [[package]]
 name = "testkit"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "image",
 ]
@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "writer"
-version = "0.4.8"
+version = "0.5.0"
 dependencies = [
  "cos",
  "flate2",
