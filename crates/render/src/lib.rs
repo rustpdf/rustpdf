@@ -267,13 +267,7 @@ fn inherited(reader: &PdfReader, page: &Dict, key: &str) -> Option<cos::Object> 
         if let Some(v) = cur.get(key) {
             return Some(v.clone());
         }
-        match cur.get("Parent") {
-            Some(p) => match reader.resolve_dict(p) {
-                Some(d) => cur = d.clone(),
-                None => return None,
-            },
-            None => return None,
-        }
+        cur = reader.resolve_dict(cur.get("Parent")?)?.clone();
     }
     None
 }
