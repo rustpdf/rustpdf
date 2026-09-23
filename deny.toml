@@ -20,6 +20,11 @@ ignore = [
     # crate is stable and its parsing is bounded/non-panicking. Revisit if a
     # maintained fork emerges or an actual vulnerability is disclosed.
     "RUSTSEC-2026-0192",
+    # RUSTSEC-2026-0206 — `rustybuzz` is unmaintained. Not a vulnerability: it
+    # is the pure-Rust HarfBuzz port behind `fonts::shape`. The suggested
+    # successor, `harfrust`, has a different API; migrating is tracked in
+    # PENDING.md. Revisit when that migration lands.
+    "RUSTSEC-2026-0206",
 ]
 
 [licenses]

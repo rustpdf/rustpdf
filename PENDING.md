@@ -18,6 +18,10 @@ Legenda: 🟡 parcial (implementado em parte) · ⏳ adiado (não iniciado)
   glifo, mas **não há validação ponta-a-ponta** (RTL + reordenação Indic dentro
   do `paragraph`/`text`) nem fixtures de baseline HarfBuzz. BiDi (3E.3) e CJK
   (3E.4) estão feitos e testados.
+- ⏳ **Migrar `rustybuzz` → `harfrust`** — o `rustybuzz` foi declarado sem
+  manutenção (RUSTSEC-2026-0206, ignorado com justificativa no `deny.toml`). O
+  sucessor mantido é o `harfrust` (projeto HarfBuzz), com API diferente; a troca
+  fica em `crates/fonts/src/shape.rs`.
 - Nota: caminho de fonte **simples WinAnsi single-byte (3A.3)** foi
   deliberadamente substituído pelo Type0 universal — não é uma pendência, é uma
   decisão de design (mesmo critério de extração atendido).
