@@ -130,7 +130,7 @@ Assert(extFields.Count == 1 && extFields[0].Signed, "external doc has one signed
 Console.WriteLine($"external (Model A) sign ok ({external.Length} bytes)");
 
 // 7c. Two-phase (Model B): begin a signing session → build a detached CMS with
-// .NET's own SignedCms (exactly the ForSign/BouncyCastle integrator pattern) →
+// .NET's own SignedCms (exactly the BouncyCastle integrator pattern) →
 // complete. Also certifies the document (DocMDP forms + annotations).
 var session = Pdf.BeginSigning(plain, new SigningOptions
 {
@@ -366,7 +366,7 @@ using (var ed = EditableDoc.Load(pdfa))
     Assert(ed.DrawImage(0, png, 50, 400, 120, 90, rotationDeg: 0), "draw_image page existed");
     Assert(!ed.DrawImage(99, png, 0, 0, 1, 1), "draw_image missing page");
     Assert(!ed.FillRect(99, 0, 0, 1, 1), "fill_rect missing page");
-    // ForSign gaps #4 + #5: aligned text + masked (boxed, vertically centered) text.
+    // Integrator gaps #4 + #5: aligned text + masked (boxed, vertically centered) text.
     Assert(ed.PlaceText(0, 300, 150, "CENTERED", size: 12, align: Align.Center),
         "place_text aligned page existed");
     Assert(ed.MaskedText(0, 100, 200, 200, 24, "R$ 1.234,56", size: 12,
@@ -406,11 +406,11 @@ Assert(Pdf.ExtractText(drawn).Contains("R$ 1.234,56"), "masked text is extractab
 Assert(Pdf.ExtractText(drawn).Contains("quatro"), "wrapped paragraph is extractable");
 Console.WriteLine("fill_rect + place_text(+align/anchor) + masked_text(+valign) + place_paragraph + draw_image ok");
 
-// 19a. ForSign gap #3: per-page text extraction (no one-page-doc workaround).
+// 19a. Integrator gap #3: per-page text extraction (no one-page-doc workaround).
 Assert(Pdf.ExtractPageText(drawn, 0).Contains("STAMPED"), "page-0 text extracted");
 Console.WriteLine("extract_page_text ok");
 
-// 19b. ForSign gap #2: VISIBLE cryptographic signature appearance.
+// 19b. Integrator gap #2: VISIBLE cryptographic signature appearance.
 {
     var hsm2 = new HsmSigner(key);
     var vis = Pdf.SignWith(plain, cert, hsm2.SignHash, options: new SigningOptions
@@ -420,7 +420,7 @@ Console.WriteLine("extract_page_text ok");
         Visible = true,
         VisiblePage = 0,
         VisibleRect = new[] { 72.0, 72.0, 320.0, 144.0 },
-        VisibleText = "Assinado por ForSign\nTeste Forsign",
+        VisibleText = "Assinado por Example Corp\nTeste",
     });
     Assert(Pdf.VerifySignatures(vis)[0].IsValid, "visible signature verifies");
     Assert(vis.Length > plain.Length, "visible signature appended an appearance");
@@ -441,7 +441,7 @@ Console.WriteLine("extract_page_text ok");
 Console.WriteLine("OK: full C# binding surface exercised");
 
 // Build a detached CMS/PKCS#7 container over `data` using .NET's SignedCms —
-// the pure-.NET equivalent of what ForSign does with BouncyCastle in phase 2.
+// the pure-.NET equivalent of what an integrator does with BouncyCastle in phase 2.
 static byte[] BuildDetachedCms(byte[] data, byte[] certDer, byte[] keyPk8)
 {
     using var rsa = System.Security.Cryptography.RSA.Create();

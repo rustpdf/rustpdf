@@ -83,7 +83,7 @@ fn draw_image_twice_uses_distinct_resource_names() {
     assert!(images.iter().all(|i| i.page == 0));
 }
 
-// ---- ForSign integration gaps (#3 extract-page-text, #4 align, #5 mask) ----
+// ---- Integrator gaps (#3 extract-page-text, #4 align, #5 mask) ----
 
 use pdf::{extract_page_text, extract_text, Align};
 
@@ -195,9 +195,9 @@ fn masked_text_paints_box_and_centers_text() {
 
 #[test]
 fn placed_text_roundtrips_accents_as_winansi() {
-    // The ForSign footer: accented Latin-1 + an em dash. Must come back exactly
+    // A typical e-signature footer: accented Latin-1 + an em dash. Must come back exactly
     // through extraction (the bytes are written as WinAnsi, not raw UTF-8).
-    let footer = "Operação 1261963 — assinado eletronicamente pela ForSign";
+    let footer = "Operação 123456 — assinado eletronicamente pela Example Corp";
     let mut ed = EditableDoc::load(two_page_doc()).unwrap();
     assert!(ed.place_text(0, 40.0, 60.0, footer, 9.0, (0.0, 0.0, 0.0), 0.0));
     assert!(ed.masked_text(

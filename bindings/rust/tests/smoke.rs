@@ -380,7 +380,7 @@ fn full_surface() {
     assert!(!paint
         .draw_image(99, png, 0.0, 0.0, 10.0, 10.0, 0.0)
         .unwrap());
-    // --- place_text_aligned + masked_text (ForSign integration) ---
+    // --- place_text_aligned + masked_text (integrator follow-ups) ---
     assert!(
         paint
             .place_text_aligned(

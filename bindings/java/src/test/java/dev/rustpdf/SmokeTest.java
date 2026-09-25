@@ -352,7 +352,7 @@ public final class SmokeTest {
         assertThat(Pdf.extractText(drawn).contains("PlacedHere"), "placed text extracted");
         System.out.println("fillRect + placeText + drawImage ok (" + drawn.length + " bytes)");
 
-        // 22. ForSign follow-ups: extractPageText + aligned placeText + maskedText.
+        // 22. Integrator follow-ups: extractPageText + aligned placeText + maskedText.
         String page0Text = Pdf.extractPageText(pdfa, 0);
         assertThat(page0Text.contains("Título"), "extractPageText page 0: " + page0Text);
         boolean pageOob = false;

@@ -525,7 +525,7 @@ begin
   { 9b. BeginSigning (Model B, phase 1): prepared doc + bytes-to-sign + hash. }
   Opts := SigningOptions;
   Opts.Reason := 'HSM test';
-  Opts.Name := 'Edivan';
+  Opts.Name := 'Test Signer';
   Opts.Pades := True;
   Opts.Certify := CertifyForms;
   Session := Pdf.BeginSigning(PlainBytes, Opts);
