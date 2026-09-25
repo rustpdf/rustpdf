@@ -180,7 +180,7 @@ fn inspect_reports_catalog_version_override() {
 /// Regression: stamping text/images onto a page whose `/Resources` is an
 /// **indirect reference** (not an inline dict) must MERGE into the existing
 /// resources, not replace them with a dict holding only the stamp's font.
-/// A real ForSign-signed file lost all original text because `add_page_resource`
+/// A real third-party-signed file lost all original text because `add_page_resource`
 /// only matched an inline `/Resources` dict, dropping the page's `/TT*` fonts so
 /// its untouched content stream rendered blank.
 #[test]

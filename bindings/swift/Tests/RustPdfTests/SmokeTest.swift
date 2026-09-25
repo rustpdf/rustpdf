@@ -392,7 +392,7 @@ final class SmokeTest: XCTestCase {
                           "serialized PDF with drawn image")
         }
 
-        // 22. Aligned positioned text + masked text (ForSign integration).
+        // 22. Aligned positioned text + masked text (integrator follow-ups).
         var aligned: [UInt8] = []
         do {
             let ed = try EditableDoc(loading: pdfa)

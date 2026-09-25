@@ -333,7 +333,7 @@ stamped = img_ed.to_bytes
 check(stamped.bytesize > 8 && stamped.byteslice(0, 5) == "%PDF-", "draw_image serialized a PDF")
 puts "draw_image ok (#{stamped.bytesize} bytes)"
 
-# 24. Aligned place_text + masked_text (ForSign follow-ups).
+# 24. Aligned place_text + masked_text (Integrator follow-ups).
 mask_ed = RustPdf::EditableDoc.load(pdfa)
 check(mask_ed.place_text(0, 300, 200, "RIGHT", 12, [0, 0, 0], 0, align: RustPdf::Align::RIGHT),
       "place_text aligned page existed")

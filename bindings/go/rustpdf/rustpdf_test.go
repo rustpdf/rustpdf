@@ -616,7 +616,7 @@ func TestFullSurface(t *testing.T) {
 		}
 	}
 
-	// 22. ForSign follow-ups: ExtractPageText, PlaceTextAligned, MaskedText.
+	// 22. Integrator follow-ups: ExtractPageText, PlaceTextAligned, MaskedText.
 	{
 		// Per-page extraction matches the whole-document extraction for page 0.
 		page0, err := ExtractPageText(pdfa, 0)

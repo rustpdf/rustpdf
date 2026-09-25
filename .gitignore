@@ -40,3 +40,8 @@ local-nuget/
 # .NET build output
 bindings/csharp/**/bin/
 bindings/csharp/**/obj/
+
+# local credentials — never commit
+*.env
+.env*
+!.env.example
